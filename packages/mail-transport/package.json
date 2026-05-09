@@ -1,0 +1,10 @@
+{
+  "name": "@innovapos/mail-transport",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared Nodemailer setup: Gmail or any SMTP (no SES-specific logic)",
+  "main": "src/index.js",
+  "dependencies": {
+    "nodemailer": "^7.0.3"
+  }
+}

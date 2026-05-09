@@ -1,0 +1,101 @@
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const { protect } = require('../middleware/auth');
+
+const router = express.Router();
+
+const buildPayload = (u, subscriptionActive = true) => ({
+  id: u._id,
+  name: u.name,
+  email: u.email,
+  role: u.role,
+  tenantId: u.tenantId || null,
+  profileImage: u.profileImage || '',
+  isTemporaryPassword: u.isTemporaryPassword || false,
+  subscriptionActive,
+});
+
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password)
+    return res.status(400).json({ message: 'Email and password are required' });
+
+  try {
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user || !(await user.comparePassword(password)))
+      return res.status(401).json({ message: 'Invalid credentials' });
+
+    if (!user.isActive)
+      return res.status(403).json({ message: 'Account is deactivated. Contact your administrator.' });
+
+    // Check subscription if tenant-scoped
+    let subscriptionActive = true;
+    if (user.tenantId && !['superadmin', 'merchant_admin'].includes(user.role)) {
+      const mongoose = require('mongoose');
+      const Tenant = mongoose.models.Tenant || require('../models/Tenant');
+      const tenant = await Tenant.findById(user.tenantId).select('subscriptionStatus trialEndsAt status');
+      if (tenant) {
+        if (tenant.status !== 'active') subscriptionActive = false;
+        else if (tenant.subscriptionStatus === 'expired') subscriptionActive = false;
+        else if (tenant.subscriptionStatus === 'trial' && tenant.trialEndsAt && new Date() > tenant.trialEndsAt) subscriptionActive = false;
+      }
+    }
+
+    const payload = buildPayload(user, subscriptionActive);
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '12h' });
+
+    user.lastLoginAt = new Date();
+    await user.save();
+
+    res.json({ token, user: payload });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+router.get('/me', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password -resetPasswordToken -resetPasswordExpires');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(buildPayload(user, req.user.subscriptionActive));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.put('/me', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const { name, profileImage, profileImageKey, currentPassword, newPassword } = req.body;
+
+    if (name !== undefined) {
+      if (!name.trim()) return res.status(400).json({ message: 'Name cannot be empty' });
+      user.name = name.trim();
+    }
+    if (profileImage !== undefined) user.profileImage = profileImage;
+    if (profileImageKey !== undefined) user.profileImageKey = profileImageKey;
+
+    if (newPassword) {
+      if (!currentPassword) return res.status(400).json({ message: 'Current password is required' });
+      const match = await user.comparePassword(currentPassword);
+      if (!match) return res.status(400).json({ message: 'Current password is incorrect' });
+      if (newPassword.length < 8) return res.status(400).json({ message: 'New password must be at least 8 characters' });
+      user.password = newPassword;
+      user.isTemporaryPassword = false;
+    }
+
+    user.updatedBy = req.user.id;
+    await user.save();
+
+    const payload = buildPayload(user, req.user.subscriptionActive ?? true);
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '12h' });
+    res.json({ user: payload, token });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+module.exports = router;

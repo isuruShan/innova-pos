@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+/* Brand: orange (primary CTAs), teal (accents/links), brown (dark surfaces & typography) */
+@theme {
+  --color-brand-orange: #ea580c;
+  --color-brand-orange-hover: #c2410c;
+  --color-brand-teal: #0d9488;
+  --color-brand-teal-deep: #115e59;
+  --color-brand-brown: #5d4037;
+  --color-brand-brown-deep: #3e2723;
+  --color-brand-brown-muted: #6d4c41;
+}
+
+@layer base {
+  :root {
+    --color-primary: var(--color-brand-brown-deep);
+    --color-accent: var(--color-brand-orange);
+    --color-secondary: var(--color-brand-teal);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white text-gray-900 antialiased;
+  }
+}
+
+/* Public landing hero: subtle teal motion (no JS) */
+@keyframes public-hero-mesh {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translate3d(2%, -3%, 0) scale(1.08);
+    opacity: 0.65;
+  }
+}
+
+@keyframes public-hero-blob-a {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(4%, -3%, 0) scale(1.06);
+  }
+  66% {
+    transform: translate3d(-3%, 4%, 0) scale(0.96);
+  }
+}
+
+@keyframes public-hero-blob-b {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  40% {
+    transform: translate3d(-5%, 2%, 0) scale(1.05);
+  }
+  75% {
+    transform: translate3d(3%, -4%, 0) scale(0.98);
+  }
+}
+

@@ -1,0 +1,80 @@
+const winston = require('winston');
+require('winston-daily-rotate-file');
+const path = require('path');
+const fs = require('fs');
+
+const LOG_DIR = process.env.LOG_DIR || path.join(process.cwd(), 'logs');
+if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
+
+const { combine, timestamp, json, colorize, printf, errors } = winston.format;
+
+const structuredFormat = combine(
+  errors({ stack: true }),
+  timestamp({ format: 'YYYY-MM-DDTHH:mm:ss.SSSZ' }),
+  json()
+);
+
+const consoleFormat = combine(
+  colorize(),
+  timestamp({ format: 'HH:mm:ss' }),
+  printf(({ level, message, timestamp: ts, tenantId, userId, method, path: p, ...rest }) => {
+    const ctx = [
+      tenantId ? `tenant=${tenantId}` : null,
+      userId ? `user=${userId}` : null,
+      method && p ? `${method} ${p}` : null,
+    ]
+      .filter(Boolean)
+      .join(' | ');
+    const extra = Object.keys(rest).length
+      ? ` ${JSON.stringify(rest)}`
+      : '';
+    return `${ts} [${level}]${ctx ? ` [${ctx}]` : ''} ${message}${extra}`;
+  })
+);
+
+const dailyRotateTransport = (level, filename) =>
+  new winston.transports.DailyRotateFile({
+    dirname: LOG_DIR,
+    filename: `${filename}-%DATE%.log`,
+    datePattern: 'YYYY-MM-DD',
+    zippedArchive: true,
+    maxSize: '20m',
+    maxFiles: '14d',
+    level,
+    format: structuredFormat,
+  });
+
+const createLogger = (service) => {
+  const logger = winston.createLogger({
+    level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
+    defaultMeta: { service },
+    transports: [
+      dailyRotateTransport('info', 'combined'),
+      dailyRotateTransport('error', 'error'),
+    ],
+  });
+
+  if (process.env.NODE_ENV !== 'production') {
+    logger.add(new winston.transports.Console({ format: consoleFormat }));
+  } else {
+    logger.add(new winston.transports.Console({ format: structuredFormat }));
+  }
+
+  return logger;
+};
+
+/**
+ * Build a child logger with request context.
+ * Usage: const log = childLogger(logger, req);
+ *        log.info('Order created', { orderId });
+ */
+const childLogger = (logger, req) =>
+  logger.child({
+    tenantId: req.tenantId || req.user?.tenantId || 'system',
+    userId: req.user?.id || 'anonymous',
+    method: req.method,
+    path: req.path,
+    ip: req.ip,
+  });
+
+module.exports = { createLogger, childLogger };

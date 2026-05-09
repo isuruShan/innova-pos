@@ -1,0 +1,11 @@
+{
+  "name": "@innovapos/shared-middleware",
+  "version": "1.0.0",
+  "description": "Shared Express middleware for auth, tenant scoping, and audit logging",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.3",
+    "axios": "^1.16.0"
+  }
+}

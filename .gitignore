@@ -1,0 +1,72 @@
+# -----------------------------
+# Dependencies
+# -----------------------------
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+
+# -----------------------------
+# Environment / secrets
+# -----------------------------
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# -----------------------------
+# Logs and runtime files
+# -----------------------------
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.pid
+*.seed
+*.pid.lock
+
+# -----------------------------
+# Build / cache output
+# -----------------------------
+dist/
+build/
+.next/
+.nuxt/
+.turbo/
+.cache/
+.parcel-cache/
+coverage/
+*.tsbuildinfo
+vite.svg
+
+# -----------------------------
+# IDE / editor files
+# -----------------------------
+.vscode/
+.cursor/
+.idea/
+*.iml
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+*~
+
+# -----------------------------
+# OS files
+# -----------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# -----------------------------
+# Misc local files
+# -----------------------------
+tmp/
+temp/
+uploads/
+*.local

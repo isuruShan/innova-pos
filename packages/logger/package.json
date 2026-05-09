@@ -1,0 +1,14 @@
+{
+  "name": "@innovapos/logger",
+  "version": "1.0.0",
+  "description": "Shared Winston logger with tenantId/userId context",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "echo \"no tests\""
+  },
+  "dependencies": {
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  }
+}

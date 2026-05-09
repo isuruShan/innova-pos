@@ -1,0 +1,28 @@
+{
+  "name": "@services/upload-service",
+  "version": "1.0.0",
+  "description": "S3 upload service with image validation for InnovaPOS platform",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon --inspect=9230 src/index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.775.0",
+    "@aws-sdk/s3-request-presigner": "^3.775.0",
+    "@innovapos/logger": "workspace:*",
+    "@innovapos/shared-middleware": "workspace:*",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.1",
+    "helmet": "^8.1.0",
+    "multer": "^2.1.1",
+    "sharp": "^0.34.2",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
