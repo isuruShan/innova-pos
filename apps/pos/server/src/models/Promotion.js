@@ -51,7 +51,11 @@ const promotionSchema = new mongoose.Schema(
     flatPrice: { type: Number, default: 0 },
     discountAmount: { type: Number, default: 0 },
     discountPercent: { type: Number, default: 0, min: 0, max: 100 },
+    /** Cap total $ off per order for flatDiscount / percentageDiscount (optional) */
+    maxDiscountAmount: { type: Number, default: null, min: 0 },
     minOrderAmount: { type: Number, default: 0 },
+    /** Optional: minimum loyalty tier level (1 = all enrolled tiers). Omit/null = no tier gate */
+    minTierLevel: { type: Number, default: null, min: 1 },
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

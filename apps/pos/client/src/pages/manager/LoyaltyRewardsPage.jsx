@@ -4,28 +4,43 @@ import { Gift, Plus } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
-import { MANAGER_LINKS } from '../../constants/managerLinks';
+import RewardScopeCombobox from '../../components/RewardScopeCombobox';
+import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { useAuth } from '../../context/AuthContext';
+import { useStoreContext } from '../../context/StoreContext';
 
 const empty = {
   name: '',
   description: '',
+  redemptionType: 'points',
   pointsCost: '100',
   rewardType: 'order_discount_amount',
   discountAmount: '5',
   discountPercent: '',
   minTierLevel: '1',
+  applicableItems: [],
+  applicableItemNames: [],
+  applicableCategories: [],
+  maxDiscountAmount: '',
 };
 
 export default function LoyaltyRewardsPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const { selectedStoreId, isStoreReady } = useStoreContext();
   const [slide, setSlide] = useState(null);
   const [form, setForm] = useState(empty);
+  const [formError, setFormError] = useState('');
 
   const { data: rows = [], isPending } = useQuery({
     queryKey: ['loyalty-rewards'],
     queryFn: () => api.get('/loyalty/rewards').then((r) => r.data),
+  });
+
+  const { data: menuItems = [] } = useQuery({
+    queryKey: ['menu', 'loyalty-form', selectedStoreId],
+    queryFn: () => api.get('/menu').then((r) => r.data),
+    enabled: isStoreReady,
   });
 
   const save = useMutation({
@@ -35,19 +50,30 @@ export default function LoyaltyRewardsPage() {
       qc.invalidateQueries({ queryKey: ['loyalty-rewards'] });
       setSlide(null);
       setForm(empty);
+      setFormError('');
     },
+    onError: (e) => setFormError(e.response?.data?.message || 'Save failed'),
   });
 
   const submit = (e) => {
     e.preventDefault();
+    setFormError('');
+    const redemptionType = form.redemptionType || 'points';
     const payload = {
       name: form.name.trim(),
       description: form.description.trim(),
-      pointsCost: Number(form.pointsCost) || 1,
+      redemptionType,
+      pointsCost: redemptionType === 'automatic' ? 0 : Number(form.pointsCost) || 1,
       rewardType: form.rewardType,
       discountAmount: Number(form.discountAmount) || 0,
       discountPercent: Number(form.discountPercent) || 0,
       minTierLevel: Number(form.minTierLevel) || 1,
+      applicableItems: form.applicableItems || [],
+      applicableCategories: form.applicableCategories || [],
+      maxDiscountAmount:
+        form.maxDiscountAmount === '' || form.maxDiscountAmount == null
+          ? null
+          : Math.max(0, Number(form.maxDiscountAmount) || 0),
       active: false,
     };
     save.mutate({ id: slide?._id, payload });
@@ -57,7 +83,7 @@ export default function LoyaltyRewardsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
-      <Navbar links={MANAGER_LINKS} />
+      <Navbar groups={MANAGER_NAV_GROUPS} />
       <div className="max-w-5xl mx-auto p-4 sm:p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
@@ -69,6 +95,8 @@ export default function LoyaltyRewardsPage() {
             onClick={() => {
               setSlide({});
               setForm(empty);
+              setFormError('');
+              setScopeSearch('');
             }}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-semibold text-sm"
           >
@@ -92,6 +120,7 @@ export default function LoyaltyRewardsPage() {
               <thead>
                 <tr className="border-b border-slate-700/50 text-left text-slate-500 text-xs uppercase">
                   <th className="px-4 py-3">Name</th>
+                  <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Points</th>
                   <th className="px-4 py-3">Approval</th>
                   <th className="px-4 py-3">Active</th>
@@ -101,6 +130,9 @@ export default function LoyaltyRewardsPage() {
                 {rows.map((r) => (
                   <tr key={r._id} className="border-b border-slate-800/50">
                     <td className="px-4 py-3 text-[var(--pos-text-primary)]">{r.name}</td>
+                    <td className="px-4 py-3 text-slate-400 text-xs">
+                      {r.redemptionType === 'automatic' ? 'Member perk' : 'Points'}
+                    </td>
                     <td className="px-4 py-3 text-amber-400">{r.pointsCost}</td>
                     <td className="px-4 py-3">
                       <span
@@ -124,7 +156,15 @@ export default function LoyaltyRewardsPage() {
         </div>
       </div>
 
-      <SlideOver open={slide !== null} onClose={() => { setSlide(null); setForm(empty); }} title="Loyalty reward">
+      <SlideOver
+        open={slide !== null}
+        onClose={() => {
+          setSlide(null);
+          setForm(empty);
+          setFormError('');
+        }}
+        title="Loyalty reward"
+      >
         <form onSubmit={submit} className="space-y-4">
           <div>
             <label className="block text-xs text-slate-400 mb-1">Name *</label>
@@ -145,16 +185,39 @@ export default function LoyaltyRewardsPage() {
             />
           </div>
           <div>
-            <label className="block text-xs text-slate-400 mb-1">Points cost *</label>
-            <input
-              type="number"
-              min={1}
-              required
-              value={form.pointsCost}
-              onChange={(e) => setForm((f) => ({ ...f, pointsCost: e.target.value }))}
+            <label className="block text-xs text-slate-400 mb-1">Redemption</label>
+            <select
+              value={form.redemptionType}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  redemptionType: e.target.value,
+                  pointsCost: e.target.value === 'automatic' ? '0' : f.pointsCost || '100',
+                }))
+              }
               className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-3 py-2 text-sm"
-            />
+            >
+              <option value="points">Spend loyalty points</option>
+              <option value="automatic">Member perk (no points)</option>
+            </select>
           </div>
+          {form.redemptionType !== 'automatic' ? (
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Points cost *</label>
+              <input
+                type="number"
+                min={1}
+                required
+                value={form.pointsCost}
+                onChange={(e) => setForm((f) => ({ ...f, pointsCost: e.target.value }))}
+                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-3 py-2 text-sm"
+              />
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">
+              Applies automatically for eligible members when attached to an order (tier rules apply).
+            </p>
+          )}
           <div>
             <label className="block text-xs text-slate-400 mb-1">Reward type</label>
             <select
@@ -163,7 +226,7 @@ export default function LoyaltyRewardsPage() {
               className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-3 py-2 text-sm"
             >
               <option value="order_discount_amount">Fixed amount off order</option>
-              <option value="order_discount_percent">Percent off order</option>
+              <option value="order_discount_percent">Percent off scoped lines</option>
               <option value="free_item">Free item (configure menu item later)</option>
             </select>
           </div>
@@ -193,6 +256,19 @@ export default function LoyaltyRewardsPage() {
               />
             </div>
           )}
+          {(form.rewardType === 'order_discount_amount' || form.rewardType === 'order_discount_percent') && (
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Max discount per order (optional)</label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.maxDiscountAmount}
+                onChange={(e) => setForm((f) => ({ ...f, maxDiscountAmount: e.target.value }))}
+                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-3 py-2 text-sm"
+              />
+            </div>
+          )}
           <div>
             <label className="block text-xs text-slate-400 mb-1">Min tier level</label>
             <input
@@ -203,6 +279,20 @@ export default function LoyaltyRewardsPage() {
               className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-3 py-2 text-sm"
             />
           </div>
+          <div>
+            <p className="text-xs text-slate-400 mb-1">Apply to categories / items (optional)</p>
+            <RewardScopeCombobox
+              menuItems={menuItems}
+              isStoreReady={isStoreReady}
+              categoryNames={form.applicableCategories || []}
+              itemIds={form.applicableItems || []}
+              itemNames={form.applicableItemNames || []}
+              onPatch={(patch) => setForm((f) => ({ ...f, ...patch }))}
+            />
+          </div>
+          {formError ? (
+            <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">{formError}</div>
+          ) : null}
           <button
             type="submit"
             disabled={save.isPending}

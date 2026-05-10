@@ -52,6 +52,11 @@ const orderSchema = new mongoose.Schema(
       type: { type: String },
       discountAmount: { type: Number, default: 0 },
     }],
+    appliedAutomaticLoyalty: [{
+      reward: { type: mongoose.Schema.Types.ObjectId, ref: 'LoyaltyReward' },
+      name: { type: String, default: '' },
+      discountAmount: { type: Number, default: 0 },
+    }],
     taxRate: { type: Number, default: 0 },
     taxAmount: { type: Number, default: 0 },
     serviceFeeRate: { type: Number, default: 0 },

@@ -2,11 +2,12 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ShoppingCart, Plus, Minus, Trash2, FileText, Hash, Link2, ChevronDown, ChevronUp, ClipboardList,
-  Tag, ToggleLeft, ToggleRight, X, Zap, Search, User, Gift,
+  ShoppingCart, Plus, Minus, Trash2, Hash, Link2, ChevronDown, ChevronUp,
+  Tag, ToggleLeft, ToggleRight, X, Zap, Search, User, Gift, UserPlus,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
+import { CASHIER_NAV_GROUPS } from '../../constants/cashierLinks';
 import CashierSessionGate, { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/CashierSessionGate';
 import { ORDER_TYPES, ORDER_TYPE_MAP } from '../../components/OrderTypeBadge';
 import { formatCurrency } from '../../utils/format';
@@ -80,6 +81,9 @@ function calcPromotionDiscounts(cart, promotions) {
           ? cart.filter(i => inScope(i, promo)).reduce((s, i) => s + i.price * i.qty, 0)
           : subtotal;
         disc = Math.min(promo.discountAmount, base);
+        if (promo.maxDiscountAmount != null && Number(promo.maxDiscountAmount) > 0) {
+          disc = Math.min(disc, Number(promo.maxDiscountAmount));
+        }
         break;
       }
       case 'percentageDiscount': {
@@ -90,6 +94,9 @@ function calcPromotionDiscounts(cart, promotions) {
           ? cart.filter(i => inScope(i, promo)).reduce((s, i) => s + i.price * i.qty, 0)
           : subtotal;
         disc = base * (promo.discountPercent / 100);
+        if (promo.maxDiscountAmount != null && Number(promo.maxDiscountAmount) > 0) {
+          disc = Math.min(disc, Number(promo.maxDiscountAmount));
+        }
         break;
       }
     }
@@ -155,29 +162,52 @@ function autoSelectBestPromos(cart, promotions) {
   return selected;
 }
 
-/** Match server lib/loyaltyTier.js — discount from cart after promos */
-function computeLoyaltyRewardDiscount(reward, cart, discountedSubtotalAfterPromos) {
-  const cap = Math.max(0, discountedSubtotalAfterPromos);
+function rewardAppliesToLine(item, reward) {
+  const ids = (reward.applicableItems || []).map(sid);
+  const cats = reward.applicableCategories || [];
+  if (!ids.length && !cats.length) return true;
+  if (ids.includes(sid(item.menuItem))) return true;
+  if (item.category && cats.includes(item.category)) return true;
+  return false;
+}
+
+function scopedSubtotal(cart, reward) {
+  return cart
+    .filter((i) => rewardAppliesToLine(i, reward))
+    .reduce((s, i) => s + Number(i.price || 0) * Number(i.qty || 0), 0);
+}
+
+/** Match server lib/loyaltyTier.js */
+function computeLoyaltyRewardDiscount(reward, cart, remainingOrderCap) {
+  const cap = Math.max(0, remainingOrderCap);
   if (!reward || cap <= 0) return 0;
+  const base = scopedSubtotal(cart, reward);
+  if (base <= 0) return 0;
+  const maxDisc =
+    reward.maxDiscountAmount != null && Number(reward.maxDiscountAmount) > 0
+      ? Number(reward.maxDiscountAmount)
+      : Infinity;
+  let raw = 0;
   switch (reward.rewardType) {
-    case 'order_discount_amount': {
-      const d = Number(reward.discountAmount || 0);
-      return Math.min(Math.max(0, d), cap);
-    }
-    case 'order_discount_percent': {
-      const p = Number(reward.discountPercent || 0);
-      return Math.min(cap * (p / 100), cap);
-    }
+    case 'order_discount_amount':
+      raw = Number(reward.discountAmount || 0);
+      break;
+    case 'order_discount_percent':
+      raw = base * (Number(reward.discountPercent || 0) / 100);
+      break;
     case 'free_item': {
       const mid = reward.freeMenuItem?.toString();
       if (!mid) return 0;
-      const line = cart.find((i) => sid(i.menuItem) === mid);
+      const line = cart.find((i) => sid(i.menuItem) === mid && rewardAppliesToLine(i, reward));
       if (!line) return 0;
-      return Math.min(Number(line.price || 0), cap);
+      raw = Number(line.price || 0);
+      break;
     }
     default:
       return 0;
   }
+  raw = Math.min(raw, base, maxDisc, cap);
+  return Math.round(Math.max(0, raw) * 100) / 100;
 }
 
 
@@ -297,6 +327,10 @@ export default function NewOrder() {
   const [customerSearch, setCustomerSearch] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedLoyaltyRewardId, setSelectedLoyaltyRewardId] = useState('');
+  const [showCustomerForm, setShowCustomerForm] = useState(false);
+  const [quickName, setQuickName] = useState('');
+  const [quickMobile, setQuickMobile] = useState('');
+  const [quickEmail, setQuickEmail] = useState('');
 
   const qc = useQueryClient();
   const branding = useBranding();
@@ -314,6 +348,10 @@ export default function NewOrder() {
       setSelectedCustomer(null);
       setCustomerSearch('');
       setSelectedLoyaltyRewardId('');
+      setShowCustomerForm(false);
+      setQuickName('');
+      setQuickMobile('');
+      setQuickEmail('');
     }
     prevStoreRef.current = selectedStoreId;
   }, [selectedStoreId]);
@@ -368,6 +406,16 @@ export default function NewOrder() {
     [loyaltyRewardsRaw],
   );
 
+  const redeemableLoyaltyRewards = useMemo(
+    () => loyaltyRewards.filter((r) => (r.redemptionType || 'points') === 'points'),
+    [loyaltyRewards],
+  );
+
+  const automaticLoyaltyRewards = useMemo(
+    () => loyaltyRewards.filter((r) => r.redemptionType === 'automatic'),
+    [loyaltyRewards],
+  );
+
   const searchQ = customerSearch.trim();
   const { data: customerHits = [] } = useQuery({
     queryKey: ['customers-search', searchQ, selectedStoreId],
@@ -382,6 +430,18 @@ export default function NewOrder() {
     enabled: isStoreReady && !!selectedCustomer?._id,
   });
 
+  const promoTierLevel =
+    selectedCustomer?._id != null ? customerLoyalty?.loyalty?.effectiveTier?.level ?? null : null;
+
+  const activePromosForCart = useMemo(() => {
+    return activePromos.filter((p) => {
+      const min = p.minTierLevel;
+      if (min == null || Number(min) <= 0) return true;
+      if (promoTierLevel == null) return false;
+      return Number(promoTierLevel) >= Number(min);
+    });
+  }, [activePromos, promoTierLevel]);
+
   const menuLoading = !isStoreReady || menuPending || settingsPending;
 
   const typeSetting = settings?.orderTypes?.[orderType];
@@ -395,6 +455,25 @@ export default function NewOrder() {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 4000);
   }, []);
+
+  const upsertCustomerMutation = useMutation({
+    mutationFn: (payload) => api.post('/customers', payload),
+    onSuccess: (axiosRes) => {
+      const c = axiosRes?.data;
+      if (!c?._id) return;
+      setSelectedCustomer(c);
+      setCustomerSearch(c.name || c.email || c.mobile || '');
+      setQuickName('');
+      setQuickMobile('');
+      setQuickEmail('');
+      setShowCustomerForm(false);
+      qc.invalidateQueries({ queryKey: ['customers-search'] });
+      qc.invalidateQueries({ queryKey: ['customer-loyalty'] });
+      if (c.reused) showToast('Existing customer matched — attached to order');
+      else showToast('Customer saved');
+    },
+    onError: (e) => showToast(e.response?.data?.message || 'Could not save customer'),
+  });
 
   const mutation = useMutation({
     mutationFn: (payload) => api.post('/orders', payload),
@@ -413,6 +492,10 @@ export default function NewOrder() {
       setSelectedCustomer(null);
       setCustomerSearch('');
       setSelectedLoyaltyRewardId('');
+      setShowCustomerForm(false);
+      setQuickName('');
+      setQuickMobile('');
+      setQuickEmail('');
       setSuccessMsg('Order placed successfully!');
       setTimeout(() => setSuccessMsg(''), 3000);
       if (createdOrder && shouldPrintReceiptOnOrderCreated(branding)) {
@@ -464,31 +547,31 @@ export default function NewOrder() {
   // Which promo IDs are "active" based on mode (all IDs are sid()-normalised strings)
   const effectivePromoIds = useMemo(() => {
     if (!cart.length) return [];
-    if (autoApply) return autoSelectBestPromos(cart, activePromos);
+    if (autoApply) return autoSelectBestPromos(cart, activePromosForCart);
     // Manual: keep only promos that still produce a discount
     return selectedPromoIds.filter(id => {
-      const p = activePromos.find(x => sid(x._id) === id);
+      const p = activePromosForCart.find(x => sid(x._id) === id);
       return p && calcPromotionDiscounts(cart, [p]).length > 0;
     });
-  }, [cart, activePromos, autoApply, selectedPromoIds]);
+  }, [cart, activePromosForCart, autoApply, selectedPromoIds]);
 
   const appliedPromos = useMemo(() => {
     if (!effectivePromoIds.length) return [];
-    const promos = effectivePromoIds.map(id => activePromos.find(p => sid(p._id) === id)).filter(Boolean);
+    const promos = effectivePromoIds.map(id => activePromosForCart.find(p => sid(p._id) === id)).filter(Boolean);
     return calcPromotionDiscounts(cart, promos);
-  }, [effectivePromoIds, cart, activePromos]);
+  }, [effectivePromoIds, cart, activePromosForCart]);
 
   // For manual picker: all promos that give a discount for this cart
   const applicablePromos = useMemo(() => {
     if (autoApply || !cart.length) return [];
-    return activePromos
+    return activePromosForCart
       .map(promo => {
         const res = calcPromotionDiscounts(cart, [promo]);
         return res.length ? { promo, discount: res[0].discountAmount } : null;
       })
       .filter(Boolean)
       .sort((a, b) => b.discount - a.discount);
-  }, [cart, activePromos, autoApply]);
+  }, [cart, activePromosForCart, autoApply]);
 
   // Toggle a promo manually with conflict detection (all stored IDs are sid()-normalised)
   const togglePromoManually = useCallback((rawPromoId) => {
@@ -497,51 +580,79 @@ export default function NewOrder() {
       setSelectedPromoIds(prev => prev.filter(id => id !== promoId));
       return;
     }
-    const promo = activePromos.find(p => sid(p._id) === promoId);
+    const promo = activePromosForCart.find(p => sid(p._id) === promoId);
     if (!promo) return;
     const newTouched = getPromoTouchedItemIds(promo, cart);
     const conflictIds = selectedPromoIds.filter(existId => {
-      const existing = activePromos.find(p => sid(p._id) === existId);
+      const existing = activePromosForCart.find(p => sid(p._id) === existId);
       if (!existing) return false;
       const exTouched = getPromoTouchedItemIds(existing, cart);
       return [...newTouched].some(id => exTouched.has(id));
     });
     if (conflictIds.length) {
       const names = conflictIds
-        .map(id => activePromos.find(p => sid(p._id) === id)?.name)
+        .map(id => activePromosForCart.find(p => sid(p._id) === id)?.name)
         .filter(Boolean).join('", "');
       setSelectedPromoIds(prev => [...prev.filter(id => !conflictIds.includes(id)), promoId]);
       showToast(`Removed "${names}" — it conflicts with "${promo.name}"`);
     } else {
       setSelectedPromoIds(prev => [...prev, promoId]);
     }
-  }, [activePromos, cart, selectedPromoIds, showToast]);
+  }, [activePromosForCart, cart, selectedPromoIds, showToast]);
 
   const promoDiscountOnly = appliedPromos.reduce((s, p) => s + p.discountAmount, 0);
 
-  const loyaltyDiscount = useMemo(() => {
+  const automaticLoyaltyDiscount = useMemo(() => {
+    if (!selectedCustomer || loyaltyConfig?.isEnabled === false || !automaticLoyaltyRewards.length) return 0;
+    const eff = customerLoyalty?.loyalty?.effectiveTier;
+    let remaining = Math.max(0, subtotal - promoDiscountOnly);
+    let total = 0;
+    const sorted = [...automaticLoyaltyRewards].sort((a, b) =>
+      String(a.createdAt || '').localeCompare(String(b.createdAt || '')),
+    );
+    for (const reward of sorted) {
+      if (eff && reward.minTierLevel != null && eff.level < reward.minTierLevel) continue;
+      const d = computeLoyaltyRewardDiscount(reward, cart, remaining);
+      if (d <= 0) continue;
+      remaining -= d;
+      total += d;
+    }
+    return Math.round(total * 100) / 100;
+  }, [
+    selectedCustomer,
+    loyaltyConfig?.isEnabled,
+    automaticLoyaltyRewards,
+    customerLoyalty,
+    cart,
+    subtotal,
+    promoDiscountOnly,
+  ]);
+
+  const loyaltyDiscountPoints = useMemo(() => {
     if (!selectedLoyaltyRewardId || !selectedCustomer || loyaltyConfig?.isEnabled === false) return 0;
-    const reward = loyaltyRewards.find((r) => sid(r._id) === sid(selectedLoyaltyRewardId));
+    const reward = redeemableLoyaltyRewards.find((r) => sid(r._id) === sid(selectedLoyaltyRewardId));
     if (!reward) return 0;
     const eff = customerLoyalty?.loyalty?.effectiveTier;
     if (eff && reward.minTierLevel != null && eff.level < reward.minTierLevel) return 0;
     const pts = Number(customerLoyalty?.lifetimePoints ?? selectedCustomer?.lifetimePoints ?? 0);
     if (pts < Number(reward.pointsCost || 0)) return 0;
-    const promosOff = appliedPromos.reduce((s, p) => s + p.discountAmount, 0);
-    const afterPromo = Math.max(0, subtotal - promosOff);
-    return computeLoyaltyRewardDiscount(reward, cart, afterPromo);
+    const afterPromoAndAuto = Math.max(0, subtotal - promoDiscountOnly - automaticLoyaltyDiscount);
+    return computeLoyaltyRewardDiscount(reward, cart, afterPromoAndAuto);
   }, [
     selectedLoyaltyRewardId,
     selectedCustomer,
     loyaltyConfig?.isEnabled,
-    loyaltyRewards,
+    redeemableLoyaltyRewards,
     customerLoyalty,
     cart,
     subtotal,
-    appliedPromos,
+    promoDiscountOnly,
+    automaticLoyaltyDiscount,
   ]);
 
-  const discountTotal = Math.round((promoDiscountOnly + loyaltyDiscount) * 100) / 100;
+  const discountTotal = Math.round(
+    (promoDiscountOnly + automaticLoyaltyDiscount + loyaltyDiscountPoints) * 100,
+  ) / 100;
   const discountedSubtotal = Math.max(0, subtotal - discountTotal);
   const taxAmount = discountedSubtotal * (taxRate / 100);
   const serviceFeeAmount = serviceFeeType === 'fixed'
@@ -571,7 +682,7 @@ export default function NewOrder() {
       paymentAmount: total,
       cashTender,
       ...(selectedCustomer?._id ? { customerId: selectedCustomer._id } : {}),
-      ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscount > 0
+      ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0
         ? { loyaltyRewardId: selectedLoyaltyRewardId }
         : {}),
     });
@@ -588,10 +699,7 @@ export default function NewOrder() {
   return (
     <CashierSessionGate>
     <div className="h-screen flex flex-col bg-[var(--pos-surface-inset)]">
-      <Navbar links={[
-        { to: '/cashier/orders', label: 'Order Board', icon: ClipboardList },
-        { to: '/cashier/report', label: 'Day-End Report', icon: FileText },
-      ]} />
+      <Navbar groups={CASHIER_NAV_GROUPS} />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Menu */}
@@ -731,6 +839,63 @@ export default function NewOrder() {
                   </ul>
                 )}
               </div>
+              {!selectedCustomer && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomerForm((v) => !v)}
+                    className="mt-2 flex items-center gap-1.5 text-xs font-medium text-amber-400 hover:text-amber-300"
+                  >
+                    <UserPlus size={13} />
+                    {showCustomerForm ? 'Hide new customer' : 'New customer (optional)'}
+                  </button>
+                  {showCustomerForm && (
+                    <div className="mt-2 space-y-2 rounded-xl border border-slate-700/80 bg-[var(--pos-panel)]/50 p-3">
+                      <input
+                        type="text"
+                        value={quickName}
+                        onChange={(e) => setQuickName(e.target.value)}
+                        placeholder="Name"
+                        className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)]"
+                      />
+                      <input
+                        type="tel"
+                        value={quickMobile}
+                        onChange={(e) => setQuickMobile(e.target.value)}
+                        placeholder="Mobile"
+                        className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)]"
+                      />
+                      <input
+                        type="email"
+                        value={quickEmail}
+                        onChange={(e) => setQuickEmail(e.target.value)}
+                        placeholder="Email"
+                        className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)]"
+                      />
+                      <button
+                        type="button"
+                        disabled={upsertCustomerMutation.isPending}
+                        onClick={() => {
+                          const name = quickName.trim();
+                          const mobile = quickMobile.trim();
+                          const email = quickEmail.trim();
+                          if (!name && !mobile && !email) {
+                            showToast('Enter at least name, mobile, or email');
+                            return;
+                          }
+                          upsertCustomerMutation.mutate({ name, mobile, email });
+                        }}
+                        className="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white text-sm font-semibold"
+                      >
+                        {upsertCustomerMutation.isPending ? 'Saving…' : 'Save & attach'}
+                      </button>
+                      <p className="text-[10px] text-slate-500 leading-snug">
+                        If mobile or email matches an existing customer, that profile is used.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
               {selectedCustomer && (
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
                   <span className="inline-flex items-center gap-1.5 text-xs bg-sky-500/15 text-sky-300 border border-sky-500/30 rounded-full px-2.5 py-1">
@@ -751,6 +916,10 @@ export default function NewOrder() {
                       setSelectedCustomer(null);
                       setCustomerSearch('');
                       setSelectedLoyaltyRewardId('');
+                      setShowCustomerForm(false);
+                      setQuickName('');
+                      setQuickMobile('');
+                      setQuickEmail('');
                     }}
                     className="text-xs text-slate-500 hover:text-red-400"
                   >
@@ -772,14 +941,14 @@ export default function NewOrder() {
                   className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-3 py-2 text-sm text-[var(--pos-text-primary)] focus:outline-none focus:ring-2 focus:ring-amber-500/40"
                 >
                   <option value="">None — earn points when order completes</option>
-                  {loyaltyRewards.map((r) => (
+                  {redeemableLoyaltyRewards.map((r) => (
                     <option key={r._id} value={r._id}>
                       {r.name} ({r.pointsCost} pts)
                       {r.minTierLevel > 1 ? ` · tier ${r.minTierLevel}+` : ''}
                     </option>
                   ))}
                 </select>
-                {selectedLoyaltyRewardId && loyaltyDiscount <= 0 && (
+                {selectedLoyaltyRewardId && loyaltyDiscountPoints <= 0 && (
                   <p className="text-[11px] text-amber-400/90 mt-1">
                     Cannot apply this reward (tier, points, or cart does not qualify).
                   </p>
@@ -940,13 +1109,22 @@ export default function NewOrder() {
                   <span>-{formatPrice(p.discountAmount)}</span>
                 </div>
               ))}
-              {loyaltyDiscount > 0 && (
+              {automaticLoyaltyDiscount > 0 && (
+                <div className="flex justify-between text-sky-400">
+                  <span className="flex items-center gap-1 truncate text-xs">
+                    <Gift size={9} className="flex-shrink-0" />
+                    Member savings
+                  </span>
+                  <span>-{formatPrice(automaticLoyaltyDiscount)}</span>
+                </div>
+              )}
+              {loyaltyDiscountPoints > 0 && (
                 <div className="flex justify-between text-purple-400">
                   <span className="flex items-center gap-1 truncate text-xs">
                     <Gift size={9} className="flex-shrink-0" />
-                    Loyalty
+                    Points reward
                   </span>
-                  <span>-{formatPrice(loyaltyDiscount)}</span>
+                  <span>-{formatPrice(loyaltyDiscountPoints)}</span>
                 </div>
               )}
               {taxRate > 0 && (

@@ -17,6 +17,8 @@ const EMPTY = {
   discountAmount: '',
   discountPercent: '',
   minOrderAmount: '',
+  maxDiscountAmount: '',
+  minTierLevel: '',
   applicableItems: [],
   applicableItemNames: [],
   applicableCategories: [],
@@ -136,6 +138,8 @@ export default function PromotionsAdminPage() {
       discountAmount: String(p.discountAmount ?? ''),
       discountPercent: String(p.discountPercent ?? ''),
       minOrderAmount: String(p.minOrderAmount ?? ''),
+      maxDiscountAmount: p.maxDiscountAmount != null && p.maxDiscountAmount !== '' ? String(p.maxDiscountAmount) : '',
+      minTierLevel: p.minTierLevel != null && p.minTierLevel !== '' ? String(p.minTierLevel) : '',
       applicableItems: p.applicableItems || [],
       applicableItemNames: p.applicableItemNames || [],
       applicableCategories: p.applicableCategories || [],
@@ -144,22 +148,23 @@ export default function PromotionsAdminPage() {
   };
 
   const toggleApplicableItem = (m) => {
-    const ids = form.applicableItems || [];
-    const names = form.applicableItemNames || [];
-    const idx = ids.findIndex((id) => String(id) === String(m._id));
-    if (idx >= 0) {
-      setForm((f) => ({
-        ...f,
-        applicableItems: ids.filter((_, i) => i !== idx),
-        applicableItemNames: names.filter((_, i) => i !== idx),
-      }));
-    } else {
-      setForm((f) => ({
+    setForm((f) => {
+      const ids = f.applicableItems || [];
+      const names = f.applicableItemNames || [];
+      const idx = ids.findIndex((id) => String(id) === String(m._id));
+      if (idx >= 0) {
+        return {
+          ...f,
+          applicableItems: ids.filter((_, i) => i !== idx),
+          applicableItemNames: names.filter((_, i) => i !== idx),
+        };
+      }
+      return {
         ...f,
         applicableItems: [...ids, m._id],
         applicableItemNames: [...names, m.name],
-      }));
-    }
+      };
+    });
   };
 
   const submit = (e) => {
@@ -191,6 +196,14 @@ export default function PromotionsAdminPage() {
       flatPrice: 0,
       discountAmount: +form.discountAmount || 0,
       discountPercent: +form.discountPercent || 0,
+      maxDiscountAmount:
+        form.maxDiscountAmount === '' || form.maxDiscountAmount == null
+          ? null
+          : Math.max(0, +form.maxDiscountAmount || 0),
+      minTierLevel:
+        form.minTierLevel === '' || form.minTierLevel == null
+          ? null
+          : Math.max(1, Number(form.minTierLevel) || 1),
     };
 
     if (form.type === 'percentageDiscount' && (form.discountPercent === '' || Number.isNaN(+form.discountPercent))) {
@@ -522,6 +535,30 @@ export default function PromotionsAdminPage() {
                   step="0.01"
                   value={form.minOrderAmount}
                   onChange={(e) => setForm((f) => ({ ...f, minOrderAmount: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="block text-xs text-gray-600">
+                Max discount per order (optional cap)
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={form.maxDiscountAmount}
+                  onChange={(e) => setForm((f) => ({ ...f, maxDiscountAmount: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  placeholder="Leave empty for no cap"
+                />
+              </label>
+              <label className="block text-xs text-gray-600">
+                Minimum loyalty tier (optional)
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={form.minTierLevel}
+                  onChange={(e) => setForm((f) => ({ ...f, minTierLevel: e.target.value }))}
+                  placeholder="All tiers"
                   className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 />
               </label>

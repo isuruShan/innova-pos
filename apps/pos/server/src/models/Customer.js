@@ -12,6 +12,8 @@ const customerSchema = new mongoose.Schema(
     name: { type: String, default: '', trim: true },
     birthday: { type: Date, default: null },
     mobile: { type: String, default: '', trim: true },
+    /** Digits only — used to match customers regardless of mobile formatting */
+    mobileDigits: { type: String, default: '', index: true, trim: true },
     email: { type: String, default: '', trim: true, lowercase: true },
     /** Lifetime loyalty points (accrued on completed orders) */
     lifetimePoints: { type: Number, default: 0, min: 0 },
@@ -34,6 +36,12 @@ const customerSchema = new mongoose.Schema(
 
 customerSchema.index({ tenantId: 1, email: 1 });
 customerSchema.index({ tenantId: 1, mobile: 1 });
+customerSchema.index({ tenantId: 1, mobileDigits: 1 });
 customerSchema.index({ tenantId: 1, createdAt: -1 });
+
+customerSchema.pre('save', function setMobileDigits() {
+  const d = String(this.mobile || '').replace(/\D/g, '');
+  this.mobileDigits = d.length >= 6 ? d : '';
+});
 
 module.exports = mongoose.model('Customer', customerSchema);

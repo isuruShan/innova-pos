@@ -31,7 +31,7 @@ export function StoreProvider({ children }) {
       localStorage.setItem('admin_selected_store', '');
       return;
     }
-    const exists = stores.some((s) => s._id === selectedStoreId);
+    const exists = stores.some((s) => String(s._id) === String(selectedStoreId));
     if (!exists) {
       const fallback = stores[0]._id;
       setSelectedStoreId(fallback);

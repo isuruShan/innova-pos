@@ -51,7 +51,9 @@ const promotionSchema = new mongoose.Schema(
     flatPrice: { type: Number, default: 0 },
     discountAmount: { type: Number, default: 0 },
     discountPercent: { type: Number, default: 0, min: 0, max: 100 },
+    maxDiscountAmount: { type: Number, default: null, min: 0 },
     minOrderAmount: { type: Number, default: 0 },
+    minTierLevel: { type: Number, default: null, min: 1 },
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

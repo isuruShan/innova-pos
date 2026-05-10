@@ -7,7 +7,7 @@ import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
 import Badge from '../../components/Badge';
-import { MANAGER_LINKS } from '../../constants/managerLinks';
+import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { useStoreContext } from '../../context/StoreContext';
 import { InventoryTableSkeleton } from '../../components/StoreSkeletons';
 
@@ -156,7 +156,7 @@ export default function InventoryManagement() {
 
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
-      <Navbar links={MANAGER_LINKS} />
+      <Navbar groups={MANAGER_NAV_GROUPS} />
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         {/* Header */}

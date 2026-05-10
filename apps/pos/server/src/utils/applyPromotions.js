@@ -85,6 +85,9 @@ function applyPromotions(items, promotions) {
         } else {
           discountAmount = Math.min(promo.discountAmount, subtotal);
         }
+        if (promo.maxDiscountAmount != null && Number(promo.maxDiscountAmount) > 0) {
+          discountAmount = Math.min(discountAmount, Number(promo.maxDiscountAmount));
+        }
         break;
       }
 
@@ -98,6 +101,9 @@ function applyPromotions(items, promotions) {
           discountAmount = base * (promo.discountPercent / 100);
         } else {
           discountAmount = subtotal * (promo.discountPercent / 100);
+        }
+        if (promo.maxDiscountAmount != null && Number(promo.maxDiscountAmount) > 0) {
+          discountAmount = Math.min(discountAmount, Number(promo.maxDiscountAmount));
         }
         break;
       }

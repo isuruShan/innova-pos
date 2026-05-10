@@ -3,16 +3,42 @@ import {
   Users, Gift, Inbox,
 } from 'lucide-react';
 
-/** `roles` omitted = all manager-area roles (manager + merchant_admin) */
-export const MANAGER_LINKS = [
-  { to: '/manager/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/manager/menu', label: 'Menu', icon: UtensilsCrossed },
-  { to: '/manager/inventory', label: 'Inventory', icon: Package },
-  { to: '/manager/suppliers', label: 'Suppliers', icon: Truck },
-  { to: '/manager/orders', label: 'Orders', icon: ClipboardList },
-  { to: '/manager/cashier-sessions', label: 'Cash sessions', icon: Wallet },
-  { to: '/manager/customers', label: 'Customers', icon: Users },
-  { to: '/manager/loyalty/rewards', label: 'Loyalty rewards', icon: Gift },
-  { to: '/manager/approvals', label: 'Approvals', icon: Inbox, roles: ['merchant_admin'] },
-  { to: '/manager/promotions', label: 'Promotions', icon: Tag },
+/** Grouped nav for the top bar (dropdowns). `roles` on an item = restrict to those roles. */
+export const MANAGER_NAV_GROUPS = [
+  {
+    title: 'Overview',
+    items: [{ to: '/manager/dashboard', label: 'Dashboard', icon: LayoutDashboard }],
+  },
+  {
+    title: 'Menu & stock',
+    items: [
+      { to: '/manager/menu', label: 'Menu', icon: UtensilsCrossed },
+      { to: '/manager/inventory', label: 'Inventory', icon: Package },
+      { to: '/manager/suppliers', label: 'Suppliers', icon: Truck },
+    ],
+  },
+  {
+    title: 'Sales',
+    items: [
+      { to: '/manager/orders', label: 'Orders', icon: ClipboardList },
+      { to: '/manager/cashier-sessions', label: 'Cash sessions', icon: Wallet },
+    ],
+  },
+  {
+    title: 'Customers & loyalty',
+    items: [
+      { to: '/manager/customers', label: 'Customers', icon: Users },
+      { to: '/manager/loyalty/rewards', label: 'Loyalty rewards', icon: Gift },
+      { to: '/manager/promotions', label: 'Promotions', icon: Tag },
+    ],
+  },
+  {
+    title: 'Admin',
+    items: [
+      { to: '/manager/approvals', label: 'Approvals', icon: Inbox, roles: ['merchant_admin'] },
+    ],
+  },
 ];
+
+/** Flat list for legacy callers / quick iteration */
+export const MANAGER_LINKS = MANAGER_NAV_GROUPS.flatMap((g) => g.items);

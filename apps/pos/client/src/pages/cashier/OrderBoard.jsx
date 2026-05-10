@@ -2,10 +2,11 @@ import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Clock, ChevronRight, ChevronLeft, RefreshCw,
-  ClipboardList, FileText, ShoppingCart, Link2, Eye,
+  Link2, Eye,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
+import { CASHIER_NAV_GROUPS } from '../../constants/cashierLinks';
 import CashierSessionGate, { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/CashierSessionGate';
 import { mergeOrderLists } from '../../offline/mergeOrders.js';
 import { listPendingOrders } from '../../offline/idb.js';
@@ -52,12 +53,6 @@ const STATUS_META = {
     next: null, prev: null,
   },
 };
-
-const CASHIER_LINKS = [
-  { to: '/cashier/order', label: 'New Order', icon: ShoppingCart },
-  { to: '/cashier/orders', label: 'Order Board', icon: ClipboardList },
-  { to: '/cashier/report', label: 'Day-End Report', icon: FileText },
-];
 
 const formatTime = iso => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -294,7 +289,7 @@ export default function OrderBoard() {
   return (
     <CashierSessionGate>
     <div className="min-h-screen flex flex-col bg-[var(--pos-page-bg)]">
-      <Navbar links={CASHIER_LINKS} />
+      <Navbar groups={CASHIER_NAV_GROUPS} />
 
       <div className="flex-1 flex flex-col p-4 sm:p-5 overflow-hidden">
         <div className="flex items-center justify-between mb-4 flex-shrink-0">

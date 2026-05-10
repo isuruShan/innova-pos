@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const MenuItem = require('../models/MenuItem');
 const Settings = require('../models/Settings');
@@ -134,9 +135,19 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       }
     } catch (_) { /* use defaults */ }
 
-    // Apply active promotions (tenant-scoped)
+    const tiersCache = await LoyaltyTier.find({ tenantId: req.tenantId }).lean();
+
+    let customerLeanForOrder = null;
+    if (customerId && mongoose.Types.ObjectId.isValid(String(customerId))) {
+      customerLeanForOrder = await Customer.findOne({ _id: customerId, tenantId: req.tenantId }).lean();
+    }
+    const promoTierLevel = customerLeanForOrder
+      ? getEffectiveTier(customerLeanForOrder, tiersCache).level
+      : null;
+
+    // Apply active promotions (tenant-scoped), optionally gated by loyalty tier
     const now = new Date();
-    const activePromos = await Promotion.find({
+    const activePromosRaw = await Promotion.find({
       tenantId: req.tenantId,
       active: true,
       startDate: { $lte: now },
@@ -146,17 +157,51 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
         { $or: [{ approvalStatus: 'approved' }, { approvalStatus: { $exists: false } }] },
       ],
     });
+    const activePromos = activePromosRaw.filter((p) => {
+      const min = p.minTierLevel;
+      if (min == null || Number(min) <= 0) return true;
+      if (promoTierLevel == null) return false;
+      return promoTierLevel >= Number(min);
+    });
     const { applied: appliedPromotions, discountTotal: promoDiscountTotal } = applyPromotions(enrichedItems, activePromos);
-    let loyaltyDiscount = 0;
+    let loyaltyDiscountPoints = 0;
+    let automaticLoyaltyDiscount = 0;
     let loyaltyRedemptionPayload = null;
+    let appliedAutomaticLoyalty = [];
 
-    let tiersCache = null;
-    async function loadTiers() {
-      if (!tiersCache) tiersCache = await LoyaltyTier.find({ tenantId: req.tenantId }).lean();
-      return tiersCache;
+    let remainingAfterPromos = Math.max(0, subtotal - promoDiscountTotal);
+
+    if (customerLeanForOrder) {
+      const tiers = tiersCache;
+      const customerLean = customerLeanForOrder;
+      const autoRewards = await LoyaltyReward.find({
+        tenantId: req.tenantId,
+        active: true,
+        approvalStatus: 'approved',
+        redemptionType: 'automatic',
+        $or: [{ storeId }, { storeId: null }],
+      })
+        .sort({ createdAt: 1 })
+        .lean();
+
+      let remaining = remainingAfterPromos;
+      for (const reward of autoRewards) {
+        const eff = getEffectiveTier(customerLean, tiers);
+        if (eff.level < (reward.minTierLevel || 1)) continue;
+        const d = computeLoyaltyRewardDiscount(reward, enrichedItems, remaining);
+        if (d <= 0) continue;
+        remaining -= d;
+        automaticLoyaltyDiscount += d;
+        appliedAutomaticLoyalty.push({
+          reward: reward._id,
+          name: reward.name,
+          discountAmount: Math.round(d * 100) / 100,
+        });
+      }
+      remainingAfterPromos = remaining;
     }
 
-    if (loyaltyRewardId && customerId) {
+    if (loyaltyRewardId && customerLeanForOrder) {
       const reward = await LoyaltyReward.findOne({
         _id: loyaltyRewardId,
         tenantId: req.tenantId,
@@ -167,32 +212,30 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       if (!reward) {
         return res.status(400).json({ message: 'Loyalty reward is not available' });
       }
-      const customer = await Customer.findOne({ _id: customerId, tenantId: req.tenantId });
-      if (!customer) {
-        return res.status(400).json({ message: 'Customer not found' });
+      if ((reward.redemptionType || 'points') === 'automatic') {
+        return res.status(400).json({ message: 'This reward is applied automatically for eligible members' });
       }
-      const tiers = await loadTiers();
-      const eff = getEffectiveTier(customer, tiers);
+      const tiers = tiersCache;
+      const eff = getEffectiveTier(customerLeanForOrder, tiers);
       if (eff.level < (reward.minTierLevel || 1)) {
         return res.status(400).json({ message: 'Customer tier is too low for this reward' });
       }
-      if (Number(customer.lifetimePoints || 0) < Number(reward.pointsCost || 0)) {
+      if (Number(customerLeanForOrder.lifetimePoints || 0) < Number(reward.pointsCost || 0)) {
         return res.status(400).json({ message: 'Insufficient loyalty points' });
       }
-      const afterPromo = Math.max(0, subtotal - promoDiscountTotal);
-      loyaltyDiscount = computeLoyaltyRewardDiscount(reward, enrichedItems, afterPromo);
-      if (loyaltyDiscount <= 0) {
+      loyaltyDiscountPoints = computeLoyaltyRewardDiscount(reward, enrichedItems, remainingAfterPromos);
+      if (loyaltyDiscountPoints <= 0) {
         return res.status(400).json({ message: 'This reward does not apply to the current cart' });
       }
       loyaltyRedemptionPayload = {
         reward: reward._id,
         name: reward.name,
         pointsCost: reward.pointsCost,
-        discountAmount: Math.round(loyaltyDiscount * 100) / 100,
+        discountAmount: Math.round(loyaltyDiscountPoints * 100) / 100,
       };
     }
 
-    const discountTotal = Math.round((promoDiscountTotal + loyaltyDiscount) * 100) / 100;
+    const discountTotal = Math.round((promoDiscountTotal + automaticLoyaltyDiscount + loyaltyDiscountPoints) * 100) / 100;
     const discountedSubtotal = Math.max(0, subtotal - discountTotal);
 
     // Calculate compound tax components
@@ -223,6 +266,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       subtotal: Math.round(subtotal * 100) / 100,
       discountTotal,
       appliedPromotions,
+      ...(appliedAutomaticLoyalty.length ? { appliedAutomaticLoyalty } : {}),
       taxRate,
       taxAmount: Math.round(taxAmount * 100) / 100,
       serviceFeeType,
@@ -247,7 +291,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
 
     const order = await Order.create(orderPayload);
 
-    if (loyaltyRedemptionPayload && order.customerId) {
+    if (loyaltyRedemptionPayload && order.customerId && (loyaltyRedemptionPayload.pointsCost || 0) > 0) {
       const ptsCost = loyaltyRedemptionPayload.pointsCost;
       const upd = await Customer.updateOne(
         {

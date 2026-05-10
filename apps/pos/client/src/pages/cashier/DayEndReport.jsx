@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Download, TrendingUp, ShoppingBag, DollarSign, ClipboardList, ShoppingCart } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
+import { CASHIER_NAV_GROUPS } from '../../constants/cashierLinks';
 import StatCard from '../../components/StatCard';
 import Badge from '../../components/Badge';
 import { formatCurrency, formatTime } from '../../utils/format';
@@ -44,10 +45,7 @@ export default function DayEndReport() {
 
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
-      <Navbar links={[
-        { to: '/cashier/order', label: 'New Order', icon: ShoppingCart },
-        { to: '/cashier/orders', label: 'Order Board', icon: ClipboardList },
-      ]} />
+      <Navbar groups={CASHIER_NAV_GROUPS} />
 
       <div className="max-w-5xl mx-auto p-4 sm:p-6">
         {/* Header */}

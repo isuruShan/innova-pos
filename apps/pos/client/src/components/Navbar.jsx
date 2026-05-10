@@ -236,7 +236,91 @@ function filterLinksForRole(links, role) {
   });
 }
 
-export default function Navbar({ links = [] }) {
+function linkMatchesPath(pathname, to) {
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
+
+function NavDropdown({
+  title,
+  items,
+  userRole,
+  location,
+  navTabActiveFg,
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const filtered = filterLinksForRole(items, userRole);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname]);
+
+  if (!filtered.length) return null;
+
+  const active = filtered.some((l) => linkMatchesPath(location.pathname, l.to));
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+          active ? '' : 'hover:bg-white/10'
+        }`}
+        style={
+          active
+            ? {
+                backgroundColor: 'color-mix(in srgb, var(--color-accent) 22%, transparent)',
+                color: navTabActiveFg,
+              }
+            : { color: 'color-mix(in srgb, var(--color-text) 55%, transparent)' }
+        }
+      >
+        <span className="max-w-[8rem] sm:max-w-none truncate">{title}</span>
+        <ChevronDown size={14} className={`shrink-0 opacity-70 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div
+          className="absolute left-0 top-full mt-1.5 min-w-[12rem] max-w-[min(calc(100vw-2rem),18rem)] rounded-xl border border-slate-600/80 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 z-[120] py-1 overflow-hidden"
+          role="menu"
+        >
+          {filtered.map((link) => {
+            const itemActive = linkMatchesPath(location.pathname, link.to);
+            return (
+              <Link
+                key={link.to}
+                to={link.to}
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className={`flex items-center gap-2.5 px-3 py-2.5 text-sm transition ${
+                  itemActive
+                    ? 'bg-[color-mix(in_srgb,var(--color-accent)_18%,transparent)] text-[var(--pos-text-primary)]'
+                    : 'text-slate-300 hover:bg-slate-700/60 hover:text-[var(--pos-text-primary)]'
+                }`}
+              >
+                {link.icon && <link.icon size={15} className="shrink-0 opacity-80" />}
+                <span className="truncate">{link.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function Navbar({ links = [], groups: groupsProp }) {
   const { user, logout } = useAuth();
   const { stores, selectedStoreId, selectStore } = useStoreContext();
   const branding = useBranding();
@@ -253,6 +337,12 @@ export default function Navbar({ links = [] }) {
     () => navActiveLinkTextColor(accentResolved, sidebarResolved, 0.22),
     [accentResolved, sidebarResolved],
   );
+
+  const navGroups = useMemo(() => {
+    if (groupsProp?.length) return groupsProp;
+    if (links.length) return [{ title: 'Menu', items: links }];
+    return [];
+  }, [groupsProp, links]);
 
   return (
     <>
@@ -275,25 +365,44 @@ export default function Navbar({ links = [] }) {
           </span>
         </div>
 
-        {links.length > 0 && (
-          <div className="flex items-center gap-0.5">
-            {filterLinksForRole(links, user?.role).map((link) => {
-              const active = location.pathname === link.to || location.pathname.startsWith(`${link.to}/`);
+        {navGroups.length > 0 && (
+          <div className="flex items-center gap-0.5 sm:gap-1 flex-wrap">
+            {navGroups.map((group) => {
+              const filteredItems = filterLinksForRole(group.items, user?.role);
+              if (!filteredItems.length) return null;
+
+              if (filteredItems.length === 1) {
+                const link = filteredItems[0];
+                const active = linkMatchesPath(location.pathname, link.to);
+                return (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition ${active ? '' : 'hover:bg-white/10'}`}
+                    style={
+                      active
+                        ? {
+                            backgroundColor: 'color-mix(in srgb, var(--color-accent) 22%, transparent)',
+                            color: navTabActiveFg,
+                          }
+                        : { color: 'color-mix(in srgb, var(--color-text) 55%, transparent)' }
+                    }
+                  >
+                    {link.icon && <link.icon size={14} className="shrink-0" />}
+                    <span className="hidden sm:inline truncate max-w-[7rem] md:max-w-none">{link.label}</span>
+                  </Link>
+                );
+              }
+
               return (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition ${active ? '' : 'hover:bg-white/10'}`}
-                  style={active ? {
-                    backgroundColor: 'color-mix(in srgb, var(--color-accent) 22%, transparent)',
-                    color: navTabActiveFg,
-                  } : {
-                    color: 'color-mix(in srgb, var(--color-text) 55%, transparent)',
-                  }}
-                >
-                  {link.icon && <link.icon size={14} />}
-                  <span className="hidden md:block">{link.label}</span>
-                </Link>
+                <NavDropdown
+                  key={group.title}
+                  title={group.title}
+                  items={group.items}
+                  userRole={user?.role}
+                  location={location}
+                  navTabActiveFg={navTabActiveFg}
+                />
               );
             })}
           </div>

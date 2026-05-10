@@ -8,7 +8,7 @@ import {
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
-import { MANAGER_LINKS } from '../../constants/managerLinks';
+import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { AvatarDisplay } from '../../components/ProfileSlideOver';
 import { useStoreContext } from '../../context/StoreContext';
 import { SettingsChargesSkeleton, StaffListSkeleton } from '../../components/StoreSkeletons';
@@ -413,7 +413,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
-      <Navbar links={MANAGER_LINKS} />
+      <Navbar groups={MANAGER_NAV_GROUPS} />
 
       <div className="max-w-3xl mx-auto p-4 sm:p-6">
         <h1 className="text-xl font-bold text-[var(--pos-text-primary)] mb-5">Settings</h1>

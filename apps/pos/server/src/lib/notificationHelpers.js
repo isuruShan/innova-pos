@@ -25,8 +25,9 @@ async function createNotification(tenantId, userId, payload) {
 /** Notify every active merchant admin in the tenant */
 async function notifyMerchantAdmins(tenantId, payload, options = {}) {
   const { excludeUserId } = options;
+  const tid = castTenantId(tenantId);
   let admins = await User.find({
-    tenantId,
+    tenantId: tid,
     role: 'merchant_admin',
     isActive: true,
   }).select('_id').lean();

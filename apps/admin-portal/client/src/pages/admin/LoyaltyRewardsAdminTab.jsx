@@ -3,10 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Gift, Plus, Search, Pencil, Trash2, Check } from 'lucide-react';
 import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
+import RewardScopeCombobox from '../../components/RewardScopeCombobox';
 
 const emptyForm = {
   name: '',
   description: '',
+  redemptionType: 'points',
   pointsCost: '100',
   rewardType: 'order_discount_amount',
   discountAmount: '5',
@@ -14,12 +16,17 @@ const emptyForm = {
   minTierLevel: '1',
   rewardScope: 'tenant',
   storeId: '',
+  applicableItems: [],
+  applicableItemNames: [],
+  applicableCategories: [],
+  maxDiscountAmount: '',
   active: true,
 };
 
 export default function LoyaltyRewardsAdminTab() {
   const qc = useQueryClient();
-  const { stores } = useStoreContext();
+  const { stores, selectedStoreId, isStoreReady } = useStoreContext();
+  const [formError, setFormError] = useState('');
   const [search, setSearch] = useState('');
   const [approvalFilter, setApprovalFilter] = useState('all');
   const [storeFilter, setStoreFilter] = useState('');
@@ -53,6 +60,12 @@ export default function LoyaltyRewardsAdminTab() {
     qc.invalidateQueries({ queryKey: ['notifications-unread-count'] });
   };
 
+  const { data: menuItems = [] } = useQuery({
+    queryKey: ['admin-menu-loyalty-rewards', selectedStoreId],
+    queryFn: () => api.get('/menu').then((r) => r.data),
+    enabled: isStoreReady,
+  });
+
   const save = useMutation({
     mutationFn: ({ id, payload }) =>
       id ? api.put(`/loyalty/rewards/${id}`, payload) : api.post('/loyalty/rewards', payload),
@@ -60,7 +73,9 @@ export default function LoyaltyRewardsAdminTab() {
       invalidate();
       setEditor(null);
       setForm(emptyForm);
+      setFormError('');
     },
+    onError: (e) => setFormError(e.response?.data?.message || 'Save failed'),
   });
 
   const approve = useMutation({
@@ -98,6 +113,7 @@ export default function LoyaltyRewardsAdminTab() {
     setForm({
       name: r.name || '',
       description: r.description || '',
+      redemptionType: r.redemptionType || 'points',
       pointsCost: String(r.pointsCost ?? 100),
       rewardType: r.rewardType || 'order_discount_amount',
       discountAmount: String(r.discountAmount ?? 0),
@@ -105,20 +121,33 @@ export default function LoyaltyRewardsAdminTab() {
       minTierLevel: String(r.minTierLevel ?? 1),
       rewardScope: r.storeId ? 'store' : 'tenant',
       storeId: r.storeId ? String(r.storeId) : '',
+      applicableItems: r.applicableItems || [],
+      applicableItemNames: r.applicableItemNames || [],
+      applicableCategories: r.applicableCategories || [],
+      maxDiscountAmount:
+        r.maxDiscountAmount != null && r.maxDiscountAmount !== '' ? String(r.maxDiscountAmount) : '',
       active: r.active !== false,
     });
   };
 
   const submit = (e) => {
     e.preventDefault();
+    const redemptionType = form.redemptionType || 'points';
     const payload = {
       name: form.name.trim(),
       description: form.description.trim(),
-      pointsCost: Number(form.pointsCost) || 1,
+      redemptionType,
+      pointsCost: redemptionType === 'automatic' ? 0 : Number(form.pointsCost) || 1,
       rewardType: form.rewardType,
       discountAmount: Number(form.discountAmount) || 0,
       discountPercent: Number(form.discountPercent) || 0,
       minTierLevel: Number(form.minTierLevel) || 1,
+      applicableItems: form.applicableItems || [],
+      applicableCategories: form.applicableCategories || [],
+      maxDiscountAmount:
+        form.maxDiscountAmount === '' || form.maxDiscountAmount == null
+          ? null
+          : Math.max(0, Number(form.maxDiscountAmount) || 0),
       active: Boolean(form.active),
     };
     if (form.rewardScope === 'tenant') {
@@ -304,6 +333,7 @@ export default function LoyaltyRewardsAdminTab() {
           onClick={() => {
             setEditor(null);
             setForm(emptyForm);
+            setFormError('');
           }}
           role="presentation"
         >
@@ -365,16 +395,39 @@ export default function LoyaltyRewardsAdminTab() {
                 />
               </label>
               <label className="block text-xs text-gray-600">
-                Points cost *
-                <input
-                  type="number"
-                  min={1}
-                  required
-                  value={form.pointsCost}
-                  onChange={(e) => setForm((f) => ({ ...f, pointsCost: e.target.value }))}
+                Redemption
+                <select
+                  value={form.redemptionType}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      redemptionType: e.target.value,
+                      pointsCost: e.target.value === 'automatic' ? '0' : f.pointsCost || '100',
+                    }))
+                  }
                   className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                />
+                >
+                  <option value="points">Spend loyalty points at checkout</option>
+                  <option value="automatic">Member perk (no points spent)</option>
+                </select>
               </label>
+              {form.redemptionType !== 'automatic' ? (
+                <label className="block text-xs text-gray-600">
+                  Points cost *
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    value={form.pointsCost}
+                    onChange={(e) => setForm((f) => ({ ...f, pointsCost: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </label>
+              ) : (
+                <p className="text-xs text-gray-500">
+                  Eligible members receive this discount automatically (tier rules still apply).
+                </p>
+              )}
               <label className="block text-xs text-gray-600">
                 Reward type
                 <select
@@ -423,6 +476,31 @@ export default function LoyaltyRewardsAdminTab() {
                   className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 />
               </label>
+              {(form.rewardType === 'order_discount_amount' || form.rewardType === 'order_discount_percent') && (
+                <label className="block text-xs text-gray-600">
+                  Max discount per order (optional)
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={form.maxDiscountAmount}
+                    onChange={(e) => setForm((f) => ({ ...f, maxDiscountAmount: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    placeholder="Cap $ off from this reward"
+                  />
+                </label>
+              )}
+              <div>
+                <p className="text-xs text-gray-600 mb-1">Apply to (optional — empty = whole order)</p>
+                <RewardScopeCombobox
+                  menuItems={menuItems}
+                  isStoreReady={isStoreReady}
+                  categoryNames={form.applicableCategories || []}
+                  itemIds={form.applicableItems || []}
+                  itemNames={form.applicableItemNames || []}
+                  onPatch={(patch) => setForm((f) => ({ ...f, ...patch }))}
+                />
+              </div>
               <label className="flex items-center gap-2 text-sm text-gray-800">
                 <input
                   type="checkbox"
@@ -431,12 +509,16 @@ export default function LoyaltyRewardsAdminTab() {
                 />
                 Active (when approved)
               </label>
+              {formError ? (
+                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{formError}</div>
+              ) : null}
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => {
                     setEditor(null);
                     setForm(emptyForm);
+                    setFormError('');
                   }}
                   className="px-3 py-2 text-sm text-gray-700"
                 >

@@ -8,7 +8,7 @@ import {
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
-import { MANAGER_LINKS } from '../../constants/managerLinks';
+import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { formatCurrency } from '../../utils/format';
 import { useStoreContext } from '../../context/StoreContext';
 import { PromoListSkeleton } from '../../components/StoreSkeletons';
@@ -72,7 +72,8 @@ const EMPTY_FORM = {
   getFreeItem: '',   getFreeItemName: '', getFreeQty: '1',
   applicableItems: [], applicableItemNames: [], applicableCategories: [],
   flatPrice: '',  discountAmount: '', discountPercent: '',
-  minOrderAmount: '',
+  minOrderAmount: '', maxDiscountAmount: '',
+  minTierLevel: '',
 };
 
 function typeMeta(id) { return PROMO_TYPES.find(t => t.id === id) || PROMO_TYPES[0]; }
@@ -363,6 +364,8 @@ export default function Promotions() {
       discountAmount: promo.discountAmount ?? '',
       discountPercent: promo.discountPercent ?? '',
       minOrderAmount: promo.minOrderAmount ?? '',
+      maxDiscountAmount: promo.maxDiscountAmount ?? '',
+      minTierLevel: promo.minTierLevel != null && promo.minTierLevel !== '' ? String(promo.minTierLevel) : '',
     });
     setFormError('');
     setSlideOpen(true);
@@ -418,6 +421,10 @@ export default function Promotions() {
       discountAmount: +form.discountAmount || 0,
       discountPercent: +form.discountPercent || 0,
       minOrderAmount: +form.minOrderAmount || 0,
+      maxDiscountAmount:
+        form.maxDiscountAmount === '' || form.maxDiscountAmount == null
+          ? null
+          : Math.max(0, +form.maxDiscountAmount || 0),
     };
 
     if (editing) updateMutation.mutate({ id: editing._id, d: payload });
@@ -432,7 +439,7 @@ export default function Promotions() {
 
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
-      <Navbar links={MANAGER_LINKS} />
+      <Navbar groups={MANAGER_NAV_GROUPS} />
 
       <div className="max-w-4xl mx-auto p-4 sm:p-6">
         {/* Header */}
@@ -707,6 +714,11 @@ export default function Promotions() {
                 <input type="number" min="0" step="0.01" {...field('minOrderAmount')}
                   placeholder="e.g. 500" className={inputCls} />
               </div>
+              <div>
+                <label className={labelCls}>Max discount per order (Rs, optional)</label>
+                <input type="number" min="0" step="0.01" {...field('maxDiscountAmount')}
+                  placeholder="Cap total $ off from this promo" className={inputCls} />
+              </div>
             </>
           )}
 
@@ -733,8 +745,29 @@ export default function Promotions() {
                 <input type="number" min="0" step="0.01" {...field('minOrderAmount')}
                   placeholder="e.g. 500" className={inputCls} />
               </div>
+              <div>
+                <label className={labelCls}>Max discount per order (Rs, optional)</label>
+                <input type="number" min="0" step="0.01" {...field('maxDiscountAmount')}
+                  placeholder="Cap total $ off from this promo" className={inputCls} />
+              </div>
             </>
           )}
+
+          <div>
+            <label className={labelCls}>Minimum loyalty tier (optional)</label>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={form.minTierLevel}
+              onChange={(e) => setForm((f) => ({ ...f, minTierLevel: e.target.value }))}
+              placeholder="Leave empty — all customers"
+              className={inputCls}
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              When set, only customers at this tier level or higher qualify (attach a customer on checkout to preview tier-gated promos).
+            </p>
+          </div>
 
           {/* Active toggle */}
           <div className="flex items-center justify-between py-1">
@@ -790,6 +823,7 @@ function PromoSummary({ promo }) {
       if (fd.length) summary += ` on ${fd.join(', ')}`;
       else summary += ' order';
       if (promo.minOrderAmount > 0) summary += ` (min ${formatCurrency(promo.minOrderAmount)})`;
+      if (promo.maxDiscountAmount > 0) summary += ` · max ${formatCurrency(promo.maxDiscountAmount)}`;
       break;
     }
     case 'percentageDiscount': {
@@ -798,9 +832,14 @@ function PromoSummary({ promo }) {
       if (pd.length) summary += ` on ${pd.join(', ')}`;
       else summary += ' order';
       if (promo.minOrderAmount > 0) summary += ` (min ${formatCurrency(promo.minOrderAmount)})`;
+      if (promo.maxDiscountAmount > 0) summary += ` · max ${formatCurrency(promo.maxDiscountAmount)}`;
       break;
     }
   }
   if (!summary) return null;
-  return <p className="text-xs text-amber-400/80 mt-1">{summary}</p>;
+  const tier =
+    promo.minTierLevel != null && Number(promo.minTierLevel) > 0
+      ? ` · Tier ${promo.minTierLevel}+`
+      : '';
+  return <p className="text-xs text-amber-400/80 mt-1">{summary}{tier}</p>;
 }

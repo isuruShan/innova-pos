@@ -8,28 +8,35 @@ import NotificationBell from '../NotificationBell';
 import { useAuth } from '../../context/AuthContext';
 import { useStoreContext } from '../../context/StoreContext';
 
-const SUPERADMIN_NAV = [
-  { label: 'Merchants', icon: Building2, to: '/merchants' },
-  { label: 'Applications', icon: ClipboardList, to: '/applications' },
-  { label: 'Payments', icon: Receipt, to: '/payments' },
-  { label: 'Plans', icon: CreditCard, to: '/plans' },
+const SUPERADMIN_NAV_GROUPS = [
+  {
+    title: 'Platform',
+    items: [
+      { label: 'Merchants', icon: Building2, to: '/merchants' },
+      { label: 'Applications', icon: ClipboardList, to: '/applications' },
+    ],
+  },
+  {
+    title: 'Billing',
+    items: [
+      { label: 'Payments', icon: Receipt, to: '/payments' },
+      { label: 'Plans', icon: CreditCard, to: '/plans' },
+    ],
+  },
 ];
 
 const ADMIN_NAV_GROUPS = [
   {
-    title: 'Overview',
-    items: [{ label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' }],
-  },
-  {
-    title: 'Organization',
+    title: 'Business',
     items: [
+      { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
       { label: 'Branding & Settings', icon: Palette, to: '/branding' },
       { label: 'Users', icon: Users, to: '/users' },
       { label: 'Stores', icon: Store, to: '/stores' },
     ],
   },
   {
-    title: 'Loyalty & marketing',
+    title: 'Customers & marketing',
     items: [
       { label: 'Loyalty admin', icon: Award, to: '/loyalty' },
       { label: 'Customers', icon: ContactRound, to: '/customers' },
@@ -37,16 +44,16 @@ const ADMIN_NAV_GROUPS = [
     ],
   },
   {
-    title: 'Operations',
-    items: [{ label: 'Cashier sessions', icon: Wallet, to: '/cashier-sessions' }],
-  },
-  {
-    title: 'Billing',
-    items: [{ label: 'Subscription', icon: CreditCard, to: '/subscription' }],
+    title: 'Operations & billing',
+    items: [
+      { label: 'Cashier sessions', icon: Wallet, to: '/cashier-sessions' },
+      { label: 'Subscription', icon: CreditCard, to: '/subscription' },
+    ],
   },
 ];
 
 const ADMIN_NAV_FLAT = ADMIN_NAV_GROUPS.flatMap((g) => g.items);
+const SUPERADMIN_NAV_FLAT = SUPERADMIN_NAV_GROUPS.flatMap((g) => g.items);
 
 export default function Layout({ children }) {
   const { user, logout, isSuperAdmin } = useAuth();
@@ -55,7 +62,7 @@ export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { stores, selectedStoreId, selectStore } = useStoreContext();
 
-  const navItems = isSuperAdmin ? SUPERADMIN_NAV : ADMIN_NAV_FLAT;
+  const navItems = isSuperAdmin ? SUPERADMIN_NAV_FLAT : ADMIN_NAV_FLAT;
 
   const handleLogout = () => {
     logout();
@@ -98,53 +105,35 @@ export default function Layout({ children }) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-          {!isSuperAdmin
-            ? ADMIN_NAV_GROUPS.map((group) => (
-                <details key={group.title} open className="group mb-1">
-                  <summary className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500 font-semibold cursor-pointer list-none flex items-center justify-between select-none [&::-webkit-details-marker]:hidden">
-                    {group.title}
-                    <ChevronRight size={12} className="opacity-60 shrink-0 transition-transform group-open:rotate-90" />
-                  </summary>
-                  <div className="mt-0.5 space-y-0.5">
-                    {group.items.map((item) => {
-                      const active = isActive(item.to);
-                      return (
-                        <Link
-                          key={item.to}
-                          to={item.to}
-                          onClick={() => setSidebarOpen(false)}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            active
-                              ? 'bg-brand-teal text-white'
-                              : 'text-gray-400 hover:text-white hover:bg-white/5'
-                          }`}
-                        >
-                          <item.icon size={17} className="shrink-0" />
-                          {item.label}
-                          {active ? <ChevronRight size={14} className="ml-auto opacity-80" /> : null}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </details>
-              ))
-            : SUPERADMIN_NAV.map((item) => {
-                const active = isActive(item.to);
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                      active ? 'bg-brand-teal text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    <item.icon size={17} className="shrink-0" />
-                    {item.label}
-                    {active && <ChevronRight size={14} className="ml-auto" />}
-                  </Link>
-                );
-              })}
+          {(isSuperAdmin ? SUPERADMIN_NAV_GROUPS : ADMIN_NAV_GROUPS).map((group) => (
+            <details key={group.title} open className="group mb-1">
+              <summary className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500 font-semibold cursor-pointer list-none flex items-center justify-between select-none [&::-webkit-details-marker]:hidden">
+                {group.title}
+                <ChevronRight size={12} className="opacity-60 shrink-0 transition-transform group-open:rotate-90" />
+              </summary>
+              <div className="mt-0.5 space-y-0.5">
+                {group.items.map((item) => {
+                  const active = isActive(item.to);
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setSidebarOpen(false)}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        active
+                          ? 'bg-brand-teal text-white'
+                          : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <item.icon size={17} className="shrink-0" />
+                      {item.label}
+                      {active ? <ChevronRight size={14} className="ml-auto opacity-80" /> : null}
+                    </Link>
+                  );
+                })}
+              </div>
+            </details>
+          ))}
           {!isSuperAdmin && (
             <a
               href="http://localhost:5173"

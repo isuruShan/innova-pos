@@ -8,6 +8,45 @@ const { emitAudit } = require('@innovapos/shared-middleware');
 
 const router = express.Router();
 
+function digitsOnly(s) {
+  return String(s || '').replace(/\D/g, '');
+}
+
+function normalizeEmail(s) {
+  return String(s || '').trim().toLowerCase();
+}
+
+/** Match existing customer by normalized email or mobile digits (cross-format). */
+async function findExistingCustomerByContact(tenantId, emailNorm, mobileRaw) {
+  if (emailNorm) {
+    const byEmail = await Customer.findOne({ tenantId, email: emailNorm });
+    if (byEmail) return byEmail;
+  }
+  if (mobileRaw) {
+    const byMobileExact = await Customer.findOne({ tenantId, mobile: mobileRaw });
+    if (byMobileExact) return byMobileExact;
+  }
+  const md = digitsOnly(mobileRaw);
+  const or = [];
+  if (md.length >= 8) or.push({ mobileDigits: md });
+  if (or.length) {
+    const c = await Customer.findOne({ tenantId, $or: or });
+    if (c) return c;
+  }
+  if (md.length >= 8) {
+    const loose = await Customer.find({
+      tenantId,
+      mobile: { $nin: ['', null] },
+      $or: [{ mobileDigits: { $exists: false } }, { mobileDigits: '' }, { mobileDigits: null }],
+    })
+      .limit(400)
+      .lean();
+    const hit = loose.find((x) => digitsOnly(x.mobile) === md);
+    if (hit) return Customer.findById(hit._id);
+  }
+  return null;
+}
+
 router.get('/', protect, authorize('cashier', 'manager', 'merchant_admin'), tenantScope, async (req, res) => {
   try {
     const filter = { tenantId: req.tenantId };
@@ -105,20 +144,38 @@ router.get('/:id', protect, authorize('cashier', 'manager', 'merchant_admin'), t
 
 router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), tenantScope, async (req, res) => {
   try {
+    const name = String(req.body.name || '').trim();
+    const mobileRaw = req.body.mobile != null ? String(req.body.mobile).trim() : '';
+    const emailNorm = normalizeEmail(req.body.email);
+
+    if (!name && !mobileRaw && !emailNorm) {
+      return res.status(400).json({ message: 'Provide at least a name, mobile, or email' });
+    }
+
+    const existing = await findExistingCustomerByContact(req.tenantId, emailNorm, mobileRaw);
+    if (existing) {
+      const obj = existing.toObject();
+      return res.status(200).json({ ...obj, reused: true });
+    }
+
     const raw = { ...req.body };
     delete raw.lifetimePoints;
     delete raw.retentionStatus;
     delete raw.loyaltyTierOverrideLevel;
     delete raw.lastLoyaltyActivityAt;
+    delete raw.tenantId;
     const body = {
       ...raw,
+      name,
+      mobile: mobileRaw,
+      email: emailNorm,
       tenantId: req.tenantId,
       storeId: null,
       createdBy: req.user.id,
       lastLoyaltyActivityAt: new Date(),
     };
     const c = await Customer.create(body);
-    res.status(201).json(c);
+    res.status(201).json({ ...c.toObject(), reused: false });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
