@@ -15,7 +15,7 @@ router.post('/', contactLimiter, async (req, res) => {
   try {
     await sendEmail({
       to: process.env.CONTACT_EMAIL || process.env.EMAIL_FROM,
-      subject: `[InnovaPOS Contact] ${subject || 'New message'} — from ${name}`,
+      subject: `[Cafinity Contact] ${subject || 'New message'} — from ${name}`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px">
           <h3>New Contact Form Submission</h3>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Zap, ShoppingCart, BarChart3, Users, Layers, Shield,
@@ -7,107 +7,97 @@ import {
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import api from '../api';
+import { buildPlanCardBackground, buildPlanTagBackground, planUsesLightText } from '../utils/planAppearance';
 
 const FEATURES = [
   {
     icon: ShoppingCart,
-    title: 'Smart Order Management',
-    desc: 'Seamlessly manage dine-in, takeaway, Uber Eats, and PickMe orders from a single elegant interface.',
+    title: 'Counter & table orders',
+    desc: 'Ring dine-in, takeaway, and delivery tickets from one calm screen — split tabs, modifiers, and rush-hour queues without the chaos.',
   },
   {
     icon: ChefHat,
-    title: 'Kitchen Display System',
-    desc: 'Real-time order updates for kitchen staff. No more paper tickets — reduce errors, speed up service.',
+    title: 'Kitchen display that keeps pace',
+    desc: 'Fire drinks and plates straight to the barista line or pass — fewer missed shots, clearer handoffs during the morning rush.',
   },
   {
     icon: BarChart3,
-    title: 'Sales Analytics & Reports',
-    desc: 'Daily revenue, best sellers, category breakdowns, and trend charts. Understand your business at a glance.',
+    title: 'Shift-aware sales insight',
+    desc: 'See hourly sales, bestsellers, and category mix so you know what moved during brunch versus late espresso.',
   },
   {
     icon: Layers,
-    title: 'Menu & Inventory Control',
-    desc: 'Manage your full menu with categories, combos, images, and pricing. Track inventory with automatic low-stock alerts.',
+    title: 'Menus, beans & syrups under control',
+    desc: 'Manage brew methods, add-ons, sizes, and retail items with stock hints before you run out of oat milk mid-shift.',
   },
   {
     icon: Zap,
-    title: 'Smart Promotions Engine',
-    desc: 'Bundle deals, buy-X-get-Y, flat discounts, and percentage off — applied automatically at checkout.',
+    title: 'Promos that fit café habits',
+    desc: 'Happy-hour bundles, pastry pairings, and loyalty-friendly discounts — applied automatically so cashiers stay fast.',
   },
   {
     icon: Shield,
-    title: 'Role-Based Access',
-    desc: 'Cashier, Kitchen, Manager, and Admin roles with fine-grained permissions. Your staff only sees what they need.',
+    title: 'Roles for bar, floor & back office',
+    desc: 'Barista, kitchen, shift lead, and owner views — everyone sees the right tools without touching pricing or payouts.',
   },
   {
     icon: Users,
-    title: 'Multi-User & Multi-Terminal',
-    desc: 'Run multiple terminals simultaneously. Perfect for busy restaurants with dedicated cashier stations.',
+    title: 'Multi-terminal coffee bars',
+    desc: 'Run the register, pickup counter, and handhelds together when the line wraps around the block.',
   },
   {
     icon: TrendingUp,
-    title: 'Flexible Tax & Fees',
-    desc: 'Define multiple tax components per order type. Add service fees as percentage or fixed amounts.',
-  },
-];
-
-const PLANS = [
-  {
-    name: 'Monthly',
-    price: '4,990',
-    period: '/month',
-    highlight: false,
-    badge: null,
-    features: [
-      'Unlimited orders',
-      'Up to 5 staff accounts',
-      'Sales analytics & reports',
-      'Menu & inventory management',
-      'Kitchen display system',
-      'Email support',
-    ],
-    cta: 'Start 30-day trial',
-  },
-  {
-    name: 'Yearly',
-    price: '3,990',
-    period: '/month, billed annually',
-    highlight: true,
-    badge: 'Save 20%',
-    features: [
-      'Everything in Monthly',
-      'Unlimited staff accounts',
-      'Priority support',
-      'Custom integrations',
-      'Advanced analytics',
-      'Dedicated onboarding',
-    ],
-    cta: 'Start 30-day trial',
-  },
-  {
-    name: 'Custom',
-    price: 'Let\'s talk',
-    period: '',
-    highlight: false,
-    badge: 'Enterprise',
-    features: [
-      'Multi-location support',
-      'Custom feature development',
-      'SLA guarantee',
-      'On-site training',
-      'White-label option',
-      'Dedicated account manager',
-    ],
-    cta: 'Contact us',
+    title: 'Taxes & service charges',
+    desc: 'Configure VAT, service, and card fees the way your municipality and venue actually bill.',
   },
 ];
 
 const STATS = [
-  { value: '500+', label: 'Businesses served' },
-  { value: '2M+', label: 'Orders processed' },
+  { value: '500+', label: 'Cafés & venues' },
+  { value: '2M+', label: 'Orders rung' },
   { value: '99.9%', label: 'Uptime SLA' },
-  { value: '24/7', label: 'Support available' },
+  { value: '24/7', label: 'Support when you need it' },
 ];
+
+/** Public pricing catalogue: Sri Lanka vs international (no login). */
+function detectCatalogAudience() {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz === 'Asia/Colombo') return 'local';
+  } catch {
+    /* ignore */
+  }
+  const lang = (navigator.language || '').toLowerCase();
+  if (lang.startsWith('si')) return 'local';
+  return 'international';
+}
+
+/** Lines shown under each API-driven pricing card (admin: Subscription plan highlights). */
+function pricingLinesForPlan(plan) {
+  if (Array.isArray(plan.featureLines) && plan.featureLines.length > 0) {
+    return plan.featureLines;
+  }
+  const d = typeof plan.description === 'string' ? plan.description.trim() : '';
+  if (d) return d.split('\n').map((s) => s.trim()).filter(Boolean);
+  return [
+    `${plan.durationDays} days validity`,
+    'Assigned and managed by superadmin',
+    'Merchant billing support included',
+  ];
+}
+
+/** Display-only tier — not loaded from /plans/public. */
+const ENTERPRISE_DISPLAY = {
+  name: 'Enterprise',
+  priceLabel: 'Custom',
+  cycle: "Tailor-made for your operation",
+  lines: [
+    'Bespoke workflows, branding, and integrations',
+    'Multi-location & franchise rollouts',
+    'Dedicated onboarding and priority support',
+    'Volume pricing and SLA options',
+  ],
+};
 
 function ContactSection() {
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
@@ -126,7 +116,7 @@ function ContactSection() {
   };
 
   return (
-    <section className="py-20 bg-gray-50">
+    <section id="contact" className="py-20 bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-gray-900 mb-3">Get in touch</h2>
@@ -196,47 +186,71 @@ function ContactSection() {
 }
 
 export default function LandingPage() {
+  const [plans, setPlans] = useState([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const catalogAudience = useMemo(() => detectCatalogAudience(), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadPlans = async () => {
+      try {
+        const { data } = await api.get('/plans/public', {
+          params: { audience: catalogAudience },
+        });
+        if (!cancelled) setPlans(Array.isArray(data) ? data : []);
+      } catch {
+        if (!cancelled) setPlans([]);
+      } finally {
+        if (!cancelled) setPlansLoading(false);
+      }
+    };
+    loadPlans();
+    return () => {
+      cancelled = true;
+    };
+  }, [catalogAudience]);
+
   return (
     <div className="min-h-screen">
       <Navbar />
 
-      {/* Hero — teal layered gradient + soft motion (orange reserved for buttons) */}
+      {/* Hero — navy (#233d4d) + coral (#fa7237) accents */}
       <section className="relative overflow-hidden pt-24 pb-20 px-4 sm:px-6 lg:px-8 text-white">
         <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
-          <div className="absolute inset-0 bg-gradient-to-br from-[#042f2c] via-brand-teal-deep to-[#0d9488]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#233d4d] via-[#1a3244] to-[#152a38]" />
           <div
-            className="absolute -left-[20%] -top-[30%] h-[min(90vw,720px)] w-[min(90vw,720px)] rounded-full bg-teal-300/20 blur-3xl"
+            className="absolute -left-[20%] -top-[30%] h-[min(90vw,720px)] w-[min(90vw,720px)] rounded-full bg-[#fa7237]/25 blur-3xl"
             style={{ animation: 'public-hero-blob-a 22s ease-in-out infinite' }}
           />
           <div
-            className="absolute -right-[25%] top-1/3 h-[min(80vw,600px)] w-[min(80vw,600px)] rounded-full bg-cyan-200/15 blur-3xl"
+            className="absolute -right-[25%] top-1/3 h-[min(80vw,600px)] w-[min(80vw,600px)] rounded-full bg-[#233d4d]/40 blur-3xl"
             style={{ animation: 'public-hero-blob-b 18s ease-in-out infinite' }}
           />
           <div
-            className="absolute -inset-[25%] bg-[radial-gradient(ellipse_80%_60%_at_50%_15%,rgba(94,234,212,0.18),transparent_55%)]"
+            className="absolute -inset-[25%] bg-[radial-gradient(ellipse_80%_60%_at_50%_15%,rgba(250,114,55,0.22),transparent_55%)]"
             style={{ animation: 'public-hero-mesh 20s ease-in-out infinite' }}
           />
         </div>
 
         <div className="relative z-10 max-w-5xl mx-auto text-center text-white">
           <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-sm mb-8 backdrop-blur-sm">
-            <Star size={14} className="text-yellow-400" fill="#facc15" />
+            <Star size={14} className="text-[#fa7237]" fill="#fa7237" />
             <span>30-day free trial — no credit card required</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight mb-6">
-            The POS that grows
-            <span className="block text-teal-100 drop-shadow-sm">with your business</span>
+            Keep every pour, plate, and tab
+            <span className="block text-white/95 drop-shadow-sm">in sync — from counter to kitchen.</span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-teal-100/90 max-w-2xl mx-auto mb-10 leading-relaxed">
-            InnovaPOS is a cloud-based point of sale platform designed for restaurants, cafes, and food businesses.
-            Manage orders, staff, inventory, and analytics from anywhere.
+          <p className="text-lg sm:text-xl text-white/85 max-w-2xl mx-auto mb-10 leading-relaxed">
+            <strong className="font-semibold text-white">Cafinity</strong> is cloud POS for cafés and counter-service venues:
+            ring sales, fire tickets, manage modifiers and retail, and close the shift — without spreadsheet headaches.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/signup"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-brand-orange text-white font-semibold text-base transition-all hover:scale-105 hover:bg-brand-orange-hover"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-[#fa7237] text-white font-semibold text-base transition-all hover:scale-105 hover:bg-[#e85f2c]"
             >
               Get started for free
               <ArrowRight size={18} />
@@ -251,8 +265,8 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mt-16 pt-10 border-t border-white/10">
             {STATS.map(s => (
               <div key={s.label}>
-                <div className="text-3xl font-bold text-teal-200">{s.value}</div>
-                <div className="text-sm text-teal-100/70 mt-1">{s.label}</div>
+                <div className="text-3xl font-bold text-[#fa7237]">{s.value}</div>
+                <div className="text-sm text-white/75 mt-1">{s.label}</div>
               </div>
             ))}
           </div>
@@ -264,10 +278,10 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
-              Everything you need to run your business
+              Built for how cafés actually run
             </h2>
             <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              From the first order of the day to closing reports — InnovaPOS handles it all.
+              From first espresso pull to last table — menus, modifiers, kitchen handoffs, and daily totals in one workspace.
             </p>
           </div>
 
@@ -287,23 +301,23 @@ export default function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#233d4d]/[0.06] via-[#fa7237]/[0.04] to-white">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold text-gray-900 mb-3">Up and running in minutes</h2>
-            <p className="text-gray-500">Simple onboarding, no technical knowledge required.</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">From first login to first latte</h2>
+            <p className="text-gray-600">A focused setup for busy owners — no IT degree required.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
             {[
-              { step: '01', icon: Mail, title: 'Apply online', desc: 'Fill out your business details. Our team reviews and approves within 1–2 business days.' },
-              { step: '02', icon: Tablet, title: 'Get your account', desc: 'Receive your login credentials by email. Log in, customize your menu, and invite staff.' },
-              { step: '03', icon: Zap, title: 'Start selling', desc: 'Your POS is live. Accept orders, track sales, and grow your business from day one.' },
+              { step: '01', icon: Mail, title: 'Tell us about your spot', desc: 'Share a few details about your café or counter. We review and confirm within 1–2 business days.' },
+              { step: '02', icon: Tablet, title: 'Load your menu & team', desc: 'Get your logins, add drinks, food, and add-ons, then invite baristas and floor staff.' },
+              { step: '03', icon: Zap, title: 'Open for service', desc: 'Take real orders, route to kitchen or bar, and watch sales roll in — same day when you are ready.' },
             ].map(item => (
               <div key={item.step} className="text-center">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-brand-brown-deep">
-                  <item.icon size={24} className="text-brand-teal" />
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-[#233d4d] shadow-lg shadow-[#233d4d]/25">
+                  <item.icon size={24} className="text-[#fa7237]" />
                 </div>
-                <div className="text-xs font-bold tracking-widest text-brand-teal mb-2">{item.step}</div>
+                <div className="text-xs font-bold tracking-widest text-[#233d4d] mb-2">{item.step}</div>
                 <h3 className="font-semibold text-gray-900 mb-2">{item.title}</h3>
                 <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
               </div>
@@ -312,81 +326,187 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing */}
+      {/* Pricing — single horizontal row (scroll on narrow screens), tall cards */}
       <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14">
+        <div className="max-w-[1400px] mx-auto flex flex-col items-center">
+          <div className="text-center mb-14 w-full">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">Simple, transparent pricing</h2>
-            <p className="text-gray-500 text-lg">All prices in LKR. Start with a 30-day free trial — no credit card required.</p>
+            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+              {catalogAudience === 'local'
+                ? 'Plans for Sri Lanka — amounts in LKR unless noted. Start with a 30-day free trial; no credit card required.'
+                : 'International plans — currency shown per tier. Start with a 30-day free trial; no credit card required.'}
+            </p>
+            {!plansLoading && plans.length === 0 && (
+              <p className="text-gray-600 text-sm mt-4 max-w-xl mx-auto">
+                Listed tiers are managed by your administrator. Enterprise is always available for custom agreements.
+              </p>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {PLANS.map(plan => (
-              <div key={plan.name}
-                className={`relative rounded-2xl p-8 border transition-all ${
-                  plan.highlight
-                    ? 'border-brand-orange bg-brand-brown-deep shadow-xl shadow-brand-orange/10 scale-105'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                {plan.badge && (
-                  <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold
-                    ${plan.highlight ? 'bg-brand-orange text-white' : 'bg-gray-900 text-white'}`}>
-                    {plan.badge}
+          <div className="w-full overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+            <div className="flex justify-center min-w-full">
+              <div className="flex flex-nowrap gap-6 items-stretch min-h-[min(420px,70vh)] justify-center py-1">
+              {(plansLoading ? [1, 2, 3] : plans).map((plan, idx) => {
+                if (plansLoading) {
+                  return (
+                    <div
+                      key={`sk-${idx}`}
+                      className="shrink-0 w-[min(100%,280px)] sm:w-[260px] rounded-2xl border border-gray-200 bg-gray-50 animate-pulse min-h-[380px]"
+                    />
+                  );
+                }
+                const bulletLines = pricingLinesForPlan(plan);
+                const customCardBg = buildPlanCardBackground(plan);
+                const builtInFeatured = plan.isDefault && !customCardBg;
+                const lightOnCard = planUsesLightText(plan);
+                const showRibbon = plan.planTagShow && String(plan.planTagText || '').trim();
+                const ribbonBg = showRibbon ? buildPlanTagBackground(plan) : null;
+
+                let cardShell =
+                  'relative shrink-0 w-[min(100%,280px)] sm:w-[260px] rounded-2xl p-7 border flex flex-col min-h-[380px] transition-all snap-start ';
+                let cardStyle = undefined;
+                if (customCardBg) {
+                  cardShell += lightOnCard ? 'shadow-lg border-white/25' : 'shadow-md border-gray-200';
+                  cardStyle = { background: customCardBg };
+                } else if (builtInFeatured) {
+                  cardShell += 'border-[#fa7237] bg-gradient-to-b from-[#233d4d] to-[#1a2f3f] shadow-xl shadow-[#fa7237]/15';
+                } else {
+                  cardShell += 'border-gray-200 bg-white hover:border-gray-300';
+                }
+
+                const muted = customCardBg
+                  ? lightOnCard
+                    ? 'text-white/70'
+                    : 'text-gray-600'
+                  : builtInFeatured
+                    ? 'text-white/65'
+                    : 'text-gray-600';
+                const titleCls = customCardBg
+                  ? lightOnCard
+                    ? 'text-white/85'
+                    : 'text-gray-600'
+                  : builtInFeatured
+                    ? 'text-white/80'
+                    : 'text-gray-600';
+                const priceCls = customCardBg
+                  ? lightOnCard
+                    ? 'text-white'
+                    : 'text-gray-900'
+                  : builtInFeatured
+                    ? 'text-white'
+                    : 'text-gray-900';
+                const lineCls = customCardBg
+                  ? lightOnCard
+                    ? 'text-white/85'
+                    : 'text-gray-700'
+                  : builtInFeatured
+                    ? 'text-white/85'
+                    : 'text-gray-700';
+                const iconCls =
+                  customCardBg || builtInFeatured
+                    ? lightOnCard || builtInFeatured
+                      ? 'text-[#fa7237]'
+                      : 'text-[#233d4d]'
+                    : 'text-[#233d4d]';
+                const primaryCta =
+                  builtInFeatured || lightOnCard
+                    ? 'bg-[#fa7237] text-white hover:opacity-95'
+                    : 'bg-[#233d4d] text-white hover:bg-[#1b3244]';
+
+                return (
+                  <div
+                    key={plan._id || plan.code}
+                    className={cardShell}
+                    style={cardStyle}
+                  >
+                    {showRibbon && ribbonBg && (
+                      <div
+                        className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold shadow-md max-w-[min(100%,220px)] truncate"
+                        style={{
+                          background: ribbonBg,
+                          color: plan.planTagTextColor || '#ffffff',
+                        }}
+                        title={plan.planTagText}
+                      >
+                        {plan.planTagText}
+                      </div>
+                    )}
+
+                    <div className={`text-sm font-semibold mb-2 ${titleCls}`}>{plan.name}</div>
+                    <div className={`text-2xl sm:text-3xl font-extrabold mb-1 ${priceCls}`}>
+                      {plan.currency} {Number(plan.amount).toLocaleString()}
+                    </div>
+                    <div className={`text-sm mb-6 ${muted}`}>
+                      {plan.billingCycle === 'monthly'
+                        ? '/month'
+                        : plan.billingCycle === 'yearly'
+                          ? '/year'
+                          : `${plan.durationDays} day cycle`}
+                    </div>
+
+                    <ul className="space-y-3 mb-8 flex-1">
+                      {bulletLines.map((f, i) => (
+                        <li key={`${plan._id || plan.code}-${i}`} className={`flex items-start gap-2 text-sm ${lineCls}`}>
+                          <CheckCircle size={15} className={`shrink-0 mt-0.5 ${iconCls}`} />
+                          <span className="leading-snug">{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <Link
+                      to="/signup"
+                      className={`mt-auto block text-center py-3 rounded-xl text-sm font-semibold transition-all ${primaryCta}`}
+                    >
+                      Start 30-day trial
+                    </Link>
                   </div>
-                )}
+                );
+              })}
 
-                <div className={`text-sm font-semibold mb-2 ${plan.highlight ? 'text-gray-300' : 'text-gray-500'}`}>
-                  {plan.name}
-                </div>
-                <div className={`text-3xl font-extrabold mb-1 ${plan.highlight ? 'text-white' : 'text-gray-900'}`}>
-                  {plan.price === "Let's talk" ? plan.price : `Rs. ${plan.price}`}
-                </div>
-                {plan.period && (
-                  <div className={`text-sm mb-6 ${plan.highlight ? 'text-gray-400' : 'text-gray-500'}`}>{plan.period}</div>
-                )}
-
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map(f => (
-                    <li key={f} className={`flex items-start gap-2 text-sm ${plan.highlight ? 'text-gray-300' : 'text-gray-600'}`}>
-                      <CheckCircle size={15} className="shrink-0 mt-0.5 text-brand-teal" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-
-                {plan.name === 'Custom' ? (
-                  <a href="#contact"
-                    className="block text-center py-3 rounded-xl text-sm font-semibold border border-gray-300 text-gray-700 hover:border-gray-400 transition-colors">
-                    {plan.cta}
+              {!plansLoading && (
+                <div className="relative shrink-0 w-[min(100%,280px)] sm:w-[260px] rounded-2xl p-7 border border-[#233d4d]/35 bg-gradient-to-b from-[#233d4d] to-[#152a38] text-white shadow-lg flex flex-col min-h-[380px] snap-start justify-self-center">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold bg-[#fa7237] text-white">
+                    Tailor-made
+                  </div>
+                  <div className="text-sm font-semibold mb-2 text-white/85">{ENTERPRISE_DISPLAY.name}</div>
+                  <div className="text-3xl font-extrabold mb-1">{ENTERPRISE_DISPLAY.priceLabel}</div>
+                  <div className="text-sm mb-6 text-white/65">{ENTERPRISE_DISPLAY.cycle}</div>
+                  <ul className="space-y-3 mb-8 text-left flex-1">
+                    {ENTERPRISE_DISPLAY.lines.map((f, i) => (
+                      <li key={`ent-${i}`} className="flex items-start gap-2 text-sm text-white/90">
+                        <CheckCircle size={15} className="shrink-0 mt-0.5 text-[#fa7237]" />
+                        <span className="leading-snug">{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <a
+                    href="#contact"
+                    className="mt-auto inline-flex justify-center w-full py-3 rounded-xl text-sm font-semibold bg-white/12 border border-white/25 text-white hover:bg-white/18 transition-all"
+                  >
+                    Talk to sales
                   </a>
-                ) : (
-                  <Link to="/signup"
-                    className={`block text-center py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90
-                      ${plan.highlight ? 'bg-brand-orange text-white' : 'bg-brand-brown-deep text-white'}`}>
-                    {plan.cta}
-                  </Link>
-                )}
+                </div>
+              )}
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* CTA — teal panel; orange only on the button */}
+      {/* CTA — navy + coral */}
       <section className="relative overflow-hidden py-20 px-4 sm:px-6 lg:px-8">
         <div
-          className="absolute inset-0 bg-gradient-to-br from-brand-teal-deep via-brand-teal to-[#0f766e]"
+          className="absolute inset-0 bg-gradient-to-br from-[#233d4d] via-[#1e3648] to-[#fa7237]/35"
           aria-hidden
         />
         <div className="relative z-10 max-w-3xl mx-auto text-center text-white">
-          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Ready to grow your business?</h2>
-          <p className="text-teal-50/90 text-lg mb-8">
-            Join hundreds of restaurants already using InnovaPOS. Start your free 30-day trial today.
+          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Ready for calmer café shifts?</h2>
+          <p className="text-white/90 text-lg mb-8">
+            Teams use Cafinity to tame busy counters and keep the pass moving. Start your free 30-day trial today.
           </p>
           <Link
             to="/signup"
-            className="inline-flex items-center gap-2 bg-brand-orange text-white font-semibold px-8 py-4 rounded-xl text-base shadow-lg shadow-black/20 transition-all hover:bg-brand-orange-hover hover:scale-[1.02]"
+            className="inline-flex items-center gap-2 bg-[#fa7237] text-white font-semibold px-8 py-4 rounded-xl text-base shadow-lg shadow-black/25 transition-all hover:bg-[#e85f2c] hover:scale-[1.02]"
           >
             Start free trial
             <ArrowRight size={18} />

@@ -17,6 +17,9 @@ importers:
 
   apps/admin-portal/client:
     dependencies:
+      '@innovapos/ui-datepicker':
+        specifier: workspace:*
+        version: link:../../../packages/ui-datepicker
       '@tanstack/react-query':
         specifier: ^5.100.9
         version: 5.100.9(react@19.2.6)
@@ -179,6 +182,9 @@ importers:
       '@innovapos/logger':
         specifier: workspace:*
         version: link:../../../packages/logger
+      '@innovapos/mail-transport':
+        specifier: workspace:*
+        version: link:../../../packages/mail-transport
       '@innovapos/shared-middleware':
         specifier: workspace:*
         version: link:../../../packages/shared-middleware
@@ -332,6 +338,15 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.3
         version: 9.0.3
+
+  packages/ui-datepicker:
+    dependencies:
+      react:
+        specifier: ^18 || ^19
+        version: 19.2.6
+      react-dom:
+        specifier: ^18 || ^19
+        version: 19.2.6(react@19.2.6)
 
   services/audit-service:
     dependencies:

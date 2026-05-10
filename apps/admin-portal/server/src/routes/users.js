@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const User = require('../models/User');
+const Store = require('../models/Store');
 const { authenticateJWT, authorize, tenantScope, emitAudit } = require('@innovapos/shared-middleware');
 const { childLogger } = require('@innovapos/logger');
 const { sendWelcomeEmail } = require('../utils/mailer');
@@ -10,6 +11,18 @@ const router = express.Router();
 const generateTempPassword = () => crypto.randomBytes(6).toString('hex');
 const STAFF_ROLES = ['manager', 'cashier', 'kitchen'];
 
+const normalizeStoreAssignments = async ({ tenantId, storeIds = [], defaultStoreId = null }) => {
+  const tenantStores = await Store.find({ tenantId, isActive: true }).select('_id');
+  const tenantStoreSet = new Set(tenantStores.map((s) => String(s._id)));
+  const normalizedStoreIds = [...new Set((storeIds || []).map(String))]
+    .filter((storeId) => tenantStoreSet.has(storeId));
+  const normalizedDefaultStoreId = defaultStoreId && tenantStoreSet.has(String(defaultStoreId))
+    ? String(defaultStoreId)
+    : normalizedStoreIds[0] || null;
+
+  return { normalizedStoreIds, normalizedDefaultStoreId };
+};
+
 // GET /users — list users in tenant
 router.get('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
   try {
@@ -17,6 +30,8 @@ router.get('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
     if (!tenantId) return res.status(400).json({ message: 'tenantId required' });
 
     const users = await User.find({ tenantId })
+      .populate('storeIds', 'name code')
+      .populate('defaultStoreId', 'name code')
       .select('-password -resetPasswordToken -resetPasswordExpires')
       .sort({ role: 1, name: 1 });
     res.json(users);
@@ -29,7 +44,7 @@ router.get('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
 router.post('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
   const logger = childLogger(req.app.locals.logger, req);
   try {
-    const { name, email, role } = req.body;
+    const { name, email, role, storeIds, defaultStoreId } = req.body;
     if (!name?.trim() || !email?.trim() || !role) {
       return res.status(400).json({ message: 'name, email, and role are required' });
     }
@@ -60,12 +75,19 @@ router.post('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), ten
     if (exists) return res.status(400).json({ message: 'Email already in use' });
 
     const tempPassword = generateTempPassword();
+    const { normalizedStoreIds, normalizedDefaultStoreId } = await normalizeStoreAssignments({
+      tenantId,
+      storeIds,
+      defaultStoreId,
+    });
     const user = await User.create({
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password: tempPassword,
       role,
       tenantId,
+      storeIds: normalizedStoreIds,
+      defaultStoreId: normalizedDefaultStoreId,
       isTemporaryPassword: true,
       isActive: true,
       createdBy: req.user.id,
@@ -98,7 +120,7 @@ router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), t
     const user = await User.findOne(filter);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const { name, email, isActive } = req.body;
+    const { name, email, role, isActive, storeIds, defaultStoreId } = req.body;
     if (name) user.name = name.trim();
     if (email) {
       const conflict = await User.findOne({ email: email.toLowerCase(), _id: { $ne: user._id } });
@@ -106,6 +128,34 @@ router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), t
       user.email = email.toLowerCase();
     }
     if (isActive !== undefined) user.isActive = isActive;
+    if (role) {
+      const allowedRoles = req.user.role === 'superadmin' ? [...STAFF_ROLES, 'merchant_admin'] : STAFF_ROLES;
+      if (!allowedRoles.includes(role)) {
+        if (role === 'merchant_admin' && req.user.role === 'merchant_admin') {
+          const adminCount = await User.countDocuments({
+            tenantId: user.tenantId,
+            role: 'merchant_admin',
+            isActive: true,
+            _id: { $ne: user._id },
+          });
+          if (adminCount >= 2) {
+            return res.status(400).json({ message: 'Maximum 2 admin users allowed per merchant' });
+          }
+        } else {
+          return res.status(400).json({ message: `Role ${role} not allowed` });
+        }
+      }
+      user.role = role;
+    }
+    if (storeIds !== undefined || defaultStoreId !== undefined) {
+      const { normalizedStoreIds, normalizedDefaultStoreId } = await normalizeStoreAssignments({
+        tenantId: user.tenantId,
+        storeIds: storeIds !== undefined ? storeIds : user.storeIds,
+        defaultStoreId: defaultStoreId !== undefined ? defaultStoreId : user.defaultStoreId,
+      });
+      user.storeIds = normalizedStoreIds;
+      user.defaultStoreId = normalizedDefaultStoreId;
+    }
     user.updatedBy = req.user.id;
     await user.save();
 

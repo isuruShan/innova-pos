@@ -8,7 +8,7 @@ export default function StatCard({ label, value, icon: Icon, color = 'amber', su
   };
 
   return (
-    <div className="bg-[#1e293b] rounded-2xl p-5 border border-slate-700/50 flex items-start gap-4">
+    <div className="bg-[var(--pos-panel)] rounded-2xl p-5 border border-slate-700/50 flex items-start gap-4">
       {Icon && (
         <div className={`w-11 h-11 rounded-xl flex items-center justify-center border flex-shrink-0 ${colors[color]}`}>
           <Icon size={20} />
@@ -16,7 +16,7 @@ export default function StatCard({ label, value, icon: Icon, color = 'amber', su
       )}
       <div className="min-w-0">
         <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">{label}</p>
-        <p className="text-2xl font-bold text-white mt-0.5 truncate">{value}</p>
+        <p className="text-2xl font-bold text-[var(--pos-text-primary)] mt-0.5 truncate">{value}</p>
         {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
       </div>
     </div>

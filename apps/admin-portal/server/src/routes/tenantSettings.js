@@ -21,24 +21,51 @@ const uploadLogo = multer({
   },
 });
 
+function defaultCurrencyForTenant(tenant) {
+  const iso = String(tenant?.countryIso || 'LK').toUpperCase();
+  if (iso === 'LK') return { currency: 'LKR', currencySymbol: 'Rs.' };
+  return { currency: 'USD', currencySymbol: '$' };
+}
+
 const getOrCreate = async (tenantId) => {
   let s = await TenantSettings.findOne({ tenantId });
   if (!s) {
     const tenant = await Tenant.findById(tenantId);
+    const dc = defaultCurrencyForTenant(tenant);
     s = await TenantSettings.create({
       tenantId,
       businessName: tenant?.businessName || '',
+      currency: dc.currency,
+      currencySymbol: dc.currencySymbol,
     });
   }
   return s;
 };
+
+async function attachFreshLogoUrl(settingsDoc, req) {
+  const plain = settingsDoc.toObject ? settingsDoc.toObject() : { ...settingsDoc };
+  if (!plain.logoKey) return plain;
+  try {
+    const uploadUrl = process.env.UPLOAD_SERVICE_URL || 'http://localhost:3002';
+    const { data } = await axios.post(
+      `${uploadUrl}/upload/presign`,
+      { key: plain.logoKey, expiresIn: 86400 },
+      { headers: { Authorization: req.headers.authorization || '' } }
+    );
+    if (data?.url) plain.logoUrl = data.url;
+  } catch {
+    // keep stored logoUrl (may be expired presigned URL)
+  }
+  return plain;
+}
 
 // GET /tenant-settings — get current tenant's settings
 router.get('/', authenticateJWT, tenantScope, async (req, res) => {
   try {
     const tenantId = req.user.role === 'superadmin' ? (req.query.tenantId || req.tenantId) : req.tenantId;
     if (!tenantId) return res.status(400).json({ message: 'tenantId required' });
-    res.json(await getOrCreate(tenantId));
+    const s = await getOrCreate(tenantId);
+    res.json(await attachFreshLogoUrl(s, req));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -53,26 +80,29 @@ router.put('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
 
     const allowed = [
       'businessName', 'tagline', 'logoUrl', 'logoKey', 'faviconUrl',
-      'primaryColor', 'accentColor', 'sidebarColor', 'textColor',
+      'primaryColor', 'accentColor', 'sidebarColor', 'textColor', 'selectionTextColor',
       'address', 'phone', 'email', 'website',
       'paymentMethods', 'currency', 'currencySymbol', 'timezone',
-      'receiptHeader', 'receiptFooter', 'printReceiptByDefault',
+      'receiptHeader', 'receiptFooter', 'printReceiptByDefault', 'receiptPrintAtStatus',
     ];
 
     allowed.forEach(k => { if (req.body[k] !== undefined) s[k] = req.body[k]; });
     s.updatedBy = req.user.id;
     await s.save();
 
-    // Sync businessName + branding to Tenant document
-    if (req.body.businessName || req.body.logoUrl) {
-      const update = {};
-      if (req.body.businessName) update.businessName = req.body.businessName;
-      if (req.body.logoUrl) { update['settings.logoUrl'] = req.body.logoUrl; update['settings.logoKey'] = req.body.logoKey || ''; }
-      if (req.body.primaryColor) update['settings.primaryColor'] = req.body.primaryColor;
-      if (req.body.accentColor) update['settings.accentColor'] = req.body.accentColor;
-      if (req.body.paymentMethods) update['settings.paymentMethods'] = req.body.paymentMethods;
-      await Tenant.findByIdAndUpdate(tenantId, update);
+    // Sync branding fields to Tenant document for downstream consumers
+    const tenantBrandingUpdate = {};
+    if (req.body.businessName !== undefined) tenantBrandingUpdate.businessName = req.body.businessName;
+    if (req.body.logoUrl !== undefined) {
+      tenantBrandingUpdate['settings.logoUrl'] = req.body.logoUrl;
+      tenantBrandingUpdate['settings.logoKey'] = req.body.logoKey || '';
     }
+    if (req.body.primaryColor !== undefined) tenantBrandingUpdate['settings.primaryColor'] = req.body.primaryColor;
+    if (req.body.accentColor !== undefined) tenantBrandingUpdate['settings.accentColor'] = req.body.accentColor;
+    if (req.body.sidebarColor !== undefined) tenantBrandingUpdate['settings.sidebarColor'] = req.body.sidebarColor;
+    if (req.body.textColor !== undefined) tenantBrandingUpdate['settings.textColor'] = req.body.textColor;
+    if (req.body.paymentMethods !== undefined) tenantBrandingUpdate['settings.paymentMethods'] = req.body.paymentMethods;
+    if (Object.keys(tenantBrandingUpdate).length) await Tenant.findByIdAndUpdate(tenantId, tenantBrandingUpdate);
 
     await emitAudit({
       req,

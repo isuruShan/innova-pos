@@ -10,6 +10,9 @@ import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
 import { MANAGER_LINKS } from '../../constants/managerLinks';
 import { formatCurrency } from '../../utils/format';
+import { useStoreContext } from '../../context/StoreContext';
+import { PromoListSkeleton } from '../../components/StoreSkeletons';
+import PosDateField from '../../components/PosDateField';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -119,7 +122,7 @@ function BundleItemsField({ bundleItems, onChange, menuItems }) {
               // Single atomic update — avoids stale-closure overwrite bug
               updateItem(i, { menuItem: e.target.value, name: item?.name || '' });
             }}
-            className="flex-1 bg-[#0f172a] border border-slate-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="flex-1 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
           >
             <option value="">Select item…</option>
             {menuItems.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
@@ -127,7 +130,7 @@ function BundleItemsField({ bundleItems, onChange, menuItems }) {
           <input
             type="number" min="1" value={bi.qty}
             onChange={e => updateItem(i, { qty: parseInt(e.target.value) || 1 })}
-            className="w-16 bg-[#0f172a] border border-slate-700 text-white rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-16 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500"
           />
           <button type="button" onClick={() => remove(i)}
             className="p-2 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition">
@@ -210,13 +213,13 @@ function ApplicableItemsField({
           {categoryNames.map(c => (
             <span key={c} className="flex items-center gap-1 bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs px-2.5 py-1 rounded-full">
               📁 {c}
-              <button type="button" onClick={() => removeCategory(c)} className="ml-0.5 hover:text-white leading-none">×</button>
+              <button type="button" onClick={() => removeCategory(c)} className="ml-0.5 hover:text-[var(--pos-text-primary)] leading-none">×</button>
             </span>
           ))}
           {itemIds.map((id, i) => (
             <span key={id} className="flex items-center gap-1 bg-slate-700 border border-slate-600 text-slate-200 text-xs px-2.5 py-1 rounded-full">
               {itemNames[i]}
-              <button type="button" onClick={() => removeItem(id, itemNames[i])} className="ml-0.5 hover:text-white leading-none">×</button>
+              <button type="button" onClick={() => removeItem(id, itemNames[i])} className="ml-0.5 hover:text-[var(--pos-text-primary)] leading-none">×</button>
             </span>
           ))}
         </div>
@@ -224,7 +227,7 @@ function ApplicableItemsField({
 
       {/* Search input */}
       <div className="relative">
-        <div className="flex items-center gap-2 bg-[#0f172a] border border-slate-700 rounded-xl px-3 py-2 focus-within:border-amber-500 transition">
+        <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-3 py-2 focus-within:border-amber-500 transition">
           <Search size={13} className="text-slate-500 flex-shrink-0" />
           <input
             type="text"
@@ -232,17 +235,17 @@ function ApplicableItemsField({
             onChange={e => { setSearch(e.target.value); setOpen(true); }}
             onFocus={() => setOpen(true)}
             placeholder="Search categories or products…"
-            className="flex-1 bg-transparent text-white text-sm focus:outline-none placeholder-slate-600"
+            className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
           />
           {search && (
             <button type="button" onMouseDown={() => { setSearch(''); setOpen(false); }}>
-              <X size={13} className="text-slate-500 hover:text-white" />
+              <X size={13} className="text-slate-500 hover:text-[var(--pos-text-primary)]" />
             </button>
           )}
         </div>
 
         {showDrop && (
-          <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-[#1e293b] border border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto">
+          <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto">
             {matchCats.length > 0 && (
               <>
                 <div className="px-3 py-1.5 text-xs font-semibold text-slate-500 bg-slate-800/60 sticky top-0">Categories</div>
@@ -280,24 +283,28 @@ function ApplicableItemsField({
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function Promotions() {
   const qc = useQueryClient();
+  const { selectedStoreId, isStoreReady } = useStoreContext();
   const [slideOpen, setSlideOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
 
-  const { data: promotions = [], isLoading } = useQuery({
-    queryKey: ['promotions'],
+  const { data: promotions = [], isPending: promosPending } = useQuery({
+    queryKey: ['promotions', selectedStoreId],
     queryFn: () => api.get('/promotions').then(r => r.data),
+    enabled: isStoreReady,
   });
 
   const { data: menuItems = [] } = useQuery({
-    queryKey: ['menu'],
+    queryKey: ['menu', selectedStoreId],
     queryFn: () => api.get('/menu').then(r => r.data),
+    enabled: isStoreReady,
   });
 
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories', 'active'],
+    queryKey: ['categories', 'active', selectedStoreId],
     queryFn: () => api.get('/categories', { params: { active: true } }).then(r => r.data),
+    enabled: isStoreReady,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['promotions'] });
@@ -417,26 +424,29 @@ export default function Promotions() {
     else createMutation.mutate(payload);
   };
 
-  const isPending = createMutation.isPending || updateMutation.isPending;
+  const savePending = createMutation.isPending || updateMutation.isPending;
   const activeCount = promotions.filter(isActive).length;
 
-  const inputCls = "w-full bg-[#0f172a] border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600";
+  const inputCls = "w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600";
   const labelCls = "block text-sm font-medium text-slate-300 mb-1.5";
 
   return (
-    <div className="min-h-screen bg-[#0f172a]">
+    <div className="min-h-screen bg-[var(--pos-page-bg)]">
       <Navbar links={MANAGER_LINKS} />
 
       <div className="max-w-4xl mx-auto p-4 sm:p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-xl font-bold text-[var(--pos-text-primary)] flex items-center gap-2">
               <Tag size={20} className="text-amber-400" />
               Promotions
             </h1>
             <p className="text-slate-500 text-sm mt-0.5">
               {activeCount} active &middot; {promotions.length} total
+              <span className="block text-xs mt-1 opacity-80">
+                Manager-created promotions require merchant approval before they apply at checkout.
+              </span>
             </p>
           </div>
           <button onClick={openAdd}
@@ -458,8 +468,8 @@ export default function Promotions() {
         </div>
 
         {/* List */}
-        {isLoading ? (
-          <div className="text-center text-slate-500 py-20 text-sm">Loading…</div>
+        {!isStoreReady || promosPending ? (
+          <PromoListSkeleton />
         ) : promotions.length === 0 ? (
           <div className="text-center py-20 text-slate-600">
             <Tag size={44} className="mx-auto mb-4 opacity-20" />
@@ -473,7 +483,7 @@ export default function Promotions() {
               const Icon = m.icon;
               return (
                 <div key={promo._id}
-                  className={`bg-[#1e293b] border rounded-2xl px-4 py-4 flex items-start gap-4 ${
+                  className={`bg-[var(--pos-panel)] border rounded-2xl px-4 py-4 flex items-start gap-4 ${
                     isActive(promo) ? 'border-slate-700/50' : 'border-slate-800/50 opacity-60'
                   }`}>
                   <div className={`w-9 h-9 rounded-xl ${m.bg} border ${m.border} flex items-center justify-center flex-shrink-0`}>
@@ -481,9 +491,18 @@ export default function Promotions() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-white font-semibold text-sm">{promo.name}</p>
+                      <p className="text-[var(--pos-text-primary)] font-semibold text-sm">{promo.name}</p>
                       <PromoTypeBadge type={promo.type} />
                       <StatusDot promo={promo} />
+                      {promo.approvalStatus && promo.approvalStatus !== 'approved' && (
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                          promo.approvalStatus === 'pending'
+                            ? 'bg-amber-500/20 text-amber-400'
+                            : 'bg-red-500/15 text-red-400'
+                        }`}>
+                          {promo.approvalStatus}
+                        </span>
+                      )}
                     </div>
                     {promo.description && (
                       <p className="text-slate-500 text-xs mt-0.5">{promo.description}</p>
@@ -494,13 +513,17 @@ export default function Promotions() {
                     <PromoSummary promo={promo} />
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => toggleMutation.mutate({ id: promo._id, active: !promo.active })}>
+                    <button
+                      disabled={promo.approvalStatus === 'pending'}
+                      title={promo.approvalStatus === 'pending' ? 'Approve before enabling' : ''}
+                      onClick={() => toggleMutation.mutate({ id: promo._id, active: !promo.active })}
+                    >
                       {promo.active
                         ? <ToggleRight size={20} className="text-green-400" />
                         : <ToggleLeft size={20} className="text-slate-600" />}
                     </button>
                     <button onClick={() => openEdit(promo)}
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition">
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition">
                       <Edit2 size={13} />
                     </button>
                     <button onClick={() => { if (confirm(`Delete "${promo.name}"?`)) deleteMutation.mutate(promo._id); }}
@@ -531,7 +554,7 @@ export default function Promotions() {
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm font-medium transition text-left ${
                       form.type === t.id
                         ? `${t.bg} ${t.color} ${t.border}`
-                        : 'bg-[#0f172a] border-slate-700 text-slate-400 hover:border-slate-600'
+                        : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:border-slate-600'
                     }`}>
                     <Icon size={16} className="flex-shrink-0" />
                     <div>
@@ -560,11 +583,21 @@ export default function Promotions() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>Start Date *</label>
-              <input type="date" {...field('startDate')} className={inputCls} />
+              <PosDateField
+                value={form.startDate ? String(form.startDate).slice(0, 10) : ''}
+                onChange={(v) => setForm((f) => ({ ...f, startDate: v }))}
+                max={form.endDate ? String(form.endDate).slice(0, 10) : undefined}
+                className={inputCls}
+              />
             </div>
             <div>
               <label className={labelCls}>End Date *</label>
-              <input type="date" {...field('endDate')} className={inputCls} />
+              <PosDateField
+                value={form.endDate ? String(form.endDate).slice(0, 10) : ''}
+                onChange={(v) => setForm((f) => ({ ...f, endDate: v }))}
+                min={form.startDate ? String(form.startDate).slice(0, 10) : undefined}
+                className={inputCls}
+              />
             </div>
           </div>
 
@@ -721,12 +754,12 @@ export default function Promotions() {
 
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={closeSlide}
-              className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 rounded-xl transition text-sm">
+              className="flex-1 bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-semibold py-2.5 rounded-xl transition text-sm">
               Cancel
             </button>
-            <button type="submit" disabled={isPending}
+            <button type="submit" disabled={savePending}
               className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl transition text-sm">
-              {isPending ? 'Saving…' : editing ? 'Save Changes' : 'Create Promotion'}
+              {savePending ? 'Saving…' : editing ? 'Save Changes' : 'Create Promotion'}
             </button>
           </div>
         </form>

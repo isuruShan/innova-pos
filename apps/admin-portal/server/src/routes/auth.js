@@ -1,10 +1,17 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('../models/User');
 const Tenant = require('../models/Tenant');
 const { authenticateJWT } = require('@innovapos/shared-middleware');
+const { sendPasswordResetEmail } = require('../utils/mailer');
 
 const router = express.Router();
+
+const toStoreIdList = (storeRefs = []) => storeRefs
+  .map((s) => (s && s._id ? s._id : s))
+  .filter(Boolean)
+  .map((s) => String(s));
 
 const buildPayload = (u, subscriptionActive = true) => ({
   id: u._id,
@@ -12,6 +19,8 @@ const buildPayload = (u, subscriptionActive = true) => ({
   email: u.email,
   role: u.role,
   tenantId: u.tenantId || null,
+  storeIds: toStoreIdList(Array.isArray(u.storeIds) ? u.storeIds : []),
+  defaultStoreId: u.defaultStoreId ? String(u.defaultStoreId) : null,
   profileImage: u.profileImage || '',
   isTemporaryPassword: u.isTemporaryPassword || false,
   subscriptionActive,
@@ -53,6 +62,50 @@ router.post('/login', async (req, res) => {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     res.set('Pragma', 'no-cache');
     res.json({ token, user: payload });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/forgot-password', async (req, res) => {
+  const email = (req.body?.email || '').toLowerCase().trim();
+  if (!email) return res.status(400).json({ message: 'Email is required' });
+  try {
+    const user = await User.findOne({ email, isActive: true });
+    if (user) {
+      const rawToken = crypto.randomBytes(24).toString('hex');
+      const hashed = crypto.createHash('sha256').update(rawToken).digest('hex');
+      user.resetPasswordToken = hashed;
+      user.resetPasswordExpires = new Date(Date.now() + 30 * 60 * 1000);
+      await user.save();
+      const appUrl = process.env.ADMIN_URL || 'http://localhost:5174';
+      const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
+      await sendPasswordResetEmail({ to: user.email, name: user.name, resetUrl }).catch(() => {});
+    }
+    res.json({ message: 'If an account exists, a password reset link has been sent.' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body || {};
+  if (!token || !newPassword) return res.status(400).json({ message: 'token and newPassword are required' });
+  if (String(newPassword).length < 8) return res.status(400).json({ message: 'New password must be at least 8 characters' });
+  try {
+    const hashed = crypto.createHash('sha256').update(String(token)).digest('hex');
+    const user = await User.findOne({
+      resetPasswordToken: hashed,
+      resetPasswordExpires: { $gt: new Date() },
+      isActive: true,
+    });
+    if (!user) return res.status(400).json({ message: 'Invalid or expired reset token' });
+    user.password = newPassword;
+    user.isTemporaryPassword = false;
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    await user.save();
+    res.json({ message: 'Password reset successful' });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }

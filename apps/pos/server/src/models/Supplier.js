@@ -8,6 +8,7 @@ const supplierSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    storeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', default: null, index: true },
     name: { type: String, required: true, trim: true },
     contactPerson: { type: String, trim: true, default: '' },
     email: { type: String, trim: true, default: '' },
@@ -22,5 +23,6 @@ const supplierSchema = new mongoose.Schema(
 );
 
 supplierSchema.index({ tenantId: 1, name: 1 });
+supplierSchema.index({ tenantId: 1, storeId: 1, name: 1 });
 
 module.exports = mongoose.model('Supplier', supplierSchema);

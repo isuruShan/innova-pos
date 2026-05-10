@@ -55,7 +55,7 @@ export default function DashboardPage() {
             </p>
             {tenant.subscriptionStatus === 'trial' && !isExpired && (
               <p className="text-xs text-amber-600 mt-0.5">
-                Trial ends {new Date(tenant.trialEndsAt).toLocaleDateString()}. Upload a payment receipt to continue.
+                Trial ends {new Date(tenant.trialEndsAt).toLocaleDateString()}. Billing and receipts are available after the trial.
               </p>
             )}
             {isExpired && (

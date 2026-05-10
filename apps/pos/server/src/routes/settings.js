@@ -2,28 +2,34 @@ const express = require('express');
 const Settings = require('../models/Settings');
 const { protect, authorize, tenantScope } = require('../middleware/auth');
 const { emitAudit } = require('@innovapos/shared-middleware');
+const { resolveSelectedStore, resolveWriteStoreId } = require('../middleware/storeScope');
 
 const router = express.Router();
 
-async function getOrCreate(tenantId) {
-  let s = await Settings.findOne({ tenantId });
-  if (!s) s = await Settings.create({ tenantId });
+async function getOrCreate(tenantId, storeId = null) {
+  let s = await Settings.findOne({ tenantId, storeId });
+  if (!s) s = await Settings.create({ tenantId, storeId });
   return s;
 }
 
 // GET settings — any authenticated user (cashier needs tax/fee rates)
-router.get('/', protect, tenantScope, async (req, res) => {
+router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    res.json(await getOrCreate(req.tenantId));
+    if (req.storeId) {
+      const storeSettings = await Settings.findOne({ tenantId: req.tenantId, storeId: req.storeId });
+      if (storeSettings) return res.json(storeSettings);
+    }
+    res.json(await getOrCreate(req.tenantId, null));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
 // PUT update settings
-router.put('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
+router.put('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const s = await getOrCreate(req.tenantId);
+    const writeStoreId = await resolveWriteStoreId(req);
+    const s = await getOrCreate(req.tenantId, writeStoreId);
     const before = s.toObject();
 
     const { orderTypes, currency, currencySymbol, timezone } = req.body;

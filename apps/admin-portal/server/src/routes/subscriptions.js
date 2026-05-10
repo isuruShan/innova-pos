@@ -2,11 +2,13 @@ const express = require('express');
 const Tenant = require('../models/Tenant');
 const Subscription = require('../models/Subscription');
 const PaymentReceipt = require('../models/PaymentReceipt');
+const SubscriptionPlan = require('../models/SubscriptionPlan');
 const { authenticateJWT, authorize, emitAudit } = require('@innovapos/shared-middleware');
 const { sendEmail } = require('../utils/mailer');
 const multer = require('multer');
 const axios = require('axios');
 const FormData = require('form-data');
+const { tenantPlanAudience } = require('../utils/planAudience');
 
 const router = express.Router();
 
@@ -19,6 +21,41 @@ const upload = multer({
   },
 });
 
+const amountsEqual = (a, b) => Number(a).toFixed(2) === Number(b).toFixed(2);
+
+async function resolveRequestedPlan({ tenant, planId }) {
+  const audience = tenantPlanAudience(tenant.countryIso);
+  const regionFilter = { planAudience: audience };
+
+  // Locked tenants must pay assigned plan only.
+  if (tenant.planLocked) {
+    if (!tenant.assignedPlanId) return null;
+    const assigned = await SubscriptionPlan.findOne({ _id: tenant.assignedPlanId, isActive: true, ...regionFilter });
+    return assigned || null;
+  }
+
+  if (planId) {
+    const selected = await SubscriptionPlan.findOne({ _id: planId, isActive: true, ...regionFilter });
+    if (selected) return selected;
+  }
+
+  const latestReceipt = await PaymentReceipt.findOne({
+    tenantId: tenant._id,
+    requestedPlanId: { $ne: null },
+  }).sort({ createdAt: -1 });
+  if (latestReceipt?.requestedPlanId) {
+    const previous = await SubscriptionPlan.findOne({ _id: latestReceipt.requestedPlanId, isActive: true, ...regionFilter });
+    if (previous) return previous;
+  }
+
+  if (tenant.assignedPlanId) {
+    const assigned = await SubscriptionPlan.findOne({ _id: tenant.assignedPlanId, isActive: true, ...regionFilter });
+    if (assigned) return assigned;
+  }
+
+  return SubscriptionPlan.findOne({ isActive: true, isDefault: true, ...regionFilter }).sort({ createdAt: 1 });
+}
+
 // GET /subscriptions — list payment receipts
 router.get('/receipts', authenticateJWT, async (req, res) => {
   try {
@@ -30,6 +67,7 @@ router.get('/receipts', authenticateJWT, async (req, res) => {
       .sort({ createdAt: -1 })
       .populate('tenantId', 'businessName slug')
       .populate('verifiedBy', 'name')
+      .populate('requestedPlanId', 'name code amount currency billingCycle durationDays')
       .lean();
     res.json(receipts);
   } catch (err) {
@@ -40,9 +78,25 @@ router.get('/receipts', authenticateJWT, async (req, res) => {
 // POST /subscriptions/receipts — merchant uploads a payment receipt
 router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.single('receipt'), async (req, res) => {
   try {
-    const { amount, bankReference, bankName, paymentDate, notes } = req.body;
+    const { amount, bankReference, bankName, paymentDate, notes, planId } = req.body;
     if (!amount || !bankReference || !paymentDate) {
       return res.status(400).json({ message: 'amount, bankReference, and paymentDate are required' });
+    }
+    const amountValue = Number(amount);
+    if (!Number.isFinite(amountValue) || amountValue <= 0) {
+      return res.status(400).json({ message: 'amount must be a positive number' });
+    }
+
+    const tenant = await Tenant.findById(req.tenantId).select('assignedPlanId planLocked countryIso');
+    if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+    const requestedPlan = await resolveRequestedPlan({ tenant, planId });
+    if (!requestedPlan) {
+      return res.status(400).json({ message: 'No active plan is assigned. Please contact support.' });
+    }
+    if (!amountsEqual(amountValue, requestedPlan.amount)) {
+      return res.status(400).json({
+        message: `Amount must exactly match the plan amount (${requestedPlan.currency} ${Number(requestedPlan.amount).toLocaleString()}).`,
+      });
     }
 
     let receiptFileUrl = '';
@@ -71,7 +125,12 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
 
     const receipt = await PaymentReceipt.create({
       tenantId: req.tenantId,
-      amount: parseFloat(amount),
+      amount: amountValue,
+      currency: requestedPlan.currency || 'LKR',
+      requestedPlanId: requestedPlan._id,
+      requestedPlanCode: requestedPlan.code,
+      expectedAmount: requestedPlan.amount,
+      amountMatchesExpected: true,
       bankReference: bankReference.trim(),
       bankName: (bankName || '').trim(),
       paymentDate: new Date(paymentDate),
@@ -90,7 +149,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
 // PUT /subscriptions/receipts/:id/verify — superadmin verifies receipt and extends subscription
 router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {
-    const { action, rejectionReason, extensionType, customDays } = req.body;
+    const { action, rejectionReason } = req.body;
 
     if (!['verify', 'reject'].includes(action)) {
       return res.status(400).json({ message: 'action must be verify or reject' });
@@ -113,16 +172,24 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
 
       await sendEmail({
         to: receipt.tenantId?.email || '',
-        subject: 'Payment Receipt Update — InnovaPOS',
+        subject: 'Payment Receipt Update — Cafinity',
         html: `<p>Your payment receipt was not accepted. Reason: ${rejectionReason}</p>`,
       }).catch(() => {});
 
       return res.json({ message: 'Receipt rejected', receipt });
     }
 
-    // Calculate extension days
-    const daysMap = { monthly: 30, quarterly: 90, yearly: 365, custom: parseInt(customDays) || 30 };
-    const extensionDays = daysMap[extensionType] || 30;
+    if (!receipt.amountMatchesExpected) {
+      return res.status(400).json({ message: 'Receipt amount does not match expected plan amount' });
+    }
+
+    const plan = receipt.requestedPlanId
+      ? await SubscriptionPlan.findOne({ _id: receipt.requestedPlanId, isActive: true })
+      : null;
+    if (!plan) {
+      return res.status(400).json({ message: 'Cannot verify receipt: requested plan no longer active' });
+    }
+    const extensionDays = plan.durationDays;
 
     // Extend subscription
     const tenant = await require('../models/Tenant').findById(receipt.tenantId._id || receipt.tenantId);
@@ -138,11 +205,16 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
 
     const subscription = await Subscription.create({
       tenantId: tenant._id,
-      plan: extensionType || 'monthly',
+      plan: plan.billingCycle || 'custom',
+      planId: plan._id,
+      planCode: plan.code,
+      amount: plan.amount,
+      currency: plan.currency || 'LKR',
+      durationDays: extensionDays,
       startDate: now,
       endDate: newEnd,
       extendedByAdmin: true,
-      extensionNote: `Payment receipt verified. Extension: ${extensionType || 'monthly'} (${extensionDays} days)`,
+      extensionNote: `Payment receipt verified. Extension: ${plan.name} (${extensionDays} days)`,
       extendedBy: req.user.id,
       extendedAt: now,
       createdBy: req.user.id,
@@ -150,6 +222,11 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
 
     // Update tenant subscription status
     tenant.subscriptionStatus = 'active';
+    if (!tenant.assignedPlanId) {
+      tenant.assignedPlanId = plan._id;
+      tenant.assignedAt = now;
+      tenant.assignedBy = req.user.id;
+    }
     tenant.updatedBy = req.user.id;
     await tenant.save();
 
@@ -159,6 +236,7 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
     receipt.verifiedAt = now;
     receipt.subscriptionExtended = true;
     receipt.extensionDays = extensionDays;
+    receipt.amountMatchesExpected = amountsEqual(receipt.amount, plan.amount);
     receipt.subscriptionId = subscription._id;
     receipt.updatedBy = req.user.id;
     await receipt.save();
@@ -177,7 +255,11 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
       html: `<p>Your payment has been verified. Your subscription is now active until <strong>${newEnd.toDateString()}</strong>. Thank you!</p>`,
     }).catch(() => {});
 
-    res.json({ message: `Subscription extended by ${extensionDays} days (until ${newEnd.toDateString()})`, receipt, subscription });
+    res.json({
+      message: `Subscription extended by ${extensionDays} days (until ${newEnd.toDateString()})`,
+      receipt,
+      subscription,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -186,11 +268,13 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
 // GET /subscriptions/my — merchant's own subscription status
 router.get('/my', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
   try {
-    const tenant = await Tenant.findById(req.tenantId);
+    const tenant = await Tenant.findById(req.tenantId).populate('assignedPlanId', 'name code amount currency billingCycle durationDays isActive');
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
 
     const subscriptions = await Subscription.find({ tenantId: req.tenantId }).sort({ endDate: -1 });
-    const receipts = await PaymentReceipt.find({ tenantId: req.tenantId }).sort({ createdAt: -1 });
+    const receipts = await PaymentReceipt.find({ tenantId: req.tenantId })
+      .populate('requestedPlanId', 'name code amount currency billingCycle durationDays')
+      .sort({ createdAt: -1 });
 
     res.json({ tenant, subscriptions, receipts });
   } catch (err) {

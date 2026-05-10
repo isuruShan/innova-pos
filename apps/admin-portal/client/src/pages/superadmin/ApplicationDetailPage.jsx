@@ -102,9 +102,9 @@ export default function ApplicationDetailPage() {
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
           <div>
             <h2 className="text-xl font-bold text-gray-900">
-              {app.personal.firstName} {app.personal.lastName}
+              {app.personal?.firstName || '—'} {app.personal?.lastName || ''}
             </h2>
-            <p className="text-gray-500 text-sm mt-1">{app.business.name}</p>
+            <p className="text-gray-500 text-sm mt-1">{app.business?.name || '—'}</p>
           </div>
           <div className="flex items-center gap-2">
             <span
@@ -131,17 +131,17 @@ export default function ApplicationDetailPage() {
               <DetailRow
                 icon={User}
                 label="Full name"
-                value={`${app.personal.firstName} ${app.personal.lastName}`}
+                value={`${app.personal?.firstName || ''} ${app.personal?.lastName || ''}`.trim() || undefined}
               />
-              <DetailRow icon={Mail} label="Email" value={app.personal.email} />
-              <DetailRow icon={Phone} label="Mobile" value={app.personal.mobile || app.personal.mobileE164} />
+              <DetailRow icon={Mail} label="Email" value={app.personal?.email} />
+              <DetailRow icon={Phone} label="Mobile" value={app.personal?.mobile || app.personal?.mobileE164} />
             </div>
           </div>
 
           <div>
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Business Details</h3>
             <div className="bg-gray-50 rounded-xl p-4">
-              <DetailRow icon={Building2} label="Business name" value={app.business.name} />
+              <DetailRow icon={Building2} label="Business name" value={app.business?.name} />
               <DetailRow icon={User} label="Owner name" value={ownerLabel} />
               <DetailRow icon={MapPin} label="Address" value={addressText} />
               {app.business.isRegistered && (

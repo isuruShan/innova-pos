@@ -1,13 +1,14 @@
 const express = require('express');
 const Category = require('../models/Category');
 const { protect, authorize, tenantScope } = require('../middleware/auth');
+const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
 
 const router = express.Router();
 
-router.get('/', protect, tenantScope, async (req, res) => {
+router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { all } = req.query;
-    const filter = { tenantId: req.tenantId };
+    const filter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
     if (all !== 'true') filter.active = true;
     const categories = await Category.find(filter).sort({ sortOrder: 1, name: 1 });
     res.json(categories);
@@ -16,14 +17,17 @@ router.get('/', protect, tenantScope, async (req, res) => {
   }
 });
 
-router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
+router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { name, sortOrder } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: 'Category name is required' });
+    const storeId = await resolveWriteStoreId(req);
+    if (!storeId) return res.status(400).json({ message: 'No store available for category creation' });
     const category = await Category.create({
       name: name.trim(),
       sortOrder: sortOrder || 0,
       tenantId: req.tenantId,
+      storeId,
       createdBy: req.user.id,
     });
     res.status(201).json(category);
@@ -33,7 +37,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
   }
 });
 
-router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
+router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { name, active, sortOrder } = req.body;
     const update = { updatedBy: req.user.id };
@@ -42,7 +46,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
     if (sortOrder !== undefined) update.sortOrder = sortOrder;
 
     const category = await Category.findOneAndUpdate(
-      { _id: req.params.id, tenantId: req.tenantId },
+      { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) },
       update,
       { new: true, runValidators: true }
     );
@@ -54,9 +58,9 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
   }
 });
 
-router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
+router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const category = await Category.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId });
+    const category = await Category.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) });
     if (!category) return res.status(404).json({ message: 'Category not found' });
     res.json({ message: 'Category deleted' });
   } catch (err) {

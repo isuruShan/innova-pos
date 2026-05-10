@@ -1,19 +1,16 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, Zap } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
 
   return (
-    <nav className="fixed top-0 inset-x-0 z-50 bg-[#042f2c]">
+    <nav className="fixed top-0 inset-x-0 z-50 bg-[#233d4d]/98 backdrop-blur-sm border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-brand-orange">
-              <Zap size={18} className="text-white" fill="white" />
-            </div>
-            <span className="font-bold text-xl text-white tracking-tight">InnovaPOS</span>
+          <Link to="/" className="flex items-center gap-2 shrink-0">
+            <img src="/cafinity-logo.png" alt="Cafinity" className="h-9 w-auto rounded-lg shadow-sm" />
           </Link>
 
           <div className="hidden md:flex items-center gap-8">
@@ -30,10 +27,6 @@ export default function Navbar() {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            <a href="http://localhost:5173" target="_blank" rel="noreferrer"
-              className="text-sm font-medium text-teal-100/85 hover:text-white px-4 py-2 rounded-lg transition-colors">
-              Sign In
-            </a>
             <Link to="/signup"
               className="text-sm font-semibold text-white px-4 py-2 rounded-lg transition-colors bg-brand-orange hover:bg-brand-orange-hover"
             >
@@ -48,7 +41,7 @@ export default function Navbar() {
       </div>
 
       {open && (
-        <div className="md:hidden bg-[#042f2c] px-4 py-4 space-y-3">
+        <div className="md:hidden bg-[#233d4d] px-4 py-4 space-y-3 border-t border-white/10">
           {['#features', '#pricing', '#contact'].map((href, i) => (
             <a key={i} href={href} onClick={() => setOpen(false)}
               className="block text-sm font-medium text-teal-100/90 py-2 hover:text-white">

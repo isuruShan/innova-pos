@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { Search, Building2, Users, CheckCircle, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import api from '../../api/axios';
+import ViewModeToggle from '../../components/common/ViewModeToggle';
 
 const STATUS_CONFIG = {
   active:    { label: 'Active',    class: 'bg-green-100 text-green-700',  icon: CheckCircle },
@@ -16,10 +18,10 @@ const SUB_STATUS_CONFIG = {
 };
 
 export default function MerchantsPage() {
-  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_merchants') || 'grid');
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['tenants', search, statusFilter, page],
@@ -32,10 +34,10 @@ export default function MerchantsPage() {
     },
   });
 
-  const statusMutation = useMutation({
-    mutationFn: ({ id, status }) => api.put(`/tenants/${id}/status`, { status }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tenants'] }),
-  });
+  const onViewModeChange = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('view_mode_merchants', mode);
+  };
 
   return (
     <div className="space-y-6">
@@ -61,10 +63,62 @@ export default function MerchantsPage() {
         <button onClick={() => refetch()} className="flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
           <RefreshCw size={14} />
         </button>
+        <div className="sm:ml-auto">
+          <ViewModeToggle mode={viewMode} setMode={onViewModeChange} />
+        </div>
       </div>
 
       {isLoading ? (
         <div className="text-center py-12 text-gray-400">Loading merchants...</div>
+      ) : viewMode === 'table' ? (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                {['Merchant', 'Status', 'Subscription', 'Assigned plan', 'Admins', 'Actions'].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {data?.tenants?.map((tenant) => {
+                const sc = STATUS_CONFIG[tenant.status] || STATUS_CONFIG.active;
+                const StatusIcon = sc.icon;
+                return (
+                  <tr key={tenant._id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-900">{tenant.businessName}</p>
+                      <p className="text-xs text-gray-500">{tenant.slug}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${sc.class}`}>
+                        <StatusIcon size={11} />
+                        {sc.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${SUB_STATUS_CONFIG[tenant.subscriptionStatus] || 'bg-gray-100 text-gray-600'}`}>
+                        {tenant.subscriptionStatus}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-700">
+                      {tenant.assignedPlanId?.name || 'Not assigned'}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-600">{tenant.admins?.length || 0}</td>
+                    <td className="px-4 py-3">
+                      <Link
+                        to={`/merchants/${tenant._id}`}
+                        className="px-3 py-1.5 text-xs rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                      >
+                        Open workspace
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {data?.tenants?.map(tenant => {
@@ -109,6 +163,24 @@ export default function MerchantsPage() {
                     <span className="text-gray-500">Admins</span>
                     <span className="text-gray-700 flex items-center gap-1"><Users size={11} /> {tenant.admins?.length || 0}</span>
                   </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-500">Assigned plan</span>
+                    <span className="text-gray-700">{tenant.assignedPlanId?.name || 'Not assigned'}</span>
+                  </div>
+                  {tenant.assignedPlanId?.amount !== undefined && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Plan amount</span>
+                      <span className="text-gray-700">
+                        {tenant.assignedPlanId.currency || 'LKR'} {Number(tenant.assignedPlanId.amount).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-500">Plan lock</span>
+                    <span className={`px-2 py-0.5 rounded-full font-medium ${tenant.planLocked ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {tenant.planLocked ? 'Locked' : 'Unlocked'}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Admin emails */}
@@ -120,21 +192,13 @@ export default function MerchantsPage() {
                   </div>
                 )}
 
-                {/* Action buttons */}
-                <div className="mt-4 flex gap-2">
-                  {tenant.status === 'active' ? (
-                    <button
-                      onClick={() => statusMutation.mutate({ id: tenant._id, status: 'suspended' })}
-                      className="flex-1 py-1.5 rounded-lg text-xs font-medium border border-yellow-300 text-yellow-700 hover:bg-yellow-50 transition-colors">
-                      Suspend
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => statusMutation.mutate({ id: tenant._id, status: 'active' })}
-                      className="flex-1 py-1.5 rounded-lg text-xs font-medium border border-green-300 text-green-700 hover:bg-green-50 transition-colors">
-                      Activate
-                    </button>
-                  )}
+                <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+                  <Link
+                    to={`/merchants/${tenant._id}`}
+                    className="w-full inline-flex justify-center px-3 py-1.5 text-xs rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  >
+                    Open workspace
+                  </Link>
                 </div>
               </div>
             );

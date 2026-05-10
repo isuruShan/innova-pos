@@ -1,13 +1,22 @@
 import { createContext, useContext, useState, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import api from '../api/axios';
+import { processSyncQueue } from '../offline/sync';
 
 const AuthContext = createContext(null);
+
+function normalizeStoredUser(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const role = String(raw.role || '').trim().toLowerCase();
+  const tenantId = raw.tenantId != null ? String(raw.tenantId) : null;
+  return { ...raw, role, tenantId };
+}
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
       const stored = localStorage.getItem('pos_user');
-      return stored ? JSON.parse(stored) : null;
+      return stored ? normalizeStoredUser(JSON.parse(stored)) : null;
     } catch {
       return null;
     }
@@ -16,9 +25,13 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback(async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
     localStorage.setItem('pos_token', data.token);
-    localStorage.setItem('pos_user', JSON.stringify(data.user));
-    setUser(data.user);
-    return data.user;
+    const normalized = normalizeStoredUser(data.user);
+    localStorage.setItem('pos_user', JSON.stringify(normalized));
+    flushSync(() => {
+      setUser(normalized);
+    });
+    processSyncQueue().catch(() => {});
+    return normalized;
   }, []);
 
   const logout = useCallback(() => {
@@ -29,8 +42,9 @@ export const AuthProvider = ({ children }) => {
 
   const updateUser = useCallback((updatedUser, newToken) => {
     if (newToken) localStorage.setItem('pos_token', newToken);
-    localStorage.setItem('pos_user', JSON.stringify(updatedUser));
-    setUser(updatedUser);
+    const normalized = normalizeStoredUser(updatedUser);
+    localStorage.setItem('pos_user', JSON.stringify(normalized));
+    setUser(normalized);
   }, []);
 
   return (

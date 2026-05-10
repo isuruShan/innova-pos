@@ -22,9 +22,9 @@ const settingsSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Tenant',
       required: true,
-      unique: true,
       index: true,
     },
+    storeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', default: null, index: true },
     orderTypes: {
       'dine-in': { type: orderTypeSettingSchema, default: () => ({}) },
       takeaway: { type: orderTypeSettingSchema, default: () => ({}) },
@@ -40,5 +40,7 @@ const settingsSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+settingsSchema.index({ tenantId: 1, storeId: 1 }, { unique: true });
 
 module.exports = mongoose.model('Settings', settingsSchema);

@@ -25,6 +25,7 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
       accentColor: data.accentColor,
       sidebarColor: data.sidebarColor,
       textColor: data.textColor,
+      selectionTextColor: data.selectionTextColor || '#ffffff',
       paymentMethods: data.paymentMethods,
       currency: data.currency,
       currencySymbol: data.currencySymbol,
@@ -32,23 +33,26 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
       receiptFooter: data.receiptFooter,
       receiptHeader: data.receiptHeader,
       printReceiptByDefault: data.printReceiptByDefault,
+      receiptPrintAtStatus: data.receiptPrintAtStatus || 'placement',
     };
 
     res.json(safe);
   } catch (err) {
     // Return defaults if admin service is unreachable
     res.json({
-      businessName: 'InnovaPOS',
+      businessName: 'Cafinity',
       logoUrl: '',
       primaryColor: '#1a1a2e',
       accentColor: '#e94560',
       sidebarColor: '#16213e',
       textColor: '#ffffff',
+      selectionTextColor: '#ffffff',
       paymentMethods: ['cash', 'card'],
       currency: 'LKR',
       currencySymbol: 'Rs.',
       receiptFooter: 'Thank you for your visit!',
       printReceiptByDefault: false,
+      receiptPrintAtStatus: 'placement',
     });
   }
 });

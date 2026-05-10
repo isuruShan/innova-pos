@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@innovapos/ui-datepicker": "workspace:*",
     "@tanstack/react-query": "^5.100.9",
     "axios": "^1.16.0",
     "browser-image-compression": "^2.0.2",

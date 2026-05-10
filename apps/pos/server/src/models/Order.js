@@ -8,6 +8,7 @@ const orderComboItemSchema = new mongoose.Schema({
 const orderItemSchema = new mongoose.Schema({
   menuItem: { type: mongoose.Schema.Types.ObjectId, ref: 'MenuItem', required: true },
   name: { type: String, required: true },
+  category: { type: String, default: '', trim: true },
   qty: { type: Number, required: true, min: 1 },
   price: { type: Number, required: true },
   isCombo: { type: Boolean, default: false },
@@ -20,6 +21,12 @@ const orderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Tenant',
       required: true,
+      index: true,
+    },
+    storeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Store',
+      default: null,
       index: true,
     },
     // orderNumber is now per-tenant (not globally unique)
@@ -51,9 +58,21 @@ const orderSchema = new mongoose.Schema(
     serviceFeeFixed: { type: Number, default: 0 },
     serviceFeeType: { type: String, enum: ['percentage', 'fixed'], default: 'percentage' },
     serviceFeeAmount: { type: Number, default: 0 },
+    paymentType: { type: String, default: 'cash' },
+    paymentAmount: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true },
+    customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', default: null, index: true },
+    loyaltyPointsEarned: { type: Number, default: 0, min: 0 },
+    loyaltyRedemption: {
+      reward: { type: mongoose.Schema.Types.ObjectId, ref: 'LoyaltyReward', default: null },
+      name: { type: String, default: '' },
+      pointsCost: { type: Number, default: 0, min: 0 },
+      discountAmount: { type: Number, default: 0, min: 0 },
+    },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    /** Idempotency for offline POS sync — duplicate POST returns existing order */
+    clientRequestId: { type: String, default: null },
   },
   { timestamps: true }
 );
@@ -69,7 +88,12 @@ orderSchema.pre('save', async function () {
 
 // Compound unique index: orderNumber unique per tenant
 orderSchema.index({ tenantId: 1, orderNumber: 1 }, { unique: true });
+orderSchema.index({ tenantId: 1, storeId: 1, status: 1 });
 orderSchema.index({ tenantId: 1, status: 1 });
 orderSchema.index({ tenantId: 1, createdAt: -1 });
+orderSchema.index(
+  { tenantId: 1, clientRequestId: 1 },
+  { unique: true, sparse: true }
+);
 
 module.exports = mongoose.model('Order', orderSchema);

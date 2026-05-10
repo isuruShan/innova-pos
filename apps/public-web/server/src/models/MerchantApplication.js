@@ -50,4 +50,5 @@ merchantApplicationSchema.index({ createdAt: -1 });
 merchantApplicationSchema.index({ 'personal.email': 1 });
 merchantApplicationSchema.index({ 'personal.mobileE164': 1 });
 
-module.exports = mongoose.model('MerchantApplication', merchantApplicationSchema);
+/** Explicit collection matches admin-portal-server (shared queue) */
+module.exports = mongoose.model('MerchantApplication', merchantApplicationSchema, 'merchantapplications');

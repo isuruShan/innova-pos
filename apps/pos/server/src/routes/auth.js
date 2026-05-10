@@ -1,9 +1,16 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
+const { sendPasswordResetEmail } = require('../utils/mailer');
 
 const router = express.Router();
+
+const toStoreIdList = (storeRefs = []) => storeRefs
+  .map((s) => (s && s._id ? s._id : s))
+  .filter(Boolean)
+  .map((s) => String(s));
 
 const buildPayload = (u, subscriptionActive = true) => ({
   id: u._id,
@@ -11,6 +18,8 @@ const buildPayload = (u, subscriptionActive = true) => ({
   email: u.email,
   role: u.role,
   tenantId: u.tenantId || null,
+  storeIds: toStoreIdList(Array.isArray(u.storeIds) ? u.storeIds : []),
+  defaultStoreId: u.defaultStoreId ? String(u.defaultStoreId) : null,
   profileImage: u.profileImage || '',
   isTemporaryPassword: u.isTemporaryPassword || false,
   subscriptionActive,
@@ -22,7 +31,7 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({ message: 'Email and password are required' });
 
   try {
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({ email: email.toLowerCase() }).populate('storeIds', '_id');
     if (!user || !(await user.comparePassword(password)))
       return res.status(401).json({ message: 'Invalid credentials' });
 
@@ -54,9 +63,55 @@ router.post('/login', async (req, res) => {
   }
 });
 
+router.post('/forgot-password', async (req, res) => {
+  const email = (req.body?.email || '').toLowerCase().trim();
+  if (!email) return res.status(400).json({ message: 'Email is required' });
+  try {
+    const user = await User.findOne({ email, isActive: true });
+    if (user) {
+      const rawToken = crypto.randomBytes(24).toString('hex');
+      const hashed = crypto.createHash('sha256').update(rawToken).digest('hex');
+      user.resetPasswordToken = hashed;
+      user.resetPasswordExpires = new Date(Date.now() + 30 * 60 * 1000);
+      await user.save();
+      const appUrl = process.env.POS_URL || 'http://localhost:5173';
+      const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
+      await sendPasswordResetEmail({ to: user.email, name: user.name, resetUrl }).catch(() => {});
+    }
+    res.json({ message: 'If an account exists, a password reset link has been sent.' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body || {};
+  if (!token || !newPassword) return res.status(400).json({ message: 'token and newPassword are required' });
+  if (String(newPassword).length < 8) return res.status(400).json({ message: 'New password must be at least 8 characters' });
+  try {
+    const hashed = crypto.createHash('sha256').update(String(token)).digest('hex');
+    const user = await User.findOne({
+      resetPasswordToken: hashed,
+      resetPasswordExpires: { $gt: new Date() },
+      isActive: true,
+    });
+    if (!user) return res.status(400).json({ message: 'Invalid or expired reset token' });
+    user.password = newPassword;
+    user.isTemporaryPassword = false;
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    await user.save();
+    res.json({ message: 'Password reset successful' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.get('/me', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password -resetPasswordToken -resetPasswordExpires');
+    const user = await User.findById(req.user.id)
+      .populate('storeIds', '_id')
+      .select('-password -resetPasswordToken -resetPasswordExpires');
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(buildPayload(user, req.user.subscriptionActive));
   } catch (err) {
@@ -66,7 +121,7 @@ router.get('/me', protect, async (req, res) => {
 
 router.put('/me', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user.id).populate('storeIds', '_id');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const { name, profileImage, profileImageKey, currentPassword, newPassword } = req.body;

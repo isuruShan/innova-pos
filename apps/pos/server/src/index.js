@@ -81,6 +81,11 @@ app.use('/api/promotions', require('./routes/promotions'));
 app.use('/api/upload',           require('./routes/upload'));
 app.use('/api/settings',         require('./routes/settings'));
 app.use('/api/tenant-settings',  require('./routes/tenantSettings'));
+app.use('/api/stores',           require('./routes/stores'));
+app.use('/api/cashier-sessions', require('./routes/cashier-sessions'));
+app.use('/api/customers', require('./routes/customers'));
+app.use('/api/loyalty', require('./routes/loyalty'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 app.get('/api/health', (_req, res) =>
   res.json({ status: 'ok', service: 'pos-server', env: process.env.NODE_ENV, ts: new Date().toISOString() })

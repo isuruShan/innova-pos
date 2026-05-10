@@ -1,11 +1,20 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ShoppingCart, Plus, Minus, Trash2, FileText, Hash, Link2, ChevronDown, ChevronUp, ClipboardList, Tag, ToggleLeft, ToggleRight, X, Zap } from 'lucide-react';
+import {
+  ShoppingCart, Plus, Minus, Trash2, FileText, Hash, Link2, ChevronDown, ChevronUp, ClipboardList,
+  Tag, ToggleLeft, ToggleRight, X, Zap, Search, User, Gift,
+} from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
+import CashierSessionGate, { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/CashierSessionGate';
 import { ORDER_TYPES, ORDER_TYPE_MAP } from '../../components/OrderTypeBadge';
 import { formatCurrency } from '../../utils/format';
+import { useBranding } from '../../context/BrandingContext';
+import { useStoreContext } from '../../context/StoreContext';
+import { MenuGridSkeleton } from '../../components/StoreSkeletons';
+import { printReceipt } from '../../utils/receiptPrint';
+import { shouldPrintReceiptOnOrderCreated } from '../../utils/receiptPolicy';
 
 const formatPrice = formatCurrency;
 
@@ -146,13 +155,38 @@ function autoSelectBestPromos(cart, promotions) {
   return selected;
 }
 
+/** Match server lib/loyaltyTier.js — discount from cart after promos */
+function computeLoyaltyRewardDiscount(reward, cart, discountedSubtotalAfterPromos) {
+  const cap = Math.max(0, discountedSubtotalAfterPromos);
+  if (!reward || cap <= 0) return 0;
+  switch (reward.rewardType) {
+    case 'order_discount_amount': {
+      const d = Number(reward.discountAmount || 0);
+      return Math.min(Math.max(0, d), cap);
+    }
+    case 'order_discount_percent': {
+      const p = Number(reward.discountPercent || 0);
+      return Math.min(cap * (p / 100), cap);
+    }
+    case 'free_item': {
+      const mid = reward.freeMenuItem?.toString();
+      if (!mid) return 0;
+      const line = cart.find((i) => sid(i.menuItem) === mid);
+      if (!line) return 0;
+      return Math.min(Number(line.price || 0), cap);
+    }
+    default:
+      return 0;
+  }
+}
+
 
 function MenuCard({ item, onAdd }) {
   return (
     <button
       onClick={() => onAdd(item)}
       disabled={!item.available}
-      className={`bg-[#1e293b] rounded-2xl overflow-hidden border hover:shadow-lg transition group disabled:opacity-40 disabled:cursor-not-allowed text-left w-full ${
+      className={`bg-[var(--pos-panel)] rounded-2xl overflow-hidden border hover:shadow-lg transition group disabled:opacity-40 disabled:cursor-not-allowed text-left w-full ${
         item.isCombo
           ? 'border-amber-500/30 hover:border-amber-500/60 hover:shadow-amber-500/10'
           : 'border-slate-700/50 hover:border-amber-500/50 hover:shadow-amber-500/5'
@@ -180,7 +214,7 @@ function MenuCard({ item, onAdd }) {
         )}
       </div>
       <div className="p-3">
-        <p className="font-semibold text-white text-sm truncate">{item.name}</p>
+        <p className="font-semibold text-[var(--pos-text-primary)] text-sm truncate">{item.name}</p>
         {item.isCombo && item.comboItems?.length > 0 && (
           <p className="text-xs text-slate-500 truncate mt-0.5">
             {item.comboItems.map(c => c.name).join(' + ')}
@@ -195,11 +229,11 @@ function MenuCard({ item, onAdd }) {
 function CartItem({ item, onChangeQty }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="bg-[#0f172a] rounded-xl p-3">
+    <div className="bg-[var(--pos-surface-inset)] rounded-xl p-3">
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <p className="text-sm font-medium text-white truncate">{item.name}</p>
+            <p className="text-sm font-medium text-[var(--pos-text-primary)] truncate">{item.name}</p>
             {item.isCombo && (
               <button
                 onClick={() => setExpanded(e => !e)}
@@ -218,7 +252,7 @@ function CartItem({ item, onChangeQty }) {
           >
             <Minus size={11} />
           </button>
-          <span className="w-6 text-center text-sm font-semibold text-white">{item.qty}</span>
+          <span className="w-6 text-center text-sm font-semibold text-[var(--pos-text-primary)]">{item.qty}</span>
           <button
             onClick={() => onChangeQty(item.menuItem, 1)}
             className="w-6 h-6 rounded-full bg-slate-700 hover:bg-amber-500/30 text-slate-300 hover:text-amber-400 flex items-center justify-center transition"
@@ -226,7 +260,7 @@ function CartItem({ item, onChangeQty }) {
             <Plus size={11} />
           </button>
         </div>
-        <span className="text-sm font-semibold text-white w-14 text-right">{formatPrice(item.price * item.qty)}</span>
+        <span className="text-sm font-semibold text-[var(--pos-text-primary)] w-14 text-right">{formatPrice(item.price * item.qty)}</span>
       </div>
       {/* Combo sub-items expansion */}
       {item.isCombo && expanded && item.comboItems?.length > 0 && (
@@ -249,6 +283,9 @@ export default function NewOrder() {
   const [tableNumber, setTableNumber] = useState('');
   const [reference, setReference] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentType, setPaymentType] = useState('cash');
+  const [cashReceivedInput, setCashReceivedInput] = useState('');
 
   // Promotion state
   const [autoApply, setAutoApply] = useState(true);
@@ -257,26 +294,95 @@ export default function NewOrder() {
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
 
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedLoyaltyRewardId, setSelectedLoyaltyRewardId] = useState('');
+
   const qc = useQueryClient();
+  const branding = useBranding();
+  const { stores, selectedStoreId, isStoreReady } = useStoreContext();
+  const selectedStore = stores.find((s) => s._id === selectedStoreId) || stores.find((s) => s.isDefault) || null;
+  const availablePaymentMethods = (selectedStore?.paymentMethods?.length ? selectedStore.paymentMethods : ['cash']);
 
-  const activeType = ORDER_TYPE_MAP[orderType];
+  const prevStoreRef = useRef(selectedStoreId);
+  useEffect(() => {
+    if (prevStoreRef.current && prevStoreRef.current !== selectedStoreId) {
+      setCart([]);
+      setSelectedPromoIds([]);
+      setShowPromoList(false);
+      setActiveCategory('All');
+      setSelectedCustomer(null);
+      setCustomerSearch('');
+      setSelectedLoyaltyRewardId('');
+    }
+    prevStoreRef.current = selectedStoreId;
+  }, [selectedStoreId]);
 
-  const { data: menuItems = [], isLoading } = useQuery({
-    queryKey: ['menu'],
+  const activeType = ORDER_TYPE_MAP[orderType] ?? ORDER_TYPE_MAP['dine-in'];
+
+  const referenceFocusRing =
+    orderType === 'takeaway'
+      ? 'focus-within:border-green-500'
+      : orderType === 'uber-eats'
+        ? 'focus-within:border-emerald-500'
+        : orderType === 'pickme'
+          ? 'focus-within:border-orange-500'
+          : 'focus-within:border-slate-500';
+
+  const { data: menuItems = [], isPending: menuPending } = useQuery({
+    queryKey: ['menu', selectedStoreId],
     queryFn: () => api.get('/menu').then(r => r.data),
+    enabled: isStoreReady,
   });
 
-  const { data: settings } = useQuery({
-    queryKey: ['settings'],
+  const { data: settings, isPending: settingsPending } = useQuery({
+    queryKey: ['settings', selectedStoreId],
     queryFn: () => api.get('/settings').then(r => r.data),
+    enabled: isStoreReady,
     staleTime: 60_000,
   });
 
   const { data: activePromos = [] } = useQuery({
-    queryKey: ['promotions-active'],
+    queryKey: ['promotions-active', selectedStoreId],
     queryFn: () => api.get('/promotions', { params: { active: 'true' } }).then(r => r.data),
+    enabled: isStoreReady,
     staleTime: 60_000,
   });
+
+  const { data: loyaltyConfig } = useQuery({
+    queryKey: ['loyalty-config'],
+    queryFn: () => api.get('/loyalty/config').then((r) => r.data),
+    enabled: isStoreReady,
+    staleTime: 60_000,
+  });
+
+  const { data: loyaltyRewardsRaw = [] } = useQuery({
+    queryKey: ['loyalty-rewards-co', selectedStoreId],
+    queryFn: () => api.get('/loyalty/rewards').then((r) => r.data),
+    enabled: isStoreReady,
+    staleTime: 30_000,
+  });
+
+  const loyaltyRewards = useMemo(
+    () => loyaltyRewardsRaw.filter((r) => r.approvalStatus === 'approved' && r.active),
+    [loyaltyRewardsRaw],
+  );
+
+  const searchQ = customerSearch.trim();
+  const { data: customerHits = [] } = useQuery({
+    queryKey: ['customers-search', searchQ, selectedStoreId],
+    queryFn: () => api.get('/customers', { params: { search: searchQ } }).then((r) => r.data),
+    enabled: isStoreReady && searchQ.length >= 2,
+  });
+
+  const { data: customerLoyalty } = useQuery({
+    queryKey: ['customer-loyalty', selectedCustomer?._id],
+    queryFn: () =>
+      api.get(`/customers/${selectedCustomer._id}`, { params: { loyalty: '1' } }).then((r) => r.data),
+    enabled: isStoreReady && !!selectedCustomer?._id,
+  });
+
+  const menuLoading = !isStoreReady || menuPending || settingsPending;
 
   const typeSetting = settings?.orderTypes?.[orderType];
   const taxRate = typeSetting?.taxRate ?? 0;
@@ -291,15 +397,32 @@ export default function NewOrder() {
   }, []);
 
   const mutation = useMutation({
-    mutationFn: (order) => api.post('/orders', order),
-    onSuccess: () => {
+    mutationFn: (payload) => api.post('/orders', payload),
+    onSuccess: (axiosRes, variables) => {
+      const createdOrder = axiosRes?.data;
+      qc.invalidateQueries({ queryKey: [CASHIER_SESSION_QUERY_KEY] });
+      qc.invalidateQueries({ queryKey: ['order-board'] });
+      qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
+      qc.invalidateQueries({ queryKey: ['customer-loyalty'] });
+      qc.invalidateQueries({ queryKey: ['customers-search'] });
       setCart([]);
       setTableNumber('');
       setReference('');
       setSelectedPromoIds([]);
       setShowPromoList(false);
+      setSelectedCustomer(null);
+      setCustomerSearch('');
+      setSelectedLoyaltyRewardId('');
       setSuccessMsg('Order placed successfully!');
       setTimeout(() => setSuccessMsg(''), 3000);
+      if (createdOrder && shouldPrintReceiptOnOrderCreated(branding)) {
+        printReceipt(createdOrder, {
+          branding,
+          store: selectedStore,
+          paymentType: variables?.paymentType,
+          cashTender: variables?.cashTender,
+        });
+      }
     },
   });
 
@@ -394,7 +517,31 @@ export default function NewOrder() {
     }
   }, [activePromos, cart, selectedPromoIds, showToast]);
 
-  const discountTotal = appliedPromos.reduce((s, p) => s + p.discountAmount, 0);
+  const promoDiscountOnly = appliedPromos.reduce((s, p) => s + p.discountAmount, 0);
+
+  const loyaltyDiscount = useMemo(() => {
+    if (!selectedLoyaltyRewardId || !selectedCustomer || loyaltyConfig?.isEnabled === false) return 0;
+    const reward = loyaltyRewards.find((r) => sid(r._id) === sid(selectedLoyaltyRewardId));
+    if (!reward) return 0;
+    const eff = customerLoyalty?.loyalty?.effectiveTier;
+    if (eff && reward.minTierLevel != null && eff.level < reward.minTierLevel) return 0;
+    const pts = Number(customerLoyalty?.lifetimePoints ?? selectedCustomer?.lifetimePoints ?? 0);
+    if (pts < Number(reward.pointsCost || 0)) return 0;
+    const promosOff = appliedPromos.reduce((s, p) => s + p.discountAmount, 0);
+    const afterPromo = Math.max(0, subtotal - promosOff);
+    return computeLoyaltyRewardDiscount(reward, cart, afterPromo);
+  }, [
+    selectedLoyaltyRewardId,
+    selectedCustomer,
+    loyaltyConfig?.isEnabled,
+    loyaltyRewards,
+    customerLoyalty,
+    cart,
+    subtotal,
+    appliedPromos,
+  ]);
+
+  const discountTotal = Math.round((promoDiscountOnly + loyaltyDiscount) * 100) / 100;
   const discountedSubtotal = Math.max(0, subtotal - discountTotal);
   const taxAmount = discountedSubtotal * (taxRate / 100);
   const serviceFeeAmount = serviceFeeType === 'fixed'
@@ -402,20 +549,45 @@ export default function NewOrder() {
     : discountedSubtotal * (serviceFeeRate / 100);
   const total = discountedSubtotal + taxAmount + serviceFeeAmount;
 
+  useEffect(() => {
+    if (paymentModalOpen) {
+      setCashReceivedInput(total.toFixed(2));
+    }
+  }, [paymentModalOpen, total]);
+
   const canPlace = cart.length > 0 && (orderType !== 'dine-in' || tableNumber.trim());
 
   const placeOrder = () => {
     if (!canPlace) return;
+    const parsedTender = parseFloat(String(cashReceivedInput).replace(/,/g, ''));
+    const cashTender =
+      paymentType === 'cash' && Number.isFinite(parsedTender) ? parsedTender : undefined;
     mutation.mutate({
       orderType,
       tableNumber: orderType === 'dine-in' ? tableNumber.trim() : '',
       reference: orderType !== 'dine-in' ? reference.trim() : '',
       items: cart,
+      paymentType,
+      paymentAmount: total,
+      cashTender,
+      ...(selectedCustomer?._id ? { customerId: selectedCustomer._id } : {}),
+      ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscount > 0
+        ? { loyaltyRewardId: selectedLoyaltyRewardId }
+        : {}),
     });
+    setPaymentModalOpen(false);
   };
 
+  const parsedReceiving = parseFloat(String(cashReceivedInput).replace(/,/g, ''));
+  const receivingAmount = Number.isFinite(parsedReceiving) ? parsedReceiving : total;
+  const cashChange =
+    paymentType === 'cash' && receivingAmount >= total ? receivingAmount - total : null;
+  const cashBalanceDue =
+    paymentType === 'cash' && receivingAmount < total ? total - receivingAmount : null;
+
   return (
-    <div className="h-screen flex flex-col bg-[#0f172a]">
+    <CashierSessionGate>
+    <div className="h-screen flex flex-col bg-[var(--pos-surface-inset)]">
       <Navbar links={[
         { to: '/cashier/orders', label: 'Order Board', icon: ClipboardList },
         { to: '/cashier/report', label: 'Day-End Report', icon: FileText },
@@ -425,15 +597,15 @@ export default function NewOrder() {
         {/* Left: Menu */}
         <div className="flex flex-col flex-1 overflow-hidden border-r border-slate-700/50">
           {/* Category tabs */}
-          <div className="flex gap-2 px-4 py-3 overflow-x-auto border-b border-slate-700/50 bg-[#1e293b]/50">
+          <div className="flex gap-2 px-4 py-3 overflow-x-auto border-b border-slate-700/50 bg-[var(--pos-panel)]/50">
             {categories.map(cat => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
                 className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
                   activeCategory === cat
-                    ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20'
-                    : 'text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700'
+                    ? 'bg-amber-500 text-[var(--pos-selection-text)] shadow-lg shadow-amber-500/20'
+                    : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700'
                 }`}
               >
                 {cat}
@@ -443,8 +615,10 @@ export default function NewOrder() {
 
           {/* Menu grid */}
           <div className="flex-1 overflow-y-auto p-4">
-            {isLoading ? (
-              <div className="flex items-center justify-center h-full text-slate-500">Loading menu...</div>
+            {menuLoading ? (
+              <div className="p-1">
+                <MenuGridSkeleton />
+              </div>
             ) : filtered.length === 0 ? (
               <div className="flex items-center justify-center h-full text-slate-500">No items in this category</div>
             ) : (
@@ -458,10 +632,10 @@ export default function NewOrder() {
         </div>
 
         {/* Right: Cart */}
-        <div className="w-80 xl:w-96 flex flex-col bg-[#1e293b]/30">
+        <div className="w-80 xl:w-96 flex flex-col bg-[var(--pos-panel)]/30">
           <div className="p-4 border-b border-slate-700/50 flex items-center gap-2">
             <ShoppingCart size={18} className="text-amber-400" />
-            <h2 className="font-semibold text-white">Current Order</h2>
+            <h2 className="font-semibold text-[var(--pos-text-primary)]">Current Order</h2>
             {cart.length > 0 && (
               <span className="ml-auto bg-amber-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
                 {cart.reduce((s, i) => s + i.qty, 0)}
@@ -480,8 +654,8 @@ export default function NewOrder() {
                   onClick={() => { setOrderType(type.id); setTableNumber(''); setReference(''); }}
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition ${
                     orderType === type.id
-                      ? `${type.activeBg} text-white border-transparent shadow-lg`
-                      : `bg-[#0f172a] border-slate-700 text-slate-400 hover:border-slate-600 hover:text-white`
+                      ? `${type.activeBg} text-[var(--pos-selection-text)] border-transparent shadow-lg`
+                      : `bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:border-slate-600 hover:text-[var(--pos-text-primary)]`
                   }`}
                 >
                   <span className="text-base">{type.icon}</span>
@@ -494,30 +668,122 @@ export default function NewOrder() {
             {orderType === 'dine-in' ? (
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1.5">Table Number *</label>
-                <div className="flex items-center gap-2 bg-[#0f172a] rounded-xl border border-slate-700 focus-within:border-blue-500 px-3 py-2.5 transition">
+                <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 focus-within:border-blue-500 px-3 py-2.5 transition">
                   <Hash size={14} className="text-slate-500" />
                   <input
                     type="text"
                     value={tableNumber}
                     onChange={e => setTableNumber(e.target.value)}
                     placeholder="e.g. 7"
-                    className="flex-1 bg-transparent text-white text-sm focus:outline-none placeholder-slate-600"
+                    className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
                   />
                 </div>
               </div>
             ) : (
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1.5">{activeType.hint}</label>
-                <div className={`flex items-center gap-2 bg-[#0f172a] rounded-xl border border-slate-700 focus-within:border-${activeType.color.split('-')[1]}-500 px-3 py-2.5 transition`}>
+                <div className={`flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 ${referenceFocusRing} px-3 py-2.5 transition`}>
                   <span className="text-sm">{activeType.icon}</span>
                   <input
                     type="text"
                     value={reference}
                     onChange={e => setReference(e.target.value)}
                     placeholder={activeType.placeholder}
-                    className="flex-1 bg-transparent text-white text-sm focus:outline-none placeholder-slate-600"
+                    className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
                   />
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Customer & loyalty (optional) */}
+          <div className="px-4 pb-3 space-y-3 border-b border-slate-700/40">
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">Customer (optional)</label>
+              <div className="relative">
+                <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 px-3 py-2">
+                  <Search size={14} className="text-slate-500 shrink-0" />
+                  <input
+                    type="text"
+                    value={customerSearch}
+                    onChange={(e) => setCustomerSearch(e.target.value)}
+                    placeholder="Search name, email, mobile…"
+                    className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600 min-w-0"
+                  />
+                </div>
+                {searchQ.length >= 2 && customerHits.length > 0 && !selectedCustomer && (
+                  <ul className="absolute left-0 right-0 top-full mt-1 z-[80] max-h-40 overflow-y-auto rounded-xl border border-slate-700 bg-[var(--pos-panel)] shadow-xl">
+                    {customerHits.slice(0, 8).map((c) => (
+                      <li key={c._id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCustomer(c);
+                            setCustomerSearch(c.name || c.email || c.mobile || '');
+                          }}
+                          className="w-full text-left px-3 py-2 text-xs hover:bg-slate-800/80 border-b border-slate-800 last:border-0"
+                        >
+                          <span className="font-medium text-[var(--pos-text-primary)]">{c.name || 'Customer'}</span>
+                          <span className="block text-slate-500 truncate">{c.email || c.mobile || ''}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              {selectedCustomer && (
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1.5 text-xs bg-sky-500/15 text-sky-300 border border-sky-500/30 rounded-full px-2.5 py-1">
+                    <User size={11} />
+                    {customerLoyalty?.name || selectedCustomer.name || 'Customer'}
+                    {customerLoyalty?.lifetimePoints != null && (
+                      <span className="text-sky-200/90">
+                        · {customerLoyalty.lifetimePoints} pts
+                        {customerLoyalty?.loyalty?.effectiveTier?.name && (
+                          <> · {customerLoyalty.loyalty.effectiveTier.name}</>
+                        )}
+                      </span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCustomer(null);
+                      setCustomerSearch('');
+                      setSelectedLoyaltyRewardId('');
+                    }}
+                    className="text-xs text-slate-500 hover:text-red-400"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {loyaltyConfig?.isEnabled !== false && selectedCustomer && cart.length > 0 && (
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-medium text-slate-400 mb-1.5">
+                  <Gift size={12} className="text-amber-400" />
+                  Loyalty reward (optional)
+                </label>
+                <select
+                  value={selectedLoyaltyRewardId}
+                  onChange={(e) => setSelectedLoyaltyRewardId(e.target.value)}
+                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-3 py-2 text-sm text-[var(--pos-text-primary)] focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                >
+                  <option value="">None — earn points when order completes</option>
+                  {loyaltyRewards.map((r) => (
+                    <option key={r._id} value={r._id}>
+                      {r.name} ({r.pointsCost} pts)
+                      {r.minTierLevel > 1 ? ` · tier ${r.minTierLevel}+` : ''}
+                    </option>
+                  ))}
+                </select>
+                {selectedLoyaltyRewardId && loyaltyDiscount <= 0 && (
+                  <p className="text-[11px] text-amber-400/90 mt-1">
+                    Cannot apply this reward (tier, points, or cart does not qualify).
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -539,7 +805,7 @@ export default function NewOrder() {
 
           {/* ── Promotions panel ── */}
           {cart.length > 0 && (
-            <div className="px-4 py-3 border-t border-slate-700/50 bg-[#1e293b]/20">
+            <div className="px-4 py-3 border-t border-slate-700/50 bg-[var(--pos-panel)]/20">
               {/* Header row */}
               <div className="flex items-center justify-between mb-2">
                 <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
@@ -623,7 +889,7 @@ export default function NewOrder() {
                             className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs border transition ${
                               sel
                                 ? 'bg-green-500/15 border-green-500/30 text-green-400'
-                                : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white hover:bg-slate-700/70'
+                                : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/70'
                             }`}
                           >
                             <span className="flex items-center gap-1.5 min-w-0">
@@ -674,6 +940,15 @@ export default function NewOrder() {
                   <span>-{formatPrice(p.discountAmount)}</span>
                 </div>
               ))}
+              {loyaltyDiscount > 0 && (
+                <div className="flex justify-between text-purple-400">
+                  <span className="flex items-center gap-1 truncate text-xs">
+                    <Gift size={9} className="flex-shrink-0" />
+                    Loyalty
+                  </span>
+                  <span>-{formatPrice(loyaltyDiscount)}</span>
+                </div>
+              )}
               {taxRate > 0 && (
                 <div className="flex justify-between text-slate-400">
                   <span>Tax ({taxRate}%)</span><span>{formatPrice(taxAmount)}</span>
@@ -687,12 +962,16 @@ export default function NewOrder() {
                   <span>{formatPrice(serviceFeeAmount)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-white font-bold text-base pt-1 border-t border-slate-700/50">
+              <div className="flex justify-between text-[var(--pos-text-primary)] font-bold text-base pt-1 border-t border-slate-700/50">
                 <span>Total</span><span className="text-amber-400">{formatPrice(total)}</span>
               </div>
             </div>
             <button
-              onClick={placeOrder}
+              onClick={() => {
+                if (!canPlace) return;
+                setPaymentType(availablePaymentMethods[0] || 'cash');
+                setPaymentModalOpen(true);
+              }}
               disabled={!canPlace || mutation.isPending}
               className="w-full bg-green-500 hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-green-500/20 text-sm mt-1"
             >
@@ -709,6 +988,93 @@ export default function NewOrder() {
           </div>
         </div>
       </div>
+      {paymentModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center p-3 sm:p-4">
+          <div className="w-full max-w-lg bg-[var(--pos-panel)] border border-slate-600/80 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl shadow-black/50 max-h-[92vh] overflow-y-auto">
+            <h3 className="text-[var(--pos-text-primary)] font-bold text-xl sm:text-2xl tracking-tight">Collect payment</h3>
+            <p className="text-sm text-slate-400 mt-2">Choose a method and confirm. Large tap targets for counter use.</p>
+
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mt-6 mb-2">Payment method</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {availablePaymentMethods.map((method) => {
+                const label = method.replace(/_/g, ' ');
+                const pretty = label.charAt(0).toUpperCase() + label.slice(1);
+                const active = paymentType === method;
+                return (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() => {
+                      setPaymentType(method);
+                      if (method === 'cash') setCashReceivedInput(total.toFixed(2));
+                    }}
+                    className={`min-h-[52px] rounded-2xl px-4 text-base font-semibold border-2 transition active:scale-[0.99] ${
+                      active
+                        ? 'border-amber-500 bg-amber-500/15 text-[var(--pos-selection-text)] ring-2 ring-amber-500/40'
+                        : 'border-slate-600 bg-[var(--pos-surface-inset)] text-slate-200 hover:border-slate-500'
+                    }`}
+                  >
+                    {pretty}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-6 rounded-2xl bg-[var(--pos-surface-inset)] border border-slate-700 p-4 space-y-3">
+              <div className="flex justify-between items-baseline gap-3 text-slate-400 text-base">
+                <span>Order total</span>
+                <span className="text-[var(--pos-text-primary)] font-bold text-xl tabular-nums">{formatPrice(total)}</span>
+              </div>
+
+              {paymentType === 'cash' && (
+                <div className="pt-2 border-t border-slate-700/80 space-y-3">
+                  <label className="block text-sm font-semibold text-slate-300">Amount received</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={cashReceivedInput}
+                    onChange={(e) => setCashReceivedInput(e.target.value)}
+                    className="w-full min-h-[56px] rounded-2xl border-2 border-slate-600 bg-slate-900/80 text-[var(--pos-text-primary)] text-2xl font-bold text-center tracking-wide px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 tabular-nums"
+                    placeholder={total.toFixed(2)}
+                    autoComplete="off"
+                  />
+                  {cashChange != null && (
+                    <div className="flex justify-between items-center text-lg bg-green-500/10 border border-green-500/25 rounded-xl px-4 py-3">
+                      <span className="text-green-300 font-medium">Change due</span>
+                      <span className="text-green-400 font-bold text-xl tabular-nums">{formatPrice(cashChange)}</span>
+                    </div>
+                  )}
+                  {cashBalanceDue != null && (
+                    <div className="flex justify-between items-center text-lg bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3">
+                      <span className="text-amber-200 font-medium">Balance due</span>
+                      <span className="text-amber-300 font-bold text-xl tabular-nums">{formatPrice(cashBalanceDue)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={() => setPaymentModalOpen(false)}
+                className="flex-1 min-h-[54px] rounded-2xl border-2 border-slate-600 text-slate-200 text-lg font-semibold hover:bg-slate-800/80 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={placeOrder}
+                disabled={mutation.isPending}
+                className="flex-1 min-h-[54px] rounded-2xl bg-green-500 hover:bg-green-400 disabled:opacity-60 text-white text-lg font-bold shadow-lg shadow-green-500/25 transition"
+              >
+                {mutation.isPending ? 'Processing…' : 'Confirm & print'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </CashierSessionGate>
   );
 }

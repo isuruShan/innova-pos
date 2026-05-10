@@ -4,14 +4,29 @@ const crypto = require('crypto');
 const MerchantApplication = require('../models/MerchantApplication');
 const Tenant = require('../models/Tenant');
 const User = require('../models/User');
+const Store = require('../models/Store');
 const { authenticateJWT, authorize, emitAudit } = require('@innovapos/shared-middleware');
 const { sendWelcomeEmail, sendRejectionEmail } = require('../utils/mailer');
 const { childLogger } = require('@innovapos/logger');
 
 const router = express.Router();
 
+/** Maps approved applications to tenant.countryIso (LK vs international catalogue). */
+function deriveCountryIsoFromApplication(application) {
+  const dial = String(application.personal?.countryDialCode || '').replace(/\D/g, '');
+  if (dial === '94') return 'LK';
+  const bc = String(application.business?.country || '').toLowerCase();
+  if (bc.includes('sri lanka')) return 'LK';
+  return 'XX';
+}
+
 const generateTempPassword = () => crypto.randomBytes(6).toString('hex');
 const slugify = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+/** Prevent invalid Mongo regex when search contains reserved characters */
+function escapeRegex(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 // GET /applications — list all with pagination and filter
 router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
@@ -19,14 +34,15 @@ router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
     const { status, page = 1, limit = 20, search } = req.query;
     const filter = {};
     if (status) filter.status = status;
-    if (search) {
+    if (search && String(search).trim()) {
+      const q = escapeRegex(String(search).trim());
       filter.$or = [
-        { 'personal.email': { $regex: search, $options: 'i' } },
-        { 'personal.firstName': { $regex: search, $options: 'i' } },
-        { 'personal.lastName': { $regex: search, $options: 'i' } },
-        { 'business.name': { $regex: search, $options: 'i' } },
-        { 'business.ownerName': { $regex: search, $options: 'i' } },
-        { 'business.ownerNames': { $regex: search, $options: 'i' } },
+        { 'personal.email': { $regex: q, $options: 'i' } },
+        { 'personal.firstName': { $regex: q, $options: 'i' } },
+        { 'personal.lastName': { $regex: q, $options: 'i' } },
+        { 'business.name': { $regex: q, $options: 'i' } },
+        { 'business.ownerName': { $regex: q, $options: 'i' } },
+        { 'business.ownerNames': { $regex: q, $options: 'i' } },
       ];
     }
 
@@ -147,6 +163,7 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
       const tenant = await Tenant.create({
         slug,
         businessName: application.business.name,
+        countryIso: deriveCountryIsoFromApplication(application),
         status: 'active',
         subscriptionStatus: 'trial',
         trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -154,7 +171,26 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
         createdBy: req.user.id,
       });
 
-      // Create merchant_admin user
+      const biz = application.business || {};
+      const cityTrim = String(biz.city || '').trim();
+      const bizName = String(biz.name || tenant.businessName || 'Location').trim();
+      const storeName = cityTrim ? `${bizName} (${cityTrim})` : `${bizName} — Main`;
+      const storeCode = await allocateStoreCode(tenant._id, cityTrim, slug);
+      const storeAddress = formatStoreAddressFromApplication(biz);
+      const storePhone = String(application.personal?.mobile || '').trim();
+
+      const defaultStore = await Store.create({
+        tenantId: tenant._id,
+        name: storeName,
+        code: storeCode,
+        address: storeAddress,
+        phone: storePhone,
+        isDefault: true,
+        isActive: true,
+        createdBy: req.user.id,
+      });
+
+      // Create merchant_admin user (scoped to default store for POS / admin store picker)
       const tempPassword = generateTempPassword();
       const adminUser = await User.create({
         name: `${application.personal.firstName} ${application.personal.lastName}`,
@@ -162,6 +198,8 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
         password: tempPassword,
         role: 'merchant_admin',
         tenantId: tenant._id,
+        storeIds: [defaultStore._id],
+        defaultStoreId: defaultStore._id,
         isTemporaryPassword: true,
         isActive: true,
         createdBy: req.user.id,
@@ -197,10 +235,14 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
         action: 'APPLICATION_APPROVED',
         resource: 'MerchantApplication',
         resourceId: application._id,
-        changes: { after: { tenantId: tenant._id, adminUserId: adminUser._id } },
+        changes: { after: { tenantId: tenant._id, adminUserId: adminUser._id, defaultStoreId: defaultStore._id } },
       });
 
-      logger.info('Application approved', { applicationId: application._id, tenantId: tenant._id });
+      logger.info('Application approved', {
+        applicationId: application._id,
+        tenantId: tenant._id,
+        defaultStoreId: defaultStore._id,
+      });
 
       return res.json({
         message: welcomeEmailSent
@@ -210,6 +252,7 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
         application,
         tenant: { id: tenant._id, slug: tenant.slug, businessName: tenant.businessName },
         adminUser: { id: adminUser._id, email: adminUser.email },
+        defaultStore: { id: defaultStore._id, name: defaultStore.name, code: defaultStore.code },
       });
     }
   } catch (err) {

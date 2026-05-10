@@ -1,16 +1,28 @@
 const express = require('express');
 const User = require('../models/User');
 const { protect, authorize, tenantScope } = require('../middleware/auth');
+const { resolveSelectedStore, resolveWriteStoreId } = require('../middleware/storeScope');
 
 const router = express.Router();
 
 const MANAGER_ROLES = ['cashier', 'kitchen'];
 const ADMIN_ROLES = ['manager', 'cashier', 'kitchen'];
+const storeAccessFilter = (storeId) => (
+  storeId
+    ? {
+        $or: [
+          { storeIds: storeId },
+          { storeIds: { $exists: false } },
+          { storeIds: { $size: 0 } },
+        ],
+      }
+    : {}
+);
 
 // GET all users scoped to current tenant
-router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
+router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const filter = { tenantId: req.tenantId };
+    const filter = { tenantId: req.tenantId, ...storeAccessFilter(req.storeId) };
     if (req.user.role === 'manager') {
       filter.role = { $in: MANAGER_ROLES };
     }
@@ -24,7 +36,7 @@ router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), t
 });
 
 // POST create user
-router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
+router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: 'Name is required' });
@@ -49,12 +61,17 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
     const exists = await User.findOne({ email: email.toLowerCase() });
     if (exists) return res.status(400).json({ message: 'Email already in use' });
 
+    const writeStoreId = await resolveWriteStoreId(req);
+    if (!writeStoreId) return res.status(400).json({ message: 'No store available for user creation' });
+
     const user = await User.create({
       name: name.trim(),
       email: email.toLowerCase(),
       password,
       role,
       tenantId: req.tenantId,
+      storeIds: [writeStoreId],
+      defaultStoreId: writeStoreId,
       createdBy: req.user.id,
     });
 
@@ -65,9 +82,9 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
 });
 
 // PUT update user
-router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
+router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const user = await User.findOne({ _id: req.params.id, tenantId: req.tenantId });
+    const user = await User.findOne({ _id: req.params.id, tenantId: req.tenantId, ...storeAccessFilter(req.storeId) });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     if (req.user.role === 'manager' && !MANAGER_ROLES.includes(user.role)) {
@@ -102,9 +119,9 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
 });
 
 // DELETE user (soft delete)
-router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
+router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const user = await User.findOne({ _id: req.params.id, tenantId: req.tenantId });
+    const user = await User.findOne({ _id: req.params.id, tenantId: req.tenantId, ...storeAccessFilter(req.storeId) });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     if (req.user.role === 'manager' && !MANAGER_ROLES.includes(user.role)) {

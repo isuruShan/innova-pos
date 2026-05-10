@@ -6,8 +6,9 @@ import { formatCurrency, formatDateTime as fmtDT } from '../utils/format';
 import SlideOver from './SlideOver';
 import Badge from './Badge';
 import { ORDER_TYPES, ORDER_TYPE_MAP } from './OrderTypeBadge';
+import { useStoreContext } from '../context/StoreContext';
 
-const CACHEABLE_QUERIES = ['order-board', 'kitchen-orders', 'recent-orders'];
+const CACHEABLE_QUERIES = ['order-board', 'kitchen-orders', 'recent-orders', 'manager-orders', 'sales-report'];
 
 const EDITABLE_STATUSES = ['pending'];
 
@@ -41,7 +42,7 @@ function ItemRow({ item, onQtyChange, onRemove, editable }) {
           >
             <Minus size={11} />
           </button>
-          <span className="w-6 text-center text-sm font-semibold text-white">{item.qty}</span>
+          <span className="w-6 text-center text-sm font-semibold text-[var(--pos-text-primary)]">{item.qty}</span>
           <button
             onClick={() => onQtyChange(item.menuItem, 1)}
             className="w-6 h-6 rounded-full bg-slate-700 hover:bg-amber-500/30 text-slate-300 hover:text-amber-400 flex items-center justify-center transition"
@@ -58,7 +59,7 @@ function ItemRow({ item, onQtyChange, onRemove, editable }) {
       ) : (
         <span className="text-sm font-semibold text-slate-400 ml-2">×{item.qty}</span>
       )}
-      <span className="text-sm font-semibold text-white w-14 text-right">
+      <span className="text-sm font-semibold text-[var(--pos-text-primary)] w-14 text-right">
         {formatPrice(item.price * item.qty)}
       </span>
     </div>
@@ -82,7 +83,7 @@ function AddItemRow({ menuItems, existingIds, onAdd }) {
       <select
         value={selectedId}
         onChange={e => setSelectedId(e.target.value)}
-        className="flex-1 bg-[#0f172a] border border-slate-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+        className="flex-1 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
       >
         <option value="">+ Add item…</option>
         {available.map(m => (
@@ -104,6 +105,7 @@ function AddItemRow({ menuItems, existingIds, onAdd }) {
 
 export default function OrderDetailSlideOver({ order, onClose, canCancel = true }) {
   const qc = useQueryClient();
+  const { selectedStoreId, isStoreReady } = useStoreContext();
   const isEditable = order && EDITABLE_STATUSES.includes(order.status);
 
   const [orderType, setOrderType] = useState(order?.orderType || 'dine-in');
@@ -125,9 +127,9 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
   }, [order?._id]);
 
   const { data: menuItems = [] } = useQuery({
-    queryKey: ['menu'],
+    queryKey: ['menu', selectedStoreId],
     queryFn: () => api.get('/menu').then(r => r.data),
-    enabled: !!order && isEditable,
+    enabled: !!order && isEditable && isStoreReady,
   });
 
   const invalidateAll = () => {
@@ -135,13 +137,13 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
   };
 
   const saveMutation = useMutation({
-    mutationFn: (data) => api.put(`/orders/${order._id}`, data),
+    mutationFn: (data) => api.put(`/orders/${encodeURIComponent(order._id)}`, data),
     onSuccess: () => { invalidateAll(); setDirty(false); },
     onError: (e) => setError(e.response?.data?.message || 'Failed to save changes'),
   });
 
   const statusMutation = useMutation({
-    mutationFn: (status) => api.put(`/orders/${order._id}/status`, { status }),
+    mutationFn: (status) => api.put(`/orders/${encodeURIComponent(order._id)}/status`, { status }),
     onSuccess: () => { invalidateAll(); onClose(); },
     onError: (e) => setError(e.response?.data?.message || 'Failed to update status'),
   });
@@ -214,8 +216,8 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
                 onClick={() => { setOrderType(type.id); setTableNumber(''); setReference(''); setDirty(true); }}
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition ${
                   orderType === type.id
-                    ? `${type.activeBg} text-white border-transparent`
-                    : 'bg-[#0f172a] border-slate-700 text-slate-400'
+                    ? `${type.activeBg} text-[var(--pos-selection-text)] border-transparent`
+                    : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400'
                 } ${!isEditable ? 'opacity-60 cursor-not-allowed' : 'hover:border-slate-600'}`}
               >
                 <span>{type.icon}</span>
@@ -227,7 +229,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
           {/* Table / reference input */}
           <div className="mt-2">
             {orderType === 'dine-in' ? (
-              <div className="flex items-center gap-2 bg-[#0f172a] rounded-xl border border-slate-700 px-3 py-2.5">
+              <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 px-3 py-2.5">
                 <Hash size={14} className="text-slate-500" />
                 <input
                   type="text"
@@ -235,11 +237,11 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
                   onChange={e => { setTableNumber(e.target.value); setDirty(true); }}
                   disabled={!isEditable}
                   placeholder="Table number"
-                  className="flex-1 bg-transparent text-white text-sm focus:outline-none placeholder-slate-600 disabled:opacity-50"
+                  className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600 disabled:opacity-50"
                 />
               </div>
             ) : (
-              <div className="flex items-center gap-2 bg-[#0f172a] rounded-xl border border-slate-700 px-3 py-2.5">
+              <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 px-3 py-2.5">
                 <span className="text-sm">{activeType.icon}</span>
                 <input
                   type="text"
@@ -247,7 +249,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
                   onChange={e => { setReference(e.target.value); setDirty(true); }}
                   disabled={!isEditable}
                   placeholder={activeType.placeholder}
-                  className="flex-1 bg-transparent text-white text-sm focus:outline-none placeholder-slate-600 disabled:opacity-50"
+                  className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600 disabled:opacity-50"
                 />
               </div>
             )}
@@ -257,7 +259,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
         {/* Items */}
         <div>
           <p className="text-xs font-medium text-slate-400 mb-2">Items</p>
-          <div className="bg-[#0f172a] rounded-xl px-3">
+          <div className="bg-[var(--pos-surface-inset)] rounded-xl px-3">
             {items.length === 0 ? (
               <p className="text-slate-600 text-sm py-4 text-center">No items</p>
             ) : (
@@ -311,7 +313,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
               <span>{formatPrice(order.serviceFeeAmount)}</span>
             </div>
           )}
-          <div className="flex justify-between text-white font-bold text-base pt-1 border-t border-slate-700/40">
+          <div className="flex justify-between text-[var(--pos-text-primary)] font-bold text-base pt-1 border-t border-slate-700/40">
             <span>Total</span>
             <span className="text-amber-400">
               {formatPrice(isEditable ? subtotal : order.totalAmount)}
@@ -352,7 +354,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
 
           <button
             onClick={onClose}
-            className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-2.5 rounded-xl transition text-sm"
+            className="w-full bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-medium py-2.5 rounded-xl transition text-sm"
           >
             Close
           </button>

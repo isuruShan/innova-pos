@@ -17,13 +17,13 @@ router.post('/', async (req, res) => {
 
     sendEmail({
       to: email,
-      subject: 'Welcome to InnovaPOS Newsletter',
+      subject: 'Welcome to Cafinity updates',
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
           <h2 style="color:#1a1a2e">You're subscribed!</h2>
           <p>Hi ${name || 'there'},</p>
-          <p>Thanks for subscribing to InnovaPOS updates. We'll keep you informed about new features, tips, and offers.</p>
-          <p style="color:#888;font-size:12px;margin-top:24px">InnovaSolutions — InnovaPOS Platform</p>
+          <p>Thanks for subscribing to Cafinity updates. We'll keep you informed about new features, tips, and offers.</p>
+          <p style="color:#888;font-size:12px;margin-top:24px">Cafinity</p>
         </div>
       `,
     }).catch(() => {});

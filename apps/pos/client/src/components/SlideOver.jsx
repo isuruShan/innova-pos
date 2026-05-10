@@ -18,12 +18,12 @@ export default function SlideOver({ open, onClose, title, children }) {
         onClick={onClose}
       />
       {/* Panel */}
-      <div className="relative ml-auto w-full max-w-md bg-[#1e293b] h-full flex flex-col shadow-2xl border-l border-slate-700/50 animate-slide-in">
+      <div className="relative ml-auto w-full max-w-md bg-[var(--pos-panel)] h-full flex flex-col shadow-2xl border-l border-slate-700/50 animate-slide-in">
         <div className="flex items-center justify-between p-5 border-b border-slate-700/50">
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
+          <h2 className="text-lg font-semibold text-[var(--pos-text-primary)]">{title}</h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition"
           >
             <X size={18} />
           </button>

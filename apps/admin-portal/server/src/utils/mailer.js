@@ -4,7 +4,7 @@ const sendEmail = async ({ to, subject, html }) => {
   if (!to) return;
   const t = getMailTransporter();
   await t.sendMail({
-    from: `InnovaPOS <${process.env.EMAIL_FROM || 'innovasolutionslk@gmail.com'}>`,
+    from: `Cafinity <${process.env.EMAIL_FROM || 'innovasolutionslk@gmail.com'}>`,
     to,
     subject,
     html,
@@ -14,11 +14,11 @@ const sendEmail = async ({ to, subject, html }) => {
 const sendWelcomeEmail = async ({ to, name, tempPassword, loginUrl }) => {
   await sendEmail({
     to,
-    subject: 'Welcome to InnovaPOS — Your account is ready',
+    subject: 'Welcome to Cafinity — Your account is ready',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
         <div style="background:#1a1a2e;padding:32px;border-radius:12px 12px 0 0;text-align:center">
-          <h1 style="color:#ffffff;font-size:24px;margin:0">Welcome to InnovaPOS!</h1>
+          <h1 style="color:#ffffff;font-size:24px;margin:0">Welcome to Cafinity!</h1>
         </div>
         <div style="background:#ffffff;padding:32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">
           <p>Hi <strong>${name}</strong>,</p>
@@ -38,7 +38,7 @@ const sendWelcomeEmail = async ({ to, name, tempPassword, loginUrl }) => {
             Access your admin portal
           </a>
 
-          <p style="color:#9ca3af;font-size:12px;margin-top:32px">InnovaSolutions — InnovaPOS Platform</p>
+          <p style="color:#9ca3af;font-size:12px;margin-top:32px">Cafinity</p>
         </div>
       </div>
     `,
@@ -48,7 +48,7 @@ const sendWelcomeEmail = async ({ to, name, tempPassword, loginUrl }) => {
 const sendRejectionEmail = async ({ to, name, reason }) => {
   await sendEmail({
     to,
-    subject: 'Update on your InnovaPOS application',
+    subject: 'Update on your Cafinity application',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
         <div style="background:#1a1a2e;padding:32px;border-radius:12px 12px 0 0;text-align:center">
@@ -56,7 +56,7 @@ const sendRejectionEmail = async ({ to, name, reason }) => {
         </div>
         <div style="background:#ffffff;padding:32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">
           <p>Hi <strong>${name}</strong>,</p>
-          <p>Thank you for your interest in InnovaPOS. After reviewing your application, we were unable to approve it at this time.</p>
+          <p>Thank you for your interest in Cafinity. After reviewing your application, we were unable to approve it at this time.</p>
 
           <div style="background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;padding:16px;margin:20px 0">
             <p style="margin:0 0 8px 0;font-size:14px;color:#991b1b;font-weight:bold">Reason</p>
@@ -67,8 +67,23 @@ const sendRejectionEmail = async ({ to, name, reason }) => {
             <a href="mailto:innovasolutionslk@gmail.com" style="color:#e94560">innovasolutionslk@gmail.com</a>.
           </p>
 
-          <p style="color:#9ca3af;font-size:12px;margin-top:32px">InnovaSolutions — InnovaPOS Platform</p>
+          <p style="color:#9ca3af;font-size:12px;margin-top:32px">Cafinity</p>
         </div>
+      </div>
+    `,
+  });
+};
+
+const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
+  await sendEmail({
+    to,
+    subject: 'Cafinity password reset request',
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+        <h2 style="color:#1a1a2e">Reset your password</h2>
+        <p>Hi ${name || 'there'},</p>
+        <p>Use this link to reset your password. It expires in 30 minutes.</p>
+        <p><a href="${resetUrl}" style="display:inline-block;background:#e94560;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Reset Password</a></p>
       </div>
     `,
   });
@@ -78,5 +93,6 @@ module.exports = {
   sendEmail,
   sendWelcomeEmail,
   sendRejectionEmail,
+  sendPasswordResetEmail,
   getMailConfigurationIssue,
 };

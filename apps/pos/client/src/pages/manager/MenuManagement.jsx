@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 import {
@@ -10,6 +10,8 @@ import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
 import { MANAGER_LINKS } from '../../constants/managerLinks';
 import { formatCurrency } from '../../utils/format';
+import { useStoreContext } from '../../context/StoreContext';
+import { MenuGridSkeleton } from '../../components/StoreSkeletons';
 
 const EMPTY_FORM = {
   name: '', category: '', price: '', description: '', image: '',
@@ -41,14 +43,14 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
     <div className="space-y-3">
       <p className="text-xs text-slate-500">Quantities multiply with the ordered amount.</p>
       {comboItems.length > 0 && (
-        <div className="bg-[#0f172a] rounded-xl divide-y divide-slate-800">
+        <div className="bg-[var(--pos-surface-inset)] rounded-xl divide-y divide-slate-800">
           {comboItems.map(ci => (
             <div key={ci.menuItem} className="flex items-center gap-2 px-3 py-2">
               <span className="flex-1 text-sm text-slate-200 truncate">{ci.name}</span>
               <div className="flex items-center gap-1">
                 <button type="button" onClick={() => updateQty(ci.menuItem, ci.qty - 1)}
                   className="w-6 h-6 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 flex items-center justify-center text-xs">−</button>
-                <span className="w-6 text-center text-sm text-white font-semibold">{ci.qty}</span>
+                <span className="w-6 text-center text-sm text-[var(--pos-text-primary)] font-semibold">{ci.qty}</span>
                 <button type="button" onClick={() => updateQty(ci.menuItem, ci.qty + 1)}
                   className="w-6 h-6 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 flex items-center justify-center text-xs">+</button>
               </div>
@@ -61,12 +63,12 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
       {available.length > 0 ? (
         <div className="flex gap-2">
           <select value={selectedId} onChange={e => setSelectedId(e.target.value)}
-            className="flex-1 bg-[#0f172a] border border-slate-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+            className="flex-1 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
             <option value="">— Select item —</option>
             {available.map(i => <option key={i._id} value={i._id}>{i.name} ({formatCurrency(i.price)})</option>)}
           </select>
           <input type="number" min="1" value={qty} onChange={e => setQty(e.target.value)}
-            className="w-16 bg-[#0f172a] border border-slate-700 text-white rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500" />
+            className="w-16 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500" />
           <button type="button" onClick={add} disabled={!selectedId}
             className="bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white px-3 py-2 rounded-xl transition text-sm font-semibold">
             Add
@@ -129,10 +131,10 @@ function ImageUploadField({ value, onChange }) {
     <div>
       <div className="flex items-center justify-between mb-1.5">
         <label className="block text-sm font-medium text-slate-300">Image</label>
-        <div className="flex gap-1 bg-[#0f172a] border border-slate-700 rounded-lg p-0.5">
+        <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg p-0.5">
           {[{ id: 'url', label: 'URL' }, { id: 'file', label: 'Upload' }].map(t => (
             <button key={t.id} type="button" onClick={() => setTab(t.id)}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition ${tab === t.id ? 'bg-amber-500 text-white' : 'text-slate-400 hover:text-white'}`}>
+              className={`px-3 py-1 rounded-md text-xs font-medium transition ${tab === t.id ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}>
               {t.label}
             </button>
           ))}
@@ -142,12 +144,12 @@ function ImageUploadField({ value, onChange }) {
       {tab === 'url' ? (
         <input type="url" value={value} onChange={e => onChange(e.target.value)}
           placeholder="https://images.unsplash.com/..."
-          className="w-full bg-[#0f172a] border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
+          className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
       ) : (
         <div>
           <input type="file" ref={fileRef} onChange={handleFile} accept="image/*" className="hidden" />
           <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="w-full flex items-center justify-center gap-2 bg-[#0f172a] border border-dashed border-slate-600 hover:border-amber-500 rounded-xl px-4 py-3 text-sm text-slate-400 hover:text-amber-400 transition disabled:opacity-50">
+            className="w-full flex items-center justify-center gap-2 bg-[var(--pos-surface-inset)] border border-dashed border-slate-600 hover:border-amber-500 rounded-xl px-4 py-3 text-sm text-slate-400 hover:text-amber-400 transition disabled:opacity-50">
             {uploading ? <><Upload size={15} className="animate-bounce" /> Uploading…</> : <><ImageIcon size={15} /> Click to upload image (max 5 MB)</>}
           </button>
         </div>
@@ -159,7 +161,7 @@ function ImageUploadField({ value, onChange }) {
             alt="preview" className="h-24 w-full object-cover rounded-xl"
             onError={e => e.target.style.display = 'none'} />
           <button type="button" onClick={() => onChange('')}
-            className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 hover:bg-red-500 rounded-full flex items-center justify-center text-white transition opacity-0 group-hover:opacity-100">
+            className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 hover:bg-red-500 rounded-full flex items-center justify-center text-[var(--pos-text-primary)] transition opacity-0 group-hover:opacity-100">
             <X size={11} />
           </button>
         </div>
@@ -214,7 +216,7 @@ function CategoryManager({ categories, onClose }) {
             onChange={e => setNewName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && newName.trim() && createMutation.mutate(newName.trim())}
             placeholder="e.g. Wraps"
-            className="flex-1 bg-[#0f172a] border border-slate-700 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+            className="flex-1 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
           />
           <button
             onClick={() => { if (newName.trim()) createMutation.mutate(newName.trim()); }}
@@ -237,7 +239,7 @@ function CategoryManager({ categories, onClose }) {
         ) : (
           categories.map(cat => (
             <div key={cat._id}
-              className={`flex items-center gap-3 bg-[#0f172a] rounded-xl px-3 py-2.5 border transition ${
+              className={`flex items-center gap-3 bg-[var(--pos-surface-inset)] rounded-xl px-3 py-2.5 border transition ${
                 cat.active ? 'border-slate-700' : 'border-slate-800 opacity-60'
               }`}>
               {editingId === cat._id ? (
@@ -248,7 +250,7 @@ function CategoryManager({ categories, onClose }) {
                     value={editName}
                     onChange={e => setEditName(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingId(null); }}
-                    className="flex-1 bg-transparent text-white text-sm focus:outline-none"
+                    className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none"
                   />
                   <button onClick={saveEdit} className="text-green-400 hover:text-green-300"><Check size={14} /></button>
                   <button onClick={() => setEditingId(null)} className="text-slate-500 hover:text-slate-300"><X size={14} /></button>
@@ -256,7 +258,7 @@ function CategoryManager({ categories, onClose }) {
               ) : (
                 <>
                   <Tag size={13} className={cat.active ? 'text-amber-400' : 'text-slate-600'} />
-                  <span className="flex-1 text-sm text-white truncate">{cat.name}</span>
+                  <span className="flex-1 text-sm text-[var(--pos-text-primary)] truncate">{cat.name}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                     cat.active
                       ? 'bg-green-500/15 text-green-400 border border-green-500/25'
@@ -269,7 +271,7 @@ function CategoryManager({ categories, onClose }) {
                     {cat.active ? <ToggleRight size={16} className="text-green-400" /> : <ToggleLeft size={16} />}
                   </button>
                   <button onClick={() => startEdit(cat)}
-                    className="p-1 rounded text-slate-500 hover:text-white transition"><Edit2 size={13} /></button>
+                    className="p-1 rounded text-slate-500 hover:text-[var(--pos-text-primary)] transition"><Edit2 size={13} /></button>
                   <button
                     onClick={() => { if (confirm(`Delete category "${cat.name}"?`)) deleteMutation.mutate(cat._id); }}
                     className="p-1 rounded text-slate-500 hover:text-red-400 transition"><Trash2 size={13} /></button>
@@ -281,7 +283,7 @@ function CategoryManager({ categories, onClose }) {
       </div>
 
       <button onClick={onClose}
-        className="w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-2.5 rounded-xl transition text-sm mt-2">
+        className="w-full bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-medium py-2.5 rounded-xl transition text-sm mt-2">
         Done
       </button>
     </div>
@@ -291,6 +293,7 @@ function CategoryManager({ categories, onClose }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function MenuManagement() {
+  const { selectedStoreId, isStoreReady } = useStoreContext();
   const [activeCategory, setActiveCategory] = useState('All');
   const [slideOpen, setSlideOpen] = useState(false);
   const [catSlideOpen, setCatSlideOpen] = useState(false);
@@ -299,16 +302,24 @@ export default function MenuManagement() {
   const [formError, setFormError] = useState('');
   const qc = useQueryClient();
 
-  const { data: items = [], isLoading } = useQuery({
-    queryKey: ['menu'],
+  useEffect(() => {
+    setActiveCategory('All');
+  }, [selectedStoreId]);
+
+  const { data: items = [], isPending: menuPending } = useQuery({
+    queryKey: ['menu', selectedStoreId],
     queryFn: () => api.get('/menu').then(r => r.data),
+    enabled: isStoreReady,
   });
 
   // Fetch ALL categories (including inactive) for management; active-only for filter/form
-  const { data: allCategories = [] } = useQuery({
-    queryKey: ['categories'],
+  const { data: allCategories = [], isPending: categoriesPending } = useQuery({
+    queryKey: ['categories', 'all', selectedStoreId],
     queryFn: () => api.get('/categories?all=true').then(r => r.data),
+    enabled: isStoreReady,
   });
+
+  const menuLoading = !isStoreReady || menuPending || categoriesPending;
   const activeCategories = allCategories.filter(c => c.active);
   const categoryNames = activeCategories.map(c => c.name);
 
@@ -376,14 +387,14 @@ export default function MenuManagement() {
   const filterTabs = ['All', ...categoryNames];
 
   return (
-    <div className="min-h-screen bg-[#0f172a]">
+    <div className="min-h-screen bg-[var(--pos-page-bg)]">
       <Navbar links={MANAGER_LINKS} />
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">Menu Items</h1>
+            <h1 className="text-2xl font-bold text-[var(--pos-text-primary)]">Menu Items</h1>
             <p className="text-slate-500 text-sm mt-1">{items.length} items · {items.filter(i => i.isCombo).length} combos</p>
           </div>
           <div className="flex items-center gap-2">
@@ -406,16 +417,16 @@ export default function MenuManagement() {
             <button key={cat} onClick={() => setActiveCategory(cat)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
                 activeCategory === cat
-                  ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20'
-                  : 'text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700'
+                  ? 'bg-amber-500 text-[var(--pos-selection-text)] shadow-lg shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700'
               }`}>
               {cat}
             </button>
           ))}
         </div>
 
-        {isLoading ? (
-          <div className="text-center text-slate-500 py-20">Loading menu...</div>
+        {menuLoading ? (
+          <MenuGridSkeleton cards={15} />
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {filtered.length === 0 && (
@@ -423,7 +434,7 @@ export default function MenuManagement() {
             )}
             {filtered.map(item => (
               <div key={item._id}
-                className={`bg-[#1e293b] rounded-2xl overflow-hidden border transition group ${
+                className={`bg-[var(--pos-panel)] rounded-2xl overflow-hidden border transition group ${
                   item.isCombo ? 'border-amber-500/30 hover:border-amber-500/60' : 'border-slate-700/50 hover:border-slate-600'
                 }`}>
                 <div className="relative h-32 bg-slate-800 overflow-hidden">
@@ -443,7 +454,7 @@ export default function MenuManagement() {
                   )}
                   <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition flex gap-1">
                     <button onClick={() => openEdit(item)}
-                      className="w-7 h-7 bg-slate-900/80 backdrop-blur rounded-lg flex items-center justify-center text-slate-300 hover:text-white">
+                      className="w-7 h-7 bg-slate-900/80 backdrop-blur rounded-lg flex items-center justify-center text-slate-300 hover:text-[var(--pos-text-primary)]">
                       <Edit2 size={12} />
                     </button>
                     <button onClick={() => { if (confirm('Delete this item?')) deleteMutation.mutate(item._id); }}
@@ -453,7 +464,7 @@ export default function MenuManagement() {
                   </div>
                 </div>
                 <div className="p-3">
-                  <p className="font-semibold text-white text-sm truncate">{item.name}</p>
+                  <p className="font-semibold text-[var(--pos-text-primary)] text-sm truncate">{item.name}</p>
                   <p className="text-xs text-slate-500 mb-1">{item.category}</p>
                   {item.isCombo && <ComboItemsPreview comboItems={item.comboItems} />}
                   <div className="flex items-center justify-between mt-1">
@@ -485,7 +496,7 @@ export default function MenuManagement() {
           <div
             onClick={() => setForm(f => ({ ...f, isCombo: !f.isCombo, category: !f.isCombo ? 'Combos' : f.category, comboItems: [] }))}
             className={`flex items-center justify-between rounded-xl px-4 py-3 cursor-pointer border transition ${
-              form.isCombo ? 'bg-amber-500/10 border-amber-500/40' : 'bg-[#0f172a] border-slate-700 hover:border-slate-600'
+              form.isCombo ? 'bg-amber-500/10 border-amber-500/40' : 'bg-[var(--pos-surface-inset)] border-slate-700 hover:border-slate-600'
             }`}>
             <div className="flex items-center gap-2">
               <Link2 size={16} className={form.isCombo ? 'text-amber-400' : 'text-slate-500'} />
@@ -504,18 +515,18 @@ export default function MenuManagement() {
             <input type="text" value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               placeholder={form.isCombo ? 'e.g. Burger Meal Deal' : 'e.g. Classic Burger'} required
-              className="w-full bg-[#0f172a] border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">Category *</label>
             {categoryNames.length > 0 ? (
               <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                className="w-full bg-[#0f172a] border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
                 {categoryNames.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             ) : (
-              <p className="text-xs text-slate-500 bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3">
+              <p className="text-xs text-slate-500 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-4 py-3">
                 No active categories. Add categories first using the Categories button.
               </p>
             )}
@@ -526,7 +537,7 @@ export default function MenuManagement() {
             <input type="number" step="0.01" min="0" value={form.price}
               onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
               placeholder="0.00" required
-              className="w-full bg-[#0f172a] border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
             {form.isCombo && <p className="text-xs text-slate-500 mt-1">Set the combo price (can differ from sum of parts)</p>}
           </div>
 
@@ -534,14 +545,14 @@ export default function MenuManagement() {
             <label className="block text-sm font-medium text-slate-300 mb-1.5">Description</label>
             <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               rows={2} placeholder="Short description..."
-              className="w-full bg-[#0f172a] border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600 resize-none" />
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600 resize-none" />
           </div>
 
           <ImageUploadField value={form.image} onChange={url => setForm(f => ({ ...f, image: url }))} />
 
           {/* Combo builder */}
           {form.isCombo && (
-            <div className="bg-[#0f172a] rounded-xl p-4 border border-amber-500/20">
+            <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-amber-500/20">
               <p className="text-sm font-semibold text-amber-400 mb-3 flex items-center gap-1.5">
                 <Link2 size={14} /> Combo Items
               </p>
@@ -552,7 +563,7 @@ export default function MenuManagement() {
           )}
 
           {/* Availability toggle */}
-          <div className="flex items-center justify-between bg-[#0f172a] rounded-xl px-4 py-3">
+          <div className="flex items-center justify-between bg-[var(--pos-surface-inset)] rounded-xl px-4 py-3">
             <div>
               <p className="text-sm font-medium text-slate-300">Available on menu</p>
               <p className="text-xs text-slate-500">Show to cashiers</p>
@@ -569,7 +580,7 @@ export default function MenuManagement() {
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={closeSlide}
-              className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 rounded-xl transition text-sm">
+              className="flex-1 bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-semibold py-2.5 rounded-xl transition text-sm">
               Cancel
             </button>
             <button type="submit" disabled={isPending}

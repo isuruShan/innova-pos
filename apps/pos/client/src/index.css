@@ -1,16 +1,46 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+}
+
+/* Theme tokens — toggled via ThemeProvider / html[data-theme] */
+:root[data-theme="dark"],
+:root:not([data-theme]) {
+  --pos-page-bg: #0b1220;
+  --pos-panel: #151f2e;
+  --pos-surface-inset: #0d1624;
+  --pos-text-primary: #f8fafc;
+  --pos-selection-text: #ffffff;
+  --pos-text-secondary: #cbd5e1;
+  --pos-text-muted: #94a3b8;
+  --pos-scrollbar-track: #1e293b;
+  --pos-scrollbar-thumb: #475569;
+  --pos-scrollbar-thumb-hover: #64748b;
+}
+
+:root[data-theme="light"] {
+  --pos-page-bg: #f8fafc;
+  --pos-panel: #ffffff;
+  --pos-surface-inset: #f1f5f9;
+  --pos-text-primary: #020617;
+  --pos-selection-text: #ffffff;
+  --pos-text-secondary: #334155;
+  --pos-text-muted: #64748b;
+  --pos-scrollbar-track: #e2e8f0;
+  --pos-scrollbar-thumb: #cbd5e1;
+  --pos-scrollbar-thumb-hover: #94a3b8;
 }
 
 body {
   font-family: 'Inter', sans-serif;
-  background-color: #0f172a;
-  color: #f1f5f9;
   margin: 0;
   padding: 0;
+  background-color: var(--pos-page-bg);
+  color: var(--pos-text-primary);
 }
 
 ::-webkit-scrollbar {
@@ -18,12 +48,12 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: var(--pos-scrollbar-track);
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: var(--pos-scrollbar-thumb);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: var(--pos-scrollbar-thumb-hover);
 }

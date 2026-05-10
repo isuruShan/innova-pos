@@ -1,12 +1,13 @@
-import { useState, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, Loader, CheckCircle, Clock, AlertTriangle, ExternalLink, FileText } from 'lucide-react';
 import api from '../../api/axios';
+import { CalendarDatePicker } from '@innovapos/ui-datepicker';
 
 export default function SubscriptionPage() {
   const queryClient = useQueryClient();
   const fileRef = useRef(null);
-  const [form, setForm] = useState({ amount: '', bankReference: '', bankName: '', paymentDate: '', notes: '' });
+  const [form, setForm] = useState({ amount: '', bankReference: '', bankName: '', paymentDate: '', notes: '', planId: '' });
   const [file, setFile] = useState(null);
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -15,13 +16,20 @@ export default function SubscriptionPage() {
     queryKey: ['my-subscription'],
     queryFn: async () => { const { data } = await api.get('/subscriptions/my'); return data; },
   });
+  const { data: plans = [] } = useQuery({
+    queryKey: ['plans-for-subscription'],
+    queryFn: async () => {
+      const { data } = await api.get('/plans/for-subscription');
+      return data;
+    },
+  });
 
   const uploadMutation = useMutation({
     mutationFn: (fd) => api.post('/subscriptions/receipts', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
       setSubmitted(true);
-      setForm({ amount: '', bankReference: '', bankName: '', paymentDate: '', notes: '' });
+      setForm((f) => ({ ...f, bankReference: '', bankName: '', paymentDate: '', notes: '' }));
       setFile(null);
     },
     onError: (err) => setErrors({ api: err.response?.data?.message || 'Upload failed' }),
@@ -30,6 +38,7 @@ export default function SubscriptionPage() {
   const validate = () => {
     const e = {};
     if (!form.amount || isNaN(form.amount) || parseFloat(form.amount) <= 0) e.amount = 'Valid amount required';
+    if (!form.planId) e.planId = 'Plan selection is required';
     if (!form.bankReference.trim()) e.bankReference = 'Bank reference required';
     if (!form.paymentDate) e.paymentDate = 'Payment date required';
     return e;
@@ -47,6 +56,34 @@ export default function SubscriptionPage() {
 
   const tenant = data?.tenant;
   const receipts = data?.receipts || [];
+  const latestReceiptPlanId = receipts.find((r) => r.requestedPlanId?._id)?.requestedPlanId?._id;
+
+  const selectedPlan = useMemo(
+    () => plans.find((p) => p._id === form.planId) || null,
+    [plans, form.planId]
+  );
+
+  useEffect(() => {
+    if (!tenant || !plans.length) return;
+    const defaultPlanId =
+      (tenant.planLocked && tenant.assignedPlanId?._id) ||
+      latestReceiptPlanId ||
+      tenant.assignedPlanId?._id ||
+      plans.find((p) => p.isDefault)?._id ||
+      plans[0]?._id ||
+      '';
+    if (!defaultPlanId) return;
+    setForm((f) => ({
+      ...f,
+      planId: defaultPlanId,
+      amount: String((plans.find((p) => p._id === defaultPlanId)?.amount ?? f.amount)),
+    }));
+  }, [tenant, plans, latestReceiptPlanId]);
+
+  useEffect(() => {
+    if (!selectedPlan) return;
+    setForm((f) => ({ ...f, amount: String(selectedPlan.amount) }));
+  }, [selectedPlan?._id]);
 
   const trialDaysLeft = tenant?.trialEndsAt
     ? Math.max(0, Math.ceil((new Date(tenant.trialEndsAt) - Date.now()) / (1000 * 60 * 60 * 24)))
@@ -62,7 +99,9 @@ export default function SubscriptionPage() {
       {/* Current status */}
       {tenant && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4">Current Plan</h3>
+          <h3 className="font-semibold text-gray-900 mb-4">
+            {tenant.subscriptionStatus === 'trial' ? 'Account status' : 'Current Plan'}
+          </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div>
               <p className="text-xs text-gray-400">Status</p>
@@ -76,20 +115,44 @@ export default function SubscriptionPage() {
                 </p>
               </div>
             )}
+            {tenant.assignedPlanId && (
+              <>
+                <div>
+                  <p className="text-xs text-gray-400">Assigned plan</p>
+                  <p className="font-semibold text-gray-900 mt-0.5">{tenant.assignedPlanId.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Payment amount</p>
+                  <p className="font-semibold text-gray-900 mt-0.5">
+                    {tenant.assignedPlanId.currency || 'LKR'} {Number(tenant.assignedPlanId.amount).toLocaleString()}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
-          {tenant.subscriptionStatus === 'trial' && trialDaysLeft <= 5 && (
-            <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2 text-sm text-amber-700">
-              <AlertTriangle size={15} />
-              Your trial expires soon. Upload a payment receipt to continue.
+          {tenant.subscriptionStatus === 'trial' && trialDaysLeft !== null && trialDaysLeft <= 14 && (
+            <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2 text-sm text-amber-800">
+              <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+              <span>
+                {trialDaysLeft <= 5
+                  ? 'Your trial is ending soon. Submit your payment receipt below to activate your subscription without interruption.'
+                  : 'You can submit your bank payment anytime during trial — our team will verify it before your trial ends.'}
+              </span>
             </div>
           )}
         </div>
       )}
 
-      {/* Upload payment receipt */}
+      {/* Upload payment receipt — available during trial and after */}
+      {tenant && (
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Upload Payment Receipt</h3>
+        <h3 className="font-semibold text-gray-900 mb-1">Upload payment receipt</h3>
+        <p className="text-sm text-gray-500 mb-4">
+          {tenant.subscriptionStatus === 'trial'
+            ? 'Pay by bank transfer and submit the details below — you can do this anytime during your trial so verification can finish before the trial ends.'
+            : 'Submit proof of payment for your selected plan. Amount must match the plan total exactly.'}
+        </p>
 
         {submitted ? (
           <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
@@ -104,16 +167,50 @@ export default function SubscriptionPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Amount (LKR) *</label>
-                <input type="number" value={form.amount} onChange={e => { setForm(f => ({ ...f, amount: e.target.value })); setErrors(e2 => ({ ...e2, amount: '' })); }}
-                  placeholder="4990"
+                <label className="block text-sm font-medium text-gray-700 mb-1">Plan *</label>
+                <select
+                  value={form.planId}
+                  disabled={tenant?.planLocked}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, planId: e.target.value }));
+                    setErrors((e2) => ({ ...e2, planId: '' }));
+                  }}
+                  className={`w-full border rounded-lg px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-600 ${
+                    errors.planId ? 'border-red-400' : 'border-gray-300'
+                  }`}
+                >
+                  <option value="">Select plan</option>
+                  {plans.map((p) => (
+                    <option key={p._id} value={p._id}>
+                      {p.name} ({p.currency} {Number(p.amount).toLocaleString()})
+                    </option>
+                  ))}
+                </select>
+                {tenant?.planLocked && (
+                  <p className="text-xs text-amber-600 mt-1">This plan is locked by superadmin and cannot be changed.</p>
+                )}
+                {errors.planId && <p className="text-xs text-red-500 mt-0.5">{errors.planId}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Amount ({selectedPlan?.currency || plans.find((p) => p._id === form.planId)?.currency || 'LKR'}) *
+                </label>
+                <input type="number" value={form.amount} readOnly
+                  placeholder="Auto from selected plan"
                   className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${errors.amount ? 'border-red-400' : 'border-gray-300'}`} />
                 {errors.amount && <p className="text-xs text-red-500 mt-0.5">{errors.amount}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Payment date *</label>
-                <input type="date" value={form.paymentDate} onChange={e => { setForm(f => ({ ...f, paymentDate: e.target.value })); setErrors(e2 => ({ ...e2, paymentDate: '' })); }}
-                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${errors.paymentDate ? 'border-red-400' : 'border-gray-300'}`} />
+                <CalendarDatePicker
+                  theme="light"
+                  value={form.paymentDate ? String(form.paymentDate).slice(0, 10) : ''}
+                  onChange={(v) => {
+                    setForm((f) => ({ ...f, paymentDate: v }));
+                    setErrors((e2) => ({ ...e2, paymentDate: '' }));
+                  }}
+                  buttonClassName={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${errors.paymentDate ? 'border-red-400' : 'border-gray-300'}`}
+                />
                 {errors.paymentDate && <p className="text-xs text-red-500 mt-0.5">{errors.paymentDate}</p>}
               </div>
             </div>
@@ -167,6 +264,7 @@ export default function SubscriptionPage() {
           </form>
         )}
       </div>
+      )}
 
       {/* Payment history */}
       {receipts.length > 0 && (

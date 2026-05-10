@@ -4,8 +4,6 @@ import { Upload, Loader, CheckCircle, Save, Palette, X } from 'lucide-react';
 import api from '../../api/axios';
 import imageCompression from 'browser-image-compression';
 
-const PAYMENT_OPTIONS = ['cash', 'card', 'online', 'bank_transfer', 'voucher'];
-
 async function optimizeToWebP(file) {
   const compressed = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 512, useWebWorker: true });
   return new Promise((resolve, reject) => {
@@ -89,24 +87,19 @@ export default function BrandingPage() {
       accentColor: form.accentColor,
       sidebarColor: form.sidebarColor,
       textColor: form.textColor,
+      selectionTextColor: form.selectionTextColor,
       address: form.address,
       phone: form.phone,
       email: form.email,
       website: form.website,
-      paymentMethods: form.paymentMethods,
       currency: form.currency,
       currencySymbol: form.currencySymbol,
       timezone: form.timezone,
       receiptHeader: form.receiptHeader,
       receiptFooter: form.receiptFooter,
       printReceiptByDefault: form.printReceiptByDefault,
+      receiptPrintAtStatus: form.receiptPrintAtStatus || 'placement',
     });
-  };
-
-  const togglePayment = (method) => {
-    const cur = form?.paymentMethods || [];
-    const next = cur.includes(method) ? cur.filter(m => m !== method) : [...cur, method];
-    setForm(f => ({ ...f, paymentMethods: next }));
   };
 
   if (isLoading || !form) {
@@ -180,43 +173,61 @@ export default function BrandingPage() {
         ))}
       </div>
 
+      {/* Currency — receipts & POS displays */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <h3 className="font-semibold text-gray-900">Currency</h3>
+        <p className="text-sm text-gray-500">
+          ISO code and symbol used on receipts and price labels. Defaults are set from your region when the account is created; you can override them here.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Currency code</label>
+            <input
+              value={form.currency || ''}
+              onChange={(e) => set('currency')(e.target.value.toUpperCase())}
+              placeholder="LKR"
+              maxLength={8}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Symbol</label>
+            <input
+              value={form.currencySymbol || ''}
+              onChange={(e) => set('currencySymbol')(e.target.value)}
+              placeholder="Rs."
+              maxLength={8}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Colors */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h3 className="font-semibold text-gray-900 mb-4">POS Colors</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[
             { label: 'Primary color', key: 'primaryColor' },
             { label: 'Accent color', key: 'accentColor' },
             { label: 'Sidebar color', key: 'sidebarColor' },
             { label: 'Text color', key: 'textColor' },
+            {
+              label: 'Selected tab & control text',
+              key: 'selectionTextColor',
+              hint: 'Labels on active tabs, nav links, filter chips, payment method, and highlighted menu rows.',
+            },
           ].map(c => (
-            <div key={c.key} className="flex items-center gap-3">
-              <input type="color" value={form[c.key] || '#000000'} onChange={e => set(c.key)(e.target.value)}
-                className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer p-1" />
-              <div>
+            <div key={c.key} className="flex items-start gap-3">
+              <input type="color" value={form[c.key] || '#ffffff'} onChange={e => set(c.key)(e.target.value)}
+                className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer p-1 flex-shrink-0 mt-0.5" />
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-700">{c.label}</p>
-                <p className="text-xs text-gray-400">{form[c.key] || '#000000'}</p>
+                <p className="text-xs text-gray-400 font-mono">{form[c.key] || '#ffffff'}</p>
+                {c.hint && <p className="text-xs text-gray-500 mt-1 leading-snug">{c.hint}</p>}
               </div>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Payment methods */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Payment Methods</h3>
-        <div className="flex flex-wrap gap-2">
-          {PAYMENT_OPTIONS.map(method => {
-            const active = form.paymentMethods?.includes(method);
-            return (
-              <button key={method} onClick={() => togglePayment(method)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors border ${
-                  active ? 'border-brand-orange bg-brand-orange/10 text-brand-orange' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                }`}>
-                {method.replace('_', ' ')}
-              </button>
-            );
-          })}
         </div>
       </div>
 
@@ -240,6 +251,23 @@ export default function BrandingPage() {
             className="w-4 h-4 accent-brand-orange" />
           <span className="text-sm font-medium text-gray-700">Print receipt by default</span>
         </label>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Print bill when order reaches</label>
+          <select
+            value={form.receiptPrintAtStatus || 'placement'}
+            onChange={(e) => set('receiptPrintAtStatus')(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
+          >
+            <option value="placement">When order is placed (checkout)</option>
+            <option value="preparing">When sent to kitchen (preparing)</option>
+            <option value="ready">When order is ready</option>
+            <option value="completed">When order is completed</option>
+            <option value="none">Never print automatically</option>
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            POS opens the receipt printer at this step (unless set to never). Checkout still records payment either way.
+          </p>
+        </div>
       </div>
 
       {/* Save */}

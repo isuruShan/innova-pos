@@ -14,6 +14,7 @@
   "type": "commonjs",
   "dependencies": {
     "@innovapos/logger": "workspace:*",
+    "@innovapos/mail-transport": "workspace:*",
     "@innovapos/shared-middleware": "workspace:*",
     "axios": "^1.16.0",
     "bcryptjs": "^3.0.3",

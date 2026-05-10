@@ -1,27 +1,28 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Save, Loader, CheckCircle, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { Save, Loader, CheckCircle, AlertTriangle } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
-  const [searchParams] = useSearchParams();
-  const mustChange = searchParams.get('changePassword') === '1';
+  const mustChange = Boolean(user?.isTemporaryPassword);
 
-  const [nameForm, setNameForm] = useState({ name: user?.name || '' });
+  const [nameForm, setNameForm] = useState({ name: '' });
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
-  const [showPw, setShowPw] = useState({ current: false, new: false, confirm: false });
   const [pwErrors, setPwErrors] = useState({});
   const [saved, setSaved] = useState({ name: false, password: false });
+
+  useEffect(() => {
+    if (user?.name != null) setNameForm({ name: user.name });
+  }, [user?.name]);
 
   const profileMutation = useMutation({
     mutationFn: (payload) => api.put('/auth/me', payload),
     onSuccess: (res) => {
       updateUser(res.data.user, res.data.token);
-      setSaved(s => ({ ...s, name: true }));
-      setTimeout(() => setSaved(s => ({ ...s, name: false })), 3000);
+      setSaved((s) => ({ ...s, name: true }));
+      setTimeout(() => setSaved((s) => ({ ...s, name: false })), 3000);
     },
   });
 
@@ -30,8 +31,9 @@ export default function ProfilePage() {
     onSuccess: (res) => {
       updateUser(res.data.user, res.data.token);
       setPwForm({ currentPassword: '', newPassword: '', confirm: '' });
-      setSaved(s => ({ ...s, password: true }));
-      setTimeout(() => setSaved(s => ({ ...s, password: false })), 3000);
+      setPwErrors({});
+      setSaved((s) => ({ ...s, password: true }));
+      setTimeout(() => setSaved((s) => ({ ...s, password: false })), 3000);
     },
     onError: (err) => setPwErrors({ api: err.response?.data?.message || 'Failed to update password' }),
   });
@@ -51,26 +53,16 @@ export default function ProfilePage() {
 
   const handleSavePassword = () => {
     const errs = validatePassword();
-    if (Object.keys(errs).length) { setPwErrors(errs); return; }
+    if (Object.keys(errs).length) {
+      setPwErrors(errs);
+      return;
+    }
+    setPwErrors({});
     passwordMutation.mutate({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword });
   };
 
-  const FieldRow = ({ label, value, onChange, type = 'text', error, show, onToggle }) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      <div className="relative">
-        <input type={type === 'password' ? (show ? 'text' : 'password') : type}
-          value={value} onChange={e => onChange(e.target.value)}
-          className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${error ? 'border-red-400' : 'border-gray-300'} ${type === 'password' ? 'pr-10' : ''}`} />
-        {type === 'password' && (
-          <button type="button" onClick={onToggle} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-            {show ? <EyeOff size={15} /> : <Eye size={15} />}
-          </button>
-        )}
-      </div>
-      {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
-    </div>
-  );
+  const inputClass =
+    'w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange';
 
   return (
     <div className="max-w-xl space-y-6">
@@ -90,62 +82,133 @@ export default function ProfilePage() {
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         <h3 className="font-semibold text-gray-900">Account Information</h3>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Full name</label>
-          <input type="text" value={nameForm.name} onChange={e => setNameForm({ name: e.target.value })}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30" />
+          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="profile-full-name">
+            Full name
+          </label>
+          <input
+            id="profile-full-name"
+            type="text"
+            value={nameForm.name}
+            onChange={(e) => setNameForm({ name: e.target.value })}
+            className={`${inputClass} border-gray-300`}
+            autoComplete="name"
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Email address</label>
-          <input type="email" value={user?.email || ''} disabled
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed" />
+          <input
+            type="email"
+            value={user?.email || ''}
+            disabled
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
+          />
           <p className="text-xs text-gray-400 mt-1">Email cannot be changed here</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-          <input type="text" value={user?.role?.replace('_', ' ') || ''} disabled
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed capitalize" />
+          <input
+            type="text"
+            value={user?.role?.replace('_', ' ') || ''}
+            disabled
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed capitalize"
+          />
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={handleSaveName} disabled={profileMutation.isPending}
+          <button
+            type="button"
+            onClick={handleSaveName}
+            disabled={profileMutation.isPending}
             className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60"
           >
             {profileMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Save size={14} />}
             Save name
           </button>
-          {saved.name && <span className="text-sm text-green-600 flex items-center gap-1"><CheckCircle size={13} /> Saved</span>}
+          {saved.name && (
+            <span className="text-sm text-green-600 flex items-center gap-1">
+              <CheckCircle size={13} /> Saved
+            </span>
+          )}
           {profileMutation.isError && <span className="text-sm text-red-600">Failed to save</span>}
         </div>
       </div>
 
-      {/* Password change */}
+      {/* Password change — stable DOM inputs (no component defined inside render) */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         <h3 className="font-semibold text-gray-900">Change Password</h3>
 
-        <FieldRow label="Current password" value={pwForm.currentPassword}
-          onChange={v => { setPwForm(f => ({ ...f, currentPassword: v })); setPwErrors(e => ({ ...e, currentPassword: '' })); }}
-          type="password" error={pwErrors.currentPassword}
-          show={showPw.current} onToggle={() => setShowPw(s => ({ ...s, current: !s.current }))} />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="profile-current-password">
+            Current password
+          </label>
+          <input
+            id="profile-current-password"
+            type="password"
+            value={pwForm.currentPassword}
+            onChange={(e) => {
+              setPwForm((f) => ({ ...f, currentPassword: e.target.value }));
+              setPwErrors((er) => ({ ...er, currentPassword: '', api: '' }));
+            }}
+            className={`${inputClass} ${pwErrors.currentPassword ? 'border-red-400' : 'border-gray-300'}`}
+            autoComplete="current-password"
+          />
+          {pwErrors.currentPassword && <p className="text-xs text-red-500 mt-0.5">{pwErrors.currentPassword}</p>}
+        </div>
 
-        <FieldRow label="New password" value={pwForm.newPassword}
-          onChange={v => { setPwForm(f => ({ ...f, newPassword: v })); setPwErrors(e => ({ ...e, newPassword: '' })); }}
-          type="password" error={pwErrors.newPassword}
-          show={showPw.new} onToggle={() => setShowPw(s => ({ ...s, new: !s.new }))} />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="profile-new-password">
+            New password
+          </label>
+          <input
+            id="profile-new-password"
+            type="password"
+            value={pwForm.newPassword}
+            onChange={(e) => {
+              setPwForm((f) => ({ ...f, newPassword: e.target.value }));
+              setPwErrors((er) => ({ ...er, newPassword: '', api: '' }));
+            }}
+            className={`${inputClass} ${pwErrors.newPassword ? 'border-red-400' : 'border-gray-300'}`}
+            autoComplete="new-password"
+          />
+          {pwErrors.newPassword && <p className="text-xs text-red-500 mt-0.5">{pwErrors.newPassword}</p>}
+        </div>
 
-        <FieldRow label="Confirm new password" value={pwForm.confirm}
-          onChange={v => { setPwForm(f => ({ ...f, confirm: v })); setPwErrors(e => ({ ...e, confirm: '' })); }}
-          type="password" error={pwErrors.confirm}
-          show={showPw.confirm} onToggle={() => setShowPw(s => ({ ...s, confirm: !s.confirm }))} />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="profile-confirm-password">
+            Confirm new password
+          </label>
+          <input
+            id="profile-confirm-password"
+            type="password"
+            value={pwForm.confirm}
+            onChange={(e) => {
+              setPwForm((f) => ({ ...f, confirm: e.target.value }));
+              setPwErrors((er) => ({ ...er, confirm: '', api: '' }));
+            }}
+            className={`${inputClass} ${pwErrors.confirm ? 'border-red-400' : 'border-gray-300'}`}
+            autoComplete="new-password"
+          />
+          {pwErrors.confirm && <p className="text-xs text-red-500 mt-0.5">{pwErrors.confirm}</p>}
+        </div>
 
-        {pwErrors.api && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{pwErrors.api}</p>}
+        {pwErrors.api && (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{pwErrors.api}</p>
+        )}
 
         <div className="flex items-center gap-3">
-          <button onClick={handleSavePassword} disabled={passwordMutation.isPending}
+          <button
+            type="button"
+            onClick={handleSavePassword}
+            disabled={passwordMutation.isPending}
             className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60"
           >
             {passwordMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Save size={14} />}
             Update password
           </button>
-          {saved.password && <span className="text-sm text-green-600 flex items-center gap-1"><CheckCircle size={13} /> Updated</span>}
+          {saved.password && (
+            <span className="text-sm text-green-600 flex items-center gap-1">
+              <CheckCircle size={13} /> Updated
+            </span>
+          )}
         </div>
       </div>
     </div>

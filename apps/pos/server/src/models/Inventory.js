@@ -8,6 +8,7 @@ const inventorySchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    storeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', default: null, index: true },
     itemName: { type: String, required: true, trim: true },
     unit: { type: String, required: true, trim: true },
     quantity: { type: Number, required: true, min: 0 },
@@ -22,5 +23,6 @@ const inventorySchema = new mongoose.Schema(
 );
 
 inventorySchema.index({ tenantId: 1, itemName: 1 });
+inventorySchema.index({ tenantId: 1, storeId: 1, itemName: 1 });
 
 module.exports = mongoose.model('Inventory', inventorySchema);

@@ -22,6 +22,8 @@ const tenantSettingsSchema = new mongoose.Schema(
     accentColor: { type: String, default: '#e94560' },
     sidebarColor: { type: String, default: '#16213e' },
     textColor: { type: String, default: '#ffffff' },
+    /** Text on selected tabs, nav links, pills, and highlighted dropdown rows (POS) */
+    selectionTextColor: { type: String, default: '#ffffff' },
 
     // Contact
     address: { type: String, default: '' },
@@ -44,6 +46,12 @@ const tenantSettingsSchema = new mongoose.Schema(
     receiptHeader: { type: String, default: '' },
     receiptFooter: { type: String, default: 'Thank you for your visit!' },
     printReceiptByDefault: { type: Boolean, default: false },
+    /** When POS auto-opens the receipt printer: placement | preparing | ready | completed | none */
+    receiptPrintAtStatus: {
+      type: String,
+      enum: ['placement', 'preparing', 'ready', 'completed', 'none'],
+      default: 'placement',
+    },
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

@@ -15,6 +15,8 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
     role: { type: String, enum: ROLES, required: true },
+    storeIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Store' }],
+    defaultStoreId: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', default: null },
     profileImage: { type: String, default: '' },
     profileImageKey: { type: String, default: '' },
 

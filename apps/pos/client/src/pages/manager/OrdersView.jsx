@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Search, SlidersHorizontal, RefreshCw, ChevronDown, X,
@@ -10,6 +10,9 @@ import OrderTypeBadge from '../../components/OrderTypeBadge';
 import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
 import { MANAGER_LINKS } from '../../constants/managerLinks';
 import { formatCurrency, formatDateTime } from '../../utils/format';
+import { useStoreContext, normalizeStoreId } from '../../context/StoreContext';
+import { StatsRowSkeleton, OrdersTableSkeleton } from '../../components/StoreSkeletons';
+import PosDateField from '../../components/PosDateField';
 
 const ORDER_TYPE_OPTIONS = [
   { value: 'dine-in',   label: 'Dine-In' },
@@ -20,7 +23,8 @@ const ORDER_TYPE_OPTIONS = [
 const STATUS_OPTIONS = ['pending', 'preparing', 'ready', 'completed', 'cancelled'];
 
 function todayStr() {
-  return new Date().toISOString().split('T')[0];
+  const x = new Date();
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
 }
 function sevenDaysAgo() {
   const d = new Date();
@@ -28,7 +32,17 @@ function sevenDaysAgo() {
   return d.toISOString().split('T')[0];
 }
 
+const PAYMENT_LABELS = { cash: 'Cash', card: 'Card', online: 'Online', bank_transfer: 'Bank transfer' };
+
+function formatPaymentTypeLabel(raw) {
+  if (raw == null || raw === '') return '—';
+  const s = String(raw).trim();
+  if (PAYMENT_LABELS[s]) return PAYMENT_LABELS[s];
+  return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export default function OrdersView() {
+  const { selectedStoreId, isStoreReady, stores } = useStoreContext();
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -37,6 +51,21 @@ export default function OrdersView() {
   const [toDate, setToDate]           = useState(todayStr());
   const [statusFilter, setStatusFilter]     = useState([]);
   const [orderTypeFilter, setOrderTypeFilter] = useState([]);
+  const [paymentTypeFilter, setPaymentTypeFilter] = useState([]);
+
+  const selectedStore = useMemo(
+    () => stores.find((s) => normalizeStoreId(s._id) === normalizeStoreId(selectedStoreId)),
+    [stores, selectedStoreId],
+  );
+
+  const paymentFilterOptions = useMemo(() => {
+    const raw = selectedStore?.paymentMethods?.length ? selectedStore.paymentMethods : ['cash', 'card'];
+    const uniq = [...new Set(raw)];
+    return uniq.map((value) => ({
+      value,
+      label: PAYMENT_LABELS[value] || formatPaymentTypeLabel(value),
+    }));
+  }, [selectedStore]);
 
   // Build query params
   const params = useMemo(() => {
@@ -45,21 +74,29 @@ export default function OrdersView() {
     if (toDate)   p.until = `${toDate}T23:59:59`;
     if (statusFilter.length)    p.status    = statusFilter.join(',');
     if (orderTypeFilter.length) p.orderType = orderTypeFilter.join(',');
+    if (paymentTypeFilter.length) p.paymentType = paymentTypeFilter.join(',');
     if (search.trim()) p.search = search.trim();
     return p;
-  }, [fromDate, toDate, statusFilter, orderTypeFilter, search]);
+  }, [fromDate, toDate, statusFilter, orderTypeFilter, paymentTypeFilter, search]);
 
-  const { data: orders = [], isLoading, refetch, isFetching } = useQuery({
-    queryKey: ['manager-orders', params],
+  useEffect(() => {
+    setSelectedOrder(null);
+  }, [selectedStoreId]);
+
+  const { data: orders = [], isPending, refetch, isFetching } = useQuery({
+    queryKey: ['manager-orders', selectedStoreId, params],
     queryFn: () => api.get('/orders', { params }).then(r => r.data),
+    enabled: isStoreReady,
     staleTime: 30_000,
   });
+
+  const showSkeleton = !isStoreReady || isPending;
 
   const toggleFilter = (arr, setArr, val) =>
     setArr(arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val]);
 
   const activeFilterCount =
-    statusFilter.length + orderTypeFilter.length +
+    statusFilter.length + orderTypeFilter.length + paymentTypeFilter.length +
     (fromDate !== sevenDaysAgo() || toDate !== todayStr() ? 1 : 0);
 
   const liveSelected = selectedOrder
@@ -75,18 +112,18 @@ export default function OrdersView() {
   }, [orders]);
 
   return (
-    <div className="min-h-screen bg-[#0f172a]">
+    <div className="min-h-screen bg-[var(--pos-page-bg)]">
       <Navbar links={MANAGER_LINKS} />
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
-          <h1 className="text-xl font-bold text-white">Orders</h1>
+          <h1 className="text-xl font-bold text-[var(--pos-text-primary)]">Orders</h1>
           <div className="flex items-center gap-2">
             <button
               onClick={() => refetch()}
               disabled={isFetching}
-              className="p-2 rounded-xl text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition"
+              className="p-2 rounded-xl text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700 transition"
             >
               <RefreshCw size={15} className={isFetching ? 'animate-spin' : ''} />
             </button>
@@ -101,23 +138,23 @@ export default function OrdersView() {
             { label: 'Revenue', value: formatCurrency(stats.revenue) },
             { label: 'Discounts Given', value: formatCurrency(stats.discounts) },
           ].map(s => (
-            <div key={s.label} className="bg-[#1e293b] border border-slate-700/50 rounded-xl px-4 py-3">
+            <div key={s.label} className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl px-4 py-3">
               <p className="text-xs text-slate-500">{s.label}</p>
-              <p className="text-lg font-bold text-white mt-0.5">{s.value}</p>
+              <p className="text-lg font-bold text-[var(--pos-text-primary)] mt-0.5">{s.value}</p>
             </div>
           ))}
         </div>
 
         {/* Search + Filter row */}
         <div className="flex gap-2 mb-4">
-          <div className="flex-1 flex items-center gap-2 bg-[#1e293b] border border-slate-700/50 rounded-xl px-3 py-2.5">
+          <div className="flex-1 flex items-center gap-2 bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl px-3 py-2.5">
             <Search size={15} className="text-slate-500 flex-shrink-0" />
             <input
               type="text"
               placeholder="Search order #…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-white text-sm focus:outline-none placeholder-slate-600"
+              className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
             />
             {search && (
               <button onClick={() => setSearch('')}><X size={13} className="text-slate-500" /></button>
@@ -129,7 +166,7 @@ export default function OrdersView() {
             className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium transition ${
               showFilters || activeFilterCount > 0
                 ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
-                : 'bg-[#1e293b] border-slate-700/50 text-slate-400 hover:text-white'
+                : 'bg-[var(--pos-panel)] border-slate-700/50 text-slate-400 hover:text-[var(--pos-text-primary)]'
             }`}
           >
             <SlidersHorizontal size={14} />
@@ -145,20 +182,28 @@ export default function OrdersView() {
 
         {/* Expanded filters */}
         {showFilters && (
-          <div className="bg-[#1e293b] border border-slate-700/50 rounded-2xl p-4 mb-4 space-y-4">
+          <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-2xl p-4 mb-4 space-y-4">
             {/* Date range */}
             <div>
               <p className="text-xs font-medium text-slate-400 mb-2">Date Range</p>
               <div className="flex gap-2">
                 <div className="flex-1">
                   <label className="text-xs text-slate-500 block mb-1">From</label>
-                  <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
-                    className="w-full bg-[#0f172a] border border-slate-700 text-white text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                  <PosDateField
+                    value={fromDate}
+                    onChange={setFromDate}
+                    max={toDate}
+                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
                 </div>
                 <div className="flex-1">
                   <label className="text-xs text-slate-500 block mb-1">To</label>
-                  <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
-                    className="w-full bg-[#0f172a] border border-slate-700 text-white text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                  <PosDateField
+                    value={toDate}
+                    onChange={setToDate}
+                    min={fromDate}
+                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
                 </div>
               </div>
             </div>
@@ -171,8 +216,8 @@ export default function OrdersView() {
                   <button key={s} onClick={() => toggleFilter(statusFilter, setStatusFilter, s)}
                     className={`px-3 py-1 rounded-full text-xs font-medium border transition capitalize ${
                       statusFilter.includes(s)
-                        ? 'bg-amber-500 border-amber-500 text-white'
-                        : 'bg-[#0f172a] border-slate-700 text-slate-400 hover:text-white'
+                        ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
+                        : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
                     }`}>
                     {s}
                   </button>
@@ -188,8 +233,8 @@ export default function OrdersView() {
                   <button key={t.value} onClick={() => toggleFilter(orderTypeFilter, setOrderTypeFilter, t.value)}
                     className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
                       orderTypeFilter.includes(t.value)
-                        ? 'bg-amber-500 border-amber-500 text-white'
-                        : 'bg-[#0f172a] border-slate-700 text-slate-400 hover:text-white'
+                        ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
+                        : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
                     }`}>
                     {t.label}
                   </button>
@@ -197,8 +242,35 @@ export default function OrdersView() {
               </div>
             </div>
 
+            {/* Payment type filter */}
+            <div>
+              <p className="text-xs font-medium text-slate-400 mb-2">Payment Type</p>
+              <div className="flex flex-wrap gap-2">
+                {paymentFilterOptions.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => toggleFilter(paymentTypeFilter, setPaymentTypeFilter, t.value)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
+                      paymentTypeFilter.includes(t.value)
+                        ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
+                        : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <button
-              onClick={() => { setStatusFilter([]); setOrderTypeFilter([]); setFromDate(sevenDaysAgo()); setToDate(todayStr()); }}
+              onClick={() => {
+                setStatusFilter([]);
+                setOrderTypeFilter([]);
+                setPaymentTypeFilter([]);
+                setFromDate(sevenDaysAgo());
+                setToDate(todayStr());
+              }}
               className="text-xs text-slate-500 hover:text-red-400 transition"
             >
               Reset filters
@@ -207,21 +279,18 @@ export default function OrdersView() {
         )}
 
         {/* Table */}
-        {isLoading ? (
-          <div className="text-center text-slate-500 py-20">
-            <RefreshCw size={20} className="animate-spin mx-auto mb-3" />
-            Loading orders…
-          </div>
+        {showSkeleton ? (
+          <OrdersTableSkeleton />
         ) : orders.length === 0 ? (
           <div className="text-center py-20 text-slate-600">
             <p className="text-xl font-semibold">No orders found</p>
             <p className="text-sm mt-1 opacity-60">Try adjusting the filters</p>
           </div>
         ) : (
-          <div className="bg-[#1e293b] border border-slate-700/50 rounded-2xl overflow-hidden">
+          <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-2xl overflow-hidden">
             {/* Table header */}
-            <div className="hidden md:grid grid-cols-[60px_80px_120px_1fr_90px_90px_100px_36px] gap-3 px-4 py-3 border-b border-slate-700/50 bg-slate-800/30">
-              {['Order #', 'Type', 'Status', 'Items', 'Total', 'Discount', 'Time', ''].map(h => (
+            <div className="hidden md:grid grid-cols-[56px_72px_76px_96px_minmax(0,1fr)_88px_80px_92px_28px] gap-3 px-4 py-3 border-b border-slate-700/50 bg-slate-800/30">
+              {['Order #', 'Type', 'Pay', 'Status', 'Items', 'Total', 'Discount', 'Time', ''].map(h => (
                 <span key={h} className="text-xs font-medium text-slate-500 uppercase tracking-wider">{h}</span>
               ))}
             </div>
@@ -234,7 +303,7 @@ export default function OrdersView() {
                   className="w-full text-left hover:bg-slate-700/20 transition group"
                 >
                   {/* Desktop row */}
-                  <div className="hidden md:grid grid-cols-[60px_80px_120px_1fr_90px_90px_100px_36px] gap-3 px-4 py-3 items-center">
+                  <div className="hidden md:grid grid-cols-[56px_72px_76px_96px_minmax(0,1fr)_88px_80px_92px_28px] gap-3 px-4 py-3 items-center">
                     <span className="font-mono font-bold text-amber-400 text-sm">
                       #{String(order.orderNumber).padStart(3, '0')}
                     </span>
@@ -244,6 +313,9 @@ export default function OrdersView() {
                       reference={order.reference}
                       size="xs"
                     />
+                    <span className="text-xs font-medium text-slate-300 truncate" title={formatPaymentTypeLabel(order.paymentType)}>
+                      {formatPaymentTypeLabel(order.paymentType)}
+                    </span>
                     <div><Badge label={order.status} variant={order.status} /></div>
                     <div className="min-w-0">
                       <p className="text-sm text-slate-300 truncate">
@@ -253,7 +325,7 @@ export default function OrdersView() {
                         <p className="text-xs text-slate-600">{order.createdBy.name}</p>
                       )}
                     </div>
-                    <span className="text-sm font-semibold text-white">{formatCurrency(order.totalAmount)}</span>
+                    <span className="text-sm font-semibold text-[var(--pos-text-primary)]">{formatCurrency(order.totalAmount)}</span>
                     <span className="text-sm text-green-400">
                       {order.discountTotal > 0 ? `-${formatCurrency(order.discountTotal)}` : '—'}
                     </span>
@@ -269,11 +341,14 @@ export default function OrdersView() {
                       </span>
                       <div className="flex items-center gap-2">
                         <Badge label={order.status} variant={order.status} />
-                        <span className="text-sm font-bold text-white">{formatCurrency(order.totalAmount)}</span>
+                        <span className="text-sm font-bold text-[var(--pos-text-primary)]">{formatCurrency(order.totalAmount)}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <OrderTypeBadge orderType={order.orderType} tableNumber={order.tableNumber} reference={order.reference} size="xs" />
+                      <span className="text-[10px] uppercase tracking-wide text-slate-500 bg-slate-800/80 px-2 py-0.5 rounded-md">
+                        {formatPaymentTypeLabel(order.paymentType)}
+                      </span>
                       <span className="text-xs text-slate-500">{formatDateTime(order.createdAt)}</span>
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5 truncate">

@@ -22,6 +22,7 @@ function getInitials(name = '') {
 }
 
 export function AvatarDisplay({ user, size = 'md', className = '' }) {
+  const [imageFailed, setImageFailed] = useState(false);
   const sz = {
     xs: 'w-7 h-7 text-xs',
     sm: 'w-9 h-9 text-xs',
@@ -29,7 +30,7 @@ export function AvatarDisplay({ user, size = 'md', className = '' }) {
     lg: 'w-16 h-16 text-base',
   }[size] || 'w-9 h-9 text-xs';
 
-  const imgSrc = user?.profileImage || null;
+  const imgSrc = !imageFailed ? (user?.profileImage || null) : null;
 
   if (imgSrc) {
     return (
@@ -37,13 +38,13 @@ export function AvatarDisplay({ user, size = 'md', className = '' }) {
         src={imgSrc}
         alt={user.name}
         className={`${sz} rounded-full object-cover flex-shrink-0 ${className}`}
-        onError={e => { e.target.style.display = 'none'; }}
+        onError={() => setImageFailed(true)}
       />
     );
   }
 
   return (
-    <div className={`${sz} rounded-full ${ROLE_COLORS[user?.role] || 'bg-slate-600'} flex items-center justify-center font-bold text-white flex-shrink-0 ${className}`}>
+    <div className={`${sz} rounded-full ${ROLE_COLORS[user?.role] || 'bg-slate-600'} flex items-center justify-center font-bold text-[var(--pos-text-primary)] flex-shrink-0 ${className}`}>
       {getInitials(user?.name)}
     </div>
   );
@@ -120,7 +121,7 @@ export default function ProfileSlideOver({ open, onClose }) {
         </div>
 
         {/* Info (read-only) */}
-        <div className="bg-[#0f172a] border border-slate-700/50 rounded-xl px-4 py-3 space-y-2">
+        <div className="bg-[var(--pos-surface-inset)] border border-slate-700/50 rounded-xl px-4 py-3 space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-slate-500">Email</span>
             <span className="text-slate-300">{user.email}</span>
@@ -142,7 +143,7 @@ export default function ProfileSlideOver({ open, onClose }) {
             onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSaveName()}
             placeholder="Your name"
-            className="w-full bg-[#0f172a] border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+            className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
           />
         </div>
 
@@ -154,7 +155,7 @@ export default function ProfileSlideOver({ open, onClose }) {
 
         <div className="flex gap-3">
           <button onClick={onClose}
-            className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2.5 rounded-xl transition text-sm">
+            className="flex-1 bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-medium py-2.5 rounded-xl transition text-sm">
             Cancel
           </button>
           <button

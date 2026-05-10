@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Search, Filter, Eye, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import api from '../../api/axios';
+import ViewModeToggle from '../../components/common/ViewModeToggle';
 
 const STATUS_STYLES = {
   pending:      'bg-yellow-100 text-yellow-700',
@@ -22,6 +23,7 @@ export default function ApplicationsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_applications') || 'table');
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['applications', statusFilter, search, page],
@@ -40,6 +42,11 @@ export default function ApplicationsPage() {
     under_review: undefined,
     approved: undefined,
     rejected: undefined,
+  };
+
+  const onViewModeChange = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('view_mode_applications', mode);
   };
 
   return (
@@ -77,16 +84,59 @@ export default function ApplicationsPage() {
           <RefreshCw size={14} />
           Refresh
         </button>
+        <div className="sm:ml-auto">
+          <ViewModeToggle mode={viewMode} setMode={onViewModeChange} />
+        </div>
       </div>
 
-      {/* Table */}
+      {/* Table / Grid */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {isLoading ? (
           <div className="p-12 text-center text-gray-400">Loading applications...</div>
         ) : error ? (
-          <div className="p-12 text-center text-red-500">Failed to load applications</div>
+          <div className="p-12 text-center text-red-500">
+            <p className="font-medium">Failed to load applications</p>
+            <p className="text-sm text-red-600/90 mt-2 max-w-md mx-auto">
+              {error.response?.data?.message || error.message || 'Check that the admin API is running and you are signed in as superadmin.'}
+            </p>
+          </div>
         ) : !data?.applications?.length ? (
           <div className="p-12 text-center text-gray-400">No applications found</div>
+        ) : viewMode === 'grid' ? (
+          <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {data.applications.map((app) => {
+              const st = app.status || 'pending';
+              const Icon = STATUS_ICONS[st] || Clock;
+              return (
+                <div key={app._id} className="rounded-xl border border-gray-200 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">
+                        {app.personal?.firstName || '—'} {app.personal?.lastName || ''}
+                      </p>
+                      <p className="text-xs text-gray-500">{app.personal?.email || '—'}</p>
+                    </div>
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[st] || 'bg-gray-100 text-gray-700'}`}>
+                      <Icon size={11} />
+                      {String(st).replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div className="mt-3 space-y-1 text-xs text-gray-600">
+                    <p><span className="text-gray-500">Business:</span> {app.business?.name || '—'}</p>
+                    <p><span className="text-gray-500">Submitted:</span> {new Date(app.createdAt).toLocaleDateString()}</p>
+                    <p><span className="text-gray-500">Reviewed by:</span> {app.reviewedBy?.name || '—'}</p>
+                  </div>
+                  <div className="mt-4">
+                    <Link to={`/applications/${app._id}`}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
+                      <Eye size={13} />
+                      Review
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -101,25 +151,26 @@ export default function ApplicationsPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {data.applications.map(app => {
-                  const Icon = STATUS_ICONS[app.status] || Clock;
+                  const st = app.status || 'pending';
+                  const Icon = STATUS_ICONS[st] || Clock;
                   return (
                     <tr key={app._id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
                         <p className="font-medium text-gray-900">
-                          {app.personal.firstName} {app.personal.lastName}
+                          {app.personal?.firstName || '—'} {app.personal?.lastName || ''}
                         </p>
-                        <p className="text-xs text-gray-500 mt-0.5">{app.personal.email}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{app.personal?.email || '—'}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <p className="font-medium text-gray-800">{app.business.name}</p>
+                        <p className="font-medium text-gray-800">{app.business?.name || '—'}</p>
                         <p className="text-xs text-gray-500">
-                          {[app.business.city, app.business.country].filter(Boolean).join(', ') || '—'}
+                          {[app.business?.city, app.business?.country].filter(Boolean).join(', ') || '—'}
                         </p>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[app.status]}`}>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[st] || 'bg-gray-100 text-gray-700'}`}>
                           <Icon size={11} />
-                          {app.status.replace('_', ' ')}
+                          {String(st).replace('_', ' ')}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-500 text-xs">

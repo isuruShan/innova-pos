@@ -1,22 +1,30 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Download, Calendar, TrendingUp, ShoppingBag, DollarSign, ClipboardList, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Download, TrendingUp, ShoppingBag, DollarSign, ClipboardList, ShoppingCart } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import StatCard from '../../components/StatCard';
 import Badge from '../../components/Badge';
 import { formatCurrency, formatTime } from '../../utils/format';
+import { useStoreContext } from '../../context/StoreContext';
+import { DayEndReportSkeleton } from '../../components/StoreSkeletons';
+import PosDateField from '../../components/PosDateField';
 
 const formatPrice = formatCurrency;
-const todayStr = () => new Date().toISOString().split('T')[0];
+const todayStr = () => {
+  const x = new Date();
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+};
 
 export default function DayEndReport() {
   const [date, setDate] = useState(todayStr());
+  const { selectedStoreId, isStoreReady } = useStoreContext();
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['day-end-report', date],
+  const { data, isPending, isError } = useQuery({
+    queryKey: ['day-end-report', selectedStoreId, date],
     queryFn: () => api.get(`/reports/day-end?date=${date}`).then(r => r.data),
+    enabled: isStoreReady,
   });
 
   const exportCSV = () => {
@@ -35,7 +43,7 @@ export default function DayEndReport() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a]">
+    <div className="min-h-screen bg-[var(--pos-page-bg)]">
       <Navbar links={[
         { to: '/cashier/order', label: 'New Order', icon: ShoppingCart },
         { to: '/cashier/orders', label: 'Order Board', icon: ClipboardList },
@@ -47,26 +55,22 @@ export default function DayEndReport() {
           <div className="flex items-center gap-3">
             <Link
               to="/cashier/order"
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition"
+              className="p-2 rounded-lg text-slate-400 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 transition"
             >
               <ArrowLeft size={18} />
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-white">Day-End Report</h1>
+              <h1 className="text-xl font-bold text-[var(--pos-text-primary)]">Day-End Report</h1>
               <p className="text-slate-500 text-sm">Sales summary for selected date</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-[#1e293b] border border-slate-700/50 rounded-xl px-3 py-2">
-              <Calendar size={15} className="text-slate-400" />
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="bg-transparent text-white text-sm focus:outline-none"
-              />
-            </div>
+            <PosDateField
+              value={date}
+              onChange={setDate}
+              className="flex items-center gap-2 bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl px-3 py-2 text-[var(--pos-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 min-w-[200px]"
+            />
             <button
               onClick={exportCSV}
               disabled={!data?.orders?.length}
@@ -78,15 +82,15 @@ export default function DayEndReport() {
           </div>
         </div>
 
-        {isLoading && (
-          <div className="text-center text-slate-500 py-20">Loading report...</div>
+        {(!isStoreReady || isPending) && (
+          <DayEndReportSkeleton />
         )}
 
-        {isError && (
+        {isError && !isPending && (
           <div className="text-center text-red-400 py-20">Failed to load report.</div>
         )}
 
-        {data && (
+        {data && !isPending && (
           <>
             {/* Stat cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -111,9 +115,9 @@ export default function DayEndReport() {
             </div>
 
             {/* Orders table */}
-            <div className="bg-[#1e293b] rounded-2xl border border-slate-700/50 overflow-hidden">
+            <div className="bg-[var(--pos-panel)] rounded-2xl border border-slate-700/50 overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-700/50">
-                <h2 className="font-semibold text-white">Order Breakdown</h2>
+                <h2 className="font-semibold text-[var(--pos-text-primary)]">Order Breakdown</h2>
               </div>
 
               {data.orders.length === 0 ? (
@@ -149,7 +153,7 @@ export default function DayEndReport() {
                               {order.items.reduce((s, i) => s + i.qty, 0)} items
                             </div>
                           </td>
-                          <td className="px-4 py-3 font-semibold text-white">{formatPrice(order.totalAmount)}</td>
+                          <td className="px-4 py-3 font-semibold text-[var(--pos-text-primary)]">{formatPrice(order.totalAmount)}</td>
                           <td className="px-4 py-3">
                             <Badge label={order.status} variant={order.status} />
                           </td>

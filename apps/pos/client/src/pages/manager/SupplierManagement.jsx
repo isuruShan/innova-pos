@@ -8,6 +8,8 @@ import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
 import { MANAGER_LINKS } from '../../constants/managerLinks';
+import { useStoreContext } from '../../context/StoreContext';
+import { SupplierCardsSkeleton } from '../../components/StoreSkeletons';
 
 const EMPTY_FORM = { name: '', contactPerson: '', email: '', phone: '', address: '', notes: '' };
 
@@ -15,14 +17,14 @@ function SupplierForm({ form, setForm, onSubmit, onCancel, isPending, error, edi
   const field = (key, label, placeholder, icon, type = 'text') => (
     <div>
       <label className="block text-sm font-medium text-slate-300 mb-1.5">{label}</label>
-      <div className="flex items-center gap-2 bg-[#0f172a] border border-slate-700 rounded-xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-amber-500">
+      <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-amber-500">
         {icon}
         <input
           type={type}
           value={form[key]}
           onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
           placeholder={placeholder}
-          className="flex-1 bg-transparent text-white text-sm focus:outline-none placeholder-slate-600"
+          className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
         />
       </div>
     </div>
@@ -43,7 +45,7 @@ function SupplierForm({ form, setForm, onSubmit, onCancel, isPending, error, edi
           value={form.notes}
           onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
           placeholder="Delivery schedule, payment terms, etc."
-          className="w-full bg-[#0f172a] border border-slate-700 text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600 resize-none"
+          className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600 resize-none"
         />
       </div>
 
@@ -55,7 +57,7 @@ function SupplierForm({ form, setForm, onSubmit, onCancel, isPending, error, edi
 
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancel}
-          className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 rounded-xl transition text-sm">
+          className="flex-1 bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-semibold py-2.5 rounded-xl transition text-sm">
           Cancel
         </button>
         <button type="submit" disabled={isPending}
@@ -69,7 +71,7 @@ function SupplierForm({ form, setForm, onSubmit, onCancel, isPending, error, edi
 
 function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded }) {
   return (
-    <div className="bg-[#1e293b] border border-slate-700/50 rounded-2xl p-5 space-y-4">
+    <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-2xl p-5 space-y-4">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -77,7 +79,7 @@ function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded }) {
             <Truck size={18} className="text-purple-400" />
           </div>
           <div className="min-w-0">
-            <h3 className="text-white font-semibold text-sm truncate">{supplier.name}</h3>
+            <h3 className="text-[var(--pos-text-primary)] font-semibold text-sm truncate">{supplier.name}</h3>
             {supplier.contactPerson && (
               <p className="text-slate-500 text-xs truncate">{supplier.contactPerson}</p>
             )}
@@ -85,7 +87,7 @@ function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded }) {
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           <button onClick={() => onEdit(supplier)}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition">
+            className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition">
             <Edit2 size={13} />
           </button>
           <button onClick={() => onDelete(supplier._id)}
@@ -131,7 +133,7 @@ function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded }) {
 
       {/* Expanded items list */}
       {expanded && supplier.items && (
-        <div className="bg-[#0f172a] rounded-xl p-3 space-y-1.5">
+        <div className="bg-[var(--pos-surface-inset)] rounded-xl p-3 space-y-1.5">
           {supplier.items.length === 0 ? (
             <p className="text-xs text-slate-600 text-center py-2">No inventory items linked</p>
           ) : (
@@ -149,6 +151,7 @@ function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded }) {
 }
 
 export default function SupplierManagement() {
+  const { selectedStoreId, isStoreReady } = useStoreContext();
   const [slideOpen, setSlideOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -157,9 +160,10 @@ export default function SupplierManagement() {
   const [expandedItems, setExpandedItems] = useState({});
   const qc = useQueryClient();
 
-  const { data: suppliers = [], isLoading } = useQuery({
-    queryKey: ['suppliers'],
+  const { data: suppliers = [], isPending } = useQuery({
+    queryKey: ['suppliers', selectedStoreId],
     queryFn: () => api.get('/suppliers').then(r => r.data),
+    enabled: isStoreReady,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['suppliers'] });
@@ -226,14 +230,14 @@ export default function SupplierManagement() {
   }));
 
   return (
-    <div className="min-h-screen bg-[#0f172a]">
+    <div className="min-h-screen bg-[var(--pos-page-bg)]">
       <Navbar links={MANAGER_LINKS} />
 
       <div className="max-w-6xl mx-auto p-4 sm:p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-[var(--pos-text-primary)] flex items-center gap-2">
               <Truck size={22} className="text-purple-400" />
               Suppliers
             </h1>
@@ -246,8 +250,8 @@ export default function SupplierManagement() {
           </button>
         </div>
 
-        {isLoading ? (
-          <div className="text-center text-slate-500 py-20">Loading suppliers…</div>
+        {!isStoreReady || isPending ? (
+          <SupplierCardsSkeleton />
         ) : suppliers.length === 0 ? (
           <div className="text-center py-20 text-slate-600">
             <Truck size={52} className="mx-auto mb-4 opacity-20" />

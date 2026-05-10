@@ -39,6 +39,7 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 200 }));
 app.use(express.json({ limit: '2mb' }));
 
 app.use('/applications', require('./routes/applications'));
+app.use('/plans', require('./routes/plans'));
 app.use('/newsletter', require('./routes/newsletter'));
 app.use('/contact', require('./routes/contact'));
 

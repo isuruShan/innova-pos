@@ -14,6 +14,10 @@ const tenantSchema = new mongoose.Schema(
       enum: ['trial', 'active', 'expired', 'cancelled'],
       default: 'trial',
     },
+    assignedPlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', default: null, index: true },
+    planLocked: { type: Boolean, default: false },
+    assignedAt: { type: Date, default: null },
+    assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     trialEndsAt: { type: Date, default: null },
     adminCount: { type: Number, default: 0, min: 0, max: 2 },
 

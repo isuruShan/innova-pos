@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Zap, Building2, MapPin, FileText, Upload, X, ArrowLeft, ArrowRight, Loader } from 'lucide-react';
+import { Building2, MapPin, FileText, Upload, X, ArrowLeft, ArrowRight, Loader } from 'lucide-react';
 import { COUNTRIES } from '../constants/countries';
 import { validateEmail } from '../utils/phone';
 import api from '../api';
@@ -148,11 +148,8 @@ export default function SignupBusinessPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="px-4 py-5 border-b bg-white">
-        <Link to="/" className="flex items-center gap-2 w-fit">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-brand-orange">
-            <Zap size={16} className="text-white" fill="white" />
-          </div>
-          <span className="font-bold text-lg text-brand-brown-deep">InnovaPOS</span>
+        <Link to="/" className="flex items-center w-fit">
+          <img src="/cafinity-logo.png" alt="Cafinity" className="h-10 w-auto rounded-lg shadow-sm" />
         </Link>
       </div>
 

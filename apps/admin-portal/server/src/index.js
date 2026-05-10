@@ -36,8 +36,18 @@ app.use('/api/auth',            require('./routes/auth'));
 app.use('/api/applications',    require('./routes/applications'));
 app.use('/api/tenants',         require('./routes/tenants'));
 app.use('/api/subscriptions',   require('./routes/subscriptions'));
+app.use('/api/plans',           require('./routes/plans'));
 app.use('/api/tenant-settings', require('./routes/tenantSettings'));
 app.use('/api/users',           require('./routes/users'));
+app.use('/api/stores',          require('./routes/stores'));
+app.use('/api/cashier-sessions', require('./routes/cashier-sessions'));
+/** Same collections as POS — local routes avoid duplicate Mongoose model registration with the POS app */
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/loyalty', require('./routes/loyalty'));
+app.use('/api/customers', require('./routes/customers'));
+app.use('/api/promotions', require('./routes/promotions'));
+app.use('/api/menu', require('./routes/menu'));
+app.use('/api/categories', require('./routes/categories'));
 
 app.get('/api/health', (_req, res) =>
   res.json({ status: 'ok', service: 'admin-portal-server', ts: new Date().toISOString() })

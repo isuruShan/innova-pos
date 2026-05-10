@@ -1,8 +1,7 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Zap, Mail, Lock, Eye, EyeOff, Loader } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Mail, Lock, Eye, EyeOff, Loader } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-
 export default function LoginPage() {
   const { login, logout, user } = useAuth();
   const navigate = useNavigate();
@@ -10,20 +9,29 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const t = setTimeout(() => setToast(null), 3200);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const u = await login(form.email, form.password);
+      const u = await login(form.email.trim().toLowerCase(), form.password.trim());
       if (u.isTemporaryPassword) {
         navigate('/profile?changePassword=1', { replace: true });
       } else {
         navigate(u.role === 'superadmin' ? '/merchants' : '/dashboard', { replace: true });
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid credentials');
+      const msg = err.response?.data?.message || 'Invalid credentials';
+      setError(msg);
+      setToast({ type: 'error', message: msg });
     } finally {
       setLoading(false);
     }
@@ -47,13 +55,18 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-brand-brown-deep">
+      {toast && (
+        <div className="fixed top-4 right-4 z-50">
+          <div className="rounded-lg border border-red-500/40 bg-red-900/90 px-4 py-3 text-sm text-red-100 shadow-lg backdrop-blur">
+            {toast.message}
+          </div>
+        </div>
+      )}
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-brand-orange">
-            <Zap size={28} className="text-white" fill="white" />
-          </div>
-          <h1 className="text-2xl font-bold text-white">InnovaPOS Admin</h1>
-          <p className="text-gray-400 text-sm mt-1">Sign in to your admin portal</p>
+          <img src="/cafinity-logo.png" alt="Cafinity" className="h-14 w-auto mx-auto mb-5 rounded-xl shadow-lg" />
+          <h1 className="text-2xl font-bold text-white">Cafinity Admin</h1>
+          <p className="text-gray-400 text-sm mt-1">Sign in to manage merchants, plans, and approvals</p>
         </div>
 
         <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-8">
@@ -126,6 +139,12 @@ export default function LoginPage() {
             >
               {loading ? <><Loader size={15} className="animate-spin" /> Signing in...</> : 'Sign in'}
             </button>
+            <Link
+              to="/forgot-password"
+              className="block text-center text-sm text-gray-400 hover:text-white underline underline-offset-2 transition-colors"
+            >
+              Forgot password?
+            </Link>
           </form>
         </div>
 

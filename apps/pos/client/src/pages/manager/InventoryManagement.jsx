@@ -8,6 +8,8 @@ import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
 import Badge from '../../components/Badge';
 import { MANAGER_LINKS } from '../../constants/managerLinks';
+import { useStoreContext } from '../../context/StoreContext';
+import { InventoryTableSkeleton } from '../../components/StoreSkeletons';
 
 const EMPTY_FORM = { itemName: '', unit: 'pcs', quantity: '', minThreshold: '', suppliers: [] };
 
@@ -30,7 +32,7 @@ function InlineEdit({ value, onSave }) {
   if (!editing) {
     return (
       <button onClick={() => { setVal(value); setEditing(true); }}
-        className="text-white font-semibold hover:text-amber-400 transition">
+        className="text-[var(--pos-text-primary)] font-semibold hover:text-amber-400 transition">
         {value}
       </button>
     );
@@ -42,7 +44,7 @@ function InlineEdit({ value, onSave }) {
         onChange={e => setVal(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
         autoFocus
-        className="w-20 bg-[#0f172a] border border-amber-500 text-white rounded-lg px-2 py-1 text-sm focus:outline-none"
+        className="w-20 bg-[var(--pos-surface-inset)] border border-amber-500 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-sm focus:outline-none"
       />
       <button onClick={save} className="text-green-400 hover:text-green-300"><Check size={14} /></button>
       <button onClick={() => setEditing(false)} className="text-slate-500 hover:text-slate-300"><X size={14} /></button>
@@ -65,6 +67,7 @@ function SupplierPills({ suppliers }) {
 }
 
 export default function InventoryManagement() {
+  const { selectedStoreId, isStoreReady } = useStoreContext();
   const [slideOpen, setSlideOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -72,15 +75,19 @@ export default function InventoryManagement() {
   const [filter, setFilter] = useState('all');
   const qc = useQueryClient();
 
-  const { data: items = [], isLoading } = useQuery({
-    queryKey: ['inventory'],
+  const { data: items = [], isPending: invPending } = useQuery({
+    queryKey: ['inventory', selectedStoreId],
     queryFn: () => api.get('/inventory').then(r => r.data),
+    enabled: isStoreReady,
   });
 
-  const { data: suppliers = [] } = useQuery({
-    queryKey: ['suppliers'],
+  const { data: suppliers = [], isPending: supPending } = useQuery({
+    queryKey: ['suppliers', selectedStoreId],
     queryFn: () => api.get('/suppliers').then(r => r.data),
+    enabled: isStoreReady,
   });
+
+  const pageLoading = !isStoreReady || invPending || supPending;
 
   const createMutation = useMutation({
     mutationFn: (data) => api.post('/inventory', data),
@@ -148,14 +155,14 @@ export default function InventoryManagement() {
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="min-h-screen bg-[#0f172a]">
+    <div className="min-h-screen bg-[var(--pos-page-bg)]">
       <Navbar links={MANAGER_LINKS} />
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-[var(--pos-text-primary)] flex items-center gap-2">
               Inventory
               {lowCount > 0 && (
                 <span className="flex items-center gap-1 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 text-xs font-semibold px-2.5 py-1 rounded-full">
@@ -183,18 +190,18 @@ export default function InventoryManagement() {
             <button key={f.key} onClick={() => setFilter(f.key)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
                 filter === f.key
-                  ? 'bg-amber-500 text-white'
-                  : 'text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700'
+                  ? 'bg-amber-500 text-[var(--pos-selection-text)]'
+                  : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700'
               }`}>
               {f.label}
             </button>
           ))}
         </div>
 
-        {isLoading ? (
-          <div className="text-center text-slate-500 py-20">Loading inventory...</div>
+        {pageLoading ? (
+          <InventoryTableSkeleton />
         ) : (
-          <div className="bg-[#1e293b] rounded-2xl border border-slate-700/50 overflow-hidden">
+          <div className="bg-[var(--pos-panel)] rounded-2xl border border-slate-700/50 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -224,7 +231,7 @@ export default function InventoryManagement() {
                         : status.variant === 'low' ? 'bg-yellow-500/5' : '';
                       return (
                         <tr key={item._id} className={`hover:bg-slate-700/20 transition ${rowBg}`}>
-                          <td className="px-5 py-3 font-medium text-white">{item.itemName}</td>
+                          <td className="px-5 py-3 font-medium text-[var(--pos-text-primary)]">{item.itemName}</td>
                           <td className="px-4 py-3 text-slate-400">{item.unit}</td>
                           <td className="px-4 py-3">
                             <InlineEdit value={item.quantity}
@@ -243,7 +250,7 @@ export default function InventoryManagement() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1">
                               <button onClick={() => openEdit(item)}
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition">
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition">
                                 <Edit2 size={13} />
                               </button>
                               <button onClick={() => { if (confirm('Delete this item?')) deleteMutation.mutate(item._id); }}
@@ -270,7 +277,7 @@ export default function InventoryManagement() {
             <input type="text" value={form.itemName}
               onChange={e => setForm(f => ({ ...f, itemName: e.target.value }))}
               placeholder="e.g. Burger Buns" required
-              className="w-full bg-[#0f172a] border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
           </div>
 
           <div>
@@ -278,7 +285,7 @@ export default function InventoryManagement() {
             <input type="text" value={form.unit}
               onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
               placeholder="e.g. pcs, kg, L" required
-              className="w-full bg-[#0f172a] border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
           </div>
 
           <div>
@@ -286,7 +293,7 @@ export default function InventoryManagement() {
             <input type="number" min="0" step="0.01" value={form.quantity}
               onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}
               placeholder="0" required
-              className="w-full bg-[#0f172a] border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
           </div>
 
           <div>
@@ -294,7 +301,7 @@ export default function InventoryManagement() {
             <input type="number" min="0" step="0.01" value={form.minThreshold}
               onChange={e => setForm(f => ({ ...f, minThreshold: e.target.value }))}
               placeholder="e.g. 50" required
-              className="w-full bg-[#0f172a] border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
             <p className="text-xs text-slate-500 mt-1">Alert when quantity drops below this value</p>
           </div>
 
@@ -304,11 +311,11 @@ export default function InventoryManagement() {
               <span className="flex items-center gap-1.5"><Truck size={13} /> Suppliers</span>
             </label>
             {suppliers.length === 0 ? (
-              <p className="text-xs text-slate-500 bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3">
+              <p className="text-xs text-slate-500 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-4 py-3">
                 No suppliers added yet. Add suppliers from the Suppliers page first.
               </p>
             ) : (
-              <div className="bg-[#0f172a] border border-slate-700 rounded-xl p-3 flex flex-wrap gap-2">
+              <div className="bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl p-3 flex flex-wrap gap-2">
                 {suppliers.map(s => {
                   const selected = form.suppliers.includes(s._id);
                   return (
@@ -319,7 +326,7 @@ export default function InventoryManagement() {
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition ${
                         selected
                           ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
-                          : 'text-slate-400 border-slate-700 hover:border-slate-500 hover:text-white'
+                          : 'text-slate-400 border-slate-700 hover:border-slate-500 hover:text-[var(--pos-text-primary)]'
                       }`}
                     >
                       {selected && <Check size={11} />}
@@ -340,7 +347,7 @@ export default function InventoryManagement() {
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={closeSlide}
-              className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 rounded-xl transition text-sm">
+              className="flex-1 bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-semibold py-2.5 rounded-xl transition text-sm">
               Cancel
             </button>
             <button type="submit" disabled={isPending}

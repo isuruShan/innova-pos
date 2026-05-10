@@ -10,9 +10,14 @@ const subscriptionSchema = new mongoose.Schema(
     },
     plan: {
       type: String,
-      enum: ['trial', 'monthly', 'yearly', 'quarterly', 'custom'],
+      enum: ['trial', 'monthly', 'yearly', 'custom'],
       default: 'trial',
     },
+    planId: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', default: null, index: true },
+    planCode: { type: String, default: '', trim: true },
+    amount: { type: Number, default: 0, min: 0 },
+    currency: { type: String, default: 'LKR', trim: true, uppercase: true },
+    durationDays: { type: Number, default: 0, min: 0 },
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Clock, ChevronRight, ChevronLeft, RefreshCw,
@@ -6,9 +6,17 @@ import {
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
-import Badge from '../../components/Badge';
+import CashierSessionGate, { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/CashierSessionGate';
+import { mergeOrderLists } from '../../offline/mergeOrders.js';
+import { listPendingOrders } from '../../offline/idb.js';
+import { resolveLiveOrder, useSyncOfflineOrderSelection } from '../../offline/orderSelection.js';
 import OrderTypeBadge from '../../components/OrderTypeBadge';
 import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
+import { useStoreContext } from '../../context/StoreContext';
+import { useBranding } from '../../context/BrandingContext';
+import { KanbanSkeleton } from '../../components/StoreSkeletons';
+import { printReceipt } from '../../utils/receiptPrint';
+import { shouldPrintReceiptForUpdatedOrder } from '../../utils/receiptPolicy';
 
 const STATUSES = ['pending', 'preparing', 'ready', 'completed', 'cancelled'];
 
@@ -17,13 +25,13 @@ const STATUS_META = {
     label: 'Pending', color: 'text-yellow-400', border: 'border-yellow-500/30',
     bg: 'bg-yellow-500/5', dot: 'bg-yellow-400',
     next: 'preparing', prev: null,
-    nextLabel: 'Start Preparing', nextClass: 'bg-yellow-500 hover:bg-yellow-400 text-white',
+    nextLabel: 'Start Preparing', nextClass: 'bg-yellow-500 hover:bg-yellow-400 text-[var(--pos-text-primary)]',
   },
   preparing: {
     label: 'Preparing', color: 'text-blue-400', border: 'border-blue-500/30',
     bg: 'bg-blue-500/5', dot: 'bg-blue-400',
     next: 'ready', prev: 'pending',
-    nextLabel: 'Mark Ready', nextClass: 'bg-blue-500 hover:bg-blue-400 text-white',
+    nextLabel: 'Mark Ready', nextClass: 'bg-blue-500 hover:bg-blue-400 text-[var(--pos-text-primary)]',
     prevLabel: '← Pending',
   },
   ready: {
@@ -69,12 +77,24 @@ function OrderCard({ order, onSetStatus, onViewEdit, busyId }) {
   const isBusy = busyId === order._id;
 
   return (
-    <div className={`bg-[#1e293b] rounded-xl border ${meta.border} overflow-hidden flex flex-col`}>
+    <div className={`bg-[var(--pos-panel)] rounded-xl border ${meta.border} overflow-hidden flex flex-col`}>
       {/* Header */}
       <div className={`px-3 py-2.5 flex items-center justify-between gap-1 ${meta.bg}`}>
         <div className="flex items-center gap-1.5 min-w-0">
+          {order._offlinePending && (
+            <span
+              className="text-[9px] font-bold uppercase tracking-tight text-amber-200/90 bg-amber-500/20 border border-amber-500/35 rounded px-1 py-0.5 flex-shrink-0"
+              title="Saved on this device — will sync when online"
+            >
+              Pending sync
+            </span>
+          )}
           <span className="font-mono font-bold text-amber-400 text-sm flex-shrink-0">
-            #{String(order.orderNumber).padStart(3, '0')}
+            {order._offlinePending ? (
+              <span title="Temporary reference until synced">#···</span>
+            ) : (
+              <>#{String(order.orderNumber).padStart(3, '0')}</>
+            )}
           </span>
           <OrderTypeBadge
             orderType={order.orderType}
@@ -88,7 +108,7 @@ function OrderCard({ order, onSetStatus, onViewEdit, busyId }) {
           <span className="text-xs text-slate-600">{formatTime(order.createdAt)}</span>
           <button
             onClick={() => onViewEdit(order)}
-            className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition"
+            className="p-1 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition"
             title="View / Edit"
           >
             <Eye size={13} />
@@ -120,7 +140,7 @@ function OrderCard({ order, onSetStatus, onViewEdit, busyId }) {
 
       {/* Footer total */}
       <div className="px-3 pb-2 flex items-center justify-between">
-        <span className="font-semibold text-white text-sm">${order.totalAmount.toFixed(2)}</span>
+        <span className="font-semibold text-[var(--pos-text-primary)] text-sm">${order.totalAmount.toFixed(2)}</span>
         <span className="text-xs text-slate-600">{order.createdBy?.name || '—'}</span>
       </div>
 
@@ -192,21 +212,64 @@ function Column({ status, orders, onSetStatus, onViewEdit, busyId }) {
 
 export default function OrderBoard() {
   const qc = useQueryClient();
+  const branding = useBranding();
+  const { stores, selectedStoreId, isStoreReady } = useStoreContext();
+  const selectedStore = useMemo(
+    () => stores.find((s) => s._id === selectedStoreId) || stores.find((s) => s.isDefault) || null,
+    [stores, selectedStoreId],
+  );
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [busyId, setBusyId] = useState(null);
 
-  const { data: orders = [], isLoading, refetch, isFetching } = useQuery({
-    queryKey: ['order-board'],
-    queryFn: () => api.get('/orders').then(r => r.data),
+  useEffect(() => {
+    setSelectedOrder(null);
+  }, [selectedStoreId]);
+
+  useEffect(() => {
+    const bump = () => {
+      qc.invalidateQueries({ queryKey: ['order-board'] });
+      qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
+    };
+    window.addEventListener('pos-offline-sync-done', bump);
+    window.addEventListener('pos-offline-queue', bump);
+    return () => {
+      window.removeEventListener('pos-offline-sync-done', bump);
+      window.removeEventListener('pos-offline-queue', bump);
+    };
+  }, [qc]);
+
+  const { data: orders = [], isPending, refetch, isFetching } = useQuery({
+    queryKey: ['order-board', selectedStoreId],
+    queryFn: async () => {
+      const remote = await api.get('/orders').then((r) => r.data);
+      const pendingLocal = await listPendingOrders();
+      return mergeOrderLists(remote, pendingLocal, selectedStoreId);
+    },
+    enabled: isStoreReady,
     refetchInterval: 15_000,
   });
 
+  useSyncOfflineOrderSelection(orders, selectedOrder, setSelectedOrder);
+
   const mutation = useMutation({
-    mutationFn: ({ id, status }) => api.put(`/orders/${id}/status`, { status }),
+    mutationFn: async ({ id, status }) => {
+      const { data } = await api.put(`/orders/${encodeURIComponent(id)}/status`, { status });
+      return data;
+    },
     onMutate: ({ id }) => setBusyId(id),
-    onSuccess: () => {
+    onSuccess: (updatedOrder) => {
       qc.invalidateQueries({ queryKey: ['order-board'] });
       qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
+      qc.invalidateQueries({ queryKey: ['sales-report'] });
+      qc.invalidateQueries({ queryKey: ['recent-orders'] });
+      qc.invalidateQueries({ queryKey: [CASHIER_SESSION_QUERY_KEY] });
+      if (updatedOrder && shouldPrintReceiptForUpdatedOrder(branding, updatedOrder)) {
+        printReceipt(updatedOrder, {
+          branding,
+          store: selectedStore,
+          paymentType: updatedOrder.paymentType,
+        });
+      }
     },
     onError: (e) => alert(e.response?.data?.message || 'Failed to update status'),
     onSettled: () => setBusyId(null),
@@ -226,19 +289,17 @@ export default function OrderBoard() {
 
   const totalActive = grouped.pending.length + grouped.preparing.length + grouped.ready.length;
 
-  // Keep selectedOrder in sync with live data
-  const liveSelectedOrder = selectedOrder
-    ? orders.find(o => o._id === selectedOrder._id) || selectedOrder
-    : null;
+  const liveSelectedOrder = resolveLiveOrder(orders, selectedOrder);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0f172a]">
+    <CashierSessionGate>
+    <div className="min-h-screen flex flex-col bg-[var(--pos-page-bg)]">
       <Navbar links={CASHIER_LINKS} />
 
       <div className="flex-1 flex flex-col p-4 sm:p-5 overflow-hidden">
         <div className="flex items-center justify-between mb-4 flex-shrink-0">
           <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-xl font-bold text-[var(--pos-text-primary)] flex items-center gap-2">
               Order Board
               {totalActive > 0 && (
                 <span className="bg-amber-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
@@ -253,16 +314,16 @@ export default function OrderBoard() {
           <button
             onClick={() => refetch()}
             disabled={isFetching}
-            className="flex items-center gap-1.5 text-slate-400 hover:text-white text-sm bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-xl transition"
+            className="flex items-center gap-1.5 text-slate-400 hover:text-[var(--pos-text-primary)] text-sm bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-xl transition"
           >
             <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
             Refresh
           </button>
         </div>
 
-        {isLoading ? (
-          <div className="flex-1 flex items-center justify-center text-slate-500">
-            <RefreshCw size={18} className="animate-spin mr-2" /> Loading orders…
+        {!isStoreReady || isPending ? (
+          <div className="flex-1 flex flex-col min-h-0 py-2">
+            <KanbanSkeleton />
           </div>
         ) : (
           <div className="flex-1 grid grid-cols-2 lg:grid-cols-5 gap-3 min-h-0 overflow-hidden">
@@ -285,5 +346,6 @@ export default function OrderBoard() {
         onClose={() => setSelectedOrder(null)}
       />
     </div>
+    </CashierSessionGate>
   );
 }

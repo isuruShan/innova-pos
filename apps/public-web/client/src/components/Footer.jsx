@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Zap, Mail, Phone, MapPin } from 'lucide-react';
+import { Mail, Phone, MapPin } from 'lucide-react';
 import api from '../api';
 
 export default function Footer() {
@@ -23,14 +23,11 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           {/* Brand */}
           <div className="md:col-span-2">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-brand-orange">
-                <Zap size={18} className="text-white" fill="white" />
-              </div>
-              <span className="font-bold text-xl">InnovaPOS</span>
+            <div className="flex items-center gap-3 mb-4">
+              <img src="/cafinity-logo.png" alt="Cafinity" className="h-9 w-auto rounded-lg" />
             </div>
             <p className="text-gray-400 text-sm leading-relaxed mb-6 max-w-sm">
-              The modern cloud-based point of sale platform built for restaurants, cafes, and food businesses of all sizes.
+              Cafinity is cafe-focused POS software — built for espresso bars, brunch counters, and busy service floors.
             </p>
             {/* Newsletter */}
             <div>
@@ -89,7 +86,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-white/10 mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-gray-400">&copy; {new Date().getFullYear()} InnovaSolutions. All rights reserved.</p>
+          <p className="text-sm text-gray-400">&copy; {new Date().getFullYear()} Cafinity. All rights reserved.</p>
           <div className="flex gap-6">
             {['Privacy Policy', 'Terms of Service'].map(l => (
               <a key={l} href="#" className="text-sm text-gray-400 hover:text-white transition-colors">{l}</a>

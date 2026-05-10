@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Zap, ArrowRight, Mail, Phone, Loader } from 'lucide-react';
+import { ArrowRight, Mail, Phone, Loader } from 'lucide-react';
 import { COUNTRIES, DEFAULT_COUNTRY_CODE } from '../constants/countries';
 import {
   buildMobileE164,
@@ -118,11 +118,8 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="px-4 py-5 border-b bg-white">
-        <Link to="/" className="flex items-center gap-2 w-fit">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-brand-orange">
-            <Zap size={16} className="text-white" fill="white" />
-          </div>
-          <span className="font-bold text-lg text-brand-brown-deep">InnovaPOS</span>
+        <Link to="/" className="flex items-center w-fit">
+          <img src="/cafinity-logo.png" alt="Cafinity" className="h-10 w-auto rounded-lg shadow-sm" />
         </Link>
       </div>
 
@@ -258,17 +255,6 @@ export default function SignupPage() {
                 )}
               </button>
             </form>
-
-            <p className="text-center text-sm text-gray-500 mt-6">
-              Already have an account?{' '}
-              <a href="http://localhost:5173" className="font-semibold hover:underline text-brand-orange">
-                POS sign in
-              </a>
-              {' · '}
-              <a href="http://localhost:5174" className="font-semibold hover:underline text-brand-teal">
-                Admin portal
-              </a>
-            </p>
           </div>
         </div>
       </div>

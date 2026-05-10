@@ -7,6 +7,8 @@ import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
 import { MANAGER_LINKS } from '../../constants/managerLinks';
+import { useStoreContext } from '../../context/StoreContext';
+import { StaffListSkeleton } from '../../components/StoreSkeletons';
 
 const ROLE_CONFIG = {
   cashier: {
@@ -41,7 +43,7 @@ const AVATAR_COLORS = {
 function UserAvatar({ name, role, size = 'md' }) {
   const sz = size === 'lg' ? 'w-12 h-12 text-base' : 'w-9 h-9 text-xs';
   return (
-    <div className={`${AVATAR_COLORS[role] || 'bg-slate-600'} ${sz} rounded-full flex items-center justify-center font-bold text-white flex-shrink-0`}>
+    <div className={`${AVATAR_COLORS[role] || 'bg-slate-600'} ${sz} rounded-full flex items-center justify-center font-bold text-[var(--pos-text-primary)] flex-shrink-0`}>
       {getInitials(name)}
     </div>
   );
@@ -51,10 +53,10 @@ function UserCard({ user, onEdit, onDelete }) {
   const cfg = ROLE_CONFIG[user.role];
   const Icon = cfg?.icon || Users;
   return (
-    <div className="bg-[#1e293b] border border-slate-700/50 rounded-2xl p-4 flex items-center gap-4">
+    <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-2xl p-4 flex items-center gap-4">
       <UserAvatar name={user.name} role={user.role} size="lg" />
       <div className="flex-1 min-w-0">
-        <p className="text-white font-semibold text-sm truncate">{user.name}</p>
+        <p className="text-[var(--pos-text-primary)] font-semibold text-sm truncate">{user.name}</p>
         <p className="text-slate-500 text-xs truncate">{user.email}</p>
         <span className={`inline-flex items-center gap-1 mt-1.5 text-xs font-medium px-2 py-0.5 rounded-full border ${cfg?.bg} ${cfg?.text} ${cfg?.border}`}>
           <Icon size={10} />
@@ -63,7 +65,7 @@ function UserCard({ user, onEdit, onDelete }) {
       </div>
       <div className="flex items-center gap-1 flex-shrink-0">
         <button onClick={() => onEdit(user)}
-          className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition">
+          className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition">
           <Edit2 size={14} />
         </button>
         <button onClick={() => onDelete(user)}
@@ -76,6 +78,7 @@ function UserCard({ user, onEdit, onDelete }) {
 }
 
 export default function UserManagement() {
+  const { selectedStoreId, isStoreReady } = useStoreContext();
   const [slideOpen, setSlideOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -84,9 +87,10 @@ export default function UserManagement() {
   const [filterRole, setFilterRole] = useState('all');
   const qc = useQueryClient();
 
-  const { data: users = [], isLoading } = useQuery({
-    queryKey: ['staff-users'],
+  const { data: users = [], isPending } = useQuery({
+    queryKey: ['staff-users', selectedStoreId],
     queryFn: () => api.get('/users').then(r => r.data),
+    enabled: isStoreReady,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['staff-users'] });
@@ -148,14 +152,14 @@ export default function UserManagement() {
   const kitchenCount = users.filter(u => u.role === 'kitchen').length;
 
   return (
-    <div className="min-h-screen bg-[#0f172a]">
+    <div className="min-h-screen bg-[var(--pos-page-bg)]">
       <Navbar links={MANAGER_LINKS} />
 
       <div className="max-w-4xl mx-auto p-4 sm:p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-[var(--pos-text-primary)] flex items-center gap-2">
               <Users size={22} className="text-blue-400" />
               Staff Users
             </h1>
@@ -185,16 +189,16 @@ export default function UserManagement() {
             <button key={f.key} onClick={() => setFilterRole(f.key)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
                 filterRole === f.key
-                  ? 'bg-amber-500 text-white'
-                  : 'text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700'
+                  ? 'bg-amber-500 text-[var(--pos-selection-text)]'
+                  : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700'
               }`}>
               {f.label}
             </button>
           ))}
         </div>
 
-        {isLoading ? (
-          <div className="text-center text-slate-500 py-20">Loading users…</div>
+        {!isStoreReady || isPending ? (
+          <StaffListSkeleton />
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-slate-600">
             <Users size={52} className="mx-auto mb-4 opacity-20" />
@@ -225,7 +229,7 @@ export default function UserManagement() {
                     className={`flex items-center gap-2 px-3 py-3 rounded-xl border text-sm font-semibold transition ${
                       form.role === role
                         ? `${cfg.bg} ${cfg.text} ${cfg.border}`
-                        : 'bg-[#0f172a] border-slate-700 text-slate-400 hover:border-slate-600'
+                        : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:border-slate-600'
                     }`}>
                     <Icon size={16} />
                     {cfg.label}
@@ -240,7 +244,7 @@ export default function UserManagement() {
             <input type="text" value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               placeholder="e.g. Sarah Smith" required
-              className="w-full bg-[#0f172a] border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
           </div>
 
           <div>
@@ -248,7 +252,7 @@ export default function UserManagement() {
             <input type="email" value={form.email}
               onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
               placeholder="e.g. sarah@burgerjoint.com" required
-              className="w-full bg-[#0f172a] border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
           </div>
 
           <div>
@@ -261,7 +265,7 @@ export default function UserManagement() {
                 value={form.password}
                 onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                 placeholder={editing ? 'Leave blank to keep current' : 'Min 6 characters'}
-                className="w-full bg-[#0f172a] border border-slate-700 text-white rounded-xl px-4 py-2.5 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
               />
               <button type="button" onClick={() => setShowPw(v => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition">
@@ -278,7 +282,7 @@ export default function UserManagement() {
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={closeSlide}
-              className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 rounded-xl transition text-sm">
+              className="flex-1 bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-semibold py-2.5 rounded-xl transition text-sm">
               Cancel
             </button>
             <button type="submit" disabled={isPending}

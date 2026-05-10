@@ -1,12 +1,21 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Clock, RefreshCw, ChefHat, Link2 } from 'lucide-react';
 import api from '../../api/axios';
+import OfflineBanner from '../../components/OfflineBanner';
+import { mergeOrderLists } from '../../offline/mergeOrders.js';
+import { listPendingOrders } from '../../offline/idb.js';
+import { resolveLiveOrder, useSyncOfflineOrderSelection } from '../../offline/orderSelection.js';
 import { useAuth } from '../../context/AuthContext';
 import OrderTypeBadge from '../../components/OrderTypeBadge';
 import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
 import { AvatarMenu } from '../../components/Navbar';
+import { useStoreContext } from '../../context/StoreContext';
+import { useBranding } from '../../context/BrandingContext';
+import { KitchenBoardSkeleton } from '../../components/StoreSkeletons';
+import { printReceipt } from '../../utils/receiptPrint';
+import { shouldPrintReceiptForUpdatedOrder } from '../../utils/receiptPolicy';
 // AvatarMenu now uses AvatarDisplay internally, which shows profile image
 
 const REFRESH_INTERVAL = 10_000;
@@ -21,7 +30,7 @@ const COLUMNS = [
     cardBorder: 'border-yellow-500/30',
     headerBg: 'bg-yellow-500/8',
     btnLabel: 'Start Preparing',
-    btnClass: 'bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-600 text-white',
+    btnClass: 'bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-600 text-[var(--pos-text-primary)]',
   },
   {
     status: 'preparing',
@@ -32,7 +41,7 @@ const COLUMNS = [
     cardBorder: 'border-blue-500/30',
     headerBg: 'bg-blue-500/8',
     btnLabel: 'Mark Ready',
-    btnClass: 'bg-blue-500 hover:bg-blue-400 active:bg-blue-600 text-white',
+    btnClass: 'bg-blue-500 hover:bg-blue-400 active:bg-blue-600 text-[var(--pos-text-primary)]',
   },
   {
     status: 'ready',
@@ -71,13 +80,22 @@ function KitchenCard({ order, onAdvance, onOpen, isAdvancing }) {
   return (
     <div
       onClick={() => onOpen(order)}
-      className={`bg-[#1e293b] rounded-xl border ${col.cardBorder} cursor-pointer hover:border-opacity-80 hover:brightness-110 transition group flex flex-col`}
+      className={`bg-[var(--pos-panel)] rounded-xl border ${col.cardBorder} cursor-pointer hover:border-opacity-80 hover:brightness-110 transition group flex flex-col`}
     >
       {/* Top strip */}
       <div className={`px-3 py-2.5 rounded-t-xl flex items-center justify-between gap-2 ${col.headerBg}`}>
         <div className="flex items-center gap-2 min-w-0">
+          {order._offlinePending && (
+            <span className="text-[9px] font-bold uppercase text-amber-200/90 bg-amber-500/20 border border-amber-500/35 rounded px-1 py-0.5 flex-shrink-0">
+              Sync
+            </span>
+          )}
           <span className="font-mono font-bold text-amber-400 text-base leading-none flex-shrink-0">
-            #{String(order.orderNumber).padStart(3, '0')}
+            {order._offlinePending ? (
+              <span title="Temporary until synced">#···</span>
+            ) : (
+              <>#{String(order.orderNumber).padStart(3, '0')}</>
+            )}
           </span>
           <OrderTypeBadge
             orderType={order.orderType}
@@ -174,26 +192,69 @@ function KitchenColumn({ col, orders, onAdvance, onOpen, advancingId }) {
 
 export default function KitchenDisplay() {
   const qc = useQueryClient();
+  const branding = useBranding();
   const { logout, user } = useAuth();
+  const { stores, selectedStoreId, isStoreReady } = useStoreContext();
+  const selectedStore = useMemo(
+    () => stores.find((s) => s._id === selectedStoreId) || stores.find((s) => s.isDefault) || null,
+    [stores, selectedStoreId],
+  );
   const navigate = useNavigate();
   const [advancingId, setAdvancingId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
+
+  useEffect(() => {
+    setSelectedOrder(null);
+  }, [selectedStoreId]);
+
+  useEffect(() => {
+    const bump = () => {
+      qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
+      qc.invalidateQueries({ queryKey: ['order-board'] });
+    };
+    window.addEventListener('pos-offline-sync-done', bump);
+    window.addEventListener('pos-offline-queue', bump);
+    return () => {
+      window.removeEventListener('pos-offline-sync-done', bump);
+      window.removeEventListener('pos-offline-queue', bump);
+    };
+  }, [qc]);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
     qc.invalidateQueries({ queryKey: ['order-board'] });
   };
 
-  const { data: orders = [], isLoading, dataUpdatedAt, isFetching } = useQuery({
-    queryKey: ['kitchen-orders'],
-    queryFn: () => api.get('/orders?status=pending,preparing,ready').then(r => r.data),
+  const { data: orders = [], isPending, dataUpdatedAt, isFetching } = useQuery({
+    queryKey: ['kitchen-orders', selectedStoreId],
+    queryFn: async () => {
+      const remote = await api.get('/orders?status=pending,preparing,ready').then((r) => r.data);
+      const pendingLocal = await listPendingOrders();
+      const merged = mergeOrderLists(remote, pendingLocal, selectedStoreId);
+      return merged.filter((o) => ['pending', 'preparing', 'ready'].includes(o.status));
+    },
+    enabled: isStoreReady,
     refetchInterval: REFRESH_INTERVAL,
   });
 
+  useSyncOfflineOrderSelection(orders, selectedOrder, setSelectedOrder);
+
   const advanceMutation = useMutation({
-    mutationFn: (id) => api.put(`/orders/${id}/status`),
+    mutationFn: async (id) => {
+      const { data } = await api.put(`/orders/${encodeURIComponent(id)}/status`);
+      return data;
+    },
     onMutate: (id) => setAdvancingId(id),
-    onSuccess: invalidate,
+    onSuccess: (updatedOrder) => {
+      invalidate();
+      if (updatedOrder && shouldPrintReceiptForUpdatedOrder(branding, updatedOrder)) {
+        printReceipt(updatedOrder, {
+          branding,
+          store: selectedStore,
+          paymentType: updatedOrder.paymentType,
+        });
+      }
+    },
     onError: (err) => alert(err.response?.data?.message || 'Failed to update status'),
     onSettled: () => setAdvancingId(null),
   });
@@ -210,23 +271,21 @@ export default function KitchenDisplay() {
 
   const totalActive = orders.length;
 
-  // Keep selected order in sync with live refreshes
-  const liveSelectedOrder = selectedOrder
-    ? orders.find(o => o._id === selectedOrder._id) || selectedOrder
-    : null;
+  const liveSelectedOrder = resolveLiveOrder(orders, selectedOrder);
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
   return (
-    <div className="h-screen bg-[#0f172a] flex flex-col overflow-hidden">
+    <div className="h-screen bg-[var(--pos-page-bg)] flex flex-col overflow-hidden">
+      <OfflineBanner />
       {/* Header */}
       <div className="bg-[#111827] border-b border-slate-700/50 px-4 py-2.5 flex items-center justify-between gap-4 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Burger Joint" className="w-8 h-8 rounded-lg object-cover" />
-          <span className="font-bold text-white text-sm tracking-wide hidden sm:block">Burger Joint</span>
+          <img src="/cafinity-logo.png" alt="Cafinity" className="h-8 w-auto object-contain rounded-md" />
+          <span className="font-bold text-[var(--pos-text-primary)] text-sm tracking-wide hidden sm:block">Cafinity</span>
           <div className="w-px h-5 bg-slate-700" />
           <ChefHat size={16} className="text-amber-400" />
-          <h1 className="text-sm font-bold text-white tracking-widest uppercase">Kitchen</h1>
+          <h1 className="text-sm font-bold text-[var(--pos-text-primary)] tracking-widest uppercase">Kitchen</h1>
           {totalActive > 0 && (
             <span className="bg-amber-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
               {totalActive} active
@@ -245,9 +304,9 @@ export default function KitchenDisplay() {
 
       {/* Board */}
       <div className="flex-1 p-4 min-h-0 overflow-hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-full text-slate-500">
-            <RefreshCw size={20} className="animate-spin mr-2" /> Loading orders…
+        {!isStoreReady || isPending ? (
+          <div className="h-full min-h-0 py-2">
+            <KitchenBoardSkeleton />
           </div>
         ) : totalActive === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-slate-700">
