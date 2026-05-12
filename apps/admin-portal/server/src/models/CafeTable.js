@@ -18,7 +18,8 @@ const cafeTableSchema = new mongoose.Schema(
     label: { type: String, required: true, trim: true },
     sortOrder: { type: Number, default: 0 },
     active: { type: Boolean, default: true },
-    qrToken: { type: String, default: null, sparse: true },
+    /** Indexed via schema.index below (unique sparse). */
+    qrToken: { type: String, default: null },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },

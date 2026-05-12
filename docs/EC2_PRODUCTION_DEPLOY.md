@@ -164,6 +164,28 @@ VITE_PUBLIC_WEB_API_URL=https://www.example.com pnpm run build
 
 Rebuild clients whenever public URLs or API bases change.
 
+### How this maps to “running” the clients on EC2
+
+You **do not** run `pnpm dev`, `vite`, or `vite preview` on the production server for traffic. Those are **development** servers.
+
+In production:
+
+1. **`pnpm run build`** (above) writes static files to each app’s **`client/dist/`** folder.
+2. You start only the matching **Node server** with **`NODE_ENV=production`** (Step 8).
+3. That server serves **`dist`** as static files and **`/{*path}`** falls through to **`index.html`** for the React SPA (POS and admin portal already do this when `dist` exists; public web server does the same).
+
+So each **browser-facing site** is one process:
+
+| Site | Build folder | Process to run | Default port |
+|------|----------------|----------------|--------------|
+| POS UI + POS API | `apps/pos/client/dist` | `apps/pos/server` (`pnpm start`) | `5000` |
+| Admin UI + admin API | `apps/admin-portal/client/dist` | `apps/admin-portal/server` | `5001` |
+| Public site + API | `apps/public-web/client/dist` | `apps/public-web/server` | `5002` |
+
+Users reach **`https://pos.example.com`** via **Nginx →** `http://127.0.0.1:5000` (etc.), not via a separate Vite port.
+
+If **`dist`** is missing, the API still runs but **no SPA** is served — build the client **before** or **after** pulling code on EC2.
+
 ---
 
 ## Step 8 — Run Node servers in production
@@ -186,6 +208,71 @@ Repeat for `apps/admin-portal/server`, `apps/public-web/server`, `services/auth-
 
 ---
 
+## Elastic IP only — no domain names and no Nginx
+
+You can run everything **without** a DNS name and **without** Nginx by using a public **Elastic IP** and opening **Node’s ports** in the security group.
+
+### Important: port in the URL
+
+Nothing listens on **port 80** until you add Nginx (or another proxy). So **`http://YOUR_IP` alone will not load the app.** You must include the port:
+
+| App | Browser URL |
+|-----|-------------|
+| POS (UI + API) | `http://<ELASTIC_IP>:5000` |
+| Admin portal | `http://<ELASTIC_IP>:5001` |
+| Public web | `http://<ELASTIC_IP>:5002` |
+
+### AWS setup
+
+1. **Elastic IP** (optional but recommended): **EC2 → Elastic IPs → Allocate → Associate** with your instance. That keeps the same address across stop/start (an ordinary public IP can change).
+2. **Security group → Inbound rules**: allow **TCP** on **5000**, **5001**, **5002** (and **3001–3004** only if you expose those services publicly — often you keep upload/auth/audit on `127.0.0.1` only). Source can be **My IP** for testing or **0.0.0.0/0** if you accept the risk while staging.
+
+### Build the frontends for your IP
+
+`VITE_*` values are baked at **build** time. Use **`http://`** and the **same IP and ports** users will type in the browser (example `EIP=3.210.65.252`):
+
+```bash
+export EIP=3.210.65.252
+
+cd apps/pos/client
+VITE_API_URL=http://${EIP}:5000/api pnpm run build
+
+cd ../../admin-portal/client
+VITE_API_URL=http://${EIP}:5001/api pnpm run build
+
+cd ../../public-web/client
+VITE_PUBLIC_WEB_API_URL=http://${EIP}:5002 pnpm run build
+```
+
+Rebuild if the Elastic IP or ports change.
+
+### Server env / Secrets Manager (production `CORS` and links)
+
+`CORS_ORIGIN` must list **exact** origins (scheme + IP + port), comma-separated:
+
+```text
+CORS_ORIGIN=http://3.210.65.252:5000,http://3.210.65.252:5001,http://3.210.65.252:5002
+```
+
+Also set URL fields used in emails / redirects to match, e.g.:
+
+- `POS_URL=http://<EIP>:5000`
+- `ADMIN_URL=http://<EIP>:5001`
+- `FRONTEND_URL`, `ADMIN_PORTAL_URL` as appropriate.
+
+Backend-to-backend URLs on the **same** EC2 instance can stay on loopback, e.g. `UPLOAD_SERVICE_URL=http://127.0.0.1:3002`, `AUDIT_SERVICE_URL=http://127.0.0.1:3004`.
+
+### Caveats
+
+- Traffic is **plain HTTP** — acceptable for testing; use **HTTPS + a domain** when you go live.
+- Bookmarks must include **`:5000`** / **`:5001`** / **`:5002`** until you add Nginx on 80/443.
+
+### CORS and same-origin
+
+The API servers allow **`CORS_ORIGIN`** entries **and** requests whose **`Origin`** matches this server’s **`Host`** (same IP/port). That way the SPA loading **`/assets/*`** from the same origin as the HTML is not blocked when `CORS_ORIGIN` omits the raw IP. Cross-origin calls (e.g. POS UI on `:5000` calling auth on `:3001`) still require both origins listed in **`CORS_ORIGIN`** on the target service.
+
+---
+
 ## Step 9 — Reverse proxy (recommended)
 
 Put **Nginx** or an **Application Load Balancer** in front:
@@ -193,6 +280,8 @@ Put **Nginx** or an **Application Load Balancer** in front:
 - TLS termination at ALB/Nginx.
 - Proxy `/` to the appropriate Node port (or hostnames per app).
 - Set **`CORS_ORIGIN`** in the secret (or env) to your real browser origins (comma-separated).
+
+**Full Nginx examples** (subdomains per service, TLS, snippets): see **`docs/NGINX_REVERSE_PROXY.md`**.
 
 ---
 

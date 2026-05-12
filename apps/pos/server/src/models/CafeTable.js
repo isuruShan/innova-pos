@@ -19,8 +19,8 @@ const cafeTableSchema = new mongoose.Schema(
     label: { type: String, required: true, trim: true },
     sortOrder: { type: Number, default: 0 },
     active: { type: Boolean, default: true },
-    /** Secret segment for public QR ordering links (unguessable). */
-    qrToken: { type: String, default: null, sparse: true },
+    /** Secret segment for public QR ordering links (unguessable). Indexed via schema.index below (unique sparse). */
+    qrToken: { type: String, default: null },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },

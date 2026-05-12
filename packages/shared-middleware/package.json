@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "type": "commonjs",
   "dependencies": {
+    "cors": "^2.8.6",
     "axios": "^1.16.0",
     "jsonwebtoken": "^9.0.3",
     "rate-limit-redis": "^4.2.0",

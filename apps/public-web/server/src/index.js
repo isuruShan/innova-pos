@@ -19,11 +19,10 @@ async function start() {
   }
 
   const express = require('express');
-const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { createLogger } = require('@innovapos/logger');
-const { getRateLimitStore, getClientErrorPayload } = require('@innovapos/shared-middleware');
+const { getRateLimitStore, getClientErrorPayload, createCorsMiddleware } = require('@innovapos/shared-middleware');
 const connectDB = require('./config/db');
 
 const app = express();
@@ -42,12 +41,12 @@ const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
   : [];
 
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? (origin, cb) => (!origin || allowedOrigins.includes(origin) ? cb(null, true) : cb(new Error('Not allowed')))
-    : true,
-  credentials: true,
-}));
+app.use(
+  createCorsMiddleware({
+    allowedOrigins,
+    production: process.env.NODE_ENV === 'production',
+  }),
+);
 
 app.use(rateLimit({ ...limiterOpts, windowMs: 15 * 60 * 1000, max: 200 }));
 app.use(express.json({ limit: '2mb' }));
