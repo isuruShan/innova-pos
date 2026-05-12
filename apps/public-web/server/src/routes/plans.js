@@ -1,4 +1,5 @@
 const express = require('express');
+const { sendRouteError } = require('@innovapos/shared-middleware');
 const SubscriptionPlan = require('../models/SubscriptionPlan');
 
 const router = express.Router();
@@ -19,7 +20,7 @@ router.get('/public', async (req, res) => {
       .lean();
     res.json(plans);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

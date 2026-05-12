@@ -1,10 +1,13 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bell } from 'lucide-react';
 import api from '../api/axios';
+import { notificationPathForAdmin } from '../utils/notificationRoutes';
 
 export default function NotificationBell() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -17,25 +20,26 @@ export default function NotificationBell() {
   });
 
   const { data: items = [] } = useQuery({
-    queryKey: ['notifications-list'],
-    queryFn: () => api.get('/notifications', { params: { limit: 25 } }).then((r) => r.data),
+    queryKey: ['notifications-bell'],
+    queryFn: () =>
+      api.get('/notifications', { params: { bell: 1, limit: 10 } }).then((r) => r.data),
     enabled: open,
   });
 
+  const invalidateLists = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ['notifications-unread-count'] });
+    qc.invalidateQueries({ queryKey: ['notifications-bell'] });
+    qc.invalidateQueries({ queryKey: ['notifications-all'] });
+  }, [qc]);
+
   const readOne = useMutation({
     mutationFn: (id) => api.patch(`/notifications/${id}/read`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notifications-unread-count'] });
-      qc.invalidateQueries({ queryKey: ['notifications-list'] });
-    },
+    onSuccess: invalidateLists,
   });
 
   const readAll = useMutation({
     mutationFn: () => api.post('/notifications/read-all'),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notifications-unread-count'] });
-      qc.invalidateQueries({ queryKey: ['notifications-list'] });
-    },
+    onSuccess: invalidateLists,
   });
 
   useEffect(() => {
@@ -47,6 +51,14 @@ export default function NotificationBell() {
   }, []);
 
   const unread = countData?.count ?? 0;
+
+  const handleItemClick = (n) => {
+    if (!n.readAt) {
+      readOne.mutate(n._id);
+    }
+    navigate(notificationPathForAdmin(n));
+    setOpen(false);
+  };
 
   return (
     <div ref={ref} className="relative">
@@ -78,7 +90,7 @@ export default function NotificationBell() {
               </button>
             )}
           </div>
-          <ul className="overflow-y-auto flex-1 py-1">
+          <ul className="overflow-y-auto flex-1 py-1 min-h-0">
             {items.length === 0 ? (
               <li className="px-4 py-8 text-center text-sm text-gray-500">No notifications</li>
             ) : (
@@ -86,9 +98,7 @@ export default function NotificationBell() {
                 <li key={n._id}>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (!n.readAt) readOne.mutate(n._id);
-                    }}
+                    onClick={() => handleItemClick(n)}
                     className={`w-full text-left px-3 py-2.5 border-b border-gray-100 hover:bg-gray-50 ${
                       !n.readAt ? 'bg-amber-50/80' : ''
                     }`}
@@ -103,6 +113,15 @@ export default function NotificationBell() {
               ))
             )}
           </ul>
+          <div className="px-3 py-2 border-t border-gray-200 shrink-0 bg-gray-50">
+            <Link
+              to="/notifications"
+              onClick={() => setOpen(false)}
+              className="block text-center text-xs font-medium text-amber-800 hover:text-amber-950 py-1"
+            >
+              View all notifications
+            </Link>
+          </div>
         </div>
       )}
     </div>

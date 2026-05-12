@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Camera, Save, X } from 'lucide-react';
+import { Camera, Save } from 'lucide-react';
 import api from '../api/axios';
 import SlideOver from './SlideOver';
 import { useAuth } from '../context/AuthContext';
@@ -56,10 +56,22 @@ export default function ProfileSlideOver({ open, onClose }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPwFields, setShowPwFields] = useState(false);
   const fileRef = useRef(null);
 
   useEffect(() => {
-    if (open) { setName(user?.name || ''); setError(''); setSaved(false); }
+    if (open) {
+      setName(user?.name || '');
+      setError('');
+      setSaved(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowPwFields(false);
+    }
   }, [open, user?.name]);
 
   const saveMutation = useMutation({
@@ -81,8 +93,8 @@ export default function ProfileSlideOver({ open, onClose }) {
       const fd = new FormData();
       fd.append('image', file);
       const { data } = await api.post('/upload', fd);
-      // Save profile image immediately
-      saveMutation.mutate({ profileImage: data.url });
+      // Persist key only; backend returns fresh URL on auth/me
+      saveMutation.mutate({ profileImageKey: data.key });
     } catch {
       setError('Image upload failed. Please try again.');
     } finally {
@@ -96,6 +108,14 @@ export default function ProfileSlideOver({ open, onClose }) {
     if (!name.trim()) return setError('Name cannot be empty');
     if (name.trim() === user?.name) return onClose();
     saveMutation.mutate({ name: name.trim() });
+  };
+
+  const handleChangePassword = () => {
+    setError('');
+    if (!currentPassword.trim()) return setError('Enter your current password.');
+    if (!newPassword || newPassword.length < 8) return setError('New password must be at least 8 characters.');
+    if (newPassword !== confirmPassword) return setError('New passwords do not match.');
+    saveMutation.mutate({ currentPassword: currentPassword.trim(), newPassword });
   };
 
   if (!user) return null;
@@ -132,6 +152,65 @@ export default function ProfileSlideOver({ open, onClose }) {
               {user.role}
             </span>
           </div>
+        </div>
+
+        {/* Change password */}
+        <div className="border border-slate-700/50 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium text-slate-300">Password</p>
+            <button
+              type="button"
+              onClick={() => {
+                setShowPwFields((v) => !v);
+                setError('');
+              }}
+              className="text-xs text-amber-400 hover:text-amber-300"
+            >
+              {showPwFields ? 'Cancel' : 'Change password'}
+            </button>
+          </div>
+          {showPwFields && (
+            <>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Current password</label>
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-4 py-2 text-sm text-[var(--pos-text-primary)]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">New password (min 8)</label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-4 py-2 text-sm text-[var(--pos-text-primary)]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Confirm new password</label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-4 py-2 text-sm text-[var(--pos-text-primary)]"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleChangePassword}
+                disabled={saveMutation.isPending}
+                className="w-full py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] text-sm font-medium disabled:opacity-50"
+              >
+                {saveMutation.isPending ? 'Updating…' : 'Update password'}
+              </button>
+            </>
+          )}
         </div>
 
         {/* Editable name */}

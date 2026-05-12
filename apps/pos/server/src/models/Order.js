@@ -13,7 +13,11 @@ const orderItemSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   isCombo: { type: Boolean, default: false },
   comboItems: { type: [orderComboItemSchema], default: [] },
-}, { _id: false });
+  /** Cashier marked as brought to the table (hides from kitchen prep list) */
+  deliveredToTable: { type: Boolean, default: false },
+  /** True when line was added after initial order (highlight on KDS until cleared) */
+  kitchenNew: { type: Boolean, default: false },
+});
 
 const orderSchema = new mongoose.Schema(
   {
@@ -37,6 +41,8 @@ const orderSchema = new mongoose.Schema(
       default: 'dine-in',
     },
     tableNumber: { type: String, default: '' },
+    /** Set when store.tableManagementEnabled — links to CafeTable */
+    tableId: { type: mongoose.Schema.Types.ObjectId, ref: 'CafeTable', default: null, index: true },
     reference: { type: String, default: '' },
     items: [orderItemSchema],
     status: {
@@ -65,7 +71,14 @@ const orderSchema = new mongoose.Schema(
     serviceFeeAmount: { type: Number, default: 0 },
     paymentType: { type: String, default: 'cash' },
     paymentAmount: { type: Number, default: 0 },
+    /** false = tab / pay at completion (dine-in with table management) */
+    paymentCollected: { type: Boolean, default: true },
     totalAmount: { type: Number, required: true },
+    orderSource: {
+      type: String,
+      enum: ['pos', 'qr'],
+      default: 'pos',
+    },
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', default: null, index: true },
     loyaltyPointsEarned: { type: Number, default: 0, min: 0 },
     loyaltyRedemption: {
@@ -96,6 +109,7 @@ orderSchema.index({ tenantId: 1, orderNumber: 1 }, { unique: true });
 orderSchema.index({ tenantId: 1, storeId: 1, status: 1 });
 orderSchema.index({ tenantId: 1, status: 1 });
 orderSchema.index({ tenantId: 1, createdAt: -1 });
+orderSchema.index({ tenantId: 1, storeId: 1, tableId: 1, status: 1 });
 orderSchema.index(
   { tenantId: 1, clientRequestId: 1 },
   { unique: true, sparse: true }

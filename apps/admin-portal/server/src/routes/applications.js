@@ -5,7 +5,7 @@ const MerchantApplication = require('../models/MerchantApplication');
 const Tenant = require('../models/Tenant');
 const User = require('../models/User');
 const Store = require('../models/Store');
-const { authenticateJWT, authorize, emitAudit } = require('@innovapos/shared-middleware');
+const { authenticateJWT, authorize, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { sendWelcomeEmail, sendRejectionEmail } = require('../utils/mailer');
 const { childLogger } = require('@innovapos/logger');
 
@@ -47,15 +47,19 @@ router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    const [applications, total] = await Promise.all([
+    const [applicationsRaw, total] = await Promise.all([
       MerchantApplication.find(filter).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit))
         .populate('reviewedBy', 'name').lean(),
       MerchantApplication.countDocuments(filter),
     ]);
+    const applications = applicationsRaw.map((a) => ({
+      ...a,
+      business: a.business ? { ...a.business, brDocumentUrl: '' } : a.business,
+    }));
 
     res.json({ applications, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -79,18 +83,21 @@ router.get('/:id/br-preview', authenticateJWT, authorize('superadmin'), async (r
       mimeType: application.business.brDocumentMimeType || '',
     });
   } catch (err) {
-    res.status(500).json({ message: err.response?.data?.message || err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
 // GET /applications/:id — single application detail
 router.get('/:id', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {
-    const app = await MerchantApplication.findById(req.params.id).populate('reviewedBy', 'name');
+    const app = await MerchantApplication.findById(req.params.id).populate('reviewedBy', 'name').lean();
     if (!app) return res.status(404).json({ message: 'Application not found' });
-    res.json(app);
+    res.json({
+      ...app,
+      business: app.business ? { ...app.business, brDocumentUrl: '' } : app.business,
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -257,7 +264,7 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
     }
   } catch (err) {
     req.app.locals.logger.error('Application status update error', { error: err.message });
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

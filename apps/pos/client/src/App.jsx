@@ -22,6 +22,8 @@ import CashierSessionsPage from './pages/manager/CashierSessionsPage';
 import CustomersPage from './pages/manager/CustomersPage';
 import LoyaltyRewardsPage from './pages/manager/LoyaltyRewardsPage';
 import ApprovalsPage from './pages/manager/ApprovalsPage';
+import CafeTablesPage from './pages/manager/CafeTablesPage';
+import NotificationsPage from './pages/manager/NotificationsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 10_000 } },
@@ -94,6 +96,11 @@ export default function App() {
                     <MenuManagement />
                   </RoleRoute>
                 } />
+                <Route path="/manager/cafe-tables" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <CafeTablesPage />
+                  </RoleRoute>
+                } />
                 <Route path="/manager/inventory" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
                     <InventoryManagement />
@@ -133,6 +140,11 @@ export default function App() {
                 <Route path="/manager/approvals" element={
                   <RoleRoute roles={['merchant_admin']}>
                     <ApprovalsPage />
+                  </RoleRoute>
+                } />
+                <Route path="/manager/notifications" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <NotificationsPage />
                   </RoleRoute>
                 } />
                 <Route path="/manager/users" element={<Navigate to="/manager/settings" replace />} />

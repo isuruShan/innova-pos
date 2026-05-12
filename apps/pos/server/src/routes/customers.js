@@ -4,7 +4,7 @@ const LoyaltyTier = require('../models/LoyaltyTier');
 const { getEffectiveTier, tierFromPoints } = require('../lib/loyaltyTier');
 const { protect, authorize, tenantScope } = require('../middleware/auth');
 const { notifyMerchantAdmins } = require('../lib/notificationHelpers');
-const { emitAudit } = require('@innovapos/shared-middleware');
+const { emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 
 const router = express.Router();
 
@@ -62,7 +62,7 @@ router.get('/', protect, authorize('cashier', 'manager', 'merchant_admin'), tena
     const rows = await Customer.find(filter).sort({ updatedAt: -1 }).limit(500);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -138,7 +138,7 @@ router.get('/:id', protect, authorize('cashier', 'manager', 'merchant_admin'), t
     }
     res.json(c);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -209,7 +209,7 @@ router.delete('/:id', protect, authorize('manager', 'merchant_admin'), tenantSco
     if (!c) return res.status(404).json({ message: 'Customer not found' });
     res.json({ message: 'Deleted' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

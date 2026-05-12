@@ -14,7 +14,7 @@ import { useStoreContext } from '../../context/StoreContext';
 import { MenuGridSkeleton } from '../../components/StoreSkeletons';
 
 const EMPTY_FORM = {
-  name: '', category: '', price: '', description: '', image: '',
+  name: '', category: '', price: '', description: '', image: '', imageKey: '',
   available: true, isCombo: false, comboItems: [],
 };
 
@@ -117,7 +117,7 @@ function ImageUploadField({ value, onChange }) {
       const fd = new FormData();
       fd.append('image', file);
       const { data } = await api.post('/upload', fd);
-      onChange(data.url);
+      onChange({ image: data.url, imageKey: data.key });
       setTab('file');
     } catch {
       alert('Upload failed. Please try again.');
@@ -142,7 +142,7 @@ function ImageUploadField({ value, onChange }) {
       </div>
 
       {tab === 'url' ? (
-        <input type="url" value={value} onChange={e => onChange(e.target.value)}
+        <input type="url" value={value} onChange={e => onChange({ image: e.target.value, imageKey: '' })}
           placeholder="https://images.unsplash.com/..."
           className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
       ) : (
@@ -160,7 +160,7 @@ function ImageUploadField({ value, onChange }) {
           <img src={value}
             alt="preview" className="h-24 w-full object-cover rounded-xl"
             onError={e => e.target.style.display = 'none'} />
-          <button type="button" onClick={() => onChange('')}
+          <button type="button" onClick={() => onChange({ image: '', imageKey: '' })}
             className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 hover:bg-red-500 rounded-full flex items-center justify-center text-[var(--pos-text-primary)] transition opacity-0 group-hover:opacity-100">
             <X size={11} />
           </button>
@@ -356,7 +356,7 @@ export default function MenuManagement() {
     setEditing(item);
     setForm({
       name: item.name, category: item.category, price: item.price,
-      description: item.description, image: item.image, available: item.available,
+      description: item.description, image: item.image, imageKey: item.imageKey || '', available: item.available,
       isCombo: item.isCombo || false, comboItems: item.comboItems || [],
     });
     setFormError('');
@@ -548,7 +548,10 @@ export default function MenuManagement() {
               className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600 resize-none" />
           </div>
 
-          <ImageUploadField value={form.image} onChange={url => setForm(f => ({ ...f, image: url }))} />
+          <ImageUploadField
+            value={form.image}
+            onChange={({ image, imageKey }) => setForm((f) => ({ ...f, image, imageKey }))}
+          />
 
           {/* Combo builder */}
           {form.isCombo && (

@@ -1,6 +1,6 @@
 const express = require('express');
 const Inventory = require('../models/Inventory');
-const { protect, authorize, tenantScope } = require('../middleware/auth');
+const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
 
 const router = express.Router();
@@ -12,7 +12,7 @@ router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), t
       .populate('suppliers', 'name phone email');
     res.json(items);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -47,7 +47,7 @@ router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmi
     if (!item) return res.status(404).json({ message: 'Inventory item not found' });
     res.json({ message: 'Item deleted' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Plus, Minus, Trash2, Save, Link2, Hash, AlertTriangle, Tag } from 'lucide-react';
+import { X, Plus, Minus, Trash2, Save, Link2, Hash, AlertTriangle, Tag, CheckCircle } from 'lucide-react';
 import api from '../api/axios';
 import { formatCurrency, formatDateTime as fmtDT } from '../utils/format';
 import SlideOver from './SlideOver';
@@ -37,24 +37,38 @@ function ItemRow({ item, onQtyChange, onRemove, editable }) {
       {editable ? (
         <div className="flex items-center gap-1.5">
           <button
-            onClick={() => onQtyChange(item.menuItem, -1)}
+            onClick={() => onQtyChange(index, -1)}
             className="w-6 h-6 rounded-full bg-slate-700 hover:bg-red-500/30 text-slate-300 hover:text-red-400 flex items-center justify-center transition"
           >
             <Minus size={11} />
           </button>
           <span className="w-6 text-center text-sm font-semibold text-[var(--pos-text-primary)]">{item.qty}</span>
           <button
-            onClick={() => onQtyChange(item.menuItem, 1)}
+            onClick={() => onQtyChange(index, 1)}
             className="w-6 h-6 rounded-full bg-slate-700 hover:bg-amber-500/30 text-slate-300 hover:text-amber-400 flex items-center justify-center transition"
           >
             <Plus size={11} />
           </button>
           <button
-            onClick={() => onRemove(item.menuItem)}
+            onClick={() => onRemove(index)}
             className="w-6 h-6 rounded-full text-slate-600 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition ml-1"
           >
             <Trash2 size={11} />
           </button>
+          {showDelivered && item._id ? (
+            <button
+              type="button"
+              title={item.deliveredToTable ? 'Mark not delivered' : 'Mark delivered to table'}
+              onClick={() => onDeliveredToggle(index)}
+              className={`ml-1 p-1.5 rounded-lg transition ${
+                item.deliveredToTable
+                  ? 'text-green-400 bg-green-500/15'
+                  : 'text-slate-500 hover:text-green-400 hover:bg-green-500/10'
+              }`}
+            >
+              <CheckCircle size={14} />
+            </button>
+          ) : null}
         </div>
       ) : (
         <span className="text-sm font-semibold text-slate-400 ml-2">×{item.qty}</span>
@@ -105,11 +119,15 @@ function AddItemRow({ menuItems, existingIds, onAdd }) {
 
 export default function OrderDetailSlideOver({ order, onClose, canCancel = true }) {
   const qc = useQueryClient();
-  const { selectedStoreId, isStoreReady } = useStoreContext();
+  const { selectedStoreId, isStoreReady, stores } = useStoreContext();
+  const selectedStore =
+    stores.find((s) => String(s._id) === String(selectedStoreId)) || stores.find((s) => s.isDefault) || null;
+  const tableMgmt = selectedStore?.tableManagementEnabled === true;
   const isEditable = order && EDITABLE_STATUSES.includes(order.status);
 
   const [orderType, setOrderType] = useState(order?.orderType || 'dine-in');
   const [tableNumber, setTableNumber] = useState(order?.tableNumber || '');
+  const [selectedTableId, setSelectedTableId] = useState(order?.tableId ? String(order.tableId) : '');
   const [reference, setReference] = useState(order?.reference || '');
   const [items, setItems] = useState(order?.items || []);
   const [dirty, setDirty] = useState(false);
@@ -119,6 +137,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
     if (order) {
       setOrderType(order.orderType || 'dine-in');
       setTableNumber(order.tableNumber || '');
+      setSelectedTableId(order.tableId ? String(order.tableId) : '');
       setReference(order.reference || '');
       setItems(order.items || []);
       setDirty(false);
@@ -132,6 +151,27 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
     enabled: !!order && isEditable && isStoreReady,
   });
 
+  const { data: cafeTables = [] } = useQuery({
+    queryKey: ['cafe-tables', selectedStoreId],
+    queryFn: () => api.get('/tables').then((r) => r.data),
+    enabled: !!order && isStoreReady && tableMgmt,
+  });
+
+  const { data: tableOccupancy = [] } = useQuery({
+    queryKey: ['table-occupancy', selectedStoreId],
+    queryFn: () => api.get('/tables/occupancy').then((r) => r.data),
+    enabled: !!order && isStoreReady && tableMgmt,
+    refetchInterval: 12_000,
+  });
+
+  const occupancyByTable = useMemo(() => {
+    const m = new Map();
+    (tableOccupancy || []).forEach((o) => {
+      if (o.tableId && String(o.orderId) !== String(order?._id)) m.set(String(o.tableId), o);
+    });
+    return m;
+  }, [tableOccupancy, order?._id]);
+
   const invalidateAll = () => {
     CACHEABLE_QUERIES.forEach(k => qc.invalidateQueries({ queryKey: [k] }));
   };
@@ -142,23 +182,47 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
     onError: (e) => setError(e.response?.data?.message || 'Failed to save changes'),
   });
 
+  const deliveredMutation = useMutation({
+    mutationFn: ({ itemId, delivered }) =>
+      api.put(`/orders/${encodeURIComponent(order._id)}/items/${encodeURIComponent(itemId)}/delivered`, {
+        delivered,
+      }),
+    onSuccess: () => invalidateAll(),
+    onError: (e) => setError(e.response?.data?.message || 'Could not update line'),
+  });
+
   const statusMutation = useMutation({
     mutationFn: (status) => api.put(`/orders/${encodeURIComponent(order._id)}/status`, { status }),
     onSuccess: () => { invalidateAll(); onClose(); },
     onError: (e) => setError(e.response?.data?.message || 'Failed to update status'),
   });
 
-  const changeQty = (menuItemId, delta) => {
-    setItems(prev =>
-      prev.map(i => i.menuItem === menuItemId ? { ...i, qty: i.qty + delta } : i)
-        .filter(i => i.qty > 0)
-    );
+  const changeQty = (index, delta) => {
+    setItems((prev) => {
+      const row = prev[index];
+      if (!row) return prev;
+      const q = row.qty + delta;
+      if (q <= 0) return prev.filter((_, i) => i !== index);
+      return prev.map((r, i) => (i === index ? { ...r, qty: q } : r));
+    });
     setDirty(true);
   };
 
-  const removeItem = (menuItemId) => {
-    setItems(prev => prev.filter(i => i.menuItem !== menuItemId));
+  const removeItem = (index) => {
+    setItems((prev) => prev.filter((_, i) => i !== index));
     setDirty(true);
+  };
+
+  const toggleDelivered = (index) => {
+    const line = items[index];
+    if (!line) return;
+    const next = !line.deliveredToTable;
+    if (line._id) {
+      deliveredMutation.mutate({ itemId: line._id, delivered: next });
+    } else {
+      setItems((prev) => prev.map((it, i) => (i === index ? { ...it, deliveredToTable: next } : it)));
+      setDirty(true);
+    }
   };
 
   const addItem = (menuItem) => {
@@ -176,9 +240,22 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
   const handleSave = () => {
     setError('');
     if (items.length === 0) return setError('Order must have at least one item');
-    if (orderType === 'dine-in' && !tableNumber.trim())
+    if (orderType === 'dine-in' && tableMgmt && !selectedTableId)
+      return setError('Select a table for dine-in');
+    if (orderType === 'dine-in' && !tableMgmt && !tableNumber.trim())
       return setError('Table number is required for dine-in orders');
-    saveMutation.mutate({ orderType, tableNumber, reference, items });
+    saveMutation.mutate({
+      orderType,
+      ...(orderType === 'dine-in' && tableMgmt ? { tableId: selectedTableId } : {}),
+      ...(orderType === 'dine-in' && !tableMgmt ? { tableNumber: tableNumber.trim() } : {}),
+      reference,
+      items: items.map((i) => ({
+        menuItem: i.menuItem,
+        qty: i.qty,
+        ...(i._id ? { _id: i._id } : {}),
+        ...(typeof i.deliveredToTable === 'boolean' ? { deliveredToTable: i.deliveredToTable } : {}),
+      })),
+    });
   };
 
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
@@ -201,9 +278,15 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
       <div className="space-y-5">
         {/* Meta info */}
         <div className="flex items-center justify-between text-xs text-slate-500">
-          <span>Placed by {order.createdBy?.name || 'Cashier'}</span>
+          <span>Placed by {order.createdBy?.name || 'Guest / cashier'}</span>
           <span>{formatDateTime(order.createdAt)}</span>
         </div>
+
+        {order.paymentCollected === false && (
+          <div className="rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-sm px-3 py-2">
+            Tab open — collect payment when you complete this order on the order board (guest QR orders also show here).
+          </div>
+        )}
 
         {/* Order type */}
         <div>
@@ -228,7 +311,42 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
 
           {/* Table / reference input */}
           <div className="mt-2">
-            {orderType === 'dine-in' ? (
+            {orderType === 'dine-in' && tableMgmt ? (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500">Transfer moves the whole order; occupied tables are disabled.</p>
+                <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto">
+                  {cafeTables
+                    .filter((t) => t.active !== false)
+                    .map((t) => {
+                      const busy = occupancyByTable.has(String(t._id));
+                      const sel = selectedTableId === String(t._id);
+                      return (
+                        <button
+                          key={t._id}
+                          type="button"
+                          disabled={!isEditable || busy}
+                          title={busy ? 'Another active order is using this table' : undefined}
+                          onClick={() => {
+                            setSelectedTableId(String(t._id));
+                            setTableNumber(t.label || '');
+                            setDirty(true);
+                          }}
+                          className={`rounded-xl border px-2 py-2 text-sm font-medium transition ${
+                            busy
+                              ? 'border-slate-700 bg-slate-800/40 text-slate-600 cursor-not-allowed'
+                              : sel
+                                ? 'border-amber-500 bg-amber-500/20 text-amber-300'
+                                : 'border-slate-700 bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] hover:border-slate-600'
+                          }`}
+                        >
+                          {t.label}
+                          {busy ? <span className="block text-[10px] font-normal text-slate-500">In use</span> : null}
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+            ) : orderType === 'dine-in' ? (
               <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 px-3 py-2.5">
                 <Hash size={14} className="text-slate-500" />
                 <input
@@ -263,13 +381,16 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
             {items.length === 0 ? (
               <p className="text-slate-600 text-sm py-4 text-center">No items</p>
             ) : (
-              items.map(item => (
+              items.map((item, index) => (
                 <ItemRow
-                  key={item.menuItem}
+                  key={item._id || `line-${index}`}
                   item={item}
+                  index={index}
                   editable={isEditable}
+                  showDelivered={orderType === 'dine-in'}
                   onQtyChange={changeQty}
                   onRemove={removeItem}
+                  onDeliveredToggle={toggleDelivered}
                 />
               ))
             )}

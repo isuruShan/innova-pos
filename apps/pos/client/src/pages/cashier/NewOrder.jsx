@@ -311,6 +311,7 @@ export default function NewOrder() {
   const [cart, setCart] = useState([]);
   const [orderType, setOrderType] = useState('dine-in');
   const [tableNumber, setTableNumber] = useState('');
+  const [selectedTableId, setSelectedTableId] = useState('');
   const [reference, setReference] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -335,8 +336,15 @@ export default function NewOrder() {
   const qc = useQueryClient();
   const branding = useBranding();
   const { stores, selectedStoreId, isStoreReady } = useStoreContext();
-  const selectedStore = stores.find((s) => s._id === selectedStoreId) || stores.find((s) => s.isDefault) || null;
+  const selectedStore =
+    stores.find((s) => String(s._id) === String(selectedStoreId)) || stores.find((s) => s.isDefault) || null;
+  const tableMgmt = selectedStore?.tableManagementEnabled === true;
+  const deferPayment = tableMgmt && orderType === 'dine-in';
   const availablePaymentMethods = (selectedStore?.paymentMethods?.length ? selectedStore.paymentMethods : ['cash']);
+
+  useEffect(() => {
+    if (deferPayment) setSelectedLoyaltyRewardId('');
+  }, [deferPayment]);
 
   const prevStoreRef = useRef(selectedStoreId);
   useEffect(() => {
@@ -352,6 +360,8 @@ export default function NewOrder() {
       setQuickName('');
       setQuickMobile('');
       setQuickEmail('');
+      setTableNumber('');
+      setSelectedTableId('');
     }
     prevStoreRef.current = selectedStoreId;
   }, [selectedStoreId]);
@@ -379,6 +389,27 @@ export default function NewOrder() {
     enabled: isStoreReady,
     staleTime: 60_000,
   });
+
+  const { data: cafeTables = [] } = useQuery({
+    queryKey: ['cafe-tables', selectedStoreId],
+    queryFn: () => api.get('/tables').then((r) => r.data),
+    enabled: isStoreReady && tableMgmt,
+  });
+
+  const { data: tableOccupancy = [] } = useQuery({
+    queryKey: ['table-occupancy', selectedStoreId],
+    queryFn: () => api.get('/tables/occupancy').then((r) => r.data),
+    enabled: isStoreReady && tableMgmt,
+    refetchInterval: 12_000,
+  });
+
+  const occupancyByTable = useMemo(() => {
+    const m = new Map();
+    (tableOccupancy || []).forEach((o) => {
+      if (o.tableId) m.set(String(o.tableId), o);
+    });
+    return m;
+  }, [tableOccupancy]);
 
   const { data: activePromos = [] } = useQuery({
     queryKey: ['promotions-active', selectedStoreId],
@@ -498,7 +529,11 @@ export default function NewOrder() {
       setQuickEmail('');
       setSuccessMsg('Order placed successfully!');
       setTimeout(() => setSuccessMsg(''), 3000);
-      if (createdOrder && shouldPrintReceiptOnOrderCreated(branding)) {
+      if (
+        createdOrder &&
+        shouldPrintReceiptOnOrderCreated(branding) &&
+        createdOrder.paymentCollected !== false
+      ) {
         printReceipt(createdOrder, {
           branding,
           store: selectedStore,
@@ -666,7 +701,10 @@ export default function NewOrder() {
     }
   }, [paymentModalOpen, total]);
 
-  const canPlace = cart.length > 0 && (orderType !== 'dine-in' || tableNumber.trim());
+  const canPlace =
+    cart.length > 0 &&
+    (orderType !== 'dine-in' ||
+      (tableMgmt ? Boolean(selectedTableId) : tableNumber.trim()));
 
   const placeOrder = () => {
     if (!canPlace) return;
@@ -675,18 +713,35 @@ export default function NewOrder() {
       paymentType === 'cash' && Number.isFinite(parsedTender) ? parsedTender : undefined;
     mutation.mutate({
       orderType,
-      tableNumber: orderType === 'dine-in' ? tableNumber.trim() : '',
+      ...(orderType === 'dine-in' && tableMgmt && selectedTableId ? { tableId: selectedTableId } : {}),
+      tableNumber:
+        orderType === 'dine-in' && !tableMgmt ? tableNumber.trim() : '',
       reference: orderType !== 'dine-in' ? reference.trim() : '',
       items: cart,
       paymentType,
       paymentAmount: total,
       cashTender,
       ...(selectedCustomer?._id ? { customerId: selectedCustomer._id } : {}),
-      ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0
+      ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0 && !deferPayment
         ? { loyaltyRewardId: selectedLoyaltyRewardId }
         : {}),
     });
     setPaymentModalOpen(false);
+  };
+
+  const sendTableTabOrder = () => {
+    if (!canPlace) return;
+    mutation.mutate({
+      orderType,
+      ...(orderType === 'dine-in' && tableMgmt && selectedTableId ? { tableId: selectedTableId } : {}),
+      tableNumber: orderType === 'dine-in' && !tableMgmt ? tableNumber.trim() : '',
+      reference: orderType !== 'dine-in' ? reference.trim() : '',
+      items: cart,
+      ...(selectedCustomer?._id ? { customerId: selectedCustomer._id } : {}),
+      ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0 && !deferPayment
+        ? { loyaltyRewardId: selectedLoyaltyRewardId }
+        : {}),
+    });
   };
 
   const parsedReceiving = parseFloat(String(cashReceivedInput).replace(/,/g, ''));
@@ -773,7 +828,44 @@ export default function NewOrder() {
             </div>
 
             {/* Conditional input */}
-            {orderType === 'dine-in' ? (
+            {orderType === 'dine-in' && tableMgmt ? (
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Table *</label>
+                {!cafeTables.length ? (
+                  <p className="text-xs text-amber-400/90 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2">
+                    No tables configured for this store. A manager can add tables under Manager → Café tables & QR after enabling table management.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-1">
+                    {cafeTables
+                      .filter((t) => t.active !== false)
+                      .map((t) => {
+                        const busy = occupancyByTable.has(String(t._id));
+                        const sel = selectedTableId === String(t._id);
+                        return (
+                          <button
+                            key={t._id}
+                            type="button"
+                            disabled={busy}
+                            title={busy ? 'Table has an active order' : undefined}
+                            onClick={() => setSelectedTableId(String(t._id))}
+                            className={`rounded-xl border px-2 py-2 text-sm font-medium transition ${
+                              busy
+                                ? 'border-slate-700 bg-slate-800/50 text-slate-600 cursor-not-allowed'
+                                : sel
+                                  ? 'border-amber-500 bg-amber-500/20 text-amber-300'
+                                  : 'border-slate-700 bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] hover:border-slate-600'
+                            }`}
+                          >
+                            {t.label}
+                            {busy ? <span className="block text-[10px] text-slate-500 font-normal">In use</span> : null}
+                          </button>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            ) : orderType === 'dine-in' ? (
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1.5">Table Number *</label>
                 <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 focus-within:border-blue-500 px-3 py-2.5 transition">
@@ -935,10 +1027,16 @@ export default function NewOrder() {
                   <Gift size={12} className="text-amber-400" />
                   Loyalty reward (optional)
                 </label>
+                {deferPayment && (
+                  <p className="text-[11px] text-slate-500 mb-1.5">
+                    Point rewards are not available for pay-at-checkout table tabs — remove the reward or use a non-managed table number.
+                  </p>
+                )}
                 <select
                   value={selectedLoyaltyRewardId}
                   onChange={(e) => setSelectedLoyaltyRewardId(e.target.value)}
-                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-3 py-2 text-sm text-[var(--pos-text-primary)] focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  disabled={deferPayment}
+                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-3 py-2 text-sm text-[var(--pos-text-primary)] focus:outline-none focus:ring-2 focus:ring-amber-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="">None — earn points when order completes</option>
                   {redeemableLoyaltyRewards.map((r) => (
@@ -1147,13 +1245,21 @@ export default function NewOrder() {
             <button
               onClick={() => {
                 if (!canPlace) return;
+                if (deferPayment) {
+                  sendTableTabOrder();
+                  return;
+                }
                 setPaymentType(availablePaymentMethods[0] || 'cash');
                 setPaymentModalOpen(true);
               }}
               disabled={!canPlace || mutation.isPending}
               className="w-full bg-green-500 hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-green-500/20 text-sm mt-1"
             >
-              {mutation.isPending ? 'Placing Order...' : 'Place Order'}
+              {mutation.isPending
+                ? 'Placing Order...'
+                : deferPayment
+                  ? 'Send to kitchen (pay at checkout)'
+                  : 'Place Order'}
             </button>
             {cart.length > 0 && (
               <button

@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const MenuItem = require('../models/MenuItem');
 const Settings = require('../models/Settings');
+const Store = require('../models/Store');
+const CafeTable = require('../models/CafeTable');
 const Promotion = require('../models/Promotion');
 const Customer = require('../models/Customer');
 const LoyaltyProgramConfig = require('../models/LoyaltyProgramConfig');
@@ -11,29 +13,34 @@ const LoyaltyTier = require('../models/LoyaltyTier');
 const { computeLoyaltyRewardDiscount, getEffectiveTier } = require('../lib/loyaltyTier');
 const { applyPromotions } = require('../utils/applyPromotions');
 const { protect, authorize, tenantScope } = require('../middleware/auth');
-const { emitAudit } = require('@innovapos/shared-middleware');
+const { emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
+const {
+  enrichItems,
+  mergeItemsForUpdate,
+  recalculateOrderMoney,
+} = require('../utils/orderHelpers');
 
 const router = express.Router();
 
 const VALID_STATUSES = ['pending', 'preparing', 'ready', 'completed', 'cancelled'];
 const FORWARD_TRANSITIONS = { pending: 'preparing', preparing: 'ready', ready: 'completed' };
 
-async function enrichItems(items, tenantId, storeId) {
-  const menuIds = items.map(i => i.menuItem);
-  const menuDocs = await MenuItem.find({ _id: { $in: menuIds }, tenantId, storeId }).lean();
-  const menuMap = Object.fromEntries(menuDocs.map(m => [m._id.toString(), m]));
-  return items.map(i => {
-    const doc = menuMap[i.menuItem?.toString()];
-    const base = { ...i, category: doc?.category || '', isCombo: false, comboItems: [] };
-    if (doc?.isCombo && doc.comboItems?.length) {
-      return {
-        ...base, isCombo: true,
-        comboItems: doc.comboItems.map(ci => ({ name: ci.name, qty: ci.qty * i.qty })),
-      };
-    }
-    return base;
-  });
+async function assertTableAvailable({ tenantId, storeId, tableId, excludeOrderId }) {
+  if (!tableId) return;
+  const filter = {
+    tenantId,
+    storeId,
+    tableId,
+    status: { $nin: ['completed', 'cancelled'] },
+  };
+  if (excludeOrderId) filter._id = { $ne: excludeOrderId };
+  const clash = await Order.findOne(filter).select('orderNumber').lean();
+  if (clash) {
+    const err = new Error(`Table is already in use (order #${clash.orderNumber})`);
+    err.statusCode = 409;
+    throw err;
+  }
 }
 
 // GET all orders — supports ?status=, ?orderType=, ?paymentType=, ?since=, ?until=, ?search=
@@ -69,7 +76,7 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
       .sort({ createdAt: -1 });
     res.json(orders);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -81,7 +88,7 @@ router.get('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
     if (!order) return res.status(404).json({ message: 'Order not found' });
     res.json(order);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -99,6 +106,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
     const {
       orderType = 'dine-in',
       tableNumber,
+      tableId: tableIdRaw,
       reference,
       items,
       paymentType,
@@ -108,11 +116,48 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
     } = req.body;
     if (!items || items.length === 0)
       return res.status(400).json({ message: 'Items are required' });
-    if (orderType === 'dine-in' && !tableNumber?.trim())
-      return res.status(400).json({ message: 'Table number is required for dine-in orders' });
 
     const storeId = await resolveWriteStoreId(req);
     if (!storeId) return res.status(400).json({ message: 'No store available for order creation' });
+
+    const storeDoc = await Store.findById(storeId).lean();
+    const tableMgmt = storeDoc?.tableManagementEnabled === true;
+
+    let resolvedTableId = null;
+    let resolvedTableLabel = (tableNumber || '').trim();
+
+    if (orderType === 'dine-in') {
+      if (tableMgmt) {
+        if (!tableIdRaw || !mongoose.Types.ObjectId.isValid(String(tableIdRaw))) {
+          return res.status(400).json({ message: 'Select a table for dine-in' });
+        }
+        const tbl = await CafeTable.findOne({
+          _id: tableIdRaw,
+          tenantId: req.tenantId,
+          storeId,
+          active: true,
+        }).lean();
+        if (!tbl) return res.status(400).json({ message: 'Invalid or inactive table' });
+        try {
+          await assertTableAvailable({ tenantId: req.tenantId, storeId, tableId: tbl._id });
+        } catch (e) {
+          const code = e.statusCode === 409 ? 409 : 400;
+          return res.status(code).json({ message: e.message });
+        }
+        resolvedTableId = tbl._id;
+        resolvedTableLabel = tbl.label;
+      } else if (!resolvedTableLabel) {
+        return res.status(400).json({ message: 'Table number is required for dine-in orders' });
+      }
+    }
+
+    const deferPayment = orderType === 'dine-in' && tableMgmt;
+    if (deferPayment && loyaltyRewardId) {
+      return res.status(400).json({
+        message:
+          'Pay-at-table tabs cannot redeem loyalty rewards when opening the order. Remove the reward to continue.',
+      });
+    }
 
     const uniqueMenuIds = [...new Set(items.map((i) => String(i.menuItem)))];
     const menuDocsCount = await MenuItem.countDocuments({ _id: { $in: uniqueMenuIds }, tenantId: req.tenantId, storeId });
@@ -260,7 +305,8 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       tenantId: req.tenantId,
       storeId,
       orderType,
-      tableNumber: tableNumber || '',
+      tableNumber: resolvedTableLabel,
+      ...(resolvedTableId ? { tableId: resolvedTableId } : {}),
       reference: reference || '',
       items: enrichedItems,
       subtotal: Math.round(subtotal * 100) / 100,
@@ -273,9 +319,11 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       serviceFeeRate,
       serviceFeeFixed,
       serviceFeeAmount,
-      paymentType: paymentType || 'cash',
-      paymentAmount: Number(paymentAmount || totalAmount),
+      paymentType: deferPayment ? 'pending' : (paymentType || 'cash'),
+      paymentAmount: deferPayment ? 0 : Number(paymentAmount || totalAmount),
+      paymentCollected: !deferPayment,
       totalAmount,
+      orderSource: 'pos',
       createdBy: req.user.id,
       ...(clientRequestId ? { clientRequestId } : {}),
       ...(loyaltyRedemptionPayload ? { loyaltyRedemption: loyaltyRedemptionPayload } : {}),
@@ -328,16 +376,54 @@ router.put('/:id', protect, authorize('cashier', 'manager', 'merchant_admin'), t
     if (['completed', 'cancelled'].includes(order.status))
       return res.status(400).json({ message: `Cannot edit a ${order.status} order` });
 
-    const { orderType, tableNumber, reference, items } = req.body;
+    const { orderType, tableNumber, tableId: tableIdRaw, reference, items } = req.body;
+
+    const storeDoc = await Store.findById(order.storeId).lean();
+    const tableMgmt = storeDoc?.tableManagementEnabled === true;
+    const nextType = orderType || order.orderType;
 
     if (orderType) order.orderType = orderType;
-    if (tableNumber !== undefined) order.tableNumber = tableNumber;
+
+    if (nextType === 'dine-in' && tableMgmt) {
+      const tid =
+        tableIdRaw !== undefined && tableIdRaw !== null && String(tableIdRaw).trim() !== ''
+          ? tableIdRaw
+          : order.tableId;
+      if (!tid || !mongoose.Types.ObjectId.isValid(String(tid))) {
+        return res.status(400).json({ message: 'Select a table for dine-in' });
+      }
+      const tbl = await CafeTable.findOne({
+        _id: tid,
+        tenantId: req.tenantId,
+        storeId: order.storeId,
+        active: true,
+      }).lean();
+      if (!tbl) return res.status(400).json({ message: 'Invalid or inactive table' });
+      try {
+        await assertTableAvailable({
+          tenantId: req.tenantId,
+          storeId: order.storeId,
+          tableId: tbl._id,
+          excludeOrderId: order._id,
+        });
+      } catch (e) {
+        const code = e.statusCode === 409 ? 409 : 400;
+        return res.status(code).json({ message: e.message });
+      }
+      order.tableId = tbl._id;
+      order.tableNumber = tbl.label;
+    } else {
+      if (!tableMgmt) order.tableId = null;
+      if (tableNumber !== undefined) order.tableNumber = tableNumber;
+      if (nextType !== 'dine-in') order.tableId = null;
+    }
+
     if (reference !== undefined) order.reference = reference;
 
     if (items && items.length > 0) {
-      const enrichedItems = await enrichItems(items, req.tenantId, order.storeId);
-      order.items = enrichedItems;
-      order.totalAmount = Math.round(enrichedItems.reduce((sum, i) => sum + i.price * i.qty, 0) * 100) / 100;
+      const merged = await mergeItemsForUpdate(order.items, items, req.tenantId, order.storeId);
+      order.items = merged;
+      await recalculateOrderMoney(order);
     }
 
     order.updatedBy = req.user.id;
@@ -348,6 +434,56 @@ router.put('/:id', protect, authorize('cashier', 'manager', 'merchant_admin'), t
   }
 });
 
+// PUT mark one line as delivered to table (cashier)
+router.put(
+  '/:id/items/:itemId/delivered',
+  protect,
+  authorize('cashier', 'manager', 'merchant_admin'),
+  tenantScope,
+  resolveSelectedStore,
+  async (req, res) => {
+    try {
+      const order = await Order.findOne({ _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) });
+      if (!order) return res.status(404).json({ message: 'Order not found' });
+      if (['completed', 'cancelled'].includes(order.status))
+        return res.status(400).json({ message: `Cannot edit a ${order.status} order` });
+      const delivered = req.body?.delivered !== false;
+      const itemId = req.params.itemId;
+      const sub = order.items.id(itemId);
+      if (!sub) return res.status(404).json({ message: 'Order line not found' });
+      sub.deliveredToTable = delivered;
+      order.updatedBy = req.user.id;
+      await order.save();
+      res.json(order);
+    } catch (err) {
+      res.status(400).json({ message: err.message });
+    }
+  },
+);
+
+// PUT clear kitchen "new line" highlights (kitchen staff)
+router.put(
+  '/:id/clear-kitchen-new',
+  protect,
+  authorize('kitchen', 'manager', 'merchant_admin'),
+  tenantScope,
+  resolveSelectedStore,
+  async (req, res) => {
+    try {
+      const order = await Order.findOne({ _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) });
+      if (!order) return res.status(404).json({ message: 'Order not found' });
+      order.items.forEach((line) => {
+        line.kitchenNew = false;
+      });
+      order.updatedBy = req.user.id;
+      await order.save();
+      res.json(order);
+    } catch (err) {
+      res.status(400).json({ message: err.message });
+    }
+  },
+);
+
 // PUT advance/set order status
 router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'merchant_admin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
@@ -357,17 +493,48 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
     const { status } = req.body || {};
     const prevStatus = order.status;
 
+    let nextStatus;
+
     if (status === 'cancelled') {
       if (order.status === 'completed')
         return res.status(400).json({ message: 'Cannot cancel a completed order' });
-      order.status = 'cancelled';
+      nextStatus = 'cancelled';
     } else if (status && VALID_STATUSES.includes(status)) {
-      order.status = status;
+      nextStatus = status;
     } else {
       const next = FORWARD_TRANSITIONS[order.status];
       if (!next) return res.status(400).json({ message: `Order cannot be advanced from "${order.status}"` });
-      order.status = next;
+      nextStatus = next;
     }
+
+    const becomingCompleted = order.status !== 'completed' && nextStatus === 'completed';
+
+    if (becomingCompleted && order.paymentCollected === false) {
+      const rolesAllowed = ['cashier', 'manager', 'merchant_admin'];
+      if (!rolesAllowed.includes(req.user.role)) {
+        return res.status(403).json({
+          message: 'Payment must be collected at the register before this order can be completed.',
+        });
+      }
+      const { paymentType: pt, paymentAmount: pa } = req.body || {};
+      if (!pt || pt === 'pending') {
+        return res.status(400).json({
+          message: 'Collect payment before completing — choose how the guest paid (cash, card, etc.).',
+        });
+      }
+      const expected = Number(order.totalAmount || 0);
+      const paid = Number(pa != null ? pa : expected);
+      if (!Number.isFinite(paid) || paid + 0.005 < expected) {
+        return res.status(400).json({
+          message: `Collect ${expected.toFixed(2)} before completing this order.`,
+        });
+      }
+      order.paymentType = pt;
+      order.paymentAmount = paid;
+      order.paymentCollected = true;
+    }
+
+    order.status = nextStatus;
 
     order.updatedBy = req.user.id;
     await order.save();
@@ -411,7 +578,7 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
 
     res.json(order);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

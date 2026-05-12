@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../../context/AuthContext';
 import {
   Clock, ChevronRight, ChevronLeft, RefreshCw,
   Link2, Eye,
@@ -56,6 +57,10 @@ const STATUS_META = {
 
 const formatTime = iso => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+function normalizeRole(role) {
+  return String(role || '').trim().toLowerCase();
+}
+
 function ElapsedBadge({ createdAt, status }) {
   if (['completed', 'cancelled'].includes(status)) return null;
   const mins = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
@@ -67,7 +72,7 @@ function ElapsedBadge({ createdAt, status }) {
   );
 }
 
-function OrderCard({ order, onSetStatus, onViewEdit, busyId }) {
+function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId }) {
   const meta = STATUS_META[order.status];
   const isBusy = busyId === order._id;
 
@@ -134,8 +139,13 @@ function OrderCard({ order, onSetStatus, onViewEdit, busyId }) {
       </div>
 
       {/* Footer total */}
-      <div className="px-3 pb-2 flex items-center justify-between">
-        <span className="font-semibold text-[var(--pos-text-primary)] text-sm">${order.totalAmount.toFixed(2)}</span>
+      <div className="px-3 pb-2 flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <span className="font-semibold text-[var(--pos-text-primary)] text-sm">${order.totalAmount.toFixed(2)}</span>
+          {order.paymentCollected === false && (
+            <span className="block text-[10px] text-amber-400 font-medium">Payment pending</span>
+          )}
+        </div>
         <span className="text-xs text-slate-600">{order.createdBy?.name || '—'}</span>
       </div>
 
@@ -144,7 +154,7 @@ function OrderCard({ order, onSetStatus, onViewEdit, busyId }) {
         <div className="px-3 pb-3 flex gap-1.5">
           {meta.prev && (
             <button
-              onClick={() => onSetStatus(order._id, meta.prev)}
+              onClick={() => onAdvanceStatus(order, meta.prev)}
               disabled={isBusy}
               className="flex-1 flex items-center justify-center gap-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-300 text-xs font-medium py-2 rounded-lg transition"
             >
@@ -154,7 +164,7 @@ function OrderCard({ order, onSetStatus, onViewEdit, busyId }) {
           )}
           {meta.next && (
             <button
-              onClick={() => onSetStatus(order._id, meta.next)}
+              onClick={() => onAdvanceStatus(order, meta.next)}
               disabled={isBusy}
               className={`flex-1 flex items-center justify-center gap-1 text-xs font-semibold py-2 rounded-lg transition disabled:opacity-50 ${meta.nextClass}`}
             >
@@ -173,7 +183,7 @@ function OrderCard({ order, onSetStatus, onViewEdit, busyId }) {
   );
 }
 
-function Column({ status, orders, onSetStatus, onViewEdit, busyId }) {
+function Column({ status, orders, onAdvanceStatus, onViewEdit, busyId }) {
   const meta = STATUS_META[status];
   return (
     <div className="flex flex-col min-w-0 min-h-0">
@@ -194,7 +204,7 @@ function Column({ status, orders, onSetStatus, onViewEdit, busyId }) {
             <OrderCard
               key={order._id}
               order={order}
-              onSetStatus={onSetStatus}
+              onAdvanceStatus={onAdvanceStatus}
               onViewEdit={onViewEdit}
               busyId={busyId}
             />
@@ -208,13 +218,19 @@ function Column({ status, orders, onSetStatus, onViewEdit, busyId }) {
 export default function OrderBoard() {
   const qc = useQueryClient();
   const branding = useBranding();
+  const { user } = useAuth();
   const { stores, selectedStoreId, isStoreReady } = useStoreContext();
   const selectedStore = useMemo(
     () => stores.find((s) => s._id === selectedStoreId) || stores.find((s) => s.isDefault) || null,
     [stores, selectedStoreId],
   );
+  const availablePaymentMethods = selectedStore?.paymentMethods?.length
+    ? selectedStore.paymentMethods
+    : ['cash'];
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [completePaymentOrder, setCompletePaymentOrder] = useState(null);
+  const [completePaymentType, setCompletePaymentType] = useState('cash');
 
   useEffect(() => {
     setSelectedOrder(null);
@@ -247,18 +263,27 @@ export default function OrderBoard() {
   useSyncOfflineOrderSelection(orders, selectedOrder, setSelectedOrder);
 
   const mutation = useMutation({
-    mutationFn: async ({ id, status }) => {
-      const { data } = await api.put(`/orders/${encodeURIComponent(id)}/status`, { status });
+    mutationFn: async ({ id, status, paymentType: pt, paymentAmount: pa }) => {
+      const body = {};
+      if (status != null) body.status = status;
+      if (pt) body.paymentType = pt;
+      if (pa != null) body.paymentAmount = pa;
+      const { data } = await api.put(`/orders/${encodeURIComponent(id)}/status`, body);
       return data;
     },
     onMutate: ({ id }) => setBusyId(id),
-    onSuccess: (updatedOrder) => {
+    onSuccess: (updatedOrder, variables) => {
       qc.invalidateQueries({ queryKey: ['order-board'] });
       qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
       qc.invalidateQueries({ queryKey: ['sales-report'] });
       qc.invalidateQueries({ queryKey: ['recent-orders'] });
       qc.invalidateQueries({ queryKey: [CASHIER_SESSION_QUERY_KEY] });
-      if (updatedOrder && shouldPrintReceiptForUpdatedOrder(branding, updatedOrder)) {
+      const policyPrint = updatedOrder && shouldPrintReceiptForUpdatedOrder(branding, updatedOrder);
+      const paidOnComplete =
+        variables?.status === 'completed' &&
+        variables?.paymentType &&
+        variables.paymentType !== 'pending';
+      if (updatedOrder && (policyPrint || paidOnComplete)) {
         printReceipt(updatedOrder, {
           branding,
           store: selectedStore,
@@ -269,6 +294,32 @@ export default function OrderBoard() {
     onError: (e) => alert(e.response?.data?.message || 'Failed to update status'),
     onSettled: () => setBusyId(null),
   });
+
+  const handleAdvanceStatus = (order, nextStatus) => {
+    if (nextStatus === 'completed' && order.paymentCollected === false) {
+      const canPay = ['cashier', 'manager', 'merchant_admin'].includes(normalizeRole(user?.role));
+      if (!canPay) {
+        window.alert('Payment must be collected at the register before completing this order.');
+        return;
+      }
+      setCompletePaymentType(availablePaymentMethods[0] || 'cash');
+      setCompletePaymentOrder(order);
+      return;
+    }
+    mutation.mutate({ id: order._id, status: nextStatus });
+  };
+
+  const confirmCompleteWithPayment = () => {
+    if (!completePaymentOrder) return;
+    const total = Number(completePaymentOrder.totalAmount || 0);
+    mutation.mutate({
+      id: completePaymentOrder._id,
+      status: 'completed',
+      paymentType: completePaymentType,
+      paymentAmount: total,
+    });
+    setCompletePaymentOrder(null);
+  };
 
   const grouped = useMemo(() => {
     const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -327,7 +378,7 @@ export default function OrderBoard() {
                 key={status}
                 status={status}
                 orders={grouped[status]}
-                onSetStatus={(id, s) => mutation.mutate({ id, status: s })}
+                onAdvanceStatus={handleAdvanceStatus}
                 onViewEdit={setSelectedOrder}
                 busyId={busyId}
               />
@@ -340,6 +391,61 @@ export default function OrderBoard() {
         order={liveSelectedOrder}
         onClose={() => setSelectedOrder(null)}
       />
+
+      {completePaymentOrder && (
+        <div className="fixed inset-0 z-[100] bg-black/70 flex items-end sm:items-center justify-center p-3 sm:p-4">
+          <div className="w-full max-w-md bg-[var(--pos-panel)] border border-slate-600/80 rounded-2xl p-5 shadow-2xl">
+            <h3 className="text-[var(--pos-text-primary)] font-bold text-lg">Collect payment</h3>
+            <p className="text-sm text-slate-400 mt-1">
+              Order #{String(completePaymentOrder.orderNumber).padStart(3, '0')} · Total{' '}
+              <span className="text-amber-400 font-semibold tabular-nums">
+                ${Number(completePaymentOrder.totalAmount || 0).toFixed(2)}
+              </span>
+            </p>
+            <p className="text-xs text-slate-500 mt-2">
+              Guest tabs are paid when you complete the order. Pick how they paid, then confirm.
+            </p>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {availablePaymentMethods.map((method) => {
+                const label = method.replace(/_/g, ' ');
+                const pretty = label.charAt(0).toUpperCase() + label.slice(1);
+                const active = completePaymentType === method;
+                return (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() => setCompletePaymentType(method)}
+                    className={`min-h-[48px] rounded-xl px-3 text-sm font-semibold border-2 transition ${
+                      active
+                        ? 'border-amber-500 bg-amber-500/15 text-[var(--pos-selection-text)] ring-2 ring-amber-500/40'
+                        : 'border-slate-600 bg-[var(--pos-surface-inset)] text-slate-200 hover:border-slate-500'
+                    }`}
+                  >
+                    {pretty}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-5 flex flex-col-reverse sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={() => setCompletePaymentOrder(null)}
+                className="flex-1 min-h-[48px] rounded-xl border-2 border-slate-600 text-slate-200 text-sm font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmCompleteWithPayment}
+                disabled={mutation.isPending}
+                className="flex-1 min-h-[48px] rounded-xl bg-green-500 hover:bg-green-400 disabled:opacity-60 text-white text-sm font-bold"
+              >
+                {mutation.isPending ? 'Processing…' : 'Complete & print bill'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </CashierSessionGate>
   );

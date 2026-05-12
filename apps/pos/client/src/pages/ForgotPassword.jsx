@@ -45,8 +45,15 @@ export default function ForgotPassword() {
           </div>
 
           {message && (
-            <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 rounded-xl px-4 py-3 text-sm">
-              {message}
+            <div className="space-y-2">
+              <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 rounded-xl px-4 py-3 text-sm">
+                {message}
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                If you do not see an email within a few minutes, check spam or junk. Your team must configure outbound
+                email (SMTP or Resend) on the POS server, and set <span className="text-slate-400 font-mono">POS_URL</span>{' '}
+                to the web address where you open this app (so the reset link is correct).
+              </p>
             </div>
           )}
           {error && (

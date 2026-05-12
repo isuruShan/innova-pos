@@ -25,7 +25,7 @@ import CashierSessionsPage from './pages/admin/CashierSessionsPage';
 import LoyaltyProgramPage from './pages/admin/LoyaltyProgramPage';
 import CustomersAdminPage from './pages/admin/CustomersAdminPage';
 import PromotionsAdminPage from './pages/admin/PromotionsAdminPage';
-
+import NotificationsPage from './pages/admin/NotificationsPage';
 const PrivateRoute = ({ children, roles }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
@@ -127,6 +127,11 @@ export default function App() {
           <Route path="/promotions" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><PromotionsAdminPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/notifications" element={
+            <PrivateRoute roles={['merchant_admin', 'superadmin']}>
+              <Layout><NotificationsPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/profile" element={

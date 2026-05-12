@@ -2,7 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const CashierSession = require('../models/CashierSession');
 const User = require('../models/User');
-const { authenticateJWT, authorize, tenantScope } = require('@innovapos/shared-middleware');
+const { authenticateJWT, authorize, tenantScope, sendRouteError } = require('@innovapos/shared-middleware');
 
 const router = express.Router();
 
@@ -82,7 +82,7 @@ router.get('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
 
     res.json(sessions);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

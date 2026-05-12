@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Palette, CreditCard, Building2,
-  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag,
+  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell,
 } from 'lucide-react';
 import NotificationBell from '../NotificationBell';
 import { useAuth } from '../../context/AuthContext';
@@ -30,6 +30,7 @@ const ADMIN_NAV_GROUPS = [
     title: 'Business',
     items: [
       { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
+      { label: 'Notifications', icon: Bell, to: '/notifications' },
       { label: 'Branding & Settings', icon: Palette, to: '/branding' },
       { label: 'Users', icon: Users, to: '/users' },
       { label: 'Stores', icon: Store, to: '/stores' },
@@ -179,7 +180,7 @@ export default function Layout({ children }) {
           </div>
 
           <div className="flex items-center gap-3">
-            {!isSuperAdmin && user?.tenantId && <NotificationBell />}
+            {user && <NotificationBell />}
             {!isSuperAdmin && (
               <select
                 value={selectedStoreId}

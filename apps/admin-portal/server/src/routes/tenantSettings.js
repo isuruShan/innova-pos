@@ -1,10 +1,11 @@
 const express = require('express');
 const TenantSettings = require('../models/TenantSettings');
 const Tenant = require('../models/Tenant');
-const { authenticateJWT, authorize, tenantScope, emitAudit } = require('@innovapos/shared-middleware');
+const { authenticateJWT, authorize, tenantScope, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const multer = require('multer');
 const axios = require('axios');
 const FormData = require('form-data');
+const { presignObjectKey } = require('../utils/s3Runtime');
 
 const router = express.Router();
 
@@ -45,17 +46,8 @@ const getOrCreate = async (tenantId) => {
 async function attachFreshLogoUrl(settingsDoc, req) {
   const plain = settingsDoc.toObject ? settingsDoc.toObject() : { ...settingsDoc };
   if (!plain.logoKey) return plain;
-  try {
-    const uploadUrl = process.env.UPLOAD_SERVICE_URL || 'http://localhost:3002';
-    const { data } = await axios.post(
-      `${uploadUrl}/upload/presign`,
-      { key: plain.logoKey, expiresIn: 86400 },
-      { headers: { Authorization: req.headers.authorization || '' } }
-    );
-    if (data?.url) plain.logoUrl = data.url;
-  } catch {
-    // keep stored logoUrl (may be expired presigned URL)
-  }
+  const url = await presignObjectKey(plain.logoKey, 86400);
+  if (url) plain.logoUrl = url;
   return plain;
 }
 
@@ -67,7 +59,7 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
     const s = await getOrCreate(tenantId);
     res.json(await attachFreshLogoUrl(s, req));
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -79,7 +71,7 @@ router.put('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
     const before = s.toObject();
 
     const allowed = [
-      'businessName', 'tagline', 'logoUrl', 'logoKey', 'faviconUrl',
+      'businessName', 'tagline', 'logoKey', 'faviconUrl',
       'primaryColor', 'accentColor', 'sidebarColor', 'textColor', 'selectionTextColor',
       'address', 'phone', 'email', 'website',
       'paymentMethods', 'currency', 'currencySymbol', 'timezone',
@@ -93,8 +85,8 @@ router.put('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
     // Sync branding fields to Tenant document for downstream consumers
     const tenantBrandingUpdate = {};
     if (req.body.businessName !== undefined) tenantBrandingUpdate.businessName = req.body.businessName;
-    if (req.body.logoUrl !== undefined) {
-      tenantBrandingUpdate['settings.logoUrl'] = req.body.logoUrl;
+    if (req.body.logoKey !== undefined) {
+      tenantBrandingUpdate['settings.logoUrl'] = '';
       tenantBrandingUpdate['settings.logoKey'] = req.body.logoKey || '';
     }
     if (req.body.primaryColor !== undefined) tenantBrandingUpdate['settings.primaryColor'] = req.body.primaryColor;
@@ -114,7 +106,7 @@ router.put('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
 
     res.json(s);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -135,19 +127,20 @@ router.post('/logo', authenticateJWT, authorize('merchant_admin', 'superadmin'),
         form,
         { headers: { ...form.getHeaders(), Authorization: token }, timeout: 30000 }
       );
-      const { key, url } = uploadRes.data;
+      const { key } = uploadRes.data;
 
       const tenantId = req.user.role === 'superadmin' ? (req.body.tenantId || req.tenantId) : req.tenantId;
       const s = await getOrCreate(tenantId);
-      s.logoUrl = url;
+      s.logoUrl = '';
       s.logoKey = key;
       s.updatedBy = req.user.id;
       await s.save();
-      await Tenant.findByIdAndUpdate(tenantId, { 'settings.logoUrl': url, 'settings.logoKey': key });
+      await Tenant.findByIdAndUpdate(tenantId, { 'settings.logoUrl': '', 'settings.logoKey': key });
 
-      res.json({ url, key });
+      const freshUrl = await presignObjectKey(key, 86400);
+      res.json({ url: freshUrl, key });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      sendRouteError(res, err, { req });
     }
   }
 );

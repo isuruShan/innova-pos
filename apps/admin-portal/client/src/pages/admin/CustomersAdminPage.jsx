@@ -2,16 +2,18 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ContactRound, Plus, Search, Pencil, Trash2 } from 'lucide-react';
 import api from '../../api/axios';
+import AdminDateField from '../../components/AdminDateField';
 
-const emptyForm = { name: '', mobile: '', email: '', birthday: '', notes: '' };
+const emptyForm = {
+  name: '', mobile: '', email: '', birthday: '', notes: '',
+  lifetimePoints: '0', pointsNote: '',
+};
 
 export default function CustomersAdminPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [editor, setEditor] = useState(null);
   const [form, setForm] = useState(emptyForm);
-  const [pointsFor, setPointsFor] = useState(null);
-  const [pointsForm, setPointsForm] = useState({ lifetimePoints: '', note: '' });
 
   const { data: rows = [], isPending } = useQuery({
     queryKey: ['admin-customers', search],
@@ -20,30 +22,43 @@ export default function CustomersAdminPage() {
   });
 
   const saveCustomer = useMutation({
-    mutationFn: (payload) =>
-      editor?._id ? api.put(`/customers/${editor._id}`, payload) : api.post('/customers', payload),
+    mutationFn: async () => {
+      if (!editor) throw new Error('No editor');
+      const payload = {
+        name: form.name.trim(),
+        mobile: form.mobile.trim(),
+        email: form.email.trim(),
+        notes: form.notes.trim(),
+        ...(form.birthday ? { birthday: new Date(form.birthday).toISOString() } : { birthday: null }),
+      };
+      if (editor._id) {
+        await api.put(`/customers/${editor._id}`, payload);
+        const n = Number(form.lifetimePoints);
+        if (!Number.isNaN(n) && n >= 0) {
+          await api.post(`/customers/${editor._id}/points`, {
+            lifetimePoints: n,
+            note: form.pointsNote?.trim() || '',
+          });
+        }
+      } else {
+        await api.post('/customers', payload);
+      }
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-customers'] });
+      qc.invalidateQueries({ queryKey: ['loyalty-retention-pending'] });
+      qc.invalidateQueries({ queryKey: ['notifications-unread-count'] });
       setEditor(null);
       setForm(emptyForm);
+    },
+    onError: (err) => {
+      window.alert(err.response?.data?.message || 'Save failed');
     },
   });
 
   const deleteCustomer = useMutation({
     mutationFn: (id) => api.delete(`/customers/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-customers'] }),
-  });
-
-  const adjustPoints = useMutation({
-    mutationFn: ({ id, lifetimePoints, note }) =>
-      api.post(`/customers/${id}/points`, { lifetimePoints, note }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-customers'] });
-      qc.invalidateQueries({ queryKey: ['loyalty-retention-pending'] });
-      qc.invalidateQueries({ queryKey: ['notifications-unread-count'] });
-      setPointsFor(null);
-      setPointsForm({ lifetimePoints: '', note: '' });
-    },
   });
 
   const openNew = () => {
@@ -59,38 +74,14 @@ export default function CustomersAdminPage() {
       email: c.email || '',
       birthday: c.birthday ? String(c.birthday).slice(0, 10) : '',
       notes: c.notes || '',
+      lifetimePoints: String(c.lifetimePoints ?? 0),
+      pointsNote: '',
     });
   };
 
   const submitProfile = (e) => {
     e.preventDefault();
-    saveCustomer.mutate({
-      name: form.name.trim(),
-      mobile: form.mobile.trim(),
-      email: form.email.trim(),
-      notes: form.notes.trim(),
-      ...(form.birthday ? { birthday: new Date(form.birthday).toISOString() } : { birthday: null }),
-    });
-  };
-
-  const openPoints = (row) => {
-    setPointsFor(row);
-    setPointsForm({
-      lifetimePoints: String(row.lifetimePoints ?? 0),
-      note: '',
-    });
-  };
-
-  const submitPoints = (e) => {
-    e.preventDefault();
-    if (!pointsFor) return;
-    const n = Number(pointsForm.lifetimePoints);
-    if (Number.isNaN(n) || n < 0) return;
-    adjustPoints.mutate({
-      id: pointsFor._id,
-      lifetimePoints: n,
-      note: pointsForm.note,
-    });
+    saveCustomer.mutate();
   };
 
   return (
@@ -102,7 +93,7 @@ export default function CustomersAdminPage() {
         </h1>
         <p className="text-gray-600 text-sm mt-1">
           Tenant-wide customer records shared across all stores. Add, edit, delete profiles, and adjust lifetime loyalty
-          points.
+          points from the edit screen.
         </p>
       </div>
 
@@ -139,7 +130,7 @@ export default function CustomersAdminPage() {
                 <tr>
                   <th className="px-4 py-3 font-medium">Customer</th>
                   <th className="px-4 py-3 font-medium">Points</th>
-                  <th className="px-4 py-3 font-medium text-right w-44">Actions</th>
+                  <th className="px-4 py-3 font-medium text-right w-36">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -157,13 +148,6 @@ export default function CustomersAdminPage() {
                         className="text-brand-teal text-xs font-semibold inline-flex items-center gap-1"
                       >
                         <Pencil size={12} /> Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openPoints(row)}
-                        className="text-amber-700 text-xs font-semibold"
-                      >
-                        Points
                       </button>
                       <button
                         type="button"
@@ -195,7 +179,7 @@ export default function CustomersAdminPage() {
           role="presentation"
         >
           <div
-            className="bg-white rounded-xl max-w-md w-full p-5 shadow-xl border border-gray-200"
+            className="bg-white rounded-xl max-w-md w-full p-5 shadow-xl border border-gray-200 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -216,11 +200,9 @@ export default function CustomersAdminPage() {
               ))}
               <label className="block text-xs text-gray-600">
                 Birthday
-                <input
-                  type="date"
+                <AdminDateField
                   value={form.birthday}
-                  onChange={(e) => setForm((f) => ({ ...f, birthday: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  onChange={(v) => setForm((f) => ({ ...f, birthday: v }))}
                 />
               </label>
               <label className="block text-xs text-gray-600">
@@ -232,6 +214,40 @@ export default function CustomersAdminPage() {
                   className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none"
                 />
               </label>
+
+              {editor._id && (
+                <>
+                  <div className="pt-2 border-t border-gray-100">
+                    <p className="text-xs font-medium text-gray-700 mb-2">Loyalty points</p>
+                    <label className="block text-xs text-gray-600">
+                      Lifetime points
+                      <input
+                        type="number"
+                        min={0}
+                        required
+                        value={form.lifetimePoints}
+                        onChange={(e) => setForm((f) => ({ ...f, lifetimePoints: e.target.value }))}
+                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <label className="block text-xs text-gray-600 mt-2">
+                      Note for this adjustment (optional)
+                      <textarea
+                        value={form.pointsNote}
+                        onChange={(e) => setForm((f) => ({ ...f, pointsNote: e.target.value }))}
+                        rows={2}
+                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none"
+                        placeholder="Reason for adjustment"
+                      />
+                    </label>
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Saving updates profile first, then applies this points total. Other merchant admins may receive a
+                      notification.
+                    </p>
+                  </div>
+                </>
+              )}
+
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
@@ -249,73 +265,6 @@ export default function CustomersAdminPage() {
                   className="px-4 py-2 rounded-lg bg-brand-teal text-white text-sm font-medium disabled:opacity-50"
                 >
                   {saveCustomer.isPending ? 'Saving…' : 'Save'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {pointsFor && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40"
-          onClick={() => {
-            setPointsFor(null);
-            setPointsForm({ lifetimePoints: '', note: '' });
-          }}
-          role="presentation"
-        >
-          <div
-            className="bg-white rounded-xl max-w-md w-full p-5 shadow-xl border border-gray-200"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">
-              Set lifetime points — {pointsFor.name || 'Customer'}
-            </h3>
-            <p className="text-xs text-gray-600 mb-4">
-              Other merchant admins receive an in-app notification when you save (you are excluded).
-            </p>
-            <form onSubmit={submitPoints} className="space-y-3">
-              <label className="block text-xs text-gray-600">
-                Lifetime points
-                <input
-                  type="number"
-                  min={0}
-                  required
-                  value={pointsForm.lifetimePoints}
-                  onChange={(e) => setPointsForm((f) => ({ ...f, lifetimePoints: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                />
-              </label>
-              <label className="block text-xs text-gray-600">
-                Note (optional)
-                <textarea
-                  value={pointsForm.note}
-                  onChange={(e) => setPointsForm((f) => ({ ...f, note: e.target.value }))}
-                  rows={2}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  placeholder="Reason for adjustment"
-                />
-              </label>
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPointsFor(null);
-                    setPointsForm({ lifetimePoints: '', note: '' });
-                  }}
-                  className="px-3 py-2 text-sm text-gray-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={adjustPoints.isPending}
-                  className="px-4 py-2 rounded-lg bg-brand-teal text-white text-sm font-medium disabled:opacity-50"
-                >
-                  Save
                 </button>
               </div>
             </form>

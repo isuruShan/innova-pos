@@ -9,6 +9,7 @@
     "dev": "nodemon src/index.js"
   },
   "dependencies": {
+    "@innovapos/runtime-env": "workspace:*",
     "@innovapos/logger": "workspace:*",
     "@innovapos/shared-middleware": "workspace:*",
     "cors": "^2.8.6",

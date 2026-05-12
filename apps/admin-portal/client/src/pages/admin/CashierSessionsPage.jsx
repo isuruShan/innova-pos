@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { RefreshCw, Wallet } from 'lucide-react';
 import api from '../../api/axios';
+import AdminDateField from '../../components/AdminDateField';
 import { useStoreContext } from '../../context/StoreContext';
 
 function todayStr() {
@@ -82,24 +83,22 @@ export default function CashierSessionsPage() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-wrap items-end gap-4">
-        <label className="text-xs text-gray-500">
+        <label className="text-xs text-gray-500 block">
           From
-          <input
-            type="date"
+          <AdminDateField
             value={fromDate}
             max={toDate}
-            onChange={(e) => setFromDate(e.target.value)}
-            className="block mt-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-gray-900"
+            onChange={setFromDate}
+            className="block mt-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-gray-900 w-full sm:w-auto min-w-[10rem]"
           />
         </label>
-        <label className="text-xs text-gray-500">
+        <label className="text-xs text-gray-500 block">
           To
-          <input
-            type="date"
+          <AdminDateField
             value={toDate}
             min={fromDate}
-            onChange={(e) => setToDate(e.target.value)}
-            className="block mt-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-gray-900"
+            onChange={setToDate}
+            className="block mt-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-gray-900 w-full sm:w-auto min-w-[10rem]"
           />
         </label>
         <div>

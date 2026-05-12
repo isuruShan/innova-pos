@@ -2,7 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const CashierSession = require('../models/CashierSession');
 const Order = require('../models/Order');
-const { protect, authorize, tenantScope } = require('../middleware/auth');
+const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter } = require('../middleware/storeScope');
 
 const router = express.Router();
@@ -92,7 +92,7 @@ router.get(
 
       return res.json(enrichSession(session, cashSalesSoFar, expectedCashInDrawer));
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      sendRouteError(res, err, { req });
     }
   }
 );
@@ -251,7 +251,7 @@ router.get(
 
       res.json(sessions);
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      sendRouteError(res, err, { req });
     }
   }
 );
@@ -283,7 +283,7 @@ router.get(
 
       res.json(doc);
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      sendRouteError(res, err, { req });
     }
   }
 );

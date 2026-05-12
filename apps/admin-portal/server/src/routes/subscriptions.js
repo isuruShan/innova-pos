@@ -3,12 +3,15 @@ const Tenant = require('../models/Tenant');
 const Subscription = require('../models/Subscription');
 const PaymentReceipt = require('../models/PaymentReceipt');
 const SubscriptionPlan = require('../models/SubscriptionPlan');
-const { authenticateJWT, authorize, emitAudit } = require('@innovapos/shared-middleware');
+const User = require('../models/User');
+const { authenticateJWT, authorize, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { sendEmail } = require('../utils/mailer');
 const multer = require('multer');
 const axios = require('axios');
 const FormData = require('form-data');
 const { tenantPlanAudience } = require('../utils/planAudience');
+const { presignObjectKey } = require('../utils/s3Runtime');
+const { notifySuperAdmins } = require('../lib/notificationHelpers');
 
 const router = express.Router();
 
@@ -22,6 +25,17 @@ const upload = multer({
 });
 
 const amountsEqual = (a, b) => Number(a).toFixed(2) === Number(b).toFixed(2);
+
+async function attachFreshReceiptUrls(receipts) {
+  if (!receipts?.length) return receipts;
+  const keys = [...new Set(receipts.map((r) => r.receiptFileKey).filter(Boolean))];
+  if (!keys.length) return receipts;
+  const pairs = await Promise.all(keys.map(async (key) => [key, await presignObjectKey(key, 86400)]));
+  const urls = Object.fromEntries(pairs.filter(([, url]) => Boolean(url)));
+  return receipts.map((r) => (r.receiptFileKey && urls[r.receiptFileKey]
+    ? { ...r, receiptFileUrl: urls[r.receiptFileKey] }
+    : r));
+}
 
 async function resolveRequestedPlan({ tenant, planId }) {
   const audience = tenantPlanAudience(tenant.countryIso);
@@ -63,15 +77,16 @@ router.get('/receipts', authenticateJWT, async (req, res) => {
     const filter = tenantId ? { tenantId } : {};
     if (req.query.status) filter.status = req.query.status;
 
-    const receipts = await PaymentReceipt.find(filter)
+    let receipts = await PaymentReceipt.find(filter)
       .sort({ createdAt: -1 })
       .populate('tenantId', 'businessName slug')
       .populate('verifiedBy', 'name')
       .populate('requestedPlanId', 'name code amount currency billingCycle durationDays')
       .lean();
+    receipts = await attachFreshReceiptUrls(receipts);
     res.json(receipts);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -87,7 +102,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       return res.status(400).json({ message: 'amount must be a positive number' });
     }
 
-    const tenant = await Tenant.findById(req.tenantId).select('assignedPlanId planLocked countryIso');
+    const tenant = await Tenant.findById(req.tenantId).select('businessName assignedPlanId planLocked countryIso');
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
     const requestedPlan = await resolveRequestedPlan({ tenant, planId });
     if (!requestedPlan) {
@@ -116,7 +131,6 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
           form,
           { headers: { ...form.getHeaders(), Authorization: token }, timeout: 30000 }
         );
-        receiptFileUrl = uploadRes.data.url;
         receiptFileKey = uploadRes.data.key;
       } catch (uploadErr) {
         return res.status(500).json({ message: 'Failed to upload receipt file' });
@@ -134,15 +148,47 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       bankReference: bankReference.trim(),
       bankName: (bankName || '').trim(),
       paymentDate: new Date(paymentDate),
-      receiptFileUrl,
+      receiptFileUrl: '',
       receiptFileKey,
       notes: (notes || '').trim(),
       createdBy: req.user.id,
     });
 
+    // Notify superadmins a payment receipt has been submitted (action is picked up by superadmin).
+    try {
+      const supers = await User.find({ role: 'superadmin', isActive: true }).select('_id email').lean();
+      if (supers.length) {
+        await notifySuperAdmins(req.tenantId, {
+          type: 'payment_receipt_submitted',
+          title: 'Payment receipt submitted',
+          body: `A merchant submitted a payment receipt for "${tenant.businessName}".`,
+          meta: { resourceType: 'tenant', resourceId: String(req.tenantId), receiptId: String(receipt._id) },
+        });
+
+        await Promise.all(
+          supers.map((sa) =>
+            sendEmail({
+              to: sa.email,
+              subject: 'New payment receipt submitted — Cafinity',
+              html: `<p>Hi Super Admin,</p>
+                <p>A payment receipt was submitted by a merchant.</p>
+                <ul>
+                  <li><strong>Merchant:</strong> ${tenant.businessName}</li>
+                  <li><strong>Amount:</strong> ${requestedPlan.currency || 'LKR'} ${Number(amountValue).toLocaleString()}</li>
+                  <li><strong>Payment ref:</strong> ${String(bankReference || '').trim()}</li>
+                </ul>
+                <p>Please check the <strong>Payments</strong> page in the admin portal for verification.</p>`,
+            }).catch(() => {})
+          ),
+        );
+      }
+    } catch (_) {
+      // Notifications + email are best-effort; never block receipt creation.
+    }
+
     res.status(201).json(receipt);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -222,6 +268,15 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
 
     // Update tenant subscription status
     tenant.subscriptionStatus = 'active';
+    tenant.status = 'active';
+    // Clear any temporary-activation overrides once payment is verified.
+    tenant.temporaryActivationUntil = null;
+    tenant.temporaryActivationRequestedAt = null;
+    tenant.temporaryActivationRequestedBy = null;
+    tenant.temporaryActivationExpiryEndDate = null;
+    tenant.temporaryActivationUsedForEndDate = null;
+    tenant.subscriptionExpiryReminderSentForEndDate = null;
+    tenant.subscriptionDeactivationNotifiedForEndDate = null;
     if (!tenant.assignedPlanId) {
       tenant.assignedPlanId = plan._id;
       tenant.assignedAt = now;
@@ -249,11 +304,54 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
       changes: { after: { subscriptionExtendedTo: newEnd, extensionDays } },
     });
 
-    await sendEmail({
-      to: receipt.tenantId?.email || '',
-      subject: 'Payment Confirmed — Subscription Extended',
-      html: `<p>Your payment has been verified. Your subscription is now active until <strong>${newEnd.toDateString()}</strong>. Thank you!</p>`,
-    }).catch(() => {});
+    // Notify superadmins (so they can handle activation requests / monitor renewals).
+    try {
+      const supers = await User.find({ role: 'superadmin', isActive: true }).select('_id email').lean();
+      if (supers.length) {
+        await notifySuperAdmins(tenant._id, {
+          type: 'payment_receipt_verified',
+          title: 'Payment verified — subscription extended',
+          body: `Subscription extended until ${newEnd.toDateString()} for "${tenant.businessName}".`,
+          meta: { resourceType: 'tenant', resourceId: String(tenant._id), subscriptionEndDate: newEnd.toISOString() },
+        });
+
+        await Promise.all(
+          supers.map((sa) =>
+            sendEmail({
+              to: sa.email,
+              subject: 'Payment verified — Subscription extended',
+              html: `<p>Hi Super Admin,</p>
+                <p>A payment receipt was verified.</p>
+                <ul>
+                  <li><strong>Merchant:</strong> ${tenant.businessName}</li>
+                  <li><strong>Extended until:</strong> ${newEnd.toDateString()}</li>
+                </ul>
+                <p>You may now activate the merchant if required for one-day overrides.</p>`,
+            }).catch(() => {}),
+          ),
+        );
+      }
+    } catch (_) {
+      /* best-effort */
+    }
+
+    // Also send merchant_admins a confirmation email.
+    try {
+      const merchantAdmins = await User.find({ tenantId: tenant._id, role: 'merchant_admin', isActive: true }).select('email').lean();
+      await Promise.all(
+        merchantAdmins.map((a) =>
+          sendEmail({
+            to: a.email,
+            subject: 'Subscription extended — Cafinity',
+            html: `<p>Hi,</p>
+              <p>Your subscription has been extended until <strong>${newEnd.toDateString()}</strong>.</p>
+              <p>Thank you.</p>`,
+          }).catch(() => {}),
+        ),
+      );
+    } catch (_) {
+      /* best-effort */
+    }
 
     res.json({
       message: `Subscription extended by ${extensionDays} days (until ${newEnd.toDateString()})`,
@@ -261,7 +359,7 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
       subscription,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -272,13 +370,15 @@ router.get('/my', authenticateJWT, authorize('merchant_admin'), async (req, res)
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
 
     const subscriptions = await Subscription.find({ tenantId: req.tenantId }).sort({ endDate: -1 });
-    const receipts = await PaymentReceipt.find({ tenantId: req.tenantId })
+    let receipts = await PaymentReceipt.find({ tenantId: req.tenantId })
       .populate('requestedPlanId', 'name code amount currency billingCycle durationDays')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
+    receipts = await attachFreshReceiptUrls(receipts);
 
     res.json({ tenant, subscriptions, receipts });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

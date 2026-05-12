@@ -1,5 +1,15 @@
 require('dotenv').config();
-const express = require('express');
+
+async function start() {
+  try {
+    const { loadAwsSecretsManagerEnv } = require('@innovapos/runtime-env');
+    await loadAwsSecretsManagerEnv();
+  } catch (e) {
+    console.error('[runtime-env] Failed to load AWS Secrets Manager:', e.message);
+    process.exit(1);
+  }
+
+  const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const mongoose = require('mongoose');
@@ -37,3 +47,9 @@ const PORT = parseInt(process.env.PORT, 10) || 3004;
 app.listen(PORT, '0.0.0.0', () =>
   logger.info(`Audit service running on :${PORT}`)
 );
+}
+
+start().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

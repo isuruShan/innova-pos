@@ -1,7 +1,7 @@
 const express = require('express');
 const Store = require('../models/Store');
 const User = require('../models/User');
-const { protect, authorize, tenantScope } = require('../middleware/auth');
+const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -28,7 +28,7 @@ router.get('/', protect, tenantScope, async (req, res) => {
     const stores = await Store.find(filter).sort({ isDefault: -1, name: 1 });
     res.json(stores);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -41,12 +41,15 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
     if (!store) return res.status(404).json({ message: 'Store not found' });
     if (!userStoreIds.includes(String(store._id))) return res.status(403).json({ message: 'Access denied for selected store' });
 
-    const { name, code, address, phone, paymentMethods, isActive } = req.body;
+    const { name, code, address, phone, paymentMethods, isActive, tableManagementEnabled } = req.body;
     if (name !== undefined) store.name = String(name).trim();
     if (code !== undefined) store.code = String(code).trim().toUpperCase();
     if (address !== undefined) store.address = String(address).trim();
     if (phone !== undefined) store.phone = String(phone).trim();
     if (paymentMethods !== undefined) store.paymentMethods = normalizePaymentMethods(paymentMethods);
+    if (tableManagementEnabled !== undefined && req.user.role !== 'cashier') {
+      store.tableManagementEnabled = Boolean(tableManagementEnabled);
+    }
     if (isActive !== undefined && req.user.role !== 'manager') {
       const nextActive = Boolean(isActive);
       if (req.user.role === 'superadmin') {

@@ -26,6 +26,9 @@ export function StoreProvider({ children }) {
     },
     enabled: Boolean(user?.tenantId),
     retry: 2,
+    staleTime: 20_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 45_000,
   });
 
   const selectStore = (storeId) => {

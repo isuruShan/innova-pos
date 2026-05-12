@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Trash2, Tag, Search, Pencil, Percent, Minus as MinusIcon,
 } from 'lucide-react';
 import api from '../../api/axios';
+import AdminDateField from '../../components/AdminDateField';
 import { useStoreContext } from '../../context/StoreContext';
 const EMPTY = {
   name: '',
@@ -26,6 +28,7 @@ const EMPTY = {
 
 export default function PromotionsAdminPage() {
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { stores, selectedStoreId, isStoreReady } = useStoreContext();
   const [search, setSearch] = useState('');
   const [approvalFilter, setApprovalFilter] = useState('all');
@@ -50,7 +53,7 @@ export default function PromotionsAdminPage() {
     queryFn: () => api.get('/promotions', { params: listParams() }).then((r) => r.data),
   });
 
-  const { data: pendingOnly = [] } = useQuery({
+  const { data: pendingOnly = [], isPending: pendingListLoading } = useQuery({
     queryKey: ['admin-promotions-pending'],
     queryFn: () => api.get('/promotions', { params: { pending: true } }).then((r) => r.data),
   });
@@ -65,6 +68,8 @@ export default function PromotionsAdminPage() {
     qc.invalidateQueries({ queryKey: ['admin-promotions'] });
     qc.invalidateQueries({ queryKey: ['admin-promotions-pending'] });
     qc.invalidateQueries({ queryKey: ['notifications-unread-count'] });
+    qc.invalidateQueries({ queryKey: ['notifications-bell'] });
+    qc.invalidateQueries({ queryKey: ['notifications-all'] });
   };
 
   const createMut = useMutation({
@@ -234,6 +239,23 @@ export default function PromotionsAdminPage() {
     return p.active && new Date(p.startDate) <= now && new Date(p.endDate) >= now && p.approvalStatus === 'approved';
   };
 
+  useEffect(() => {
+    if (searchParams.get('focus') !== 'pending') return;
+    if (pendingListLoading) return;
+    let t;
+    if (pendingOnly.length > 0) {
+      t = window.setTimeout(() => {
+        document.getElementById('admin-promotions-pending')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete('focus');
+    setSearchParams(next, { replace: true });
+    return () => {
+      if (t) window.clearTimeout(t);
+    };
+  }, [searchParams, setSearchParams, pendingOnly.length, pendingListLoading]);
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div>
@@ -248,7 +270,7 @@ export default function PromotionsAdminPage() {
       </div>
 
       {pendingOnly.length > 0 && (
-        <section className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <section id="admin-promotions-pending" className="bg-amber-50 border border-amber-200 rounded-xl p-4">
           <h2 className="text-sm font-semibold text-amber-900 mb-2">Pending approval (from POS managers)</h2>
           <div className="overflow-x-auto rounded-lg border border-amber-200 bg-white">
             <table className="min-w-full text-sm">
@@ -483,22 +505,20 @@ export default function PromotionsAdminPage() {
               <div className="grid grid-cols-2 gap-3">
                 <label className="block text-xs text-gray-600">
                   Start
-                  <input
-                    type="date"
+                  <AdminDateField
                     required
                     value={form.startDate}
-                    onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    max={form.endDate || undefined}
+                    onChange={(v) => setForm((f) => ({ ...f, startDate: v }))}
                   />
                 </label>
                 <label className="block text-xs text-gray-600">
                   End
-                  <input
-                    type="date"
+                  <AdminDateField
                     required
                     value={form.endDate}
-                    onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    min={form.startDate || undefined}
+                    onChange={(v) => setForm((f) => ({ ...f, endDate: v }))}
                   />
                 </label>
               </div>

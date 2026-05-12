@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
-const { authenticateJWT } = require('@innovapos/shared-middleware');
+const { authenticateJWT, sendRouteError } = require('@innovapos/shared-middleware');
 const { serviceOrJwt } = require('../middleware/serviceOrJwt');
 const { uploadToS3, getPresignedUrl, deleteFromS3 } = require('../s3');
 const { childLogger } = require('@innovapos/logger');
@@ -119,7 +119,7 @@ router.post('/', serviceOrJwt, upload.single('file'), async (req, res) => {
     });
   } catch (err) {
     logger.error('Upload failed', { error: err.message });
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -143,7 +143,7 @@ router.post('/presign', serviceOrJwt, async (req, res) => {
     const url = await getPresignedUrl(key, Math.min(expiresIn, 86400));
     res.json({ url, expiresIn });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -165,7 +165,7 @@ router.delete('/', authenticateJWT, async (req, res) => {
     await deleteFromS3(key);
     res.json({ message: 'File deleted' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

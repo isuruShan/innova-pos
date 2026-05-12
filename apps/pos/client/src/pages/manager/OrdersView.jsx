@@ -27,9 +27,11 @@ function todayStr() {
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
 }
 function sevenDaysAgo() {
+  // Keep date calculations in local timezone so the server `since/until` range
+  // matches what the Dashboard screen fetches.
   const d = new Date();
   d.setDate(d.getDate() - 6);
-  return d.toISOString().split('T')[0];
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 const PAYMENT_LABELS = { cash: 'Cash', card: 'Card', online: 'Online', bank_transfer: 'Bank transfer' };

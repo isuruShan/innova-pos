@@ -1,7 +1,7 @@
 const express = require('express');
 const SubscriptionPlan = require('../models/SubscriptionPlan');
 const Tenant = require('../models/Tenant');
-const { authenticateJWT, authorize, emitAudit } = require('@innovapos/shared-middleware');
+const { authenticateJWT, authorize, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { tenantPlanAudience } = require('../utils/planAudience');
 
 const router = express.Router();
@@ -83,7 +83,7 @@ router.get('/for-subscription', authenticateJWT, authorize('merchant_admin'), as
       .lean();
     res.json(plans);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -98,7 +98,7 @@ router.get('/public', async (req, res) => {
       .lean();
     res.json(plans);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -118,7 +118,7 @@ router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
     const plans = await SubscriptionPlan.find(filter).sort({ isDefault: -1, createdAt: -1 }).lean();
     res.json(plans);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -173,7 +173,7 @@ router.post('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
 
     res.status(201).json(plan);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -222,7 +222,7 @@ router.put('/:id', authenticateJWT, authorize('superadmin'), async (req, res) =>
     });
     res.json(plan);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -246,7 +246,7 @@ router.delete('/:id', authenticateJWT, authorize('superadmin'), async (req, res)
     });
     res.json({ message: 'Plan deactivated', plan });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

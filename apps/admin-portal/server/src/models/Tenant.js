@@ -24,6 +24,18 @@ const tenantSchema = new mongoose.Schema(
     /** ISO-style country code for billing region; LK = local plans, others = international catalogue */
     countryIso: { type: String, default: 'LK', uppercase: true, trim: true, index: true },
 
+    /** One-day activation override after subscription expiry (set by superadmin). */
+    temporaryActivationUntil: { type: Date, default: null },
+    temporaryActivationRequestedAt: { type: Date, default: null },
+    temporaryActivationRequestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    temporaryActivationExpiryEndDate: { type: Date, default: null },
+    temporaryActivationUsedForEndDate: { type: Date, default: null },
+
+    /** Prevent duplicate reminder emails for the same expiry end date. */
+    subscriptionExpiryReminderSentForEndDate: { type: Date, default: null },
+    /** Prevent duplicate deactivation emails/notifications for the same expiry end date. */
+    subscriptionDeactivationNotifiedForEndDate: { type: Date, default: null },
+
     // Branding — managed via admin portal
     settings: {
       primaryColor: { type: String, default: '#1a1a2e' },

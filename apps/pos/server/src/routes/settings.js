@@ -1,7 +1,7 @@
 const express = require('express');
 const Settings = require('../models/Settings');
 const { protect, authorize, tenantScope } = require('../middleware/auth');
-const { emitAudit } = require('@innovapos/shared-middleware');
+const { emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { resolveSelectedStore, resolveWriteStoreId } = require('../middleware/storeScope');
 
 const router = express.Router();
@@ -21,7 +21,7 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
     }
     res.json(await getOrCreate(req.tenantId, null));
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

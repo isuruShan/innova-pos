@@ -71,11 +71,11 @@ function ElapsedBadge({ createdAt }) {
 
 function KitchenCard({ order, onAdvance, onOpen, isAdvancing }) {
   const col = COL_MAP[order.status];
-  const totalQty = order.items.reduce((s, i) => s + i.qty, 0);
+  const prepItems = (order.items || []).filter((i) => !i.deliveredToTable);
+  const totalQty = prepItems.reduce((s, i) => s + i.qty, 0);
 
-  // Show first 3 items as summary; overflow is visible in detail view
-  const preview = order.items.slice(0, 3);
-  const overflow = order.items.length - 3;
+  const preview = prepItems.slice(0, 3);
+  const overflow = prepItems.length - 3;
 
   return (
     <div
@@ -107,8 +107,11 @@ function KitchenCard({ order, onAdvance, onOpen, isAdvancing }) {
         <ElapsedBadge createdAt={order.createdAt} />
       </div>
 
-      {/* Item summary */}
+      {/* Item summary — lines marked delivered are excluded */}
       <div className="px-3 py-2.5 flex-1 space-y-1.5">
+        {prepItems.length === 0 ? (
+          <p className="text-xs text-slate-500 italic">All items marked delivered to table</p>
+        ) : null}
         {preview.map((item, i) => (
           <div key={i} className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
@@ -241,6 +244,11 @@ export default function KitchenDisplay() {
 
   const advanceMutation = useMutation({
     mutationFn: async (id) => {
+      try {
+        await api.put(`/orders/${encodeURIComponent(id)}/clear-kitchen-new`);
+      } catch (_) {
+        /* non-fatal if route unavailable */
+      }
       const { data } = await api.put(`/orders/${encodeURIComponent(id)}/status`);
       return data;
     },

@@ -1,6 +1,6 @@
 const express = require('express');
 const AuditLog = require('../models/AuditLog');
-const { authenticateJWT, authorize } = require('@innovapos/shared-middleware');
+const { authenticateJWT, authorize, sendRouteError } = require('@innovapos/shared-middleware');
 
 const router = express.Router();
 
@@ -58,7 +58,7 @@ router.post('/', async (req, res) => {
 
     res.status(201).json({ id: log._id });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -96,7 +96,7 @@ router.get('/', authenticateJWT, authorize('superadmin', 'merchant_admin'), asyn
 
     res.json({ logs, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

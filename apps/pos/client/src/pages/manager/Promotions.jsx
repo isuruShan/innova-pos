@@ -389,7 +389,9 @@ export default function Promotions() {
       if (!form.buyItem || !form.getFreeItem) return setFormError('Select buy item and free item');
     }
     if (form.type === 'flatPrice') {
-      if (!form.applicableItems.length) return setFormError('Select at least one item for flat price');
+      const hasScope =
+        (form.applicableItems?.length > 0) || (form.applicableCategories?.length > 0);
+      if (!hasScope) return setFormError('Select at least one menu item or category for flat price');
       if (form.flatPrice === '' || isNaN(+form.flatPrice)) return setFormError('Flat price is required');
     }
     if (form.type === 'flatDiscount') {

@@ -1,0 +1,11 @@
+{
+  "name": "@innovapos/runtime-env",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Load .env then merge AWS Secrets Manager JSON into process.env (local + prod)",
+  "main": "index.js",
+  "type": "commonjs",
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.775.0"
+  }
+}

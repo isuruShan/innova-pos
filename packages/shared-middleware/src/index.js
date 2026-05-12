@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
+const { getRateLimitStore } = require('./rateLimitStore');
+const { getClientErrorPayload, logRouteError, sendRouteError } = require('./routeErrors');
 
 /**
  * Verifies the Bearer JWT and attaches req.user and req.tenantId.
@@ -104,4 +106,8 @@ module.exports = {
   tenantScope,
   requireActiveSubscription,
   emitAudit,
+  getRateLimitStore,
+  getClientErrorPayload,
+  logRouteError,
+  sendRouteError,
 };

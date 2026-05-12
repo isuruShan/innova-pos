@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, Loader, CheckCircle, Clock, AlertTriangle, ExternalLink, FileText } from 'lucide-react';
 import api from '../../api/axios';
-import { CalendarDatePicker } from '@innovapos/ui-datepicker';
+import AdminDateField from '../../components/AdminDateField';
 
 export default function SubscriptionPage() {
   const queryClient = useQueryClient();
@@ -35,6 +35,12 @@ export default function SubscriptionPage() {
     onError: (err) => setErrors({ api: err.response?.data?.message || 'Upload failed' }),
   });
 
+  const requestActivationMutation = useMutation({
+    mutationFn: () => api.post(`/tenants/${data?.tenant?._id}/temporary-activation/request`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-subscription'] }),
+    onError: (err) => setErrors({ api: err.response?.data?.message || 'Request failed' }),
+  });
+
   const validate = () => {
     const e = {};
     if (!form.amount || isNaN(form.amount) || parseFloat(form.amount) <= 0) e.amount = 'Valid amount required';
@@ -56,7 +62,19 @@ export default function SubscriptionPage() {
 
   const tenant = data?.tenant;
   const receipts = data?.receipts || [];
+  const subscriptions = data?.subscriptions || [];
   const latestReceiptPlanId = receipts.find((r) => r.requestedPlanId?._id)?.requestedPlanId?._id;
+
+  const latestSubscription = subscriptions?.length
+    ? [...subscriptions].sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())[0]
+    : null;
+
+  const subscriptionEndDate =
+    tenant?.subscriptionStatus === 'trial'
+      ? tenant?.trialEndsAt
+      : latestSubscription?.endDate;
+
+  const subscriptionEnd = subscriptionEndDate ? new Date(subscriptionEndDate) : null;
 
   const selectedPlan = useMemo(
     () => plans.find((p) => p._id === form.planId) || null,
@@ -131,6 +149,29 @@ export default function SubscriptionPage() {
             )}
           </div>
 
+          {tenant?.status === 'suspended' && (
+            <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2 text-sm text-red-800">
+              <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold">Suspended — subscription not renewed</p>
+                <p className="text-xs text-red-700 mt-1">
+                  {subscriptionEnd
+                    ? `Your subscription ended on ${subscriptionEnd.toLocaleDateString()}.`
+                    : 'Your subscription has expired.'} Upload a payment receipt to reactivate, or request a one-day activation (if available).
+                </p>
+                {tenant?.temporaryActivationUntil ? (
+                  <p className="text-xs text-red-700 mt-1">
+                    One-day activation is active until <strong>{new Date(tenant.temporaryActivationUntil).toLocaleDateString()}</strong>.
+                  </p>
+                ) : tenant?.temporaryActivationRequestedAt ? (
+                  <p className="text-xs text-red-700 mt-1">
+                    One-day activation has been requested. Super admin will notify you once processed.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          )}
+
           {tenant.subscriptionStatus === 'trial' && trialDaysLeft !== null && trialDaysLeft <= 14 && (
             <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2 text-sm text-amber-800">
               <AlertTriangle size={15} className="shrink-0 mt-0.5" />
@@ -139,6 +180,28 @@ export default function SubscriptionPage() {
                   ? 'Your trial is ending soon. Submit your payment receipt below to activate your subscription without interruption.'
                   : 'You can submit your bank payment anytime during trial — our team will verify it before your trial ends.'}
               </span>
+            </div>
+          )}
+
+          {tenant.subscriptionStatus === 'expired' && !tenant.temporaryActivationRequestedAt && !tenant.temporaryActivationUsedForEndDate && (
+            <div className="mt-4 flex flex-wrap items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+              <AlertTriangle size={16} className="text-amber-600 shrink-0" />
+              <div className="flex-1">
+                <p className="font-semibold text-amber-900">Request a 1-day activation</p>
+                <p className="text-xs text-amber-700 mt-1">
+                  {subscriptionEnd ? `Next expiry: ${subscriptionEnd.toLocaleDateString()} (subscription ended).` : 'Subscription ended.'}
+                  {' '}
+                  Super admin can enable a temporary override while you arrange payment.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => requestActivationMutation.mutate()}
+                disabled={requestActivationMutation.isPending}
+                className="px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60"
+              >
+                {requestActivationMutation.isPending ? 'Requesting…' : 'Request 1 day'}
+              </button>
             </div>
           )}
         </div>
@@ -202,14 +265,14 @@ export default function SubscriptionPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Payment date *</label>
-                <CalendarDatePicker
-                  theme="light"
+                <AdminDateField
                   value={form.paymentDate ? String(form.paymentDate).slice(0, 10) : ''}
                   onChange={(v) => {
                     setForm((f) => ({ ...f, paymentDate: v }));
                     setErrors((e2) => ({ ...e2, paymentDate: '' }));
                   }}
-                  buttonClassName={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${errors.paymentDate ? 'border-red-400' : 'border-gray-300'}`}
+                  aria-invalid={errors.paymentDate ? 'true' : undefined}
+                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${errors.paymentDate ? 'border-red-400' : 'border-gray-300'}`}
                 />
                 {errors.paymentDate && <p className="text-xs text-red-500 mt-0.5">{errors.paymentDate}</p>}
               </div>

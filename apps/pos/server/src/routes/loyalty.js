@@ -5,7 +5,7 @@ const LoyaltyTier = require('../models/LoyaltyTier');
 const LoyaltyReward = require('../models/LoyaltyReward');
 const LoyaltyProgramConfig = require('../models/LoyaltyProgramConfig');
 const { getEffectiveTier, tierFromPoints, lowestTier } = require('../lib/loyaltyTier');
-const { protect, authorize, tenantScope } = require('../middleware/auth');
+const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
 const { createNotification, notifyMerchantAdmins } = require('../lib/notificationHelpers');
 
@@ -27,7 +27,7 @@ router.get('/config', protect, authorize('cashier', 'manager', 'merchant_admin')
     }
     res.json(cfg);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -90,7 +90,7 @@ router.post('/retention/sync', protect, authorize('merchant_admin'), tenantScope
 
     res.json({ flagged: result.modifiedCount });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -110,7 +110,7 @@ router.get('/retention/pending', protect, authorize('merchant_admin'), tenantSco
     }));
     res.json(enriched);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -161,7 +161,7 @@ router.get('/tiers', protect, authorize('manager', 'merchant_admin'), tenantScop
     const tiers = await LoyaltyTier.find({ tenantId: req.tenantId }).sort({ minLifetimePoints: 1, level: 1 });
     res.json(tiers);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -198,7 +198,7 @@ router.delete('/tiers/:id', protect, authorize('merchant_admin'), tenantScope, a
     if (!t) return res.status(404).json({ message: 'Tier not found' });
     res.json({ message: 'Deleted' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -214,7 +214,7 @@ router.get('/rewards', protect, authorize('cashier', 'manager', 'merchant_admin'
     const rows = await LoyaltyReward.find(filter).sort({ createdAt: -1 });
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

@@ -13,6 +13,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@innovapos/runtime-env": "workspace:*",
     "@innovapos/logger": "workspace:*",
     "@innovapos/mail-transport": "workspace:*",
     "@innovapos/shared-middleware": "workspace:*",

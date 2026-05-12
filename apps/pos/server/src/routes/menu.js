@@ -1,17 +1,35 @@
 const express = require('express');
 const MenuItem = require('../models/MenuItem');
+const { presignObjectKey } = require('../utils/s3Runtime');
+
+async function attachFreshMenuImageUrls(items) {
+  if (!items?.length) return items;
+  const keys = [...new Set(items.map((i) => i.imageKey).filter(Boolean))];
+  if (!keys.length) return items;
+  const urlPairs = await Promise.all(keys.map(async (key) => [key, await presignObjectKey(key, 86400)]));
+  const urlByKey = Object.fromEntries(urlPairs.filter(([, url]) => Boolean(url)));
+
+  return items.map((item) => {
+    const next = { ...item };
+    if (next.imageKey && urlByKey[next.imageKey]) next.image = urlByKey[next.imageKey];
+    return next;
+  });
+}
 const { protect, authorize, tenantScope } = require('../middleware/auth');
-const { emitAudit } = require('@innovapos/shared-middleware');
+const { emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
 
 const router = express.Router();
 
 router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const items = await MenuItem.find({ tenantId: req.tenantId, ...buildStoreFilter(req) }).sort({ category: 1, name: 1 });
-    res.json(items);
+    const items = await MenuItem.find({ tenantId: req.tenantId, ...buildStoreFilter(req) })
+      .sort({ category: 1, name: 1 })
+      .lean();
+    const enriched = await attachFreshMenuImageUrls(items);
+    res.json(enriched);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -21,6 +39,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
     if (!storeId) return res.status(400).json({ message: 'No store available for menu item creation' });
     const item = await MenuItem.create({
       ...req.body,
+      image: '',
       tenantId: req.tenantId,
       storeId,
       createdBy: req.user.id,
@@ -36,7 +55,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
   try {
     const item = await MenuItem.findOneAndUpdate(
       { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) },
-      { ...req.body, updatedBy: req.user.id },
+      { ...req.body, image: req.body.imageKey ? '' : req.body.image || '', updatedBy: req.user.id },
       { new: true, runValidators: true }
     );
     if (!item) return res.status(404).json({ message: 'Menu item not found' });
@@ -54,7 +73,7 @@ router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmi
     await emitAudit({ req, action: 'MENU_ITEM_DELETED', resource: 'MenuItem', resourceId: req.params.id });
     res.json({ message: 'Item deleted' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

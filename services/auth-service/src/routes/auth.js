@@ -3,8 +3,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const Tenant = require('../models/Tenant');
 const { buildPayload, signToken } = require('../utils/jwt');
-const { authenticateJWT } = require('@innovapos/shared-middleware');
-const { emitAudit } = require('@innovapos/shared-middleware');
+const { authenticateJWT, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { sendPasswordResetEmail } = require('../utils/mailer');
 const { childLogger } = require('@innovapos/logger');
 
@@ -64,7 +63,7 @@ router.get('/me', authenticateJWT, async (req, res) => {
     const payload = buildPayload(user, subscriptionActive);
     res.json(payload);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

@@ -2,9 +2,10 @@ const express = require('express');
 const crypto = require('crypto');
 const User = require('../models/User');
 const Store = require('../models/Store');
-const { authenticateJWT, authorize, tenantScope, emitAudit } = require('@innovapos/shared-middleware');
+const { authenticateJWT, authorize, tenantScope, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { childLogger } = require('@innovapos/logger');
 const { sendWelcomeEmail } = require('../utils/mailer');
+const { presignObjectKey } = require('../utils/s3Runtime');
 
 const router = express.Router();
 
@@ -23,20 +24,33 @@ const normalizeStoreAssignments = async ({ tenantId, storeIds = [], defaultStore
   return { normalizedStoreIds, normalizedDefaultStoreId };
 };
 
+async function attachFreshProfileImages(users) {
+  if (!users?.length) return users;
+  const keys = [...new Set(users.map((u) => u.profileImageKey).filter(Boolean))];
+  if (!keys.length) return users;
+  const pairs = await Promise.all(keys.map(async (key) => [key, await presignObjectKey(key, 86400)]));
+  const urls = Object.fromEntries(pairs.filter(([, url]) => Boolean(url)));
+  return users.map((u) => (u.profileImageKey && urls[u.profileImageKey]
+    ? { ...u, profileImage: urls[u.profileImageKey] }
+    : u));
+}
+
 // GET /users — list users in tenant
 router.get('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
   try {
     const tenantId = req.user.role === 'superadmin' ? (req.query.tenantId || req.tenantId) : req.tenantId;
     if (!tenantId) return res.status(400).json({ message: 'tenantId required' });
 
-    const users = await User.find({ tenantId })
+    let users = await User.find({ tenantId })
       .populate('storeIds', 'name code')
       .populate('defaultStoreId', 'name code')
       .select('-password -resetPasswordToken -resetPasswordExpires')
-      .sort({ role: 1, name: 1 });
+      .sort({ role: 1, name: 1 })
+      .lean();
+    users = await attachFreshProfileImages(users);
     res.json(users);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -185,7 +199,7 @@ router.delete('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin')
     await emitAudit({ req, action: 'USER_DEACTIVATED', resource: 'User', resourceId: user._id });
     res.json({ message: 'User deactivated' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -222,7 +236,7 @@ router.post('/:id/reset-password', authenticateJWT, authorize('merchant_admin', 
       });
     }
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

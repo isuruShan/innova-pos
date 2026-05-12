@@ -4,9 +4,24 @@ const { sendEmail } = require('../utils/mailer');
 
 const router = express.Router();
 
-const contactLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, message: { message: 'Too many messages sent' } });
+let contactLimiter = null;
 
-router.post('/', contactLimiter, async (req, res) => {
+/** @param {unknown} [store] */
+function initContactRateLimit(store) {
+  contactLimiter = rateLimit({
+    ...(store ? { store } : {}),
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    message: { message: 'Too many messages sent' },
+  });
+}
+
+router.post('/', (req, res, next) => {
+  if (!contactLimiter) {
+    return res.status(503).json({ message: 'Service unavailable' });
+  }
+  return contactLimiter(req, res, next);
+}, async (req, res) => {
   const { name, email, subject, message } = req.body;
   if (!name?.trim() || !email?.trim() || !message?.trim()) {
     return res.status(400).json({ message: 'Name, email, and message are required' });
@@ -33,4 +48,5 @@ router.post('/', contactLimiter, async (req, res) => {
   }
 });
 
+router.initContactRateLimit = initContactRateLimit;
 module.exports = router;

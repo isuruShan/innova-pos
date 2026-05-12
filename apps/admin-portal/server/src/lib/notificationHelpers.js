@@ -50,7 +50,35 @@ async function notifyMerchantAdmins(tenantId, payload, options = {}) {
   return Notification.insertMany(docs);
 }
 
+async function notifySuperAdmins(tenantId, payload, options = {}) {
+  const { excludeUserId } = options;
+  const tid = castTenantId(tenantId);
+  let supers = await User.find({
+    role: 'superadmin',
+    isActive: true,
+  }).select('_id').lean();
+
+  if (excludeUserId) {
+    const ex = String(excludeUserId);
+    supers = supers.filter((u) => String(u._id) !== ex);
+  }
+
+  if (!supers.length) return [];
+
+  const docs = supers.map((u) => ({
+    tenantId: tid,
+    userId: u._id,
+    type: payload.type,
+    title: payload.title,
+    body: payload.body || '',
+    meta: payload.meta || {},
+  }));
+
+  return Notification.insertMany(docs);
+}
+
 module.exports = {
   createNotification,
   notifyMerchantAdmins,
+  notifySuperAdmins,
 };

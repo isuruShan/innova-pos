@@ -15,6 +15,18 @@ const tenantSchema = new mongoose.Schema(
       default: 'trial',
     },
     trialEndsAt: { type: Date, default: null },
+
+    /** One-day activation override after subscription expiry (set by superadmin). */
+    temporaryActivationUntil: { type: Date, default: null },
+    temporaryActivationRequestedAt: { type: Date, default: null },
+    temporaryActivationRequestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    temporaryActivationExpiryEndDate: { type: Date, default: null },
+    temporaryActivationUsedForEndDate: { type: Date, default: null },
+
+    /** Prevent duplicate reminder emails for the same expiry end date. */
+    subscriptionExpiryReminderSentForEndDate: { type: Date, default: null },
+    /** Prevent duplicate deactivation emails/notifications for the same expiry end date. */
+    subscriptionDeactivationNotifiedForEndDate: { type: Date, default: null },
     adminCount: { type: Number, default: 0, min: 0, max: 2 },
 
     // Branding — managed via admin portal

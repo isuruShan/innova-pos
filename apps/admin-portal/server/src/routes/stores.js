@@ -1,7 +1,7 @@
 const express = require('express');
 const Store = require('../models/Store');
 const User = require('../models/User');
-const { authenticateJWT, authorize, tenantScope, emitAudit } = require('@innovapos/shared-middleware');
+const { authenticateJWT, authorize, tenantScope, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 
 const router = express.Router();
 
@@ -35,7 +35,7 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
     }).sort({ isActive: -1, isDefault: -1, name: 1 });
     res.json(stores);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -94,12 +94,13 @@ router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), t
     });
     if (!store) return res.status(404).json({ message: 'Store not found' });
 
-    const { name, code, address, phone, paymentMethods, isActive } = body;
+    const { name, code, address, phone, paymentMethods, isActive, tableManagementEnabled } = body;
     if (name !== undefined) store.name = name.trim();
     if (code !== undefined) store.code = code.trim().toUpperCase();
     if (address !== undefined) store.address = address.trim();
     if (phone !== undefined) store.phone = phone.trim();
     if (paymentMethods !== undefined) store.paymentMethods = normalizePaymentMethods(paymentMethods);
+    if (tableManagementEnabled !== undefined) store.tableManagementEnabled = Boolean(tableManagementEnabled);
     if (isActive !== undefined) {
       const nextActive = Boolean(isActive);
       if (req.user.role === 'superadmin') {

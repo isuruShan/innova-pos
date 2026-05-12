@@ -1,7 +1,7 @@
 const express = require('express');
 const Supplier = require('../models/Supplier');
 const Inventory = require('../models/Inventory');
-const { protect, authorize, tenantScope } = require('../middleware/auth');
+const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
 
 const router = express.Router();
@@ -20,7 +20,7 @@ router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), t
     });
     res.json(suppliers.map(s => ({ ...s, itemCount: countMap[s._id.toString()] || 0 })));
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -34,7 +34,7 @@ router.get('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
     );
     res.json({ ...supplier.toObject(), items });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -73,7 +73,7 @@ router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmi
     );
     res.json({ message: 'Supplier deleted' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

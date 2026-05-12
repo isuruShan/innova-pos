@@ -1,4 +1,5 @@
 const express = require('express');
+const { sendRouteError } = require('@innovapos/shared-middleware');
 const multer = require('multer');
 const axios = require('axios');
 const FormData = require('form-data');
@@ -7,6 +8,7 @@ const PlatformUserLookup = require('../models/PlatformUser');
 const { sendApplicationReceivedEmail } = require('../utils/mailer');
 const { childLogger } = require('@innovapos/logger');
 const { buildMobileE164 } = require('../utils/phone');
+const AdminPortalUser = require('../../../../admin-portal/server/src/models/User');
 
 const router = express.Router();
 
@@ -69,7 +71,7 @@ router.get('/availability', async (req, res) => {
 
     res.json(out);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -168,7 +170,6 @@ router.post('/', upload.single('brFile'), async (req, res) => {
             timeout: 30000,
           }
         );
-        brDocumentUrl = uploadRes.data.url;
         brDocumentKey = uploadRes.data.key;
         brDocumentMimeType = uploadRes.data.mimeType || req.file.mimetype;
       } catch (uploadErr) {
@@ -224,7 +225,7 @@ router.post('/', upload.single('brFile'), async (req, res) => {
         country: businessCountry.trim(),
         isRegistered: reg,
         registrationNumber: (registrationNumber || '').trim(),
-        brDocumentUrl,
+        brDocumentUrl: '',
         brDocumentKey,
         brDocumentMimeType,
       },
@@ -237,10 +238,31 @@ router.post('/', upload.single('brFile'), async (req, res) => {
       name: `${firstName} ${lastName}`,
     }).catch(() => {});
 
-    sendApplicationReceivedEmail({
-      to: process.env.ADMIN_NOTIFY_EMAIL || process.env.EMAIL_FROM,
-      name: `New application from ${firstName} ${lastName} (${businessName})`,
-    }).catch(() => {});
+    try {
+      const supers = await AdminPortalUser.find({ role: 'superadmin', isActive: true }).select('email').lean();
+      const adminTo = (supers || []).map((s) => s.email).filter(Boolean);
+      if (adminTo.length) {
+        await Promise.all(
+          adminTo.map((to) =>
+            sendApplicationReceivedEmail({
+              to,
+              name: `New application from ${firstName} ${lastName} (${businessName})`,
+            }).catch(() => {})
+          ),
+        );
+      } else {
+        sendApplicationReceivedEmail({
+          to: process.env.ADMIN_NOTIFY_EMAIL || process.env.EMAIL_FROM,
+          name: `New application from ${firstName} ${lastName} (${businessName})`,
+        }).catch(() => {});
+      }
+    } catch {
+      // best-effort
+      sendApplicationReceivedEmail({
+        to: process.env.ADMIN_NOTIFY_EMAIL || process.env.EMAIL_FROM,
+        name: `New application from ${firstName} ${lastName} (${businessName})`,
+      }).catch(() => {});
+    }
 
     res.status(201).json({
       message: 'Application submitted successfully. We will review it and get back to you within 1–2 business days.',
@@ -267,7 +289,7 @@ router.get('/status/:email', async (req, res) => {
       rejectionReason: app.status === 'rejected' ? app.rejectionReason : undefined,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

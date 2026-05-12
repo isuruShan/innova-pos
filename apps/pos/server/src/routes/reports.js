@@ -1,7 +1,7 @@
 const express = require('express');
 const Order = require('../models/Order');
 const MenuItem = require('../models/MenuItem');
-const { protect, authorize, tenantScope } = require('../middleware/auth');
+const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter } = require('../middleware/storeScope');
 
 const router = express.Router();
@@ -88,7 +88,7 @@ router.get('/day-end', protect, authorize('cashier', 'manager', 'merchant_admin'
       orders,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -221,7 +221,7 @@ router.get('/sales', protect, authorize('manager', 'merchant_admin', 'superadmin
       promotionStats: Object.values(promoMap),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

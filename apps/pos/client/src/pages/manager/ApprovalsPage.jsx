@@ -26,6 +26,8 @@ export default function ApprovalsPage() {
       qc.invalidateQueries({ queryKey: ['promotions-pending'] });
       qc.invalidateQueries({ queryKey: ['promotions'] });
       qc.invalidateQueries({ queryKey: ['notifications-unread-count'] });
+      qc.invalidateQueries({ queryKey: ['notifications-bell'] });
+      qc.invalidateQueries({ queryKey: ['notifications-all'] });
     },
   });
 
@@ -34,6 +36,8 @@ export default function ApprovalsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['promotions-pending'] });
       qc.invalidateQueries({ queryKey: ['notifications-unread-count'] });
+      qc.invalidateQueries({ queryKey: ['notifications-bell'] });
+      qc.invalidateQueries({ queryKey: ['notifications-all'] });
     },
   });
 
@@ -43,6 +47,8 @@ export default function ApprovalsPage() {
       qc.invalidateQueries({ queryKey: ['loyalty-rewards-pending'] });
       qc.invalidateQueries({ queryKey: ['loyalty-rewards'] });
       qc.invalidateQueries({ queryKey: ['notifications-unread-count'] });
+      qc.invalidateQueries({ queryKey: ['notifications-bell'] });
+      qc.invalidateQueries({ queryKey: ['notifications-all'] });
     },
   });
 
@@ -51,6 +57,8 @@ export default function ApprovalsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['loyalty-rewards-pending'] });
       qc.invalidateQueries({ queryKey: ['notifications-unread-count'] });
+      qc.invalidateQueries({ queryKey: ['notifications-bell'] });
+      qc.invalidateQueries({ queryKey: ['notifications-all'] });
     },
   });
 

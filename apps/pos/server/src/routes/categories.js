@@ -1,6 +1,6 @@
 const express = require('express');
 const Category = require('../models/Category');
-const { protect, authorize, tenantScope } = require('../middleware/auth');
+const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
 
 const router = express.Router();
@@ -13,7 +13,7 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
     const categories = await Category.find(filter).sort({ sortOrder: 1, name: 1 });
     res.json(categories);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -64,7 +64,7 @@ router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmi
     if (!category) return res.status(404).json({ message: 'Category not found' });
     res.json({ message: 'Category deleted' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

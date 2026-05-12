@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const User = require('../models/User');
-const { authenticateJWT, authorize, tenantScope, emitAudit } = require('@innovapos/shared-middleware');
+const { authenticateJWT, authorize, tenantScope, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { sendWelcomeEmail } = require('../utils/mailer');
 const { childLogger } = require('@innovapos/logger');
 
@@ -39,7 +39,7 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
 
     res.json(users);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -202,7 +202,7 @@ router.delete('/:id', authenticateJWT, tenantScope, async (req, res) => {
 
     res.json({ message: 'User deactivated' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -231,7 +231,7 @@ router.post('/:id/reset-password', authenticateJWT, authorize('merchant_admin', 
 
     res.json({ message: 'Password reset and welcome email sent' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

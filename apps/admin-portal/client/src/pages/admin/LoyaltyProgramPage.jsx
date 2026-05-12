@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Award, Plus, Trash2, RefreshCw, Users, Gift } from 'lucide-react';
 import api from '../../api/axios';
@@ -8,6 +9,7 @@ const emptyTier = { name: '', level: '1', minLifetimePoints: '0', description: '
 
 export default function LoyaltyProgramPage() {
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [mainTab, setMainTab] = useState('program');
   const [tierModal, setTierModal] = useState(null);
   const [tierForm, setTierForm] = useState(emptyTier);
@@ -70,6 +72,14 @@ export default function LoyaltyProgramPage() {
     () => [...tiers].sort((a, b) => (a.minLifetimePoints ?? 0) - (b.minLifetimePoints ?? 0)),
     [tiers],
   );
+
+  useEffect(() => {
+    if (searchParams.get('tab') !== 'rewards') return;
+    setMainTab('rewards');
+    const next = new URLSearchParams(searchParams);
+    next.delete('tab');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const submitTier = (e) => {
     e.preventDefault();

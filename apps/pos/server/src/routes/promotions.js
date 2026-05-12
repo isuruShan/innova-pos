@@ -1,6 +1,6 @@
 const express = require('express');
 const Promotion = require('../models/Promotion');
-const { protect, authorize, tenantScope } = require('../middleware/auth');
+const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
 const { createNotification, notifyMerchantAdmins } = require('../lib/notificationHelpers');
 
@@ -32,7 +32,7 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
     const promotions = await Promotion.find(filter).sort({ createdAt: -1 });
     res.json(promotions);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -46,7 +46,7 @@ router.get('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
     if (!p) return res.status(404).json({ message: 'Promotion not found' });
     res.json(p);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -190,7 +190,7 @@ router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmi
     if (!promo) return res.status(404).json({ message: 'Promotion not found' });
     res.json({ message: 'Deleted' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

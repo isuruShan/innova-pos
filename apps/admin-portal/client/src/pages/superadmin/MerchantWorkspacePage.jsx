@@ -82,6 +82,13 @@ export default function MerchantWorkspacePage() {
     },
   });
 
+  const activateOneDayMutation = useMutation({
+    mutationFn: () => api.post(`/tenants/${id}/temporary-activation/activate-one-day`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenant-workspace', id] });
+    },
+  });
+
   const createStoreMutation = useMutation({
     mutationFn: (payload) => api.post('/stores', { ...payload, tenantId: id }),
     onSuccess: () => {
@@ -132,6 +139,16 @@ export default function MerchantWorkspacePage() {
             >
               {tenant.status === 'active' ? 'Suspend' : 'Activate'}
             </button>
+
+            {tenant.subscriptionStatus === 'expired' && tenant.temporaryActivationRequestedAt && (
+              <button
+                onClick={() => activateOneDayMutation.mutate()}
+                className="px-3 py-1.5 text-xs rounded-lg border border-brand-orange text-brand-orange hover:bg-brand-orange/5 disabled:opacity-60"
+                disabled={activateOneDayMutation.isPending}
+              >
+                Activate 1 day
+              </button>
+            )}
           </div>
         </div>
       </div>

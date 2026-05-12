@@ -46,7 +46,9 @@ export default function StoresPage() {
     mutationFn: ({ id, payload }) => api.put(`/stores/${id}`, payload),
     onSuccess: () => {
       setEditingStore(null);
-      setEditForm({ name: '', code: '', address: '', phone: '', paymentMethods: ['cash'], isActive: true });
+      setEditForm({
+        name: '', code: '', address: '', phone: '', paymentMethods: ['cash'], isActive: true,
+      });
       setEditMeta({ deactivatedBySuperadmin: false });
       setError('');
       queryClient.invalidateQueries({ queryKey: ['admin-stores'] });

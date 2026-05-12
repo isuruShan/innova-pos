@@ -3,8 +3,9 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
 const Tenant = require('../models/Tenant');
-const { authenticateJWT } = require('@innovapos/shared-middleware');
+const { authenticateJWT, sendRouteError } = require('@innovapos/shared-middleware');
 const { sendPasswordResetEmail } = require('../utils/mailer');
+const { presignObjectKey } = require('../utils/s3Runtime');
 
 const router = express.Router();
 
@@ -26,10 +27,19 @@ const buildPayload = (u, subscriptionActive = true) => ({
   subscriptionActive,
 });
 
+async function withFreshProfileImage(payload, userDoc) {
+  if (!userDoc?.profileImageKey) return payload;
+  const url = await presignObjectKey(userDoc.profileImageKey, 86400);
+  if (!url) return payload;
+  return { ...payload, profileImage: url };
+}
+
 const isSubscriptionActive = async (tenantId) => {
   if (!tenantId) return true;
-  const tenant = await Tenant.findById(tenantId).select('subscriptionStatus trialEndsAt status');
-  if (!tenant || tenant.status !== 'active') return false;
+  const tenant = await Tenant.findById(tenantId).select('subscriptionStatus trialEndsAt status temporaryActivationUntil');
+  if (!tenant) return false;
+  if (tenant.temporaryActivationUntil && new Date() <= tenant.temporaryActivationUntil) return true;
+  if (tenant.status !== 'active') return false;
   if (tenant.subscriptionStatus === 'expired') return false;
   if (tenant.subscriptionStatus === 'trial' && tenant.trialEndsAt && new Date() > tenant.trialEndsAt) return false;
   return true;
@@ -53,7 +63,8 @@ router.post('/login', async (req, res) => {
     }
 
     const subscriptionActive = await isSubscriptionActive(user.tenantId);
-    const payload = buildPayload(user, subscriptionActive);
+    let payload = buildPayload(user, subscriptionActive);
+    payload = await withFreshProfileImage(payload, user);
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
 
     user.lastLoginAt = new Date();
@@ -117,9 +128,11 @@ router.get('/me', authenticateJWT, async (req, res) => {
     const user = await User.findById(req.user.id).select('-password -resetPasswordToken -resetPasswordExpires');
     if (!user) return res.status(404).json({ message: 'User not found' });
     const subscriptionActive = await isSubscriptionActive(user.tenantId);
-    res.json(buildPayload(user, subscriptionActive));
+    let payload = buildPayload(user, subscriptionActive);
+    payload = await withFreshProfileImage(payload, user);
+    res.json(payload);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -143,7 +156,8 @@ router.put('/me', authenticateJWT, async (req, res) => {
     await user.save();
 
     const subscriptionActive = await isSubscriptionActive(user.tenantId);
-    const payload = buildPayload(user, subscriptionActive);
+    let payload = buildPayload(user, subscriptionActive);
+    payload = await withFreshProfileImage(payload, user);
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
     res.json({ user: payload, token });
   } catch (err) {

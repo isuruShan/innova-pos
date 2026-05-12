@@ -1,7 +1,8 @@
 const express = require('express');
 const User = require('../models/User');
-const { protect, authorize, tenantScope } = require('../middleware/auth');
+const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, resolveWriteStoreId } = require('../middleware/storeScope');
+const { presignObjectKey } = require('../utils/s3Runtime');
 
 const router = express.Router();
 
@@ -19,6 +20,17 @@ const storeAccessFilter = (storeId) => (
     : {}
 );
 
+async function attachFreshProfileImages(users) {
+  if (!users?.length) return users;
+  const keys = [...new Set(users.map((u) => u.profileImageKey).filter(Boolean))];
+  if (!keys.length) return users;
+  const pairs = await Promise.all(keys.map(async (key) => [key, await presignObjectKey(key, 86400)]));
+  const urls = Object.fromEntries(pairs.filter(([, url]) => Boolean(url)));
+  return users.map((u) => (u.profileImageKey && urls[u.profileImageKey]
+    ? { ...u, profileImage: urls[u.profileImageKey] }
+    : u));
+}
+
 // GET all users scoped to current tenant
 router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
@@ -26,12 +38,14 @@ router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), t
     if (req.user.role === 'manager') {
       filter.role = { $in: MANAGER_ROLES };
     }
-    const users = await User.find(filter)
+    let users = await User.find(filter)
       .select('-password -resetPasswordToken -resetPasswordExpires')
-      .sort({ role: 1, name: 1 });
+      .sort({ role: 1, name: 1 })
+      .lean();
+    users = await attachFreshProfileImages(users);
     res.json(users);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -136,7 +150,7 @@ router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmi
     await user.save();
     res.json({ message: 'User deactivated' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 
