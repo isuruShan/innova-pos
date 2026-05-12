@@ -10,6 +10,8 @@ async function start() {
   }
 
   const express = require('express');
+const path = require('path');
+const fs = require('fs');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
@@ -43,6 +45,13 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+/** Serve built SPA assets before CORS — module/CSS requests still send Origin; CORS must not block same-host static files. */
+const clientDist = path.join(__dirname, '../../client/dist');
+const serveClientStatic = isProd && fs.existsSync(clientDist);
+if (serveClientStatic) {
+  app.use(express.static(clientDist, { maxAge: '1y' }));
+}
 
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
@@ -107,15 +116,8 @@ app.get('/api/health', (_req, res) =>
   res.json({ status: 'ok', service: 'pos-server', env: process.env.NODE_ENV, ts: new Date().toISOString() })
 );
 
-if (isProd) {
-  const path = require('path');
-  const fs = require('fs');
-  const clientDist = path.join(__dirname, '../../client/dist');
-  if (fs.existsSync(clientDist)) {
-    app.use(express.static(clientDist, { maxAge: '1y' }));
-    // Express 5 / path-to-regexp v8: bare "*" is invalid — use a named wildcard.
-    app.get('/{*path}', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
-  }
+if (serveClientStatic) {
+  app.get('/{*path}', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
 }
 
 // eslint-disable-next-line no-unused-vars

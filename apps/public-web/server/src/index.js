@@ -37,6 +37,12 @@ connectDB(logger);
 app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false, crossOriginOpenerPolicy: false }));
 
+const publicClientDist = path.join(__dirname, '../../client/dist');
+const servePublicStatic = process.env.NODE_ENV === 'production' && fs.existsSync(publicClientDist);
+if (servePublicStatic) {
+  app.use(express.static(publicClientDist, { maxAge: '1y' }));
+}
+
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
   : [];
@@ -63,13 +69,8 @@ app.get('/health', (_req, res) =>
   res.json({ status: 'ok', service: 'public-web-server', ts: new Date().toISOString() })
 );
 
-if (process.env.NODE_ENV === 'production') {
-  const fs = require('fs');
-  const clientDist = path.join(__dirname, '../../client/dist');
-  if (fs.existsSync(clientDist)) {
-    app.use(express.static(clientDist, { maxAge: '1y' }));
-    app.get('/{*path}', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
-  }
+if (servePublicStatic) {
+  app.get('/{*path}', (_req, res) => res.sendFile(path.join(publicClientDist, 'index.html')));
 }
 
 // eslint-disable-next-line no-unused-vars

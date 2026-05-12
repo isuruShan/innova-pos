@@ -88,3 +88,5 @@ Restart every Node process after changing env.
 ## After hotfix
 
 Remove duplicate logic by syncing the repo version that uses **`createCorsMiddleware`** from `@innovapos/shared-middleware` so you only maintain CORS in one place.
+
+**Also:** production servers serve **`client/dist`** with **`express.static` before `cors`** so `/assets/*` is never blocked by CORS (Vite module scripts send `Origin` even for same-site requests).

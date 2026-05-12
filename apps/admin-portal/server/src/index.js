@@ -35,6 +35,13 @@ connectDB(logger);
 app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false, crossOriginOpenerPolicy: false }));
 
+const fs = require('fs');
+const adminClientDist = path.join(__dirname, '../../client/dist');
+const serveAdminStatic = process.env.NODE_ENV === 'production' && fs.existsSync(adminClientDist);
+if (serveAdminStatic) {
+  app.use(express.static(adminClientDist, { maxAge: '1y' }));
+}
+
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
   : [];
@@ -74,13 +81,8 @@ app.get('/api/health', (_req, res) =>
   res.json({ status: 'ok', service: 'admin-portal-server', ts: new Date().toISOString() })
 );
 
-if (process.env.NODE_ENV === 'production') {
-  const fs = require('fs');
-  const clientDist = path.join(__dirname, '../../client/dist');
-  if (fs.existsSync(clientDist)) {
-    app.use(express.static(clientDist, { maxAge: '1y' }));
-    app.get('/{*path}', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
-  }
+if (serveAdminStatic) {
+  app.get('/{*path}', (_req, res) => res.sendFile(path.join(adminClientDist, 'index.html')));
 }
 
 // eslint-disable-next-line no-unused-vars
