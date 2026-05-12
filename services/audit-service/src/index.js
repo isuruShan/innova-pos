@@ -28,7 +28,7 @@ mongoose.connect(getMongoConnectionString()).then(() => {
 });
 
 app.set('trust proxy', 1);
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({ contentSecurityPolicy: false, crossOriginOpenerPolicy: false }));
 app.use(cors({ origin: false })); // Audit service is internal-only
 app.use(express.json({ limit: '2mb' }));
 

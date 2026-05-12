@@ -34,7 +34,7 @@ const limiterOpts = limiterStore ? { store: limiterStore } : {};
 // Trust proxy
 app.set('trust proxy', 1);
 
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({ contentSecurityPolicy: false, crossOriginOpenerPolicy: false }));
 
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())

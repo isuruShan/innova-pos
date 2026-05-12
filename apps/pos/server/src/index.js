@@ -30,7 +30,7 @@ connectDB(logger);
 
 app.set('trust proxy', 1);
 
-app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false, crossOriginOpenerPolicy: false }));
 app.use(compression());
 
 // HTTP request logging via Winston

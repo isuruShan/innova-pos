@@ -265,6 +265,7 @@ Backend-to-backend URLs on the **same** EC2 instance can stay on loopback, e.g. 
 ### Caveats
 
 - Traffic is **plain HTTP** — acceptable for testing; use **HTTPS + a domain** when you go live.
+- Browsers treat **`http://` plus a public IP** as an **untrustworthy** origin. Helmet’s **`Cross-Origin-Opener-Policy`** header is ignored there and can log a console warning — the app disables that header so the warning does not appear; **HTTPS** is still required for full “powerful features” guarantees.
 - Bookmarks must include **`:5000`** / **`:5001`** / **`:5002`** until you add Nginx on 80/443.
 
 ### CORS and same-origin
