@@ -40,18 +40,24 @@ const adminClientDist = path.join(__dirname, '../../client/dist');
 const serveAdminStatic = process.env.NODE_ENV === 'production' && fs.existsSync(adminClientDist);
 if (serveAdminStatic) {
   app.use(express.static(adminClientDist, { maxAge: '1y' }));
+} else if (process.env.NODE_ENV === 'production') {
+  logger.warn(
+    'Admin client dist missing at apps/admin-portal/client/dist — run: cd apps/admin-portal/client && pnpm run build',
+  );
 }
 
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
   : [];
 
-app.use(
-  createCorsMiddleware({
-    allowedOrigins,
-    production: process.env.NODE_ENV === 'production',
-  }),
-);
+const adminCors = createCorsMiddleware({
+  allowedOrigins,
+  production: process.env.NODE_ENV === 'production',
+});
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api')) return next();
+  return adminCors(req, res, next);
+});
 
 app.use(
   '/api/auth/login',

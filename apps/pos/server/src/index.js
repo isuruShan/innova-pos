@@ -46,18 +46,27 @@ app.use((req, res, next) => {
   next();
 });
 
-/** Serve built SPA assets before CORS — module/CSS requests still send Origin; CORS must not block same-host static files. */
+/** Built SPA: serve before API stack. Still requires apps/pos/client/dist (run Vite build on EC2). */
 const clientDist = path.join(__dirname, '../../client/dist');
 const serveClientStatic = isProd && fs.existsSync(clientDist);
 if (serveClientStatic) {
   app.use(express.static(clientDist, { maxAge: '1y' }));
+} else if (isProd) {
+  logger.warn(
+    'POS client dist missing at apps/pos/client/dist — run: cd apps/pos/client && pnpm run build (UI and /assets will fail until built)',
+  );
 }
 
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
   : [];
 
-app.use(createCorsMiddleware({ allowedOrigins, production: isProd }));
+/** CORS only for /api — avoids 500 on /assets when dist is missing or Origin checks misbehave; browsers still send Origin on module scripts. */
+const posCors = createCorsMiddleware({ allowedOrigins, production: isProd });
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api')) return next();
+  return posCors(req, res, next);
+});
 
 const apiLimiter = rateLimit({
   ...limiterOpts,
