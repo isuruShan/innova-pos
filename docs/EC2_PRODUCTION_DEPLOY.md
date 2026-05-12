@@ -214,6 +214,29 @@ Put **Nginx** or an **Application Load Balancer** in front:
 
 ---
 
+## Application logs (file layout)
+
+Node APIs use `@innovapos/logger` with **one subdirectory per service** under `LOG_DIR` (default: `./logs` relative to each process `cwd`):
+
+```text
+logs/
+  pos-server/combined-YYYY-MM-DD.log
+  pos-server/error-YYYY-MM-DD.log
+  admin-portal-server/combined-YYYY-MM-DD.log
+  admin-portal-server/error-YYYY-MM-DD.log
+  public-web-server/...
+  auth-service/...
+  upload-service/...
+  audit-service/...
+```
+
+- Set **`LOG_DIR`** (e.g. `/var/log/cafinity`) so every service writes under that root **plus** its service folder.
+- Optional **`LOG_SERVICE_ID`**: override the folder name if deployment tooling forces it (defaults to the name passed to `createLogger`, e.g. `pos-server`).
+- **`LOG_LEVEL`**: e.g. `info`, `debug`.
+- **React/Vite “clients”** (POS UI, admin UI, public site) do not write Winston files; they run in the browser. Only the **backend** process that serves each app produces these logs (each backend already uses its own `createLogger(...)` name).
+
+---
+
 ## Troubleshooting
 
 | Symptom | Likely cause |
