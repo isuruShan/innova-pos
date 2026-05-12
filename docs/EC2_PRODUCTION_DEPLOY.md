@@ -332,7 +332,8 @@ logs/
 |---------|----------------|
 | `AccessDeniedException` on startup | Instance role missing `secretsmanager:GetSecretValue` or wrong secret ARN |
 | App starts but env vars missing | Secret JSON keys don’t match code; or `fill` mode and values already set in `.env` — use `override` or clear conflicting `.env` keys |
-| CORS errors in browser | `CORS_ORIGIN` in production must include exact origins (scheme + host + port) |
+| `CORS` errors in browser | `CORS_ORIGIN` in production must include exact origins (scheme + host + port) |
+| Same-origin `/assets/*` 500 with `CORS: origin http://IP:PORT not allowed` | Deploy latest code (`createCorsMiddleware`); stack line inside `cors` at ~57 means **old** `index.js`. Or set **`CORS_ORIGIN`** to include that full `http://IP:PORT` until you redeploy. Stuck on EC2? See **`docs/EC2_CORS_HOTFIX.md`**. |
 | Rate limits inconsistent across instances | Set `REDIS_URL` / `RATE_LIMIT_REDIS_URL` and install deps (`pnpm install`) |
 | Blank API in built SPA | Rebuild clients with correct `VITE_*` at build time |
 
