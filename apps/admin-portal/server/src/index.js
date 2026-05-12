@@ -80,7 +80,7 @@ if (process.env.NODE_ENV === 'production') {
   const clientDist = path.join(__dirname, '../../client/dist');
   if (fs.existsSync(clientDist)) {
     app.use(express.static(clientDist, { maxAge: '1y' }));
-    app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+    app.get('/{*path}', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
   }
 }
 

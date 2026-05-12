@@ -124,7 +124,8 @@ if (isProd) {
   const clientDist = path.join(__dirname, '../../client/dist');
   if (fs.existsSync(clientDist)) {
     app.use(express.static(clientDist, { maxAge: '1y' }));
-    app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+    // Express 5 / path-to-regexp v8: bare "*" is invalid — use a named wildcard.
+    app.get('/{*path}', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
   }
 }
 
