@@ -3,6 +3,27 @@
 /**
  * PM2 process configuration – all apps in the monorepo.
  *
+ * ── AWS Secrets Manager ────────────────────────────────────────────────────
+ * Every app calls loadAwsSecretsManagerEnv() at startup, which fetches a
+ * single JSON secret from AWS Secrets Manager and merges it into process.env.
+ * The loader only fires when AWS_SECRETS_MANAGER_SECRET_ID is present.
+ *
+ * Recommended: attach an IAM role to the EC2 instance with permission:
+ *   secretsmanager:GetSecretValue  on  arn:aws:secretsmanager:REGION:ACCT:secret:YOUR_SECRET_NAME-*
+ * No static credentials are needed when running on EC2 with an instance role.
+ *
+ * If you are NOT using an instance role, create a minimal .env file in the
+ * project root with just the bootstrap variables:
+ *   AWS_REGION=us-east-1
+ *   AWS_SECRETS_MANAGER_SECRET_ID=innovapos/production
+ *   AWS_ACCESS_KEY_ID=AKIAxxxx          # only if no instance role
+ *   AWS_SECRET_ACCESS_KEY=xxxx          # only if no instance role
+ *
+ * Merge behaviour (default: fill):
+ *   - fill     → Secrets Manager only sets keys that are blank after dotenv
+ *   - override → Secrets Manager always wins (set AWS_SECRETS_MERGE_MODE=override)
+ * ──────────────────────────────────────────────────────────────────────────
+ *
  * Start / reload:
  *   pm2 start  ecosystem.config.cjs --env production
  *   pm2 reload ecosystem.config.cjs --env production   ← zero-downtime reload
@@ -13,6 +34,17 @@
  *   pm2 logs
  *   pm2 logs pos-server
  */
+
+// ── Shared AWS bootstrap variables injected into every process ──────────────
+// Change SECRET_ID to your actual Secrets Manager secret name or ARN.
+// All other values (MONGO_URI, JWT_SECRET, etc.) come from the secret itself.
+const awsEnv = {
+  AWS_REGION:                      process.env.AWS_REGION || 'us-east-1',
+  AWS_DEFAULT_REGION:              process.env.AWS_REGION || 'us-east-1',
+  AWS_SECRETS_MANAGER_SECRET_ID:   process.env.AWS_SECRETS_MANAGER_SECRET_ID || 'ip-consolidated-secrets',
+  // AWS_SECRETS_MERGE_MODE: 'fill',  // change to 'override' if the secret should always win
+};
+
 module.exports = {
   apps: [
     // ── POS App ──────────────────────────────────────────────────────────────
@@ -32,6 +64,7 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production',
         PORT: 5000,
+        ...awsEnv,
       },
       error_file: './logs/pos-error.log',
       out_file:   './logs/pos-out.log',
@@ -57,6 +90,7 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production',
         PORT: 5001,
+        ...awsEnv,
       },
       error_file: './logs/admin-error.log',
       out_file:   './logs/admin-out.log',
@@ -82,6 +116,7 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production',
         PORT: 5002,
+        ...awsEnv,
       },
       error_file: './logs/public-web-error.log',
       out_file:   './logs/public-web-out.log',
@@ -107,6 +142,7 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production',
         PORT: 3001,
+        ...awsEnv,
       },
       error_file: './logs/auth-error.log',
       out_file:   './logs/auth-out.log',
@@ -132,6 +168,7 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production',
         PORT: 3002,
+        ...awsEnv,
       },
       error_file: './logs/upload-error.log',
       out_file:   './logs/upload-out.log',
