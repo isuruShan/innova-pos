@@ -8,12 +8,13 @@
 
 require('dotenv').config();
 const mongoose = require('mongoose');
+const { getMongoConnectionString } = require('@innovapos/mongo-connection');
 const User = require('./models/User');
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/innovapos';
-
 async function seed() {
-  await mongoose.connect(MONGO_URI);
+  await mongoose.connect(
+    getMongoConnectionString({ fallback: 'mongodb://127.0.0.1:27017/innovapos' }),
+  );
   console.log('Connected to MongoDB');
 
   const existing = await User.findOne({ role: 'superadmin' });

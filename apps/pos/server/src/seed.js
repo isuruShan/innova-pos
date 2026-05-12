@@ -1,12 +1,15 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
+const { getMongoConnectionString } = require('@innovapos/mongo-connection');
 const User = require('./models/User');
 const MenuItem = require('./models/MenuItem');
 const Inventory = require('./models/Inventory');
 const Category = require('./models/Category');
 
 const connectDB = async () => {
-  await mongoose.connect(process.env.MONGO_URI);
+  await mongoose.connect(
+    getMongoConnectionString({ fallback: 'mongodb://127.0.0.1:27017/innovapos' }),
+  );
   console.log('MongoDB connected for seeding');
 };
 

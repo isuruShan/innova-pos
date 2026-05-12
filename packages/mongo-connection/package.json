@@ -1,0 +1,8 @@
+{
+  "name": "@innovapos/mongo-connection",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Resolve MongoDB connection string (local URI or Atlas mongodb+srv)",
+  "main": "index.js",
+  "type": "commonjs"
+}

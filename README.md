@@ -11,7 +11,7 @@ A full-stack Point-of-Sale system for fast food restaurants with role-based view
 ## Prerequisites
 
 - Node.js 18+
-- MongoDB running locally on port 27017 (or update `MONGO_URI` in `server/.env`)
+- MongoDB locally on port 27017, or **MongoDB Atlas**: set `MONGO_URI` (or `MONGODB_ATLAS_URI`) to the full connection string from Atlas (`mongodb+srv://...`)
 
 ## Setup & Run
 

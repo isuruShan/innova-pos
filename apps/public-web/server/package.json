@@ -9,6 +9,7 @@
     "dev": "nodemon --inspect=9230 src/index.js"
   },
   "dependencies": {
+    "@innovapos/mongo-connection": "workspace:*",
     "@innovapos/runtime-env": "workspace:*",
     "@innovapos/logger": "workspace:*",
     "@innovapos/mail-transport": "workspace:*",

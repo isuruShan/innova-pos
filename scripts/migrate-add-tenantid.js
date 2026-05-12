@@ -14,13 +14,16 @@
  *   pnpm migrate:tenant
  * Or:
  *   node ./scripts/migrate-add-tenantid.js
- * Loads MONGO_URI from apps/pos/server/.env by default.
+ * Loads Mongo connection string from apps/pos/server/.env (MONGO_URI, MONGODB_URI, or MONGODB_ATLAS_URI).
  */
 
 require('dotenv').config({ path: `${__dirname}/../apps/pos/server/.env` });
 const mongoose = require('mongoose');
+const { getMongoConnectionString } = require('../packages/mongo-connection');
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/pos_fastfood';
+const MONGO_URI = getMongoConnectionString({
+  fallback: 'mongodb://127.0.0.1:27017/pos_fastfood',
+});
 
 const tenantSchema = new mongoose.Schema({
   slug: String,

@@ -73,7 +73,8 @@ Node servers load **`.env` first**, then merge **one JSON secret** from Secrets 
 1. **Secrets Manager** → **Store a new secret** → **Other type of secret** → **Plaintext**.
 2. Paste a **single JSON object** with string values (see `secrets.example.json` in the repo root). Include at least:
 
-   - `MONGO_URI`, `JWT_SECRET`, `INTERNAL_SERVICE_KEY` (match across public-web + upload-service)
+   - `MONGO_URI` — paste your **full MongoDB Atlas connection string** here (it is a URI: `mongodb+srv://user:pass@cluster/...`). Same field works for local `mongodb://...`. Alternatives: `MONGODB_URI` or `MONGODB_ATLAS_URI` if you prefer the Atlas UI naming (first non-empty wins). URL-encode characters in the password if needed.
+   - `JWT_SECRET`, `INTERNAL_SERVICE_KEY` (match across public-web + upload-service)
    - `UPLOAD_SERVICE_URL`, `AUDIT_SERVICE_URL`, URLs for emails (`POS_URL`, `ADMIN_URL`, `FRONTEND_URL`, `ADMIN_PORTAL_URL`, …)
    - `AWS_REGION`, `AWS_S3_BUCKET` (upload service)
    - Mail: `EMAIL_FROM`, `EMAIL_APP_PASSWORD` or `SMTP_*`

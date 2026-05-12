@@ -14,12 +14,13 @@ const cors = require('cors');
 const helmet = require('helmet');
 const mongoose = require('mongoose');
 const { createLogger } = require('@innovapos/logger');
+const { getMongoConnectionString } = require('@innovapos/mongo-connection');
 
 const app = express();
 const logger = createLogger('audit-service');
 app.locals.logger = logger;
 
-mongoose.connect(process.env.MONGO_URI).then(() => {
+mongoose.connect(getMongoConnectionString()).then(() => {
   logger.info('MongoDB connected');
 }).catch(err => {
   logger.error('MongoDB connection error', { error: err.message });

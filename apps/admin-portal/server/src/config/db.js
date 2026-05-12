@@ -1,8 +1,9 @@
 const mongoose = require('mongoose');
+const { getMongoConnectionString } = require('@innovapos/mongo-connection');
 
 const connectDB = async (logger) => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
+    const conn = await mongoose.connect(getMongoConnectionString());
     const msg = `MongoDB connected: ${conn.connection.host}`;
     if (logger) logger.info(msg);
     else console.log(msg);
