@@ -110,9 +110,14 @@ orderSchema.index({ tenantId: 1, storeId: 1, status: 1 });
 orderSchema.index({ tenantId: 1, status: 1 });
 orderSchema.index({ tenantId: 1, createdAt: -1 });
 orderSchema.index({ tenantId: 1, storeId: 1, tableId: 1, status: 1 });
+/** Unique idempotency key per tenant — only when clientRequestId is a non-empty string.
+ *  (Sparse unique still indexes null once per tenant; partial index excludes null/missing.) */
 orderSchema.index(
   { tenantId: 1, clientRequestId: 1 },
-  { unique: true, sparse: true }
+  {
+    unique: true,
+    partialFilterExpression: { clientRequestId: { $gt: '' } },
+  },
 );
 
 module.exports = mongoose.model('Order', orderSchema);

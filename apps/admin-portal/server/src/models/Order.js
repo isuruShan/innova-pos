@@ -100,7 +100,10 @@ orderSchema.index({ tenantId: 1, createdAt: -1 });
 orderSchema.index({ tenantId: 1, storeId: 1, tableId: 1, status: 1 });
 orderSchema.index(
   { tenantId: 1, clientRequestId: 1 },
-  { unique: true, sparse: true },
+  {
+    unique: true,
+    partialFilterExpression: { clientRequestId: { $gt: '' } },
+  },
 );
 
 module.exports = mongoose.model('Order', orderSchema);
