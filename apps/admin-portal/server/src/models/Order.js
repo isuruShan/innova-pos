@@ -15,6 +15,7 @@ const orderItemSchema = new mongoose.Schema({
   comboItems: { type: [orderComboItemSchema], default: [] },
   deliveredToTable: { type: Boolean, default: false },
   kitchenNew: { type: Boolean, default: false },
+  kitchenPendingQty: { type: Number, default: null },
 });
 
 const orderSchema = new mongoose.Schema(

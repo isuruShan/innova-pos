@@ -96,6 +96,13 @@ function kitchenLinesForStatusColumn(order, status) {
   return items.filter((i) => !i.deliveredToTable);
 }
 
+/** Pending adds: show incremental qty (kitchenPendingQty) when set, else full line qty for older orders. */
+function mapKitchenAddsDisplayLine(line) {
+  const pq = line.kitchenPendingQty;
+  const dq = pq != null && Number(pq) > 0 ? Number(pq) : Math.max(1, Number(line.qty) || 1);
+  return { ...line, qty: dq };
+}
+
 function KitchenCard({
   order,
   col,
@@ -313,7 +320,9 @@ export default function KitchenDisplay() {
     for (const o of orders) {
       if (o._offlinePending) continue;
       if (!['preparing', 'ready'].includes(o.status)) continue;
-      const lines = (o.items || []).filter((i) => i.kitchenNew && !i.deliveredToTable);
+      const lines = (o.items || [])
+        .filter((i) => i.kitchenNew && !i.deliveredToTable)
+        .map((i) => mapKitchenAddsDisplayLine(i));
       if (lines.length) out.push({ order: o, lines });
     }
     return out;

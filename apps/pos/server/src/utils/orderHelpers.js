@@ -58,6 +58,23 @@ async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId, order
       : trackKitchenQtyBump && qtyIncreased
         ? true
         : !!prev?.kitchenNew;
+
+    let kitchenPendingQty;
+    if (isNew) {
+      kitchenPendingQty = qty;
+    } else if (prev) {
+      const prevQtyNum = Math.max(1, Number(prev.qty) || 1);
+      if (trackKitchenQtyBump && qty > prevQtyNum) {
+        kitchenPendingQty = qty - prevQtyNum;
+      } else if (kitchenNew) {
+        const prevPq = prev.kitchenPendingQty != null ? Number(prev.kitchenPendingQty) : null;
+        kitchenPendingQty =
+          prevPq != null && prevPq > 0 ? prevPq : prev.kitchenNew ? prevQtyNum : qty;
+      } else {
+        kitchenPendingQty = null;
+      }
+    }
+
     const line = {
       menuItem: doc._id,
       name: doc.name,
@@ -70,6 +87,7 @@ async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId, order
         ? (raw.deliveredToTable !== undefined ? !!raw.deliveredToTable : !!prev.deliveredToTable)
         : !!raw.deliveredToTable,
       kitchenNew,
+      kitchenPendingQty: kitchenPendingQty != null ? kitchenPendingQty : null,
     };
     if (doc.isCombo && doc.comboItems?.length) {
       line.isCombo = true;
@@ -133,6 +151,7 @@ async function appendItemsToOrder(order, rawItems, tenantId, storeId) {
     if (existing) {
       existing.qty += nl.qty;
       existing.kitchenNew = true;
+      existing.kitchenPendingQty = nl.qty;
       const doc = menuMap[mid];
       if (doc?.isCombo && doc.comboItems?.length) {
         existing.isCombo = true;
@@ -140,6 +159,7 @@ async function appendItemsToOrder(order, rawItems, tenantId, storeId) {
       }
     } else {
       nl.kitchenNew = true;
+      nl.kitchenPendingQty = nl.qty;
       order.items.push(nl);
     }
   }

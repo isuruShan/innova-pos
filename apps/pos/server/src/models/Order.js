@@ -17,6 +17,10 @@ const orderItemSchema = new mongoose.Schema({
   deliveredToTable: { type: Boolean, default: false },
   /** True when line was added after initial order (highlight on KDS until cleared) */
   kitchenNew: { type: Boolean, default: false },
+  /**
+   * Qty shown on KDS “Pending adds” (increment since last ack, or full qty for a new line). Null when not in adds.
+   */
+  kitchenPendingQty: { type: Number, default: null },
 });
 
 const orderSchema = new mongoose.Schema(

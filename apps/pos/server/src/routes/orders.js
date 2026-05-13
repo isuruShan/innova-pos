@@ -475,6 +475,7 @@ router.put(
       if (!order) return res.status(404).json({ message: 'Order not found' });
       order.items.forEach((line) => {
         line.kitchenNew = false;
+        line.kitchenPendingQty = null;
       });
       order.updatedBy = req.user.id;
       await order.save();
@@ -540,6 +541,7 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
     if (prevStatus === 'pending' && nextStatus === 'preparing') {
       order.items.forEach((line) => {
         line.kitchenNew = false;
+        line.kitchenPendingQty = null;
       });
     }
 
