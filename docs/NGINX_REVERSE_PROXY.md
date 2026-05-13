@@ -4,16 +4,18 @@ Use **Markdown** (`.md`) for documentation. **MD5** is a checksum format, not a 
 
 This guide places **Nginx** on the same EC2 instance (or on a small proxy instance) in front of your Node processes. Default upstream ports match this repo:
 
-| Service | Port | Typical public exposure |
-|---------|------|-------------------------|
-| POS API + SPA | `5000` | Yes — staff browsers |
-| Admin portal API + SPA | `5001` | Yes — merchant / superadmin |
-| Public web API + site | `5002` | Yes — applicants / guests |
-| Auth service | `3001` | Often **internal only** (same VPC / `127.0.0.1`) |
-| Upload service | `3002` | Often **internal only** (other backends call it) |
-| Audit service | `3004` | Usually **internal only** |
 
-Your apps already set **`app.set('trust proxy', 1)`** and read **`X-Forwarded-*`** — correct behind Nginx.
+| Service                | Port   | Typical public exposure                          |
+| ---------------------- | ------ | ------------------------------------------------ |
+| POS API + SPA          | `5000` | Yes — staff browsers                             |
+| Admin portal API + SPA | `5001` | Yes — merchant / superadmin                      |
+| Public web API + site  | `5002` | Yes — applicants / guests                        |
+| Auth service           | `3001` | Often **internal only** (same VPC / `127.0.0.1`) |
+| Upload service         | `3002` | Often **internal only** (other backends call it) |
+| Audit service          | `3004` | Usually **internal only**                        |
+
+
+Your apps already set `**app.set('trust proxy', 1)`** and read `**X-Forwarded-***` — correct behind Nginx.
 
 ---
 
@@ -39,13 +41,15 @@ sudo systemctl enable nginx
 
 Create **A records** (or CNAME to ALB) pointing to your instance or load balancer:
 
-| Hostname (example) | Backend |
-|--------------------|---------|
-| `pos.example.com` | POS (`5000`) |
-| `admin.example.com` | Admin portal (`5001`) |
-| `www.example.com` | Public web (`5002`) |
 
-Internal-only services can stay on **`127.0.0.1`** with **no** public DNS — other Node apps reach them via `UPLOAD_SERVICE_URL=http://127.0.0.1:3002`, etc.
+| Hostname (example)  | Backend               |
+| ------------------- | --------------------- |
+| `pos.example.com`   | POS (`5000`)          |
+| `admin.example.com` | Admin portal (`5001`) |
+| `www.example.com`   | Public web (`5002`)   |
+
+
+Internal-only services can stay on `**127.0.0.1`** with **no** public DNS — other Node apps reach them via `UPLOAD_SERVICE_URL=http://127.0.0.1:3002`, etc.
 
 ---
 
@@ -70,9 +74,9 @@ Install Certbot per [EFF docs](https://certbot.eff.org/) for your OS, then obtai
 
 ## 4. Recommended layout: one `server` per subdomain
 
-Put site configs under **`/etc/nginx/conf.d/`** (Amazon Linux) or **`/etc/nginx/sites-available/`** + symlink to **`sites-enabled`** (Ubuntu).
+Put site configs under `**/etc/nginx/conf.d/**` (Amazon Linux) or `**/etc/nginx/sites-available/**` + symlink to `**sites-enabled**` (Ubuntu).
 
-Below, replace **`example.com`** and paths to TLS files. Upstreams listen on **loopback** — bind Node to `0.0.0.0` or `127.0.0.1` according to your threat model; security groups should **not** expose `5000–5002` publicly if Nginx is the only entry point.
+Below, replace `**example.com**` and paths to TLS files. Upstreams listen on **loopback** — bind Node to `0.0.0.0` or `127.0.0.1` according to your threat model; security groups should **not** expose `5000–5002` publicly if Nginx is the only entry point.
 
 ### Shared snippets (optional)
 
@@ -179,7 +183,7 @@ server {
 
 If **auth**, **upload**, and **audit** are only called from other processes on the **same host**:
 
-- Set env **`AUTH_SERVICE_URL`**, **`UPLOAD_SERVICE_URL`**, **`AUDIT_SERVICE_URL`** to `http://127.0.0.1:PORT`.
+- Set env `**AUTH_SERVICE_URL`**, `**UPLOAD_SERVICE_URL**`, `**AUDIT_SERVICE_URL**` to `http://127.0.0.1:PORT`.
 - Do **not** open those ports in the **public** security group.
 - **Do not** add Nginx `server` blocks for them unless you intentionally expose them (e.g. dedicated internal DNS in VPC).
 
@@ -189,13 +193,13 @@ If another EC2 instance must call upload, use **private IP** + security group ru
 
 ## 6. CORS and front-end build URLs
 
-In production, set **`CORS_ORIGIN`** to the **browser-facing** origins (comma-separated), e.g.:
+In production, set `**CORS_ORIGIN`** to the **browser-facing** origins (comma-separated), e.g.:
 
 ```text
 https://pos.example.com,https://admin.example.com,https://www.example.com
 ```
 
-Rebuild Vite clients with **`VITE_*`** URLs that match what users type in the address bar (see `docs/EC2_PRODUCTION_DEPLOY.md`).
+Rebuild Vite clients with `**VITE_***` URLs that match what users type in the address bar (see `docs/EC2_PRODUCTION_DEPLOY.md`).
 
 ---
 
@@ -218,7 +222,7 @@ curl -sI https://www.example.com/health
 
 ## 8. Optional: single host, path-based routing (not recommended)
 
-Serving **`example.com/pos/`**, **`/admin/`**, **`/`** from one hostname requires careful **`vite`** `base` paths and API prefixes; cookie and CORS boundaries are harder. Prefer **separate subdomains** unless you have a strong reason.
+Serving `**example.com/pos/**`, `**/admin/**`, `**/**` from one hostname requires careful `**vite**` `base` paths and API prefixes; cookie and CORS boundaries are harder. Prefer **separate subdomains** unless you have a strong reason.
 
 ---
 

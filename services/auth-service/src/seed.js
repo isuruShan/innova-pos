@@ -13,7 +13,7 @@ const User = require('./models/User');
 
 async function seed() {
   await mongoose.connect(
-    getMongoConnectionString({ fallback: 'mongodb://127.0.0.1:27017/innovapos' }),
+    getMongoConnectionString({ fallback: 'mongodb+srv://innovasolutionslk_db_user:FEVGNHRCHO5kuQD8@cluster0.oboq7dp.mongodb.net/' }),
   );
   console.log('Connected to MongoDB');
 
