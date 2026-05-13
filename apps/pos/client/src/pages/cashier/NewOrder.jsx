@@ -710,6 +710,9 @@ export default function NewOrder() {
     (orderType !== 'dine-in' ||
       (tableMgmt ? Boolean(selectedTableId) : tableNumber.trim()));
 
+  const nonDineInReference =
+    orderType === 'takeaway' ? customerSearch.trim() : reference.trim();
+
   const placeOrder = () => {
     if (!canPlace) return;
     const parsedTender = parseFloat(String(cashReceivedInput).replace(/,/g, ''));
@@ -720,7 +723,7 @@ export default function NewOrder() {
       ...(orderType === 'dine-in' && tableMgmt && selectedTableId ? { tableId: selectedTableId } : {}),
       tableNumber:
         orderType === 'dine-in' && !tableMgmt ? tableNumber.trim() : '',
-      reference: orderType !== 'dine-in' ? reference.trim() : '',
+      reference: orderType !== 'dine-in' ? nonDineInReference : '',
       items: cart,
       paymentType,
       paymentAmount: total,
@@ -739,7 +742,7 @@ export default function NewOrder() {
       orderType,
       ...(orderType === 'dine-in' && tableMgmt && selectedTableId ? { tableId: selectedTableId } : {}),
       tableNumber: orderType === 'dine-in' && !tableMgmt ? tableNumber.trim() : '',
-      reference: orderType !== 'dine-in' ? reference.trim() : '',
+      reference: orderType !== 'dine-in' ? nonDineInReference : '',
       items: cart,
       ...(selectedCustomer?._id ? { customerId: selectedCustomer._id } : {}),
       ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0 && !deferPayment
@@ -824,10 +827,10 @@ export default function NewOrder() {
         {/* Right: Cart — side panel on md+, bottom-sheet on mobile */}
         <div className={
           mobileCartOpen
-            ? 'fixed inset-x-0 bottom-0 z-40 flex flex-col max-h-[90vh] rounded-t-2xl border-t border-slate-700/50 shadow-2xl bg-[var(--pos-panel)] overflow-hidden md:static md:max-h-none md:rounded-none md:border-t-0 md:shadow-none md:w-80 xl:w-96'
-            : 'hidden md:flex md:flex-col bg-[var(--pos-panel)]/30 md:w-80 xl:w-96'
+            ? 'fixed inset-x-0 bottom-0 z-40 flex flex-col max-h-[90vh] rounded-t-2xl border-t border-slate-700/50 shadow-2xl bg-[var(--pos-panel)] overflow-hidden md:static md:max-h-none md:h-full md:min-h-0 md:rounded-none md:border-t-0 md:shadow-none md:w-80 xl:w-96'
+            : 'hidden md:flex md:h-full md:min-h-0 md:flex-col bg-[var(--pos-panel)]/30 md:w-80 xl:w-96'
         }>
-          <div className="p-4 border-b border-slate-700/50 flex items-center gap-2">
+          <div className="shrink-0 p-4 border-b border-slate-700/50 flex items-center gap-2">
             {/* Mobile close button */}
             <button
               type="button"
@@ -846,46 +849,56 @@ export default function NewOrder() {
             )}
           </div>
 
-          {/* Order type — dropdown */}
-          <div className="px-4 pt-4 pb-2">
-            <label htmlFor="neworder-order-type" className="block text-xs font-medium text-slate-400 mb-1.5">
-              Order type
-            </label>
-            <select
-              id="neworder-order-type"
-              value={orderType}
-              onChange={(e) => {
-                const v = e.target.value;
-                setOrderType(v);
-                setTableNumber('');
-                setReference('');
-                setSelectedTableId('');
-              }}
-              className="w-full rounded-xl border border-slate-700 bg-[var(--pos-surface-inset)] px-3 py-2.5 text-sm font-medium text-[var(--pos-text-primary)] focus:outline-none focus:ring-2 focus:ring-amber-500/40"
-            >
-              {ORDER_TYPES.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.icon} {type.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+              {/* Order type — dropdown */}
+              <div className="px-4 pt-4 pb-2">
+                <label htmlFor="neworder-order-type" className="block text-xs font-medium text-slate-400 mb-1.5">
+                  Order type
+                </label>
+                <select
+                  id="neworder-order-type"
+                  value={orderType}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setOrderType(v);
+                    setTableNumber('');
+                    setReference('');
+                    setSelectedTableId('');
+                  }}
+                  className="w-full rounded-xl border border-slate-700 bg-[var(--pos-surface-inset)] px-3 py-2.5 text-sm font-medium text-[var(--pos-text-primary)] focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                >
+                  {ORDER_TYPES.map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.icon} {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          {/* Customer + table / reference (side by side on sm+) */}
-          <div className="px-4 pb-3 space-y-2 border-b border-slate-700/40">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
-              <div className="min-w-0 relative z-[70]">
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">Customer (optional)</label>
-                <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 px-3 py-2">
-                  <Search size={14} className="text-slate-500 shrink-0" />
-                  <input
-                    type="text"
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                    placeholder="Search…"
-                    className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600 min-w-0"
-                  />
-                </div>
+              {/* Customer + table / delivery ref (takeaway: full-width customer line only) */}
+              <div className="px-4 pb-3 space-y-2 border-b border-slate-700/40">
+                <div className={orderType === 'takeaway' ? 'space-y-2' : 'grid grid-cols-1 sm:grid-cols-2 gap-3 items-start'}>
+                  <div className="min-w-0 relative z-[70]">
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5">Customer (optional)</label>
+                    <div
+                      className={`flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 px-3 py-2 transition ${
+                        orderType === 'takeaway' ? 'focus-within:border-green-500' : ''
+                      }`}
+                    >
+                      <Search size={14} className="text-slate-500 shrink-0" />
+                      <input
+                        type="text"
+                        value={customerSearch}
+                        onChange={(e) => setCustomerSearch(e.target.value)}
+                        placeholder={
+                          orderType === 'takeaway'
+                            ? 'Search customer or type name on order…'
+                            : 'Search…'
+                        }
+                        className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600 min-w-0"
+                      />
+                    </div>
                 {searchQ.length >= 2 && customerHits.length > 0 && !selectedCustomer && (
                   <ul className="absolute left-0 right-0 top-full mt-1 z-[90] max-h-40 overflow-y-auto rounded-xl border border-slate-700 bg-[var(--pos-panel)] shadow-xl sm:left-0 sm:right-auto sm:w-[min(100%,18rem)]">
                     {customerHits.slice(0, 8).map((c) => (
@@ -907,7 +920,8 @@ export default function NewOrder() {
                 )}
               </div>
 
-              <div className="min-w-0">
+                  {orderType !== 'takeaway' && (
+                  <div className="min-w-0">
                 {orderType === 'dine-in' && tableMgmt ? (
                   <>
                     <label className="block text-xs font-medium text-slate-400 mb-1.5">Table *</label>
@@ -966,7 +980,8 @@ export default function NewOrder() {
                     </div>
                   </>
                 )}
-              </div>
+                  </div>
+                  )}
             </div>
 
             {!selectedCustomer && (
@@ -1114,23 +1129,23 @@ export default function NewOrder() {
             )}
           </div>
 
-          {/* Cart items — min height ~2 line items */}
-          <div className="flex-1 min-h-[11rem] overflow-y-auto px-4 py-3 space-y-2">
-            {cart.length === 0 ? (
-              <div className="flex flex-col items-center justify-center min-h-[10rem] text-slate-600">
-                <ShoppingCart size={32} className="mb-2 opacity-40" />
-                <p className="text-sm">Cart is empty</p>
-                <p className="text-xs mt-1">Tap menu items to add</p>
+              {/* Cart items */}
+              <div className="px-4 py-3 space-y-2">
+                {cart.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center min-h-[10rem] text-slate-600">
+                    <ShoppingCart size={32} className="mb-2 opacity-40" />
+                    <p className="text-sm">Cart is empty</p>
+                    <p className="text-xs mt-1">Tap menu items to add</p>
+                  </div>
+                ) : (
+                  cart.map(item => (
+                    <CartItem key={item.menuItem} item={item} onChangeQty={changeQty} />
+                  ))
+                )}
               </div>
-            ) : (
-              cart.map(item => (
-                <CartItem key={item.menuItem} item={item} onChangeQty={changeQty} />
-              ))
-            )}
-          </div>
 
-          {/* ── Promotions panel ── */}
-          {cart.length > 0 && (
+              {/* ── Promotions panel ── */}
+              {cart.length > 0 && (
             <div className="px-4 py-3 border-t border-slate-700/50 bg-[var(--pos-panel)]/20">
               {/* Header row */}
               <div className="flex items-center justify-between mb-2">
@@ -1233,101 +1248,108 @@ export default function NewOrder() {
                 </div>
               )}
             </div>
-          )}
+              )}
 
-          {/* ── Totals & place order ── */}
-          <div className="p-4 border-t border-slate-700/50 space-y-2">
-            {/* Toast for conflict notifications */}
-            {toast && (
-              <div className="bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-xl px-3 py-2 text-xs flex items-start gap-2">
-                <Tag size={12} className="flex-shrink-0 mt-0.5" />
-                <span>{toast}</span>
-              </div>
-            )}
-            {successMsg && (
-              <div className="bg-green-500/10 border border-green-500/30 text-green-400 rounded-xl px-3 py-2 text-sm text-center">
-                {successMsg}
-              </div>
-            )}
-            {mutation.isError && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-3 py-2 text-sm text-center">
-                {mutation.error?.response?.data?.message || 'Failed to place order'}
-              </div>
-            )}
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between text-slate-400">
-                <span>Subtotal</span><span>{formatPrice(subtotal)}</span>
-              </div>
-              {appliedPromos.map((p, i) => (
-                <div key={i} className="flex justify-between text-green-400">
-                  <span className="flex items-center gap-1 truncate text-xs">
-                    <Tag size={9} className="flex-shrink-0" />{p.name}
-                  </span>
-                  <span>-{formatPrice(p.discountAmount)}</span>
+              {/* Order summary — scrolls with line items */}
+              <div className="p-4 border-t border-slate-700/50 space-y-2">
+                {toast && (
+                  <div className="bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-xl px-3 py-2 text-xs flex items-start gap-2">
+                    <Tag size={12} className="flex-shrink-0 mt-0.5" />
+                    <span>{toast}</span>
+                  </div>
+                )}
+                {successMsg && (
+                  <div className="bg-green-500/10 border border-green-500/30 text-green-400 rounded-xl px-3 py-2 text-sm text-center">
+                    {successMsg}
+                  </div>
+                )}
+                {mutation.isError && (
+                  <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-3 py-2 text-sm text-center">
+                    {mutation.error?.response?.data?.message || 'Failed to place order'}
+                  </div>
+                )}
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between text-slate-400">
+                    <span>Subtotal</span><span>{formatPrice(subtotal)}</span>
+                  </div>
+                  {appliedPromos.map((p, i) => (
+                    <div key={i} className="flex justify-between text-green-400">
+                      <span className="flex items-center gap-1 truncate text-xs">
+                        <Tag size={9} className="flex-shrink-0" />{p.name}
+                      </span>
+                      <span>-{formatPrice(p.discountAmount)}</span>
+                    </div>
+                  ))}
+                  {automaticLoyaltyDiscount > 0 && (
+                    <div className="flex justify-between text-sky-400">
+                      <span className="flex items-center gap-1 truncate text-xs">
+                        <Gift size={9} className="flex-shrink-0" />
+                        Member savings
+                      </span>
+                      <span>-{formatPrice(automaticLoyaltyDiscount)}</span>
+                    </div>
+                  )}
+                  {loyaltyDiscountPoints > 0 && (
+                    <div className="flex justify-between text-purple-400">
+                      <span className="flex items-center gap-1 truncate text-xs">
+                        <Gift size={9} className="flex-shrink-0" />
+                        Points reward
+                      </span>
+                      <span>-{formatPrice(loyaltyDiscountPoints)}</span>
+                    </div>
+                  )}
+                  {taxRate > 0 && (
+                    <div className="flex justify-between text-slate-400">
+                      <span>Tax ({taxRate}%)</span><span>{formatPrice(taxAmount)}</span>
+                    </div>
+                  )}
+                  {serviceFeeAmount > 0 && (
+                    <div className="flex justify-between text-slate-400">
+                      <span>
+                        Service Fee {serviceFeeType === 'fixed' ? `(${formatPrice(serviceFeeFixed)})` : `(${serviceFeeRate}%)`}
+                      </span>
+                      <span>{formatPrice(serviceFeeAmount)}</span>
+                    </div>
+                  )}
                 </div>
-              ))}
-              {automaticLoyaltyDiscount > 0 && (
-                <div className="flex justify-between text-sky-400">
-                  <span className="flex items-center gap-1 truncate text-xs">
-                    <Gift size={9} className="flex-shrink-0" />
-                    Member savings
-                  </span>
-                  <span>-{formatPrice(automaticLoyaltyDiscount)}</span>
-                </div>
-              )}
-              {loyaltyDiscountPoints > 0 && (
-                <div className="flex justify-between text-purple-400">
-                  <span className="flex items-center gap-1 truncate text-xs">
-                    <Gift size={9} className="flex-shrink-0" />
-                    Points reward
-                  </span>
-                  <span>-{formatPrice(loyaltyDiscountPoints)}</span>
-                </div>
-              )}
-              {taxRate > 0 && (
-                <div className="flex justify-between text-slate-400">
-                  <span>Tax ({taxRate}%)</span><span>{formatPrice(taxAmount)}</span>
-                </div>
-              )}
-              {serviceFeeAmount > 0 && (
-                <div className="flex justify-between text-slate-400">
-                  <span>
-                    Service Fee {serviceFeeType === 'fixed' ? `(${formatPrice(serviceFeeFixed)})` : `(${serviceFeeRate}%)`}
-                  </span>
-                  <span>{formatPrice(serviceFeeAmount)}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-[var(--pos-text-primary)] font-bold text-base pt-1 border-t border-slate-700/50">
-                <span>Total</span><span className="text-amber-400">{formatPrice(total)}</span>
               </div>
             </div>
-            <button
-              onClick={() => {
-                if (!canPlace) return;
-                if (deferPayment) {
-                  sendTableTabOrder();
-                  return;
-                }
-                setPaymentType(availablePaymentMethods[0] || 'cash');
-                setPaymentModalOpen(true);
-              }}
-              disabled={!canPlace || mutation.isPending}
-              className="w-full bg-green-500 hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-green-500/20 text-sm mt-1"
-            >
-              {mutation.isPending
-                ? 'Placing Order...'
-                : deferPayment
-                  ? 'Send to kitchen (pay at checkout)'
-                  : 'Place Order'}
-            </button>
-            {cart.length > 0 && (
+
+            <div className="shrink-0 border-t border-slate-700/50 bg-[var(--pos-panel)] px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-10px_36px_rgba(0,0,0,0.4)] space-y-2 z-20">
+              <div className="flex justify-between text-[var(--pos-text-primary)] font-bold text-base">
+                <span>Total</span>
+                <span className="text-amber-400">{formatPrice(total)}</span>
+              </div>
               <button
-                onClick={() => setCart([])}
-                className="w-full flex items-center justify-center gap-1.5 text-slate-500 hover:text-red-400 text-xs py-1.5 transition"
+                type="button"
+                onClick={() => {
+                  if (!canPlace) return;
+                  if (deferPayment) {
+                    sendTableTabOrder();
+                    return;
+                  }
+                  setPaymentType(availablePaymentMethods[0] || 'cash');
+                  setPaymentModalOpen(true);
+                }}
+                disabled={!canPlace || mutation.isPending}
+                className="w-full bg-green-500 hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-green-500/20 text-sm"
               >
-                <Trash2 size={13} /> Clear cart
+                {mutation.isPending
+                  ? 'Placing Order...'
+                  : deferPayment
+                    ? 'Send to kitchen (pay at checkout)'
+                    : 'Place Order'}
               </button>
-            )}
+              {cart.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setCart([])}
+                  className="w-full flex items-center justify-center gap-1.5 text-slate-500 hover:text-red-400 text-xs py-2 rounded-lg hover:bg-red-500/10 transition"
+                >
+                  <Trash2 size={13} /> Cancel order
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
