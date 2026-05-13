@@ -211,7 +211,8 @@ export default function StoresPage() {
             {!stores.length && <p className="text-sm text-gray-500">No stores yet.</p>}
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[560px]">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               {['Store', 'Code', 'Address', 'Status', 'Default', 'Action'].map((h) => (
@@ -248,6 +249,7 @@ export default function StoresPage() {
             )}
           </tbody>
           </table>
+          </div>
         )}
       </div>
 

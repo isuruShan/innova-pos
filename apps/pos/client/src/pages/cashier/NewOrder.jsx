@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShoppingCart, Plus, Minus, Trash2, Hash, Link2, ChevronDown, ChevronUp,
-  Tag, ToggleLeft, ToggleRight, X, Zap, Search, User, Gift, UserPlus,
+  Tag, ToggleLeft, ToggleRight, X, Zap, Search, User, Gift, UserPlus, ChevronLeft,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -309,6 +309,7 @@ function CartItem({ item, onChangeQty }) {
 export default function NewOrder() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [cart, setCart] = useState([]);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [orderType, setOrderType] = useState('dine-in');
   const [tableNumber, setTableNumber] = useState('');
   const [selectedTableId, setSelectedTableId] = useState('');
@@ -758,7 +759,7 @@ export default function NewOrder() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Menu */}
-        <div className="flex flex-col flex-1 overflow-hidden border-r border-slate-700/50">
+        <div className={`flex flex-col overflow-hidden border-slate-700/50 transition-all ${mobileCartOpen ? 'hidden' : 'flex-1 border-r'}`}>
           {/* Category tabs */}
           <div className="flex gap-2 px-4 py-3 overflow-x-auto border-b border-slate-700/50 bg-[var(--pos-panel)]/50">
             {categories.map(cat => (
@@ -794,9 +795,45 @@ export default function NewOrder() {
           </div>
         </div>
 
-        {/* Right: Cart */}
-        <div className="w-80 xl:w-96 flex flex-col bg-[var(--pos-panel)]/30">
+        {/* Mobile floating cart button (hidden on md+) */}
+        {!mobileCartOpen && (
+          <button
+            type="button"
+            onClick={() => setMobileCartOpen(true)}
+            className="md:hidden fixed bottom-4 right-4 z-30 flex items-center gap-2 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-white rounded-2xl px-4 py-3 shadow-xl shadow-amber-500/30 transition"
+          >
+            <ShoppingCart size={18} />
+            <span className="font-semibold text-sm">
+              {cart.reduce((s, i) => s + i.qty, 0)} items
+            </span>
+            <span className="font-bold text-sm">{formatPrice(total)}</span>
+          </button>
+        )}
+
+        {/* Mobile cart backdrop */}
+        {mobileCartOpen && (
+          <div
+            className="md:hidden fixed inset-0 z-30 bg-black/60"
+            onClick={() => setMobileCartOpen(false)}
+          />
+        )}
+
+        {/* Right: Cart — side panel on md+, bottom-sheet on mobile */}
+        <div className={
+          mobileCartOpen
+            ? 'fixed inset-x-0 bottom-0 z-40 flex flex-col max-h-[90vh] rounded-t-2xl border-t border-slate-700/50 shadow-2xl bg-[var(--pos-panel)] overflow-hidden md:static md:max-h-none md:rounded-none md:border-t-0 md:shadow-none md:w-80 xl:w-96'
+            : 'hidden md:flex md:flex-col bg-[var(--pos-panel)]/30 md:w-80 xl:w-96'
+        }>
           <div className="p-4 border-b border-slate-700/50 flex items-center gap-2">
+            {/* Mobile close button */}
+            <button
+              type="button"
+              onClick={() => setMobileCartOpen(false)}
+              className="md:hidden mr-1 p-1 rounded-lg text-slate-400 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 transition"
+              aria-label="Close cart"
+            >
+              <ChevronLeft size={18} />
+            </button>
             <ShoppingCart size={18} className="text-amber-400" />
             <h2 className="font-semibold text-[var(--pos-text-primary)]">Current Order</h2>
             {cart.length > 0 && (

@@ -13,7 +13,14 @@ const pwaManifest = {
   orientation: 'any',
   scope: '/',
   start_url: '/',
+  // Chrome requires at least one 192px and one 512px icon to show the install prompt.
   icons: [
+    {
+      src: 'cafinity-logo.png',
+      sizes: '192x192',
+      type: 'image/png',
+      purpose: 'any',
+    },
     {
       src: 'cafinity-logo.png',
       sizes: '512x512',
@@ -37,6 +44,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['cafinity-logo.png', 'favicon.svg', 'logo.png'],
       manifest: pwaManifest,
+      // Enable service worker in dev so PWA features are testable locally.
+      devOptions: {
+        enabled: true,
+        type: 'module',
+      },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,woff,webmanifest}'],
         navigateFallback: 'index.html',

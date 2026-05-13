@@ -80,7 +80,7 @@ export function AvatarMenu({ user, onLogout }) {
               )}
               {user.role === 'merchant_admin' && (
                 <a
-                  href="http://localhost:5174"
+                  href={import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'}
                   target="_blank"
                   rel="noreferrer"
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition"

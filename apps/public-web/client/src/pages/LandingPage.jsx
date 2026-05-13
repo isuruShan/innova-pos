@@ -411,7 +411,7 @@ export default function LandingPage() {
 
             <div
               ref={pricingCarouselRef}
-              className="flex min-h-[min(420px,70vh)] flex-nowrap items-stretch gap-6 overflow-x-auto scroll-smooth px-2 py-1 [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory sm:px-10 md:px-14 [&::-webkit-scrollbar]:hidden"
+              className="flex min-h-[min(420px,70vh)] flex-nowrap items-stretch gap-6 overflow-x-auto scroll-smooth py-1 [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [padding-inline:max(0.5rem,calc(50%-140px))] [scroll-padding-inline:max(0.5rem,calc(50%-140px))] sm:[padding-inline:2.5rem] sm:[scroll-padding-inline:2.5rem] md:[padding-inline:3.5rem] md:[scroll-padding-inline:3.5rem]"
             >
               {(plansLoading ? [1, 2, 3] : plans).map((plan, idx) => {
                 if (plansLoading) {

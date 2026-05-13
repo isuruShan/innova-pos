@@ -137,7 +137,7 @@ export default function Layout({ children }) {
           ))}
           {!isSuperAdmin && (
             <a
-              href="http://localhost:5173"
+              href={import.meta.env.VITE_POS_URL || 'http://localhost:5173'}
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-colors"

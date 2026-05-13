@@ -159,7 +159,8 @@ export default function UsersPage() {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 {['Name', 'Email', 'Role', 'Status', 'Actions'].map(h => (
@@ -216,6 +217,7 @@ export default function UsersPage() {
               ))}
             </tbody>
           </table>
+          </div>
           {!users?.length && (
             <div className="text-center py-12 text-gray-400">No users found</div>
           )}
