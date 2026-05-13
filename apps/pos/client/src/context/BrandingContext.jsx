@@ -26,6 +26,7 @@ const DEFAULT_BRANDING = {
   paymentMethods: ['cash', 'card'],
   currency: 'LKR',
   currencySymbol: 'Rs.',
+  countryIso: 'LK',
   receiptFooter: 'Thank you for your visit!',
   printReceiptByDefault: false,
   receiptPrintAtStatus: 'placement',

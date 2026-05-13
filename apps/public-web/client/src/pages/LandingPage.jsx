@@ -379,8 +379,8 @@ export default function LandingPage() {
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">Simple, transparent pricing</h2>
             <p className="text-gray-600 text-lg max-w-2xl mx-auto">
               {catalogAudience === 'local'
-                ? 'Plans for Sri Lanka — amounts in LKR unless noted. Start with a 30-day free trial; no credit card required.'
-                : 'International plans — currency shown per tier. Start with a 30-day free trial; no credit card required.'}
+                ? 'Start with a 30-day free trial, no credit card required.'
+                : 'Start with a 30-day free trial, no credit card required.'}
             </p>
             {!plansLoading && plans.length === 0 && (
               <p className="text-gray-600 text-sm mt-4 max-w-xl mx-auto">
@@ -411,7 +411,7 @@ export default function LandingPage() {
 
             <div
               ref={pricingCarouselRef}
-              className="flex min-h-[min(420px,70vh)] flex-nowrap items-stretch gap-6 overflow-x-auto scroll-smooth py-1 [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [padding-inline:max(0.5rem,calc(50%-140px))] [scroll-padding-inline:max(0.5rem,calc(50%-140px))] sm:[padding-inline:2.5rem] sm:[scroll-padding-inline:2.5rem] md:[padding-inline:3.5rem] md:[scroll-padding-inline:3.5rem]"
+              className="flex min-h-[min(420px,70vh)] flex-nowrap items-stretch gap-6 overflow-x-auto scroll-smooth pt-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [padding-inline:max(0.5rem,calc(50%-140px))] [scroll-padding-inline:max(0.5rem,calc(50%-140px))] sm:justify-center sm:[padding-inline:2.5rem] sm:[scroll-padding-inline:2.5rem] md:[padding-inline:3.5rem] md:[scroll-padding-inline:3.5rem]"
             >
               {(plansLoading ? [1, 2, 3] : plans).map((plan, idx) => {
                 if (plansLoading) {

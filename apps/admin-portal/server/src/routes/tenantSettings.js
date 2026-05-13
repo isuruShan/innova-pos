@@ -56,8 +56,13 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
   try {
     const tenantId = req.user.role === 'superadmin' ? (req.query.tenantId || req.tenantId) : req.tenantId;
     if (!tenantId) return res.status(400).json({ message: 'tenantId required' });
-    const s = await getOrCreate(tenantId);
-    res.json(await attachFreshLogoUrl(s, req));
+    const [s, tenant] = await Promise.all([
+      getOrCreate(tenantId),
+      Tenant.findById(tenantId).select('countryIso').lean(),
+    ]);
+    const plain = await attachFreshLogoUrl(s, req);
+    plain.countryIso = (tenant?.countryIso || 'LK').toUpperCase();
+    res.json(plain);
   } catch (err) {
     sendRouteError(res, err, { req });
   }

@@ -16,6 +16,7 @@ import { useStoreContext } from '../../context/StoreContext';
 import { MenuGridSkeleton } from '../../components/StoreSkeletons';
 import { printReceipt } from '../../utils/receiptPrint';
 import { shouldPrintReceiptOnOrderCreated } from '../../utils/receiptPolicy';
+import { validateMobile, validateEmail } from '../../utils/customerValidation';
 
 const formatPrice = formatCurrency;
 
@@ -333,6 +334,7 @@ export default function NewOrder() {
   const [quickName, setQuickName] = useState('');
   const [quickMobile, setQuickMobile] = useState('');
   const [quickEmail, setQuickEmail] = useState('');
+  const [quickFormError, setQuickFormError] = useState('');
 
   const qc = useQueryClient();
   const branding = useBranding();
@@ -972,7 +974,7 @@ export default function NewOrder() {
                 <>
                   <button
                     type="button"
-                    onClick={() => setShowCustomerForm((v) => !v)}
+                    onClick={() => { setShowCustomerForm((v) => !v); setQuickFormError(''); }}
                     className="mt-2 flex items-center gap-1.5 text-xs font-medium text-amber-400 hover:text-amber-300"
                   >
                     <UserPlus size={13} />
@@ -983,24 +985,39 @@ export default function NewOrder() {
                       <input
                         type="text"
                         value={quickName}
-                        onChange={(e) => setQuickName(e.target.value)}
+                        onChange={(e) => { setQuickName(e.target.value); setQuickFormError(''); }}
                         placeholder="Name"
                         className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)]"
                       />
-                      <input
-                        type="tel"
-                        value={quickMobile}
-                        onChange={(e) => setQuickMobile(e.target.value)}
-                        placeholder="Mobile"
-                        className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)]"
-                      />
-                      <input
-                        type="email"
-                        value={quickEmail}
-                        onChange={(e) => setQuickEmail(e.target.value)}
-                        placeholder="Email"
-                        className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)]"
-                      />
+                      <div>
+                        <input
+                          type="tel"
+                          value={quickMobile}
+                          onChange={(e) => { setQuickMobile(e.target.value); setQuickFormError(''); }}
+                          placeholder={`Mobile (${branding.countryIso || 'LK'})`}
+                          className={`w-full bg-[var(--pos-surface-inset)] border rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)] ${
+                            quickFormError && quickFormError.toLowerCase().includes('mobile')
+                              ? 'border-red-500'
+                              : 'border-slate-700'
+                          }`}
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="email"
+                          value={quickEmail}
+                          onChange={(e) => { setQuickEmail(e.target.value); setQuickFormError(''); }}
+                          placeholder="Email"
+                          className={`w-full bg-[var(--pos-surface-inset)] border rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)] ${
+                            quickFormError && quickFormError.toLowerCase().includes('email')
+                              ? 'border-red-500'
+                              : 'border-slate-700'
+                          }`}
+                        />
+                      </div>
+                      {quickFormError && (
+                        <p className="text-xs text-red-400 leading-snug">{quickFormError}</p>
+                      )}
                       <button
                         type="button"
                         disabled={upsertCustomerMutation.isPending}
@@ -1012,6 +1029,13 @@ export default function NewOrder() {
                             showToast('Enter at least name, mobile, or email');
                             return;
                           }
+                          const mobileErr = validateMobile(mobile, branding.countryIso || 'LK');
+                          const emailErr = validateEmail(email);
+                          if (mobileErr || emailErr) {
+                            setQuickFormError(mobileErr || emailErr);
+                            return;
+                          }
+                          setQuickFormError('');
                           upsertCustomerMutation.mutate({ name, mobile, email });
                         }}
                         className="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white text-sm font-semibold"

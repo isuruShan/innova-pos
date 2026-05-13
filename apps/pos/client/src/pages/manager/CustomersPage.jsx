@@ -5,14 +5,18 @@ import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
+import { useBranding } from '../../context/BrandingContext';
+import { validateMobile, validateEmail } from '../../utils/customerValidation';
 
 const empty = { name: '', mobile: '', email: '', birthday: '', notes: '' };
 
 export default function CustomersPage() {
   const qc = useQueryClient();
+  const branding = useBranding();
   const [search, setSearch] = useState('');
   const [slide, setSlide] = useState(null);
   const [form, setForm] = useState(empty);
+  const [formError, setFormError] = useState('');
   const [pointsOpen, setPointsOpen] = useState(false);
   const [pointsForm, setPointsForm] = useState({ lifetimePoints: '', note: '' });
 
@@ -49,9 +53,11 @@ export default function CustomersPage() {
   const openNew = () => {
     setSlide({});
     setForm(empty);
+    setFormError('');
   };
 
   const openEdit = (c) => {
+    setFormError('');
     setSlide(c);
     setForm({
       name: c.name || '',
@@ -64,10 +70,19 @@ export default function CustomersPage() {
 
   const submit = (e) => {
     e.preventDefault();
+    const mobile = form.mobile.trim();
+    const email = form.email.trim();
+    const mobileErr = validateMobile(mobile, branding.countryIso || 'LK');
+    const emailErr = validateEmail(email);
+    if (mobileErr || emailErr) {
+      setFormError(mobileErr || emailErr);
+      return;
+    }
+    setFormError('');
     const payload = {
       name: form.name.trim(),
-      mobile: form.mobile.trim(),
-      email: form.email.trim(),
+      mobile,
+      email,
       notes: form.notes.trim(),
       ...(form.birthday ? { birthday: new Date(form.birthday).toISOString() } : { birthday: null }),
     };
@@ -185,16 +200,32 @@ export default function CustomersPage() {
               </p>
             </div>
           ) : null}
-          {['name', 'mobile', 'email'].map((k) => (
-            <div key={k}>
-              <label className="block text-xs text-slate-400 mb-1 capitalize">{k}</label>
-              <input
-                value={form[k]}
-                onChange={(e) => setForm((f) => ({ ...f, [k]: e.target.value }))}
-                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-3 py-2 text-[var(--pos-text-primary)] text-sm"
-              />
-            </div>
-          ))}
+          {[
+            { key: 'name', type: 'text', label: 'Name' },
+            { key: 'mobile', type: 'tel', label: `Mobile (${branding.countryIso || 'LK'})` },
+            { key: 'email', type: 'email', label: 'Email' },
+          ].map(({ key, type, label }) => {
+            const hasErr = !!formError && (
+              (key === 'mobile' && formError.toLowerCase().includes('mobile')) ||
+              (key === 'email' && formError.toLowerCase().includes('email'))
+            );
+            return (
+              <div key={key}>
+                <label className="block text-xs text-slate-400 mb-1">{label}</label>
+                <input
+                  type={type}
+                  value={form[key]}
+                  onChange={(e) => { setForm((f) => ({ ...f, [key]: e.target.value })); setFormError(''); }}
+                  className={`w-full bg-[var(--pos-surface-inset)] border rounded-xl px-3 py-2 text-[var(--pos-text-primary)] text-sm ${
+                    hasErr ? 'border-red-500' : 'border-slate-700'
+                  }`}
+                />
+              </div>
+            );
+          })}
+          {formError && (
+            <p className="text-xs text-red-400 leading-snug -mt-1">{formError}</p>
+          )}
           <div>
             <label className="block text-xs text-slate-400 mb-1">Birthday</label>
             <input
