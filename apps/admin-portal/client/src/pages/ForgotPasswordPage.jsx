@@ -30,7 +30,7 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen flex items-center justify-center px-4 bg-brand-brown-deep">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <img src="/cafinity-logo.png" alt="Cafinity" className="h-14 w-auto mx-auto mb-5 rounded-xl shadow-lg" />
+          <img src="/logo-2.png" alt="Cafinity" className="h-14 w-auto mx-auto mb-5 rounded-xl shadow-lg" />
           <h1 className="text-2xl font-bold text-white">Forgot password</h1>
           <p className="text-gray-400 text-sm mt-1">Enter your admin email — we will send a reset link if the account exists.</p>
         </div>

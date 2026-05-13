@@ -8,7 +8,8 @@ import {
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import { CASHIER_NAV_GROUPS } from '../../constants/cashierLinks';
-import CashierSessionGate, { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/CashierSessionGate';
+import CashierSessionGate from '../../components/cashier/CashierSessionGate';
+import { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/cashierSessionContext';
 import { mergeOrderLists } from '../../offline/mergeOrders.js';
 import { listPendingOrders } from '../../offline/idb.js';
 import { resolveLiveOrder, useSyncOfflineOrderSelection } from '../../offline/orderSelection.js';

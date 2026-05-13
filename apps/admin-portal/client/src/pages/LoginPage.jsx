@@ -64,7 +64,7 @@ export default function LoginPage() {
       )}
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <img src="/cafinity-logo.png" alt="Cafinity" className="h-14 w-auto mx-auto mb-5 rounded-xl shadow-lg" />
+          <img src="/logo-2.png" alt="Cafinity" className="h-14 w-auto mx-auto mb-5 rounded-xl shadow-lg" />
           <h1 className="text-2xl font-bold text-white">Cafinity Admin</h1>
           <p className="text-gray-400 text-sm mt-1">Sign in to manage merchants, plans, and approvals</p>
         </div>

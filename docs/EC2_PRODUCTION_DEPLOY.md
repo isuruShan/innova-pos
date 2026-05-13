@@ -169,9 +169,9 @@ You **do not** run `pnpm dev`, `vite`, or `vite preview` on the production serve
 
 In production:
 
-1. `**pnpm run build`** (above) writes static files to each app’s `**client/dist/**` folder.
+1. `**pnpm run build`** (above) writes static files to each app’s `**client/dist/`** folder.
 2. You start only the matching **Node server** with `**NODE_ENV=production`** (Step 8).
-3. That server serves `**dist**` as static files and `**/{*path}**` falls through to `**index.html**` for the React SPA (POS and admin portal already do this when `dist` exists; public web server does the same).
+3. That server serves `**dist`** as static files and `**/{*path}**` falls through to `**index.html**` for the React SPA (POS and admin portal already do this when `dist` exists; public web server does the same).
 
 So each **browser-facing site** is one process:
 
@@ -232,7 +232,7 @@ Nothing listens on **port 80** until you add Nginx (or another proxy). So `**htt
 
 ### Build the frontends for your IP
 
-`VITE_*` values are baked at **build** time. Use `**http://`** and the **same IP and ports** users will type in the browser (example `EIP=3.210.65.252`):
+`VITE_`* values are baked at **build** time. Use `**http://`** and the **same IP and ports** users will type in the browser (example `EIP=3.210.65.252`):
 
 ```bash
 export EIP=3.210.65.252
@@ -269,11 +269,11 @@ Backend-to-backend URLs on the **same** EC2 instance can stay on loopback, e.g. 
 
 - Traffic is **plain HTTP** — acceptable for testing; use **HTTPS + a domain** when you go live.
 - Browsers treat `**http://` plus a public IP** as an **untrustworthy** origin. Helmet’s `**Cross-Origin-Opener-Policy`** header is ignored there and can log a console warning — the app disables that header so the warning does not appear; **HTTPS** is still required for full “powerful features” guarantees.
-- Bookmarks must include `**:5000`** / `**:5001**` / `**:5002**` until you add Nginx on 80/443.
+- Bookmarks must include `**:5000`** / `**:5001`** / `**:5002**` until you add Nginx on 80/443.
 
 ### CORS and same-origin
 
-The API servers allow `**CORS_ORIGIN**` entries **and** requests whose `**Origin`** matches this server’s `**Host**` (same IP/port). That way the SPA loading `**/assets/***` from the same origin as the HTML is not blocked when `CORS_ORIGIN` omits the raw IP. Cross-origin calls (e.g. POS UI on `:5000` calling auth on `:3001`) still require both origins listed in `**CORS_ORIGIN**` on the target service.
+The API servers allow `**CORS_ORIGIN**` entries **and** requests whose `**Origin`** matches this server’s `**Host`** (same IP/port). That way the SPA loading `**/assets/***` from the same origin as the HTML is not blocked when `CORS_ORIGIN` omits the raw IP. Cross-origin calls (e.g. POS UI on `:5000` calling auth on `:3001`) still require both origins listed in `**CORS_ORIGIN**` on the target service.
 
 ---
 
@@ -321,7 +321,7 @@ logs/
 
 - Set `**LOG_DIR**` (e.g. `/var/log/cafinity`) so every service writes under that root **plus** its service folder.
 - Optional `**LOG_SERVICE_ID`**: override the folder name if deployment tooling forces it (defaults to the name passed to `createLogger`, e.g. `pos-server`).
-- `**LOG_LEVEL**`: e.g. `info`, `debug`.
+- `**LOG_LEVEL`**: e.g. `info`, `debug`.
 - **React/Vite “clients”** (POS UI, admin UI, public site) do not write Winston files; they run in the browser. Only the **backend** process that serves each app produces these logs (each backend already uses its own `createLogger(...)` name).
 
 ---
@@ -334,7 +334,7 @@ logs/
 | `AccessDeniedException` on startup                                         | Instance role missing `secretsmanager:GetSecretValue` or wrong secret ARN                                                                                                                                                                  |
 | App starts but env vars missing                                            | Secret JSON keys don’t match code; or `fill` mode and values already set in `.env` — use `override` or clear conflicting `.env` keys                                                                                                       |
 | `CORS` errors in browser                                                   | `CORS_ORIGIN` in production must include exact origins (scheme + host + port)                                                                                                                                                              |
-| Same-origin `/assets/*` 500 with `CORS: origin http://IP:PORT not allowed` | Deploy latest code (`createCorsMiddleware`); stack line inside `cors` at ~57 means **old** `index.js`. Or set `**CORS_ORIGIN`** to include that full `http://IP:PORT` until you redeploy. Stuck on EC2? See `**docs/EC2_CORS_HOTFIX.md**`. |
+| Same-origin `/assets/*` 500 with `CORS: origin http://IP:PORT not allowed` | Deploy latest code (`createCorsMiddleware`); stack line inside `cors` at ~57 means **old** `index.js`. Or set `**CORS_ORIGIN`** to include that full `http://IP:PORT` until you redeploy. Stuck on EC2? See `**docs/EC2_CORS_HOTFIX.md`**. |
 | Rate limits inconsistent across instances                                  | Set `REDIS_URL` / `RATE_LIMIT_REDIS_URL` and install deps (`pnpm install`)                                                                                                                                                                 |
 | Blank API in built SPA                                                     | Rebuild clients with correct `VITE_*` at build time                                                                                                                                                                                        |
 

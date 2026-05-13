@@ -18,6 +18,16 @@ async function attachFreshMenuImageUrls(items) {
 const { protect, authorize, tenantScope } = require('../middleware/auth');
 const { emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
+const { roundMoney2 } = require('../utils/orderHelpers');
+
+function sanitizeMenuPayload(body) {
+  if (!body || typeof body !== 'object') return body;
+  const next = { ...body };
+  if (next.price !== undefined && next.price !== null) {
+    next.price = roundMoney2(next.price);
+  }
+  return next;
+}
 
 const router = express.Router();
 
@@ -38,7 +48,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
     const storeId = await resolveWriteStoreId(req);
     if (!storeId) return res.status(400).json({ message: 'No store available for menu item creation' });
     const item = await MenuItem.create({
-      ...req.body,
+      ...sanitizeMenuPayload(req.body),
       image: '',
       tenantId: req.tenantId,
       storeId,
@@ -55,7 +65,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
   try {
     const item = await MenuItem.findOneAndUpdate(
       { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) },
-      { ...req.body, image: req.body.imageKey ? '' : req.body.image || '', updatedBy: req.user.id },
+      { ...sanitizeMenuPayload(req.body), image: req.body.imageKey ? '' : req.body.image || '', updatedBy: req.user.id },
       { new: true, runValidators: true }
     );
     if (!item) return res.status(404).json({ message: 'Menu item not found' });

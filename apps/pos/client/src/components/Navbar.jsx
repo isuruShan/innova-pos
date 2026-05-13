@@ -9,6 +9,7 @@ import { useTheme } from '../context/ThemeContext';
 import { navActiveLinkTextColor, tintedRowTextColor } from '../utils/colorContrast';
 import ThemeToggle from './ThemeToggle';
 import NotificationBell from './NotificationBell';
+import CashierSessionNavButton from './cashier/CashierSessionNavButton';
 import OfflineBanner from './OfflineBanner';
 
 const ROLE_BADGE = {
@@ -416,6 +417,7 @@ export default function Navbar({ links = [], groups: groupsProp }) {
             <NotificationBell />
           </div>
         ) : null}
+        <CashierSessionNavButton />
         {user?.tenantId && stores.length > 0 && (
           <StoreSwitcher
             stores={stores}

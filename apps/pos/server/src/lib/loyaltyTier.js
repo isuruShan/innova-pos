@@ -3,6 +3,7 @@
  * @param {Array<{ level: number, minLifetimePoints: number }>} tiers
  */
 function tierFromPoints(points, tiers) {
+  if (!tiers?.length) return null;
   const sorted = [...tiers].sort((a, b) => a.minLifetimePoints - b.minLifetimePoints);
   let match = sorted[0] || null;
   for (const t of sorted) {
@@ -11,17 +12,28 @@ function tierFromPoints(points, tiers) {
   return match;
 }
 
+/** Fallback when no tier row matches (never return null — callers use `.level`). */
+const DEFAULT_TIER = { level: 1, minLifetimePoints: 0, name: 'Member' };
+
 /**
  * Effective tier document for perks / min-tier checks.
  */
 function getEffectiveTier(customer, tiers) {
-  const pts = Math.max(0, Number(customer.lifetimePoints || 0));
-  const ov = customer.loyaltyTierOverrideLevel;
+  const safeTiers = Array.isArray(tiers) ? tiers.filter(Boolean) : [];
+  if (!safeTiers.length) {
+    return { ...DEFAULT_TIER };
+  }
+  const cust = customer || {};
+  const pts = Math.max(0, Number(cust.lifetimePoints || 0));
+  const ov = cust.loyaltyTierOverrideLevel;
   if (ov != null && ov !== '') {
-    const forced = tiers.find((t) => t.level === ov);
+    const forced = safeTiers.find((t) => Number(t.level) === Number(ov));
     if (forced) return forced;
   }
-  return tierFromPoints(pts, tiers);
+  const fromPoints = tierFromPoints(pts, safeTiers);
+  if (fromPoints) return fromPoints;
+  const low = lowestTier(safeTiers);
+  return low || { ...DEFAULT_TIER, name: safeTiers[0]?.name || DEFAULT_TIER.name };
 }
 
 function lowestTier(tiers) {

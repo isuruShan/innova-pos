@@ -24,7 +24,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-3 mb-4">
-              <img src="/cafinity-logo.png" alt="Cafinity" className="h-9 w-auto rounded-lg" />
+              <img src="/logo-1.png" alt="Cafinity" className="h-9 w-auto rounded-lg" />
             </div>
             <p className="text-gray-400 text-sm leading-relaxed mb-6 max-w-sm">
               Cafinity is cafe-focused POS software — built for espresso bars, brunch counters, and busy service floors.

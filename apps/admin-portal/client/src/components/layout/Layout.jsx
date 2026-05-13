@@ -86,7 +86,7 @@ export default function Layout({ children }) {
 
         {/* Logo */}
         <div className="flex items-center gap-2.5 px-5 h-16 border-b border-white/10 shrink-0">
-          <img src="/cafinity-logo.png" alt="Cafinity" className="h-8 w-auto shrink-0 rounded-md" />
+          <img src="/logo-2.png" alt="Cafinity" className="h-8 w-auto shrink-0 rounded-md" />
           <div className="min-w-0">
             <p className="text-gray-400 text-xs leading-tight">
               {isSuperAdmin ? 'Super Admin' : 'Admin Portal'}
@@ -105,7 +105,7 @@ export default function Layout({ children }) {
         )}
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+        <nav className="admin-sidebar-scroll flex-1 overflow-y-auto overscroll-contain py-4 px-3 space-y-1">
           {(isSuperAdmin ? SUPERADMIN_NAV_GROUPS : ADMIN_NAV_GROUPS).map((group) => (
             <details key={group.title} open className="group mb-1">
               <summary className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500 font-semibold cursor-pointer list-none flex items-center justify-between select-none [&::-webkit-details-marker]:hidden">

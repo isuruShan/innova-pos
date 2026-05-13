@@ -119,7 +119,7 @@ export default function SignupPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="px-4 py-5 border-b bg-white">
         <Link to="/" className="flex items-center w-fit">
-          <img src="/cafinity-logo.png" alt="Cafinity" className="h-10 w-auto rounded-lg shadow-sm" />
+          <img src="/logo-1.png" alt="Cafinity" className="h-10 w-auto rounded-lg shadow-sm" />
         </Link>
       </div>
 

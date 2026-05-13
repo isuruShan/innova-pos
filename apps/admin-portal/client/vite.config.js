@@ -16,19 +16,19 @@ const pwaManifest = {
   // Chrome requires at least one 192px and one 512px icon to show the install prompt.
   icons: [
     {
-      src: 'cafinity-logo.png',
+      src: 'logo-2.png',
       sizes: '192x192',
       type: 'image/png',
       purpose: 'any',
     },
     {
-      src: 'cafinity-logo.png',
+      src: 'logo-2.png',
       sizes: '512x512',
       type: 'image/png',
       purpose: 'any',
     },
     {
-      src: 'cafinity-logo.png',
+      src: 'logo-2.png',
       sizes: '512x512',
       type: 'image/png',
       purpose: 'maskable',
@@ -42,7 +42,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['cafinity-logo.png'],
+      includeAssets: ['logo-2.png'],
       manifest: pwaManifest,
       // Enable service worker in dev so PWA features are testable locally.
       devOptions: {

@@ -47,7 +47,7 @@ export default function Login() {
       </div>
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-5">
-          <img src="/cafinity-logo.png" alt="Cafinity" className="h-14 w-auto rounded-xl shadow-lg" />
+          <img src="/logo-1.png" alt="Cafinity" className="h-14 w-auto rounded-xl shadow-lg" />
         </div>
         <div className="bg-[var(--pos-panel)] rounded-2xl p-8 shadow-2xl border border-slate-700/50">
           <div className="text-center mb-6">

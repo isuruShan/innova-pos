@@ -373,7 +373,8 @@ export default function MenuManagement() {
   const handleSubmit = (e) => {
     e.preventDefault();
     setFormError('');
-    const payload = { ...form, price: parseFloat(form.price) };
+    const rawPrice = Number(form.price);
+    const payload = { ...form, price: Number.isFinite(rawPrice) ? Math.round(rawPrice * 100) / 100 : NaN };
     if (!payload.name.trim()) return setFormError('Name is required');
     if (isNaN(payload.price) || payload.price < 0) return setFormError('Price must be a positive number');
     if (payload.isCombo && payload.comboItems.length === 0)

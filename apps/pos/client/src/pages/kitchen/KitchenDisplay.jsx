@@ -289,7 +289,7 @@ export default function KitchenDisplay() {
       {/* Header */}
       <div className="bg-[#111827] border-b border-slate-700/50 px-4 py-2.5 flex items-center justify-between gap-4 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <img src="/cafinity-logo.png" alt="Cafinity" className="h-8 w-auto object-contain rounded-md" />
+          <img src="/logo-1.png" alt="Cafinity" className="h-8 w-auto object-contain rounded-md" />
           <span className="font-bold text-[var(--pos-text-primary)] text-sm tracking-wide hidden sm:block">Cafinity</span>
           <div className="w-px h-5 bg-slate-700" />
           <ChefHat size={16} className="text-amber-400" />

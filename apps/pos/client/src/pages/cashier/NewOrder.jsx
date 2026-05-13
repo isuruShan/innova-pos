@@ -8,7 +8,8 @@ import {
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import { CASHIER_NAV_GROUPS } from '../../constants/cashierLinks';
-import CashierSessionGate, { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/CashierSessionGate';
+import CashierSessionGate from '../../components/cashier/CashierSessionGate';
+import { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/cashierSessionContext';
 import { ORDER_TYPES, ORDER_TYPE_MAP } from '../../components/OrderTypeBadge';
 import { formatCurrency } from '../../utils/format';
 import { useBranding } from '../../context/BrandingContext';
@@ -564,7 +565,7 @@ export default function NewOrder() {
       return [...prev, {
         menuItem: item._id,
         name: item.name,
-        price: item.price,
+        price: Math.round(Number(item.price) * 100) / 100,
         qty: 1,
         category: item.category || '',
         isCombo: item.isCombo || false,
@@ -642,14 +643,14 @@ export default function NewOrder() {
 
   const automaticLoyaltyDiscount = useMemo(() => {
     if (!selectedCustomer || loyaltyConfig?.isEnabled === false || !automaticLoyaltyRewards.length) return 0;
-    const eff = customerLoyalty?.loyalty?.effectiveTier;
     let remaining = Math.max(0, subtotal - promoDiscountOnly);
     let total = 0;
     const sorted = [...automaticLoyaltyRewards].sort((a, b) =>
       String(a.createdAt || '').localeCompare(String(b.createdAt || '')),
     );
     for (const reward of sorted) {
-      if (eff && reward.minTierLevel != null && eff.level < reward.minTierLevel) continue;
+      const tierLv = Number(customerLoyalty?.loyalty?.effectiveTier?.level ?? 1);
+      if (reward.minTierLevel != null && tierLv < reward.minTierLevel) continue;
       const d = computeLoyaltyRewardDiscount(reward, cart, remaining);
       if (d <= 0) continue;
       remaining -= d;
@@ -670,8 +671,8 @@ export default function NewOrder() {
     if (!selectedLoyaltyRewardId || !selectedCustomer || loyaltyConfig?.isEnabled === false) return 0;
     const reward = redeemableLoyaltyRewards.find((r) => sid(r._id) === sid(selectedLoyaltyRewardId));
     if (!reward) return 0;
-    const eff = customerLoyalty?.loyalty?.effectiveTier;
-    if (eff && reward.minTierLevel != null && eff.level < reward.minTierLevel) return 0;
+    const tierLv = Number(customerLoyalty?.loyalty?.effectiveTier?.level ?? 1);
+    if (reward.minTierLevel != null && tierLv < reward.minTierLevel) return 0;
     const pts = Number(customerLoyalty?.lifetimePoints ?? selectedCustomer?.lifetimePoints ?? 0);
     if (pts < Number(reward.pointsCost || 0)) return 0;
     const afterPromoAndAuto = Math.max(0, subtotal - promoDiscountOnly - automaticLoyaltyDiscount);
@@ -845,113 +846,48 @@ export default function NewOrder() {
             )}
           </div>
 
-          {/* Order type selector */}
-          <div className="px-4 pt-4 space-y-3">
-            <label className="block text-xs font-medium text-slate-400">Order Type</label>
-            <div className="grid grid-cols-2 gap-1.5">
-              {ORDER_TYPES.map(type => (
-                <button
-                  key={type.id}
-                  type="button"
-                  onClick={() => { setOrderType(type.id); setTableNumber(''); setReference(''); }}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition ${
-                    orderType === type.id
-                      ? `${type.activeBg} text-[var(--pos-selection-text)] border-transparent shadow-lg`
-                      : `bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:border-slate-600 hover:text-[var(--pos-text-primary)]`
-                  }`}
-                >
-                  <span className="text-base">{type.icon}</span>
-                  <span className="truncate">{type.label}</span>
-                </button>
+          {/* Order type — dropdown */}
+          <div className="px-4 pt-4 pb-2">
+            <label htmlFor="neworder-order-type" className="block text-xs font-medium text-slate-400 mb-1.5">
+              Order type
+            </label>
+            <select
+              id="neworder-order-type"
+              value={orderType}
+              onChange={(e) => {
+                const v = e.target.value;
+                setOrderType(v);
+                setTableNumber('');
+                setReference('');
+                setSelectedTableId('');
+              }}
+              className="w-full rounded-xl border border-slate-700 bg-[var(--pos-surface-inset)] px-3 py-2.5 text-sm font-medium text-[var(--pos-text-primary)] focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+            >
+              {ORDER_TYPES.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.icon} {type.label}
+                </option>
               ))}
-            </div>
-
-            {/* Conditional input */}
-            {orderType === 'dine-in' && tableMgmt ? (
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">Table *</label>
-                {!cafeTables.length ? (
-                  <p className="text-xs text-amber-400/90 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2">
-                    No tables configured for this store. A manager can add tables under Manager → Café tables & QR after enabling table management.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-1">
-                    {cafeTables
-                      .filter((t) => t.active !== false)
-                      .map((t) => {
-                        const busy = occupancyByTable.has(String(t._id));
-                        const sel = selectedTableId === String(t._id);
-                        return (
-                          <button
-                            key={t._id}
-                            type="button"
-                            disabled={busy}
-                            title={busy ? 'Table has an active order' : undefined}
-                            onClick={() => setSelectedTableId(String(t._id))}
-                            className={`rounded-xl border px-2 py-2 text-sm font-medium transition ${
-                              busy
-                                ? 'border-slate-700 bg-slate-800/50 text-slate-600 cursor-not-allowed'
-                                : sel
-                                  ? 'border-amber-500 bg-amber-500/20 text-amber-300'
-                                  : 'border-slate-700 bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] hover:border-slate-600'
-                            }`}
-                          >
-                            {t.label}
-                            {busy ? <span className="block text-[10px] text-slate-500 font-normal">In use</span> : null}
-                          </button>
-                        );
-                      })}
-                  </div>
-                )}
-              </div>
-            ) : orderType === 'dine-in' ? (
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">Table Number *</label>
-                <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 focus-within:border-blue-500 px-3 py-2.5 transition">
-                  <Hash size={14} className="text-slate-500" />
-                  <input
-                    type="text"
-                    value={tableNumber}
-                    onChange={e => setTableNumber(e.target.value)}
-                    placeholder="e.g. 7"
-                    className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
-                  />
-                </div>
-              </div>
-            ) : (
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">{activeType.hint}</label>
-                <div className={`flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 ${referenceFocusRing} px-3 py-2.5 transition`}>
-                  <span className="text-sm">{activeType.icon}</span>
-                  <input
-                    type="text"
-                    value={reference}
-                    onChange={e => setReference(e.target.value)}
-                    placeholder={activeType.placeholder}
-                    className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
-                  />
-                </div>
-              </div>
-            )}
+            </select>
           </div>
 
-          {/* Customer & loyalty (optional) */}
-          <div className="px-4 pb-3 space-y-3 border-b border-slate-700/40">
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Customer (optional)</label>
-              <div className="relative">
+          {/* Customer + table / reference (side by side on sm+) */}
+          <div className="px-4 pb-3 space-y-2 border-b border-slate-700/40">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+              <div className="min-w-0 relative z-[70]">
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Customer (optional)</label>
                 <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 px-3 py-2">
                   <Search size={14} className="text-slate-500 shrink-0" />
                   <input
                     type="text"
                     value={customerSearch}
                     onChange={(e) => setCustomerSearch(e.target.value)}
-                    placeholder="Search name, email, mobile…"
+                    placeholder="Search…"
                     className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600 min-w-0"
                   />
                 </div>
                 {searchQ.length >= 2 && customerHits.length > 0 && !selectedCustomer && (
-                  <ul className="absolute left-0 right-0 top-full mt-1 z-[80] max-h-40 overflow-y-auto rounded-xl border border-slate-700 bg-[var(--pos-panel)] shadow-xl">
+                  <ul className="absolute left-0 right-0 top-full mt-1 z-[90] max-h-40 overflow-y-auto rounded-xl border border-slate-700 bg-[var(--pos-panel)] shadow-xl sm:left-0 sm:right-auto sm:w-[min(100%,18rem)]">
                     {customerHits.slice(0, 8).map((c) => (
                       <li key={c._id}>
                         <button
@@ -970,117 +906,179 @@ export default function NewOrder() {
                   </ul>
                 )}
               </div>
-              {!selectedCustomer && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => { setShowCustomerForm((v) => !v); setQuickFormError(''); }}
-                    className="mt-2 flex items-center gap-1.5 text-xs font-medium text-amber-400 hover:text-amber-300"
-                  >
-                    <UserPlus size={13} />
-                    {showCustomerForm ? 'Hide new customer' : 'New customer (optional)'}
-                  </button>
-                  {showCustomerForm && (
-                    <div className="mt-2 space-y-2 rounded-xl border border-slate-700/80 bg-[var(--pos-panel)]/50 p-3">
+
+              <div className="min-w-0">
+                {orderType === 'dine-in' && tableMgmt ? (
+                  <>
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5">Table *</label>
+                    {!cafeTables.length ? (
+                      <p className="text-[10px] leading-snug text-amber-400/90 bg-amber-500/10 border border-amber-500/25 rounded-lg px-2 py-1.5">
+                        No tables configured. Add tables under Manager → Café tables &amp; QR.
+                      </p>
+                    ) : (
+                      <select
+                        value={selectedTableId}
+                        onChange={(e) => setSelectedTableId(e.target.value)}
+                        className="w-full rounded-xl border border-slate-700 bg-[var(--pos-surface-inset)] px-3 py-2 text-sm text-[var(--pos-text-primary)] focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                      >
+                        <option value="">Select table…</option>
+                        {cafeTables
+                          .filter((t) => t.active !== false)
+                          .map((t) => {
+                            const busy = occupancyByTable.has(String(t._id));
+                            return (
+                              <option key={t._id} value={String(t._id)} disabled={busy}>
+                                {t.label}{busy ? ' (in use)' : ''}
+                              </option>
+                            );
+                          })}
+                      </select>
+                    )}
+                  </>
+                ) : orderType === 'dine-in' ? (
+                  <>
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5">Table # *</label>
+                    <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 focus-within:border-blue-500 px-3 py-2 transition">
+                      <Hash size={14} className="text-slate-500 shrink-0" />
                       <input
                         type="text"
-                        value={quickName}
-                        onChange={(e) => { setQuickName(e.target.value); setQuickFormError(''); }}
-                        placeholder="Name"
-                        className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)]"
+                        value={tableNumber}
+                        onChange={(e) => setTableNumber(e.target.value)}
+                        placeholder="e.g. 7"
+                        className="flex-1 min-w-0 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
                       />
-                      <div>
-                        <input
-                          type="tel"
-                          value={quickMobile}
-                          onChange={(e) => { setQuickMobile(e.target.value); setQuickFormError(''); }}
-                          placeholder={`Mobile (${branding.countryIso || 'LK'})`}
-                          className={`w-full bg-[var(--pos-surface-inset)] border rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)] ${
-                            quickFormError && quickFormError.toLowerCase().includes('mobile')
-                              ? 'border-red-500'
-                              : 'border-slate-700'
-                          }`}
-                        />
-                      </div>
-                      <div>
-                        <input
-                          type="email"
-                          value={quickEmail}
-                          onChange={(e) => { setQuickEmail(e.target.value); setQuickFormError(''); }}
-                          placeholder="Email"
-                          className={`w-full bg-[var(--pos-surface-inset)] border rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)] ${
-                            quickFormError && quickFormError.toLowerCase().includes('email')
-                              ? 'border-red-500'
-                              : 'border-slate-700'
-                          }`}
-                        />
-                      </div>
-                      {quickFormError && (
-                        <p className="text-xs text-red-400 leading-snug">{quickFormError}</p>
-                      )}
-                      <button
-                        type="button"
-                        disabled={upsertCustomerMutation.isPending}
-                        onClick={() => {
-                          const name = quickName.trim();
-                          const mobile = quickMobile.trim();
-                          const email = quickEmail.trim();
-                          if (!name && !mobile && !email) {
-                            showToast('Enter at least name, mobile, or email');
-                            return;
-                          }
-                          const mobileErr = validateMobile(mobile, branding.countryIso || 'LK');
-                          const emailErr = validateEmail(email);
-                          if (mobileErr || emailErr) {
-                            setQuickFormError(mobileErr || emailErr);
-                            return;
-                          }
-                          setQuickFormError('');
-                          upsertCustomerMutation.mutate({ name, mobile, email });
-                        }}
-                        className="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white text-sm font-semibold"
-                      >
-                        {upsertCustomerMutation.isPending ? 'Saving…' : 'Save & attach'}
-                      </button>
-                      <p className="text-[10px] text-slate-500 leading-snug">
-                        If mobile or email matches an existing customer, that profile is used.
-                      </p>
                     </div>
-                  )}
-                </>
-              )}
-              {selectedCustomer && (
-                <div className="mt-2 flex items-center gap-2 flex-wrap">
-                  <span className="inline-flex items-center gap-1.5 text-xs bg-sky-500/15 text-sky-300 border border-sky-500/30 rounded-full px-2.5 py-1">
-                    <User size={11} />
-                    {customerLoyalty?.name || selectedCustomer.name || 'Customer'}
-                    {customerLoyalty?.lifetimePoints != null && (
-                      <span className="text-sky-200/90">
-                        · {customerLoyalty.lifetimePoints} pts
-                        {customerLoyalty?.loyalty?.effectiveTier?.name && (
-                          <> · {customerLoyalty.loyalty.effectiveTier.name}</>
-                        )}
-                      </span>
-                    )}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedCustomer(null);
-                      setCustomerSearch('');
-                      setSelectedLoyaltyRewardId('');
-                      setShowCustomerForm(false);
-                      setQuickName('');
-                      setQuickMobile('');
-                      setQuickEmail('');
-                    }}
-                    className="text-xs text-slate-500 hover:text-red-400"
-                  >
-                    Clear
-                  </button>
-                </div>
-              )}
+                  </>
+                ) : (
+                  <>
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5 truncate" title={activeType.hint}>
+                      {activeType.hint}
+                    </label>
+                    <div className={`flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 ${referenceFocusRing} px-3 py-2 transition`}>
+                      <span className="text-sm shrink-0">{activeType.icon}</span>
+                      <input
+                        type="text"
+                        value={reference}
+                        onChange={(e) => setReference(e.target.value)}
+                        placeholder={activeType.placeholder}
+                        className="flex-1 min-w-0 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
+
+            {!selectedCustomer && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => { setShowCustomerForm((v) => !v); setQuickFormError(''); }}
+                  className="mt-1 flex items-center gap-1.5 text-xs font-medium text-amber-400 hover:text-amber-300"
+                >
+                  <UserPlus size={13} />
+                  {showCustomerForm ? 'Hide new customer' : 'New customer (optional)'}
+                </button>
+                {showCustomerForm && (
+                  <div className="mt-2 space-y-2 rounded-xl border border-slate-700/80 bg-[var(--pos-panel)]/50 p-3">
+                    <input
+                      type="text"
+                      value={quickName}
+                      onChange={(e) => { setQuickName(e.target.value); setQuickFormError(''); }}
+                      placeholder="Name"
+                      className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)]"
+                    />
+                    <div>
+                      <input
+                        type="tel"
+                        value={quickMobile}
+                        onChange={(e) => { setQuickMobile(e.target.value); setQuickFormError(''); }}
+                        placeholder={`Mobile (${branding.countryIso || 'LK'})`}
+                        className={`w-full bg-[var(--pos-surface-inset)] border rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)] ${
+                          quickFormError && quickFormError.toLowerCase().includes('mobile')
+                            ? 'border-red-500'
+                            : 'border-slate-700'
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="email"
+                        value={quickEmail}
+                        onChange={(e) => { setQuickEmail(e.target.value); setQuickFormError(''); }}
+                        placeholder="Email"
+                        className={`w-full bg-[var(--pos-surface-inset)] border rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)] ${
+                          quickFormError && quickFormError.toLowerCase().includes('email')
+                            ? 'border-red-500'
+                            : 'border-slate-700'
+                        }`}
+                      />
+                    </div>
+                    {quickFormError && (
+                      <p className="text-xs text-red-400 leading-snug">{quickFormError}</p>
+                    )}
+                    <button
+                      type="button"
+                      disabled={upsertCustomerMutation.isPending}
+                      onClick={() => {
+                        const name = quickName.trim();
+                        const mobile = quickMobile.trim();
+                        const email = quickEmail.trim();
+                        if (!name && !mobile && !email) {
+                          showToast('Enter at least name, mobile, or email');
+                          return;
+                        }
+                        const mobileErr = validateMobile(mobile, branding.countryIso || 'LK');
+                        const emailErr = validateEmail(email);
+                        if (mobileErr || emailErr) {
+                          setQuickFormError(mobileErr || emailErr);
+                          return;
+                        }
+                        setQuickFormError('');
+                        upsertCustomerMutation.mutate({ name, mobile, email });
+                      }}
+                      className="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white text-sm font-semibold"
+                    >
+                      {upsertCustomerMutation.isPending ? 'Saving…' : 'Save & attach'}
+                    </button>
+                    <p className="text-[10px] text-slate-500 leading-snug">
+                      If mobile or email matches an existing customer, that profile is used.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+            {selectedCustomer && (
+              <div className="mt-1 flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 text-xs bg-sky-500/15 text-sky-300 border border-sky-500/30 rounded-full px-2.5 py-1">
+                  <User size={11} />
+                  {customerLoyalty?.name || selectedCustomer.name || 'Customer'}
+                  {customerLoyalty?.lifetimePoints != null && (
+                    <span className="text-sky-200/90">
+                      · {customerLoyalty.lifetimePoints} pts
+                      {customerLoyalty?.loyalty?.effectiveTier?.name && (
+                        <> · {customerLoyalty.loyalty.effectiveTier.name}</>
+                      )}
+                    </span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCustomer(null);
+                    setCustomerSearch('');
+                    setSelectedLoyaltyRewardId('');
+                    setShowCustomerForm(false);
+                    setQuickName('');
+                    setQuickMobile('');
+                    setQuickEmail('');
+                  }}
+                  className="text-xs text-slate-500 hover:text-red-400"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
 
             {loyaltyConfig?.isEnabled !== false && selectedCustomer && cart.length > 0 && (
               <div>
@@ -1116,10 +1114,10 @@ export default function NewOrder() {
             )}
           </div>
 
-          {/* Cart items */}
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+          {/* Cart items — min height ~2 line items */}
+          <div className="flex-1 min-h-[11rem] overflow-y-auto px-4 py-3 space-y-2">
             {cart.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-40 text-slate-600">
+              <div className="flex flex-col items-center justify-center min-h-[10rem] text-slate-600">
                 <ShoppingCart size={32} className="mb-2 opacity-40" />
                 <p className="text-sm">Cart is empty</p>
                 <p className="text-xs mt-1">Tap menu items to add</p>

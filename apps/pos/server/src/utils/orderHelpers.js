@@ -1,6 +1,13 @@
 const MenuItem = require('../models/MenuItem');
 const Settings = require('../models/Settings');
 
+/** Money in dollars/cents — avoid float drift (e.g. 319.999999). */
+function roundMoney2(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return 0;
+  return Math.round(x * 100) / 100;
+}
+
 async function enrichItems(items, tenantId, storeId) {
   const menuIds = items.map((i) => i.menuItem);
   const menuDocs = await MenuItem.find({ _id: { $in: menuIds }, tenantId, storeId }).lean();
@@ -13,7 +20,7 @@ async function enrichItems(items, tenantId, storeId) {
       name: doc?.name || i.name,
       category: doc?.category || '',
       qty,
-      price: Number(doc?.price ?? i.price) || 0,
+      price: roundMoney2(doc?.price ?? i.price),
       isCombo: false,
       comboItems: [],
       deliveredToTable: false,
@@ -48,7 +55,7 @@ async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId) {
       name: doc.name,
       category: doc.category || '',
       qty,
-      price: Number(doc.price) || 0,
+      price: roundMoney2(doc.price),
       isCombo: false,
       comboItems: [],
       deliveredToTable: prev
@@ -132,6 +139,7 @@ async function appendItemsToOrder(order, rawItems, tenantId, storeId) {
 }
 
 module.exports = {
+  roundMoney2,
   enrichItems,
   mergeItemsForUpdate,
   recalculateOrderMoney,
