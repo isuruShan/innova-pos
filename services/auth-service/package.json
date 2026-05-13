@@ -6,7 +6,9 @@
   "type": "commonjs",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "seed": "node src/seed.js",
+    "remove-super-admin": "node src/remove-super-admin.js"
   },
   "dependencies": {
     "@innovapos/mongo-connection": "workspace:*",
