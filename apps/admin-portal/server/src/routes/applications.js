@@ -8,6 +8,7 @@ const Store = require('../models/Store');
 const { authenticateJWT, authorize, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { sendWelcomeEmail, sendRejectionEmail } = require('../utils/mailer');
 const { childLogger } = require('@innovapos/logger');
+const { allocateStoreCode, formatStoreAddressFromApplication } = require('../lib/storeProvisioning');
 
 const router = express.Router();
 
