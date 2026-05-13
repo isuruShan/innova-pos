@@ -27,6 +27,30 @@ const router = express.Router();
 const VALID_STATUSES = ['pending', 'preparing', 'ready', 'completed', 'cancelled'];
 const FORWARD_TRANSITIONS = { pending: 'preparing', preparing: 'ready', ready: 'completed' };
 
+function itemKitchenAddsSignature(items) {
+  return (items || [])
+    .filter((i) => i.kitchenNew && !i.deliveredToTable)
+    .map((i) => `${String(i._id || '')}:${Number(i.qty)}:${i.kitchenPendingQty ?? ''}`)
+    .sort()
+    .join('|');
+}
+
+function syncKitchenAddsStatusAfterItemChange(order, sigBefore) {
+  if (!['preparing', 'ready'].includes(order.status)) {
+    order.kitchenAddsStatus = null;
+    return;
+  }
+  const hasAdds = (order.items || []).some((i) => i.kitchenNew && !i.deliveredToTable);
+  if (!hasAdds) {
+    order.kitchenAddsStatus = null;
+    return;
+  }
+  const sigAfter = itemKitchenAddsSignature(order.items);
+  if (sigAfter !== sigBefore) {
+    order.kitchenAddsStatus = 'pending_adds';
+  }
+}
+
 async function assertTableAvailable({ tenantId, storeId, tableId, excludeOrderId }) {
   if (!tableId) return;
   const filter = {
@@ -422,9 +446,11 @@ router.put('/:id', protect, authorize('cashier', 'manager', 'merchant_admin'), t
     if (reference !== undefined) order.reference = reference;
 
     if (items && items.length > 0) {
+      const sigBefore = itemKitchenAddsSignature(order.items);
       const merged = await mergeItemsForUpdate(order.items, items, req.tenantId, order.storeId, order.status);
       order.items = merged;
       await recalculateOrderMoney(order);
+      syncKitchenAddsStatusAfterItemChange(order, sigBefore);
     }
 
     order.updatedBy = req.user.id;
@@ -462,6 +488,38 @@ router.put(
   },
 );
 
+// PUT advance kitchen “pending adds” → “preparing adds” (order stays preparing/ready)
+router.put(
+  '/:id/kitchen-adds-advance',
+  protect,
+  authorize('kitchen', 'manager', 'merchant_admin'),
+  tenantScope,
+  resolveSelectedStore,
+  async (req, res) => {
+    try {
+      const order = await Order.findOne({ _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) });
+      if (!order) return res.status(404).json({ message: 'Order not found' });
+      if (!['preparing', 'ready'].includes(order.status)) {
+        return res.status(400).json({ message: 'Kitchen adds flow only applies while the order is preparing or ready.' });
+      }
+      const hasAdds = (order.items || []).some((i) => i.kitchenNew && !i.deliveredToTable);
+      if (!hasAdds) return res.status(400).json({ message: 'No new items to advance.' });
+      if (order.kitchenAddsStatus === 'preparing_adds') {
+        return res.json(order);
+      }
+      if (order.kitchenAddsStatus != null && order.kitchenAddsStatus !== 'pending_adds') {
+        return res.status(400).json({ message: 'Invalid kitchen adds state.' });
+      }
+      order.kitchenAddsStatus = 'preparing_adds';
+      order.updatedBy = req.user.id;
+      await order.save();
+      res.json(order);
+    } catch (err) {
+      res.status(400).json({ message: err.message });
+    }
+  },
+);
+
 // PUT clear kitchen "new line" highlights (kitchen staff)
 router.put(
   '/:id/clear-kitchen-new',
@@ -477,6 +535,7 @@ router.put(
         line.kitchenNew = false;
         line.kitchenPendingQty = null;
       });
+      order.kitchenAddsStatus = null;
       order.updatedBy = req.user.id;
       await order.save();
       res.json(order);
@@ -543,6 +602,7 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
         line.kitchenNew = false;
         line.kitchenPendingQty = null;
       });
+      order.kitchenAddsStatus = null;
     }
 
     order.updatedBy = req.user.id;

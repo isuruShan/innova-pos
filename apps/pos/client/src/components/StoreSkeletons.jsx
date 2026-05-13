@@ -89,8 +89,8 @@ export function KanbanSkeleton({ columns = 5 }) {
 
 export function KitchenBoardSkeleton() {
   return (
-    <div className="h-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      {[1, 2, 3, 4].map((c) => (
+    <div className="h-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      {[1, 2, 3, 4, 5].map((c) => (
         <div key={c} className="flex flex-col min-h-0 space-y-3">
           <SkBlock className="h-10 w-full" />
           <div className="space-y-3 flex-1">

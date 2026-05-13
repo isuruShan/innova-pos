@@ -111,16 +111,6 @@ app.use('/api/customers', require('./routes/customers'));
 app.use('/api/loyalty', require('./routes/loyalty'));
 app.use('/api/notifications', require('./routes/notifications'));
 
-const publicTableLimiter = rateLimit({
-  ...limiterOpts,
-  windowMs: 15 * 60 * 1000,
-  max: 120,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: 'Too many requests — please try again later.' },
-});
-app.use('/api/public/table-order', publicTableLimiter, require('./routes/publicTableOrder'));
-
 app.get('/api/health', (_req, res) =>
   res.json({ status: 'ok', service: 'pos-server', env: process.env.NODE_ENV, ts: new Date().toISOString() })
 );

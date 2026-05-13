@@ -54,6 +54,14 @@ const orderSchema = new mongoose.Schema(
       enum: ['pending', 'preparing', 'ready', 'completed', 'cancelled'],
       default: 'pending',
     },
+    /**
+     * Kitchen sub-flow for mid-order line additions (order stays preparing/ready).
+     * pending_adds → (Start preparing) → preparing_adds → (Acknowledge / clear-kitchen-new) → null
+     */
+    kitchenAddsStatus: {
+      type: String,
+      default: null,
+    },
     subtotal: { type: Number, default: 0 },
     discountTotal: { type: Number, default: 0 },
     appliedPromotions: [{

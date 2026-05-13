@@ -20,19 +20,31 @@ import { shouldPrintReceiptForUpdatedOrder } from '../../utils/receiptPolicy';
 
 const REFRESH_INTERVAL = 10_000;
 
-/** Board columns: first lane is “new lines” on already-active orders (same order #). */
+/** Board: kitchen-adds pipeline (pending_adds → preparing_adds → acknowledge) then normal order columns. */
 const BOARD_COLUMNS = [
   {
-    key: 'new-lines',
-    kind: 'additions',
+    key: 'kitchen-adds-pending',
+    kind: 'adds-pending',
     label: 'Pending adds',
     dot: 'bg-orange-400',
     color: 'text-orange-400',
     border: 'border-orange-500/30',
     cardBorder: 'border-orange-500/30',
     headerBg: 'bg-orange-500/8',
-    btnLabel: 'Acknowledge',
+    btnLabel: 'Start preparing',
     btnClass: 'bg-orange-500 hover:bg-orange-400 active:bg-orange-600 text-[var(--pos-text-primary)]',
+  },
+  {
+    key: 'kitchen-adds-prepping',
+    kind: 'adds-prepping',
+    label: 'Preparing adds',
+    dot: 'bg-sky-400',
+    color: 'text-sky-400',
+    border: 'border-sky-500/30',
+    cardBorder: 'border-sky-500/30',
+    headerBg: 'bg-sky-500/8',
+    btnLabel: 'Acknowledge',
+    btnClass: 'bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-[var(--pos-text-primary)]',
   },
   {
     key: 'pending',
@@ -96,7 +108,26 @@ function kitchenLinesForStatusColumn(order, status) {
   return items.filter((i) => !i.deliveredToTable);
 }
 
-/** Pending adds: show incremental qty (kitchenPendingQty) when set, else full line qty for older orders. */
+function orderHasKitchenAdds(order) {
+  return (order.items || []).some((i) => i.kitchenNew && !i.deliveredToTable);
+}
+
+/** 'pending' | 'prepping' | null — drives which adds column the order appears in */
+function kitchenAddsPipelineStage(order) {
+  if (!['preparing', 'ready'].includes(order.status)) return null;
+  if (!orderHasKitchenAdds(order)) return null;
+  if (order.kitchenAddsStatus === 'preparing_adds') return 'prepping';
+  return 'pending';
+}
+
+function buildAddsBundle(order) {
+  const lines = (order.items || [])
+    .filter((i) => i.kitchenNew && !i.deliveredToTable)
+    .map((i) => mapKitchenAddsDisplayLine(i));
+  return lines.length ? { order, lines } : null;
+}
+
+/** Pending-adds cards: show incremental qty (kitchenPendingQty) when set, else full line qty for older orders. */
 function mapKitchenAddsDisplayLine(line) {
   const pq = line.kitchenPendingQty;
   const dq = pq != null && Number(pq) > 0 ? Number(pq) : Math.max(1, Number(line.qty) || 1);
@@ -144,8 +175,14 @@ function KitchenCard({
             reference={order.reference}
             size="xs"
           />
-          {col.kind === 'additions' && (
-            <span className="text-[9px] font-bold uppercase tracking-wide text-orange-200/90 border border-orange-500/35 rounded px-1 py-0.5 flex-shrink-0">
+          {(col.kind === 'adds-pending' || col.kind === 'adds-prepping') && (
+            <span
+              className={`text-[9px] font-bold uppercase tracking-wide rounded px-1 py-0.5 flex-shrink-0 border ${
+                col.kind === 'adds-prepping'
+                  ? 'text-sky-200/90 border-sky-500/35'
+                  : 'text-orange-200/90 border-orange-500/35'
+              }`}
+            >
               {order.status}
             </span>
           )}
@@ -158,7 +195,7 @@ function KitchenCard({
         {prepItems.length === 0 ? (
           <p className="text-xs text-slate-500 italic">
             {order.status === 'preparing' || order.status === 'ready'
-              ? 'New lines are in Pending adds until acknowledged'
+              ? 'New lines are in Pending adds → Preparing adds until acknowledged'
               : 'All items marked delivered to table'}
           </p>
         ) : null}
@@ -243,6 +280,7 @@ export default function KitchenDisplay() {
   );
   const navigate = useNavigate();
   const [advancingId, setAdvancingId] = useState(null);
+  const [advancingAddsId, setAdvancingAddsId] = useState(null);
   const [acknowledgingId, setAcknowledgingId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
@@ -284,6 +322,17 @@ export default function KitchenDisplay() {
 
   useSyncOfflineOrderSelection(orders, selectedOrder, setSelectedOrder);
 
+  const advanceAddsMutation = useMutation({
+    mutationFn: async (id) => {
+      const { data } = await api.put(`/orders/${encodeURIComponent(id)}/kitchen-adds-advance`);
+      return data;
+    },
+    onMutate: (id) => setAdvancingAddsId(id),
+    onSuccess: () => invalidate(),
+    onError: (err) => alert(err.response?.data?.message || 'Failed to advance new items'),
+    onSettled: () => setAdvancingAddsId(null),
+  });
+
   const advanceMutation = useMutation({
     mutationFn: async (id) => {
       const { data } = await api.put(`/orders/${encodeURIComponent(id)}/status`);
@@ -315,32 +364,47 @@ export default function KitchenDisplay() {
     onSettled: () => setAcknowledgingId(null),
   });
 
-  const additionBundles = useMemo(() => {
+  const addsPendingBundles = useMemo(() => {
     const out = [];
     for (const o of orders) {
       if (o._offlinePending) continue;
-      if (!['preparing', 'ready'].includes(o.status)) continue;
-      const lines = (o.items || [])
-        .filter((i) => i.kitchenNew && !i.deliveredToTable)
-        .map((i) => mapKitchenAddsDisplayLine(i));
-      if (lines.length) out.push({ order: o, lines });
+      if (kitchenAddsPipelineStage(o) !== 'pending') continue;
+      const b = buildAddsBundle(o);
+      if (b) out.push(b);
+    }
+    return out;
+  }, [orders]);
+
+  const addsPreppingBundles = useMemo(() => {
+    const out = [];
+    for (const o of orders) {
+      if (o._offlinePending) continue;
+      if (kitchenAddsPipelineStage(o) !== 'prepping') continue;
+      const b = buildAddsBundle(o);
+      if (b) out.push(b);
     }
     return out;
   }, [orders]);
 
   const grouped = useMemo(() => ({
-    'new-lines': additionBundles,
+    'kitchen-adds-pending': addsPendingBundles,
+    'kitchen-adds-prepping': addsPreppingBundles,
     pending: orders.filter((o) => o.status === 'pending'),
     preparing: orders.filter((o) => o.status === 'preparing'),
     ready: orders.filter((o) => o.status === 'ready'),
-  }), [orders, additionBundles]);
+  }), [orders, addsPendingBundles, addsPreppingBundles]);
 
   const lastUpdated = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : '--';
 
   const hasBoardContent =
-    grouped.pending.length + grouped.preparing.length + grouped.ready.length + additionBundles.length > 0;
+    grouped.pending.length +
+      grouped.preparing.length +
+      grouped.ready.length +
+      addsPendingBundles.length +
+      addsPreppingBundles.length >
+    0;
 
   const liveSelectedOrder = resolveLiveOrder(orders, selectedOrder);
 
@@ -386,26 +450,57 @@ export default function KitchenDisplay() {
             <p className="text-sm mt-1 opacity-60">No active orders right now</p>
           </div>
         ) : (
-          <div className="h-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="h-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {BOARD_COLUMNS.map((col) => {
-              if (col.kind === 'additions') {
-                const bundles = grouped['new-lines'];
+              if (col.kind === 'adds-pending') {
+                const bundles = grouped['kitchen-adds-pending'];
                 return (
                   <KitchenColumn
                     key={col.key}
                     col={col}
                     count={bundles.length}
-                    emptyLabel="No new items on open orders"
+                    emptyLabel="No pending adds"
                   >
                     {bundles.map(({ order: o, lines }) => (
                       <KitchenCard
-                        key={`${o._id}-additions`}
+                        key={`${o._id}-adds-pending`}
                         order={o}
                         col={col}
                         prepItems={lines}
                         onOpen={setSelectedOrder}
                         onPrimary={() => {
-                          if (!acknowledgingId && !advancingId) acknowledgeMutation.mutate(o._id);
+                          if (!advancingAddsId && !advancingId && !acknowledgingId) {
+                            advanceAddsMutation.mutate(o._id);
+                          }
+                        }}
+                        isBusy={advancingAddsId === o._id}
+                        primaryLabel={col.btnLabel}
+                        showPrimary
+                      />
+                    ))}
+                  </KitchenColumn>
+                );
+              }
+              if (col.kind === 'adds-prepping') {
+                const bundles = grouped['kitchen-adds-prepping'];
+                return (
+                  <KitchenColumn
+                    key={col.key}
+                    col={col}
+                    count={bundles.length}
+                    emptyLabel="No adds being prepared"
+                  >
+                    {bundles.map(({ order: o, lines }) => (
+                      <KitchenCard
+                        key={`${o._id}-adds-prepping`}
+                        order={o}
+                        col={col}
+                        prepItems={lines}
+                        onOpen={setSelectedOrder}
+                        onPrimary={() => {
+                          if (!advancingAddsId && !advancingId && !acknowledgingId) {
+                            acknowledgeMutation.mutate(o._id);
+                          }
                         }}
                         isBusy={acknowledgingId === o._id}
                         primaryLabel={col.btnLabel}
@@ -431,7 +526,7 @@ export default function KitchenDisplay() {
                       prepItems={kitchenLinesForStatusColumn(o, col.status)}
                       onOpen={setSelectedOrder}
                       onPrimary={() => {
-                        if (!advancingId && !acknowledgingId) advanceMutation.mutate(o._id);
+                        if (!advancingAddsId && !advancingId && !acknowledgingId) advanceMutation.mutate(o._id);
                       }}
                       isBusy={advancingId === o._id}
                       primaryLabel={col.btnLabel}

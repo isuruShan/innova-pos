@@ -47,6 +47,7 @@ const orderSchema = new mongoose.Schema(
       enum: ['pending', 'preparing', 'ready', 'completed', 'cancelled'],
       default: 'pending',
     },
+    kitchenAddsStatus: { type: String, default: null },
     subtotal: { type: Number, default: 0 },
     discountTotal: { type: Number, default: 0 },
     appliedPromotions: [{

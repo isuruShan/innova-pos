@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { ShoppingBag, Plus, Minus, Loader2, ArrowLeft, BellRing } from 'lucide-react';
+import { ShoppingBag, Plus, Minus, Loader2, BellRing } from 'lucide-react';
 
-function apiUrl(path) {
-  const base = (import.meta.env.VITE_POS_API_URL || '').replace(/\/$/, '');
+function apiBase() {
+  return (import.meta.env.VITE_QR_ORDER_API_URL || '').replace(/\/$/, '');
+}
+
+function sessionPath(tenantId, storeId, tableId) {
+  const base = apiBase();
+  const path = `/api/public/table/${encodeURIComponent(tenantId)}/${encodeURIComponent(storeId)}/${encodeURIComponent(tableId)}`;
   return base ? `${base}${path}` : path;
 }
 
@@ -22,8 +27,8 @@ const STATUS_LABEL = {
   cancelled: 'Cancelled',
 };
 
-export default function TableOrderPage() {
-  const { token } = useParams();
+export default function TableOrderApp() {
+  const { tenantId, storeId, tableId } = useParams();
   const [cart, setCart] = useState([]);
   const [activeCat, setActiveCat] = useState('All');
   const [msg, setMsg] = useState('');
@@ -34,9 +39,9 @@ export default function TableOrderPage() {
   const [callingWaiter, setCallingWaiter] = useState(false);
 
   const fetchSession = useCallback(async () => {
-    if (!token) return;
+    if (!tenantId || !storeId || !tableId) return;
     try {
-      const { data } = await axios.get(apiUrl(`/api/public/table-order/${encodeURIComponent(token)}`));
+      const { data } = await axios.get(sessionPath(tenantId, storeId, tableId));
       setPayload(data);
       setLoadError(null);
     } catch (e) {
@@ -45,17 +50,17 @@ export default function TableOrderPage() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [tenantId, storeId, tableId]);
 
   useEffect(() => {
     fetchSession();
   }, [fetchSession]);
 
   useEffect(() => {
-    if (!token) return undefined;
+    if (!tenantId || !storeId || !tableId) return undefined;
     const id = setInterval(() => fetchSession(), 12_000);
     return () => clearInterval(id);
-  }, [token, fetchSession]);
+  }, [tenantId, storeId, tableId, fetchSession]);
 
   const menuItems = payload?.menuItems || [];
   const categories = useMemo(() => {
@@ -93,11 +98,11 @@ export default function TableOrderPage() {
   const cartTotal = cart.reduce((s, i) => s + Number(i.price || 0) * i.qty, 0);
 
   const onCallWaiter = async () => {
-    if (!token) return;
+    if (!tenantId || !storeId || !tableId) return;
     setMsg('');
     setCallingWaiter(true);
     try {
-      await axios.post(apiUrl(`/api/public/table-order/${encodeURIComponent(token)}/call-waiter`), {});
+      await axios.post(`${sessionPath(tenantId, storeId, tableId)}/call-waiter`, {});
       setMsg('A team member has been notified. Someone will come to your table shortly.');
       setTimeout(() => setMsg(''), 5000);
     } catch (e) {
@@ -113,11 +118,11 @@ export default function TableOrderPage() {
   };
 
   const onConfirm = async () => {
-    if (!cart.length || !token) return;
+    if (!cart.length || !tenantId || !storeId || !tableId) return;
     setMsg('');
     setSubmitting(true);
     try {
-      await axios.post(apiUrl(`/api/public/table-order/${encodeURIComponent(token)}/items`), {
+      await axios.post(`${sessionPath(tenantId, storeId, tableId)}/items`, {
         items: cart.map((c) => ({ menuItem: c.menuItem, qty: c.qty })),
       });
       setCart([]);
@@ -131,15 +136,15 @@ export default function TableOrderPage() {
     }
   };
 
-  if (!token) {
-    return <p className="text-center text-gray-500 py-16">Missing link.</p>;
+  if (!tenantId || !storeId || !tableId) {
+    return <p className="text-center text-gray-500 py-16">Invalid link.</p>;
   }
 
   if (loading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-gray-500">
         <Loader2 className="animate-spin w-10 h-10" />
-        <p>Loading menu…</p>
+        <p>Loading your table…</p>
       </div>
     );
   }
@@ -150,9 +155,6 @@ export default function TableOrderPage() {
         <p className="text-red-600 font-medium">
           {loadError.response?.data?.message || 'Unable to load this table.'}
         </p>
-        <Link to="/" className="inline-flex items-center gap-2 mt-6 text-teal-700 font-semibold">
-          <ArrowLeft size={18} /> Back home
-        </Link>
       </div>
     );
   }
@@ -160,9 +162,6 @@ export default function TableOrderPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 px-4 py-4 shadow-sm">
-        <Link to="/" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 mb-2">
-          <ArrowLeft size={16} /> Home
-        </Link>
         <h1 className="text-xl font-bold text-gray-900">{payload.storeName}</h1>
         <p className="text-gray-600 text-sm mt-1">
           Table <span className="font-semibold text-teal-700">{payload.tableLabel}</span>
@@ -232,6 +231,7 @@ export default function TableOrderPage() {
           </button>
         </div>
       </section>
+
       <section className="px-4 mt-6">
         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-3">
           <ShoppingBag size={20} className="text-teal-600" />

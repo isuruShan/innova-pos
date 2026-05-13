@@ -1,0 +1,72 @@
+require('dotenv').config();
+
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
+const { getClientErrorPayload, createCorsMiddleware } = require('@innovapos/shared-middleware');
+const connectDB = require('./config/db');
+
+const app = express();
+const isProd = process.env.NODE_ENV === 'production';
+const logger = {
+  info: (m) => console.log(m),
+  error: (m) => console.error(m),
+  warn: (m) => console.warn(m),
+};
+
+connectDB(logger);
+
+app.set('trust proxy', 1);
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false, crossOriginOpenerPolicy: false }));
+app.use(compression());
+
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+  : [];
+const qrCors = createCorsMiddleware({ allowedOrigins, production: isProd });
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api')) return next();
+  return qrCors(req, res, next);
+});
+
+const publicLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests — please try again later.' },
+});
+
+app.use(express.json({ limit: '2mb' }));
+
+app.use('/api/public/table', publicLimiter, require('./routes/tableSession'));
+
+const clientDist = path.join(__dirname, '../../client/dist');
+const serveClient = isProd && fs.existsSync(clientDist);
+if (serveClient) {
+  app.use(express.static(clientDist, { maxAge: '1y' }));
+}
+
+app.get('/api/health', (_req, res) =>
+  res.json({ status: 'ok', service: 'qr-order-server', env: process.env.NODE_ENV, ts: new Date().toISOString() }),
+);
+
+if (serveClient) {
+  app.get('/{*path}', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+}
+
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, _next) => {
+  console.error(err);
+  const status = err.status || err.statusCode || 500;
+  const st = Number.isFinite(status) && status >= 400 && status < 600 ? status : 500;
+  res.status(st).json(getClientErrorPayload(err, st));
+});
+
+const PORT = parseInt(process.env.PORT, 10) || 5010;
+app.listen(PORT, () => {
+  console.log(`[qr-order-server] listening on ${PORT}`);
+});

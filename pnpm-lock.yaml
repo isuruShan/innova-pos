@@ -333,6 +333,68 @@ importers:
         specifier: ^3.1.14
         version: 3.1.14
 
+  apps/qr-order/client:
+    dependencies:
+      axios:
+        specifier: ^1.16.0
+        version: 1.16.0
+      lucide-react:
+        specifier: ^1.14.0
+        version: 1.14.0(react@19.2.6)
+      react:
+        specifier: ^19.2.5
+        version: 19.2.6
+      react-dom:
+        specifier: ^19.2.5
+        version: 19.2.6(react@19.2.6)
+      react-router-dom:
+        specifier: ^7.15.0
+        version: 7.15.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+    devDependencies:
+      '@tailwindcss/vite':
+        specifier: ^4.2.4
+        version: 4.2.4(vite@8.0.11(jiti@2.7.0)(terser@5.47.1))
+      '@vitejs/plugin-react':
+        specifier: ^6.0.1
+        version: 6.0.1(vite@8.0.11(jiti@2.7.0)(terser@5.47.1))
+      tailwindcss:
+        specifier: ^4.2.4
+        version: 4.2.4
+      vite:
+        specifier: ^8.0.10
+        version: 8.0.11(jiti@2.7.0)(terser@5.47.1)
+
+  apps/qr-order/server:
+    dependencies:
+      '@innovapos/mongo-connection':
+        specifier: workspace:*
+        version: link:../../../packages/mongo-connection
+      '@innovapos/shared-middleware':
+        specifier: workspace:*
+        version: link:../../../packages/shared-middleware
+      compression:
+        specifier: ^1.8.1
+        version: 1.8.1
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
+      express:
+        specifier: ^5.2.1
+        version: 5.2.1
+      express-rate-limit:
+        specifier: ^8.5.1
+        version: 8.5.1(express@5.2.1)
+      helmet:
+        specifier: ^8.1.0
+        version: 8.1.0
+      mongoose:
+        specifier: ^9.6.1
+        version: 9.6.1
+    devDependencies:
+      nodemon:
+        specifier: ^3.1.14
+        version: 3.1.14
+
   packages/logger:
     dependencies:
       winston:

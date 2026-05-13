@@ -3,20 +3,26 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Table, QrCode, RefreshCw } from 'lucide-react';
 import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
+import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 
-const DEFAULT_PUBLIC_ORIGIN =
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PUBLIC_ORDER_PAGE_ORIGIN) || '';
+const DEFAULT_QR_WEB_ORIGIN =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_QR_ORDER_WEB_ORIGIN) ||
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PUBLIC_ORDER_PAGE_ORIGIN) ||
+  '';
 
-function orderPageUrlForToken(qrToken) {
-  const base = (DEFAULT_PUBLIC_ORIGIN || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
-  if (!base || !qrToken) return '';
-  return `${base}/table-order/${encodeURIComponent(qrToken)}`;
+function orderPageUrlForTable(tenantId, storeId, tableId) {
+  const base = (DEFAULT_QR_WEB_ORIGIN || (typeof window !== 'undefined' ? window.location.origin : '')).replace(
+    /\/$/,
+    '',
+  );
+  if (!base || !tenantId || !storeId || !tableId) return '';
+  return `${base}/${encodeURIComponent(tenantId)}/${encodeURIComponent(storeId)}/${encodeURIComponent(tableId)}`;
 }
 
-function QrCell({ table }) {
-  const url = orderPageUrlForToken(table?.qrToken);
+function QrCell({ table, tenantId, storeId }) {
+  const url = orderPageUrlForTable(tenantId, storeId, table?._id);
   const src =
     url && `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(url)}`;
   return (
@@ -26,7 +32,7 @@ function QrCell({ table }) {
           <img src={src} alt="" width={120} height={120} className="block" loading="lazy" />
         </div>
       ) : (
-        <span className="text-xs text-slate-500">Configure VITE_PUBLIC_ORDER_PAGE_ORIGIN for guest links.</span>
+        <span className="text-xs text-slate-500">Configure VITE_QR_ORDER_WEB_ORIGIN (guest table-order app URL).</span>
       )}
       {url ? (
         <span className="text-[10px] text-slate-500 max-w-[140px] break-all font-mono">{url}</span>
@@ -37,6 +43,8 @@ function QrCell({ table }) {
 
 export default function CafeTablesPage() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const tenantId = user?.tenantId;
   const { selectedStoreId, isStoreReady, stores } = useStoreContext();
   const selectedStore = stores.find((s) => String(s._id) === String(selectedStoreId));
   const [label, setLabel] = useState('');
@@ -214,7 +222,7 @@ export default function CafeTablesPage() {
                           <td className="px-4 py-3 text-slate-400">{t.sortOrder}</td>
                           <td className="px-4 py-3 text-slate-400">{t.active ? 'Yes' : 'No'}</td>
                           <td className="px-4 py-3 align-top">
-                            <QrCell table={t} />
+                            <QrCell table={t} tenantId={tenantId} storeId={selectedStoreId} />
                           </td>
                           <td className="px-4 py-3 text-right space-x-2 align-top">
                             <button
