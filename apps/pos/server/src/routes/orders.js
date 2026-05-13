@@ -422,7 +422,7 @@ router.put('/:id', protect, authorize('cashier', 'manager', 'merchant_admin'), t
     if (reference !== undefined) order.reference = reference;
 
     if (items && items.length > 0) {
-      const merged = await mergeItemsForUpdate(order.items, items, req.tenantId, order.storeId);
+      const merged = await mergeItemsForUpdate(order.items, items, req.tenantId, order.storeId, order.status);
       order.items = merged;
       await recalculateOrderMoney(order);
     }
@@ -536,6 +536,12 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
     }
 
     order.status = nextStatus;
+
+    if (prevStatus === 'pending' && nextStatus === 'preparing') {
+      order.items.forEach((line) => {
+        line.kitchenNew = false;
+      });
+    }
 
     order.updatedBy = req.user.id;
     await order.save();

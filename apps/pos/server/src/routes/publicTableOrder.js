@@ -5,8 +5,11 @@ const Store = require('../models/Store');
 const MenuItem = require('../models/MenuItem');
 const Order = require('../models/Order');
 const { enrichItems, recalculateOrderMoney, appendItemsToOrder } = require('../utils/orderHelpers');
+const { notifyCashiersTableWaiterCall } = require('../lib/notificationHelpers');
 
 const router = express.Router();
+
+const WAITER_CALL_COOLDOWN_MS = 60_000;
 
 router.get('/:token', async (req, res) => {
   try {
@@ -90,6 +93,45 @@ router.post('/:token/items', async (req, res) => {
     res.json(order);
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+});
+
+router.post('/:token/call-waiter', async (req, res) => {
+  try {
+    const tbl = await CafeTable.findOne({ qrToken: req.params.token });
+    if (!tbl) return res.status(404).json({ message: 'Invalid or expired table link' });
+
+    const store = await Store.findById(tbl.storeId).lean();
+    if (!store?.tableManagementEnabled) {
+      return res.status(403).json({ message: 'Table ordering is not available for this venue right now.' });
+    }
+
+    const now = Date.now();
+    if (tbl.lastWaiterCallAt && now - new Date(tbl.lastWaiterCallAt).getTime() < WAITER_CALL_COOLDOWN_MS) {
+      return res.status(429).json({ message: 'Please wait about a minute before calling again.' });
+    }
+
+    const order = await Order.findOne({
+      tenantId: tbl.tenantId,
+      storeId: tbl.storeId,
+      tableId: tbl._id,
+      status: { $nin: ['completed', 'cancelled'] },
+    }).lean();
+
+    await notifyCashiersTableWaiterCall({
+      tenantId: tbl.tenantId,
+      storeId: tbl.storeId,
+      tableLabel: tbl.label,
+      tableId: tbl._id,
+      order,
+    });
+
+    tbl.lastWaiterCallAt = new Date();
+    await tbl.save();
+
+    res.json({ ok: true });
+  } catch (err) {
+    sendRouteError(res, err, { req });
   }
 });
 

@@ -10,7 +10,7 @@ import { useStoreContext } from '../context/StoreContext';
 
 const CACHEABLE_QUERIES = ['order-board', 'kitchen-orders', 'cashier-ready-orders', 'recent-orders', 'manager-orders', 'sales-report'];
 
-const EDITABLE_STATUSES = ['pending'];
+const EDITABLE_STATUSES = ['pending', 'preparing', 'ready'];
 
 const formatPrice = formatCurrency;
 const formatDateTime = fmtDT;

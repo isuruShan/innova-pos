@@ -37,11 +37,12 @@ async function enrichItems(items, tenantId, storeId) {
   });
 }
 
-async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId) {
+async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId, orderStatus) {
   const prevById = new Map((prevItems || []).filter((i) => i._id).map((i) => [String(i._id), i]));
   const menuIds = [...new Set(incoming.map((i) => i.menuItem).filter(Boolean))];
   const menuDocs = await MenuItem.find({ _id: { $in: menuIds }, tenantId, storeId }).lean();
   const menuMap = Object.fromEntries(menuDocs.map((m) => [m._id.toString(), m]));
+  const trackKitchenQtyBump = ['preparing', 'ready'].includes(orderStatus || '');
 
   return incoming.map((raw) => {
     const mid = raw.menuItem?.toString();
@@ -50,6 +51,13 @@ async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId) {
     const qty = Math.max(1, Number(raw.qty) || 1);
     const prev = raw._id ? prevById.get(String(raw._id)) : null;
     const isNew = !prev;
+    const prevQty = prev ? Math.max(1, Number(prev.qty) || 1) : 0;
+    const qtyIncreased = !!prev && qty > prevQty;
+    const kitchenNew = isNew
+      ? true
+      : trackKitchenQtyBump && qtyIncreased
+        ? true
+        : !!prev?.kitchenNew;
     const line = {
       menuItem: doc._id,
       name: doc.name,
@@ -61,7 +69,7 @@ async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId) {
       deliveredToTable: prev
         ? (raw.deliveredToTable !== undefined ? !!raw.deliveredToTable : !!prev.deliveredToTable)
         : !!raw.deliveredToTable,
-      kitchenNew: isNew ? true : !!prev?.kitchenNew,
+      kitchenNew,
     };
     if (doc.isCombo && doc.comboItems?.length) {
       line.isCombo = true;

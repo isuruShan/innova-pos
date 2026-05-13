@@ -15,5 +15,9 @@ export function notificationPathForPos(n, userRole) {
     if (role === 'manager' || role === 'merchant_admin') return '/manager/orders';
     return '/cashier/orders';
   }
+  if (type === 'table_waiter_call') {
+    if (role === 'manager' || role === 'merchant_admin') return '/manager/orders';
+    return '/cashier/orders';
+  }
   return '/manager/notifications';
 }

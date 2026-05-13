@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { ShoppingBag, Plus, Minus, Loader2, ArrowLeft } from 'lucide-react';
+import { ShoppingBag, Plus, Minus, Loader2, ArrowLeft, BellRing } from 'lucide-react';
 
 function apiUrl(path) {
   const base = (import.meta.env.VITE_POS_API_URL || '').replace(/\/$/, '');
@@ -31,6 +31,7 @@ export default function TableOrderPage() {
   const [loadError, setLoadError] = useState(null);
   const [payload, setPayload] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [callingWaiter, setCallingWaiter] = useState(false);
 
   const fetchSession = useCallback(async () => {
     if (!token) return;
@@ -67,6 +68,8 @@ export default function TableOrderPage() {
     return menuItems.filter((m) => m.category === activeCat);
   }, [menuItems, activeCat]);
 
+  const order = payload?.order;
+
   const addOne = (item) => {
     setCart((prev) => {
       const id = String(item._id);
@@ -79,6 +82,7 @@ export default function TableOrderPage() {
   };
 
   const changeQty = (menuItemId, delta) => {
+    if (delta < 0 && order) return;
     setCart((prev) =>
       prev
         .map((x) => (x.menuItem === menuItemId ? { ...x, qty: x.qty + delta } : x))
@@ -87,6 +91,26 @@ export default function TableOrderPage() {
   };
 
   const cartTotal = cart.reduce((s, i) => s + Number(i.price || 0) * i.qty, 0);
+
+  const onCallWaiter = async () => {
+    if (!token) return;
+    setMsg('');
+    setCallingWaiter(true);
+    try {
+      await axios.post(apiUrl(`/api/public/table-order/${encodeURIComponent(token)}/call-waiter`), {});
+      setMsg('A team member has been notified. Someone will come to your table shortly.');
+      setTimeout(() => setMsg(''), 5000);
+    } catch (e) {
+      const code = e.response?.status;
+      setMsg(
+        code === 429
+          ? (e.response?.data?.message || 'Please wait a moment before calling again.')
+          : e.response?.data?.message || 'Could not send request',
+      );
+    } finally {
+      setCallingWaiter(false);
+    }
+  };
 
   const onConfirm = async () => {
     if (!cart.length || !token) return;
@@ -106,8 +130,6 @@ export default function TableOrderPage() {
       setSubmitting(false);
     }
   };
-
-  const order = payload?.order;
 
   if (!token) {
     return <p className="text-center text-gray-500 py-16">Missing link.</p>;
@@ -177,11 +199,39 @@ export default function TableOrderPage() {
             <span className="tabular-nums">{fmtMoney(order.totalAmount)}</span>
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            Pay with staff when you finish — totals update when you add items below.
+            Pay with staff when you finish — totals update when you add items below. After this order is placed, you
+            can add more items from the menu, but you cannot reduce quantities of what is already confirmed.
           </p>
         </section>
       )}
 
+      <section className="mx-4 mt-4 rounded-2xl border border-amber-100 bg-amber-50/60 p-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+              <BellRing size={18} className="text-amber-600 shrink-0" />
+              Need help at the table?
+            </p>
+            <p className="text-xs text-gray-600 mt-1">Notify staff — they will see your table number.</p>
+          </div>
+          <button
+            type="button"
+            disabled={callingWaiter}
+            onClick={onCallWaiter}
+            className="shrink-0 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-60 text-white text-sm font-bold shadow flex items-center justify-center gap-2"
+          >
+            {callingWaiter ? (
+              <>
+                <Loader2 className="animate-spin w-4 h-4" /> Sending…
+              </>
+            ) : (
+              <>
+                <BellRing size={16} /> Call waiter
+              </>
+            )}
+          </button>
+        </div>
+      </section>
       <section className="px-4 mt-6">
         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-3">
           <ShoppingBag size={20} className="text-teal-600" />
@@ -235,7 +285,9 @@ export default function TableOrderPage() {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
-                    className="p-1 rounded-lg border border-gray-200"
+                    disabled={!!order}
+                    title={order ? 'Confirmed orders cannot be reduced from this page. Ask staff if you need a change.' : undefined}
+                    className="p-1 rounded-lg border border-gray-200 disabled:opacity-35 disabled:cursor-not-allowed"
                     onClick={() => changeQty(c.menuItem, -1)}
                   >
                     <Minus size={16} />

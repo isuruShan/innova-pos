@@ -102,8 +102,63 @@ async function notifyPosStaffOrderStatusChange({
   return Notification.insertMany(docs);
 }
 
+/**
+ * Notify front-of-house staff that a guest used “call waiter” on a table QR link.
+ * Targets cashier, manager, and merchant_admin scoped to the store (via storeIds when set).
+ */
+async function notifyCashiersTableWaiterCall({
+  tenantId,
+  storeId,
+  tableLabel,
+  tableId,
+  order,
+}) {
+  const tid = castTenantId(tenantId);
+  const roles = ['cashier', 'manager', 'merchant_admin'];
+  const users = await User.find({
+    tenantId: tid,
+    role: { $in: roles },
+    isActive: true,
+  })
+    .select('_id storeIds')
+    .lean();
+
+  const sid = storeId ? String(storeId) : '';
+  const targets = users.filter((u) => {
+    const ids = (u.storeIds || []).map(String);
+    if (!ids.length) return true;
+    return sid && ids.includes(sid);
+  });
+
+  if (!targets.length) return [];
+
+  const num = order?.orderNumber != null ? String(order.orderNumber).padStart(3, '0') : null;
+  const title = num ? `Table ${tableLabel} — guest called (#${num})` : `Table ${tableLabel} — guest called`;
+  const body = num
+    ? `A guest at table ${tableLabel} requested assistance (order #${num}).`
+    : `A guest at table ${tableLabel} requested assistance (no open order yet).`;
+
+  const docs = targets.map((u) => ({
+    tenantId: tid,
+    userId: u._id,
+    type: 'table_waiter_call',
+    title,
+    body,
+    meta: {
+      resourceType: order ? 'order' : 'table',
+      resourceId: order ? String(order._id) : String(tableId),
+      storeId: sid,
+      tableLabel: String(tableLabel || ''),
+      tableId: String(tableId || ''),
+    },
+  }));
+
+  return Notification.insertMany(docs);
+}
+
 module.exports = {
   createNotification,
   notifyMerchantAdmins,
   notifyPosStaffOrderStatusChange,
+  notifyCashiersTableWaiterCall,
 };

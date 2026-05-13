@@ -20,8 +20,23 @@ import { shouldPrintReceiptForUpdatedOrder } from '../../utils/receiptPolicy';
 
 const REFRESH_INTERVAL = 10_000;
 
-const COLUMNS = [
+/** Board columns: first lane is “new lines” on already-active orders (same order #). */
+const BOARD_COLUMNS = [
   {
+    key: 'new-lines',
+    kind: 'additions',
+    label: 'Pending adds',
+    dot: 'bg-orange-400',
+    color: 'text-orange-400',
+    border: 'border-orange-500/30',
+    cardBorder: 'border-orange-500/30',
+    headerBg: 'bg-orange-500/8',
+    btnLabel: 'Acknowledge',
+    btnClass: 'bg-orange-500 hover:bg-orange-400 active:bg-orange-600 text-[var(--pos-text-primary)]',
+  },
+  {
+    key: 'pending',
+    kind: 'status',
     status: 'pending',
     label: 'Pending',
     dot: 'bg-yellow-400',
@@ -33,6 +48,8 @@ const COLUMNS = [
     btnClass: 'bg-yellow-500 hover:bg-yellow-400 active:bg-yellow-600 text-[var(--pos-text-primary)]',
   },
   {
+    key: 'preparing',
+    kind: 'status',
     status: 'preparing',
     label: 'Preparing',
     dot: 'bg-blue-400',
@@ -44,6 +61,8 @@ const COLUMNS = [
     btnClass: 'bg-blue-500 hover:bg-blue-400 active:bg-blue-600 text-[var(--pos-text-primary)]',
   },
   {
+    key: 'ready',
+    kind: 'status',
     status: 'ready',
     label: 'Ready',
     dot: 'bg-green-400',
@@ -55,7 +74,6 @@ const COLUMNS = [
     btnClass: '',
   },
 ];
-const COL_MAP = Object.fromEntries(COLUMNS.map(c => [c.status, c]));
 
 function ElapsedBadge({ createdAt }) {
   const mins = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
@@ -69,9 +87,25 @@ function ElapsedBadge({ createdAt }) {
   );
 }
 
-function KitchenCard({ order, onAdvance, onOpen, isAdvancing }) {
-  const col = COL_MAP[order.status];
-  const prepItems = (order.items || []).filter((i) => !i.deliveredToTable);
+function kitchenLinesForStatusColumn(order, status) {
+  const items = order.items || [];
+  if (status === 'pending') return items.filter((i) => !i.deliveredToTable);
+  if (status === 'preparing' || status === 'ready') {
+    return items.filter((i) => !i.deliveredToTable && !i.kitchenNew);
+  }
+  return items.filter((i) => !i.deliveredToTable);
+}
+
+function KitchenCard({
+  order,
+  col,
+  prepItems,
+  onPrimary,
+  onOpen,
+  isBusy,
+  primaryLabel,
+  showPrimary,
+}) {
   const totalQty = prepItems.reduce((s, i) => s + i.qty, 0);
 
   const preview = prepItems.slice(0, 3);
@@ -103,6 +137,11 @@ function KitchenCard({ order, onAdvance, onOpen, isAdvancing }) {
             reference={order.reference}
             size="xs"
           />
+          {col.kind === 'additions' && (
+            <span className="text-[9px] font-bold uppercase tracking-wide text-orange-200/90 border border-orange-500/35 rounded px-1 py-0.5 flex-shrink-0">
+              {order.status}
+            </span>
+          )}
         </div>
         <ElapsedBadge createdAt={order.createdAt} />
       </div>
@@ -110,7 +149,11 @@ function KitchenCard({ order, onAdvance, onOpen, isAdvancing }) {
       {/* Item summary — lines marked delivered are excluded */}
       <div className="px-3 py-2.5 flex-1 space-y-1.5">
         {prepItems.length === 0 ? (
-          <p className="text-xs text-slate-500 italic">All items marked delivered to table</p>
+          <p className="text-xs text-slate-500 italic">
+            {order.status === 'preparing' || order.status === 'ready'
+              ? 'New lines are in Pending adds until acknowledged'
+              : 'All items marked delivered to table'}
+          </p>
         ) : null}
         {preview.map((item, i) => (
           <div key={i} className="flex items-center justify-between gap-2">
@@ -136,20 +179,20 @@ function KitchenCard({ order, onAdvance, onOpen, isAdvancing }) {
           <span>{totalQty} item{totalQty !== 1 ? 's' : ''} total</span>
           <span className="text-slate-700 text-xs group-hover:text-slate-500 transition">tap for details →</span>
         </div>
-        {col.btnLabel && (
+        {showPrimary && primaryLabel && (
           <button
-            onClick={(e) => { e.stopPropagation(); onAdvance(order._id); }}
-            disabled={isAdvancing}
+            onClick={(e) => { e.stopPropagation(); onPrimary(); }}
+            disabled={isBusy}
             className={`w-full py-2.5 rounded-lg text-sm font-bold tracking-wide transition disabled:opacity-50 disabled:cursor-not-allowed ${col.btnClass}`}
           >
-            {isAdvancing ? (
+            {isBusy ? (
               <span className="flex items-center justify-center gap-2">
                 <RefreshCw size={13} className="animate-spin" /> Updating…
               </span>
-            ) : col.btnLabel}
+            ) : primaryLabel}
           </button>
         )}
-        {!col.btnLabel && (
+        {!showPrimary && !primaryLabel && (
           <div className="w-full py-2 rounded-lg text-xs font-semibold text-green-400 bg-green-500/10 border border-green-500/20 text-center">
             ✓ Ready for pickup
           </div>
@@ -159,34 +202,23 @@ function KitchenCard({ order, onAdvance, onOpen, isAdvancing }) {
   );
 }
 
-function KitchenColumn({ col, orders, onAdvance, onOpen, advancingId }) {
+function KitchenColumn({ col, count, children, emptyLabel }) {
   return (
     <div className="flex flex-col min-h-0 min-w-0">
-      {/* Column header */}
       <div className={`flex items-center gap-2 px-1 pb-3 mb-3 border-b-2 ${col.border} flex-shrink-0`}>
         <div className={`w-3 h-3 rounded-full ${col.dot}`} />
         <h2 className={`font-bold text-sm uppercase tracking-widest ${col.color}`}>{col.label}</h2>
         <span className={`ml-auto text-xs font-bold rounded-full px-2.5 py-1 ${col.dot.replace('bg-', 'bg-').replace('-400', '-500/20')} ${col.color}`}>
-          {orders.length}
+          {count}
         </span>
       </div>
-
-      {/* Scrollable cards */}
       <div className="flex-1 overflow-y-auto space-y-3 pr-1 min-h-0">
-        {orders.length === 0 ? (
+        {count === 0 ? (
           <div className={`text-center text-xs py-12 border border-dashed rounded-xl ${col.color} opacity-30`}>
-            No {col.label.toLowerCase()} orders
+            {emptyLabel}
           </div>
         ) : (
-          orders.map(order => (
-            <KitchenCard
-              key={order._id}
-              order={order}
-              onAdvance={onAdvance}
-              onOpen={onOpen}
-              isAdvancing={advancingId === order._id}
-            />
-          ))
+          children
         )}
       </div>
     </div>
@@ -204,6 +236,7 @@ export default function KitchenDisplay() {
   );
   const navigate = useNavigate();
   const [advancingId, setAdvancingId] = useState(null);
+  const [acknowledgingId, setAcknowledgingId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   useEffect(() => {
@@ -246,11 +279,6 @@ export default function KitchenDisplay() {
 
   const advanceMutation = useMutation({
     mutationFn: async (id) => {
-      try {
-        await api.put(`/orders/${encodeURIComponent(id)}/clear-kitchen-new`);
-      } catch (_) {
-        /* non-fatal if route unavailable */
-      }
       const { data } = await api.put(`/orders/${encodeURIComponent(id)}/status`);
       return data;
     },
@@ -269,17 +297,41 @@ export default function KitchenDisplay() {
     onSettled: () => setAdvancingId(null),
   });
 
+  const acknowledgeMutation = useMutation({
+    mutationFn: async (id) => {
+      const { data } = await api.put(`/orders/${encodeURIComponent(id)}/clear-kitchen-new`);
+      return data;
+    },
+    onMutate: (id) => setAcknowledgingId(id),
+    onSuccess: () => invalidate(),
+    onError: (err) => alert(err.response?.data?.message || 'Failed to acknowledge new items'),
+    onSettled: () => setAcknowledgingId(null),
+  });
+
+  const additionBundles = useMemo(() => {
+    const out = [];
+    for (const o of orders) {
+      if (o._offlinePending) continue;
+      if (!['preparing', 'ready'].includes(o.status)) continue;
+      const lines = (o.items || []).filter((i) => i.kitchenNew && !i.deliveredToTable);
+      if (lines.length) out.push({ order: o, lines });
+    }
+    return out;
+  }, [orders]);
+
   const grouped = useMemo(() => ({
-    pending: orders.filter(o => o.status === 'pending'),
-    preparing: orders.filter(o => o.status === 'preparing'),
-    ready: orders.filter(o => o.status === 'ready'),
-  }), [orders]);
+    'new-lines': additionBundles,
+    pending: orders.filter((o) => o.status === 'pending'),
+    preparing: orders.filter((o) => o.status === 'preparing'),
+    ready: orders.filter((o) => o.status === 'ready'),
+  }), [orders, additionBundles]);
 
   const lastUpdated = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : '--';
 
-  const totalActive = orders.length;
+  const hasBoardContent =
+    grouped.pending.length + grouped.preparing.length + grouped.ready.length + additionBundles.length > 0;
 
   const liveSelectedOrder = resolveLiveOrder(orders, selectedOrder);
 
@@ -296,9 +348,9 @@ export default function KitchenDisplay() {
           <div className="w-px h-5 bg-slate-700" />
           <ChefHat size={16} className="text-amber-400" />
           <h1 className="text-sm font-bold text-[var(--pos-text-primary)] tracking-widest uppercase">Kitchen</h1>
-          {totalActive > 0 && (
+          {hasBoardContent && (
             <span className="bg-amber-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
-              {totalActive} active
+              {orders.length} active
             </span>
           )}
         </div>
@@ -318,26 +370,68 @@ export default function KitchenDisplay() {
           <div className="h-full min-h-0 py-2">
             <KitchenBoardSkeleton />
           </div>
-        ) : totalActive === 0 ? (
+        ) : !hasBoardContent ? (
           <div className="flex flex-col items-center justify-center h-full text-slate-700">
             <ChefHat size={56} className="mb-4 opacity-20" />
             <p className="text-2xl font-bold">All caught up!</p>
             <p className="text-sm mt-1 opacity-60">No active orders right now</p>
           </div>
         ) : (
-          <div className="h-full grid grid-cols-3 gap-4">
-            {COLUMNS.map(col => (
-              <KitchenColumn
-                key={col.status}
-                col={col}
-                orders={grouped[col.status]}
-                onAdvance={(id) => {
-                  if (!advancingId) advanceMutation.mutate(id);
-                }}
-                onOpen={setSelectedOrder}
-                advancingId={advancingId}
-              />
-            ))}
+          <div className="h-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            {BOARD_COLUMNS.map((col) => {
+              if (col.kind === 'additions') {
+                const bundles = grouped['new-lines'];
+                return (
+                  <KitchenColumn
+                    key={col.key}
+                    col={col}
+                    count={bundles.length}
+                    emptyLabel="No new items on open orders"
+                  >
+                    {bundles.map(({ order: o, lines }) => (
+                      <KitchenCard
+                        key={`${o._id}-additions`}
+                        order={o}
+                        col={col}
+                        prepItems={lines}
+                        onOpen={setSelectedOrder}
+                        onPrimary={() => {
+                          if (!acknowledgingId && !advancingId) acknowledgeMutation.mutate(o._id);
+                        }}
+                        isBusy={acknowledgingId === o._id}
+                        primaryLabel={col.btnLabel}
+                        showPrimary
+                      />
+                    ))}
+                  </KitchenColumn>
+                );
+              }
+              const statusOrders = grouped[col.status];
+              return (
+                <KitchenColumn
+                  key={col.key}
+                  col={col}
+                  count={statusOrders.length}
+                  emptyLabel={`No ${col.label.toLowerCase()} orders`}
+                >
+                  {statusOrders.map((o) => (
+                    <KitchenCard
+                      key={o._id}
+                      order={o}
+                      col={col}
+                      prepItems={kitchenLinesForStatusColumn(o, col.status)}
+                      onOpen={setSelectedOrder}
+                      onPrimary={() => {
+                        if (!advancingId && !acknowledgingId) advanceMutation.mutate(o._id);
+                      }}
+                      isBusy={advancingId === o._id}
+                      primaryLabel={col.btnLabel}
+                      showPrimary={!!col.btnLabel}
+                    />
+                  ))}
+                </KitchenColumn>
+              );
+            })}
           </div>
         )}
       </div>

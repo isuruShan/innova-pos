@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
 const { protect, tenantScope, sendRouteError } = require('../middleware/auth');
 
@@ -10,6 +11,7 @@ router.get('/unread-count', protect, tenantScope, async (req, res) => {
       tenantId: req.tenantId,
       userId: req.user.id,
       readAt: null,
+      type: { $ne: 'table_waiter_call' },
     });
     res.json({ count: n });
   } catch (err) {
@@ -26,11 +28,31 @@ router.get('/', protect, tenantScope, async (req, res) => {
     );
     const skip = Math.max(0, parseInt(req.query.skip, 10) || 0);
 
-    const filter = { tenantId: req.tenantId, userId: req.user.id };
+    const base = { tenantId: req.tenantId, userId: req.user.id };
+    const parts = [];
+
+    const typeParam = (req.query.type || '').trim();
+    if (typeParam) {
+      const types = typeParam.split(',').map((t) => t.trim()).filter(Boolean);
+      if (types.length === 1) parts.push({ type: types[0] });
+      else if (types.length > 1) parts.push({ type: { $in: types } });
+    }
+
+    const unreadOnly = req.query.unread === '1' || req.query.unread === 'true';
+    if (unreadOnly) parts.push({ readAt: null });
+
+    const sid = (req.query.storeId || '').trim();
+    if (sid && mongoose.Types.ObjectId.isValid(sid)) {
+      parts.push({ 'meta.storeId': sid });
+    }
+
     if (isBell) {
       const since = new Date(Date.now() - 86400000);
-      filter.$or = [{ readAt: null }, { readAt: { $gte: since } }];
+      parts.push({ $or: [{ readAt: null }, { readAt: { $gte: since } }] });
+      parts.push({ type: { $ne: 'table_waiter_call' } });
     }
+
+    const filter = parts.length ? { ...base, $and: parts } : base;
 
     const items = await Notification.find(filter)
       .sort({ createdAt: -1 })

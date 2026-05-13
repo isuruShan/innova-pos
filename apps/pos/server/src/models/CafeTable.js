@@ -21,6 +21,8 @@ const cafeTableSchema = new mongoose.Schema(
     active: { type: Boolean, default: true },
     /** Secret segment for public QR ordering links (unguessable). Indexed via schema.index below (unique sparse). */
     qrToken: { type: String, default: null },
+    /** Throttle repeated “call waiter” from the same table QR link. */
+    lastWaiterCallAt: { type: Date, default: null },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },

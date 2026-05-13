@@ -31,6 +31,7 @@ const notificationSchema = new mongoose.Schema(
         'subscription_deactivated',
         'temporary_activation_requested',
         'order_status_changed',
+        'table_waiter_call',
       ],
       required: true,
     },
@@ -40,6 +41,9 @@ const notificationSchema = new mongoose.Schema(
     meta: {
       resourceType: { type: String, default: '' },
       resourceId: { type: String, default: '' },
+      storeId: { type: String, default: '' },
+      tableLabel: { type: String, default: '' },
+      tableId: { type: String, default: '' },
     },
   },
   { timestamps: true }
