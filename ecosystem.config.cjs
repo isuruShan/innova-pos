@@ -1,7 +1,8 @@
 'use strict';
 
 /**
- * PM2 process configuration – all apps in the monorepo.
+ * PM2 process configuration – all apps in the monorepo (POS, admin, public web,
+ * QR table-order API, auth, upload).
  *
  * ── AWS Secrets Manager ────────────────────────────────────────────────────
  * Every app calls loadAwsSecretsManagerEnv() at startup, which fetches a
@@ -33,6 +34,7 @@
  * Logs:
  *   pm2 logs
  *   pm2 logs pos-server
+ *   pm2 logs qr-order-server
  */
 
 // ── Shared AWS bootstrap variables injected into every process ──────────────
@@ -121,6 +123,34 @@ module.exports = {
       error_file: './logs/public-web-error.log',
       out_file:   './logs/public-web-out.log',
       log_file:   './logs/public-web-combined.log',
+      time: true,
+      merge_logs: true,
+    },
+
+    // ── QR table-order API (public, no auth; build client to apps/qr-order/client/dist) ──
+    {
+      name: 'qr-order-server',
+      script: './apps/qr-order/server/src/index.js',
+      instances: 1,
+      exec_mode: 'fork',
+      max_memory_restart: '300M',
+      exp_backoff_restart_delay: 100,
+      max_restarts: 10,
+      watch: false,
+      env: {
+        NODE_ENV: 'development',
+        PORT: 5010,
+        // CORS_ORIGIN: 'http://localhost:5180',
+      },
+      env_production: {
+        NODE_ENV: 'production',
+        PORT: 5010,
+        ...awsEnv,
+        // Set CORS_ORIGIN to the deployed guest SPA origin(s), comma-separated.
+      },
+      error_file: './logs/qr-order-error.log',
+      out_file:   './logs/qr-order-out.log',
+      log_file:   './logs/qr-order-combined.log',
       time: true,
       merge_logs: true,
     },
