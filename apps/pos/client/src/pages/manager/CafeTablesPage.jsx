@@ -7,16 +7,14 @@ import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 
+/** Guest order SPA origin only — never use the POS host (would encode wrong URLs in QR). */
 const DEFAULT_QR_WEB_ORIGIN =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_QR_ORDER_WEB_ORIGIN) ||
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PUBLIC_ORDER_PAGE_ORIGIN) ||
   '';
 
 function orderPageUrlForTable(tenantId, storeId, tableId) {
-  const base = (DEFAULT_QR_WEB_ORIGIN || (typeof window !== 'undefined' ? window.location.origin : '')).replace(
-    /\/$/,
-    '',
-  );
+  const base = String(DEFAULT_QR_WEB_ORIGIN || '').replace(/\/$/, '');
   if (!base || !tenantId || !storeId || !tableId) return '';
   return `${base}/${encodeURIComponent(tenantId)}/${encodeURIComponent(storeId)}/${encodeURIComponent(tableId)}`;
 }
@@ -32,7 +30,10 @@ function QrCell({ table, tenantId, storeId }) {
           <img src={src} alt="" width={120} height={120} className="block" loading="lazy" />
         </div>
       ) : (
-        <span className="text-xs text-slate-500">Configure VITE_QR_ORDER_WEB_ORIGIN (guest table-order app URL).</span>
+        <span className="text-xs text-slate-500">
+          Set <span className="font-mono">VITE_QR_ORDER_WEB_ORIGIN</span> at POS client build time to your guest order
+          app (e.g. https://order.example.com) — QR is never the POS URL.
+        </span>
       )}
       {url ? (
         <span className="text-[10px] text-slate-500 max-w-[140px] break-all font-mono">{url}</span>
