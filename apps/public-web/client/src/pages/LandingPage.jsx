@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Zap, ShoppingCart, BarChart3, Users, Layers, Shield,
-  Clock, CheckCircle, Star, ArrowRight, ChefHat, Tablet, TrendingUp, Mail
+  Clock, CheckCircle, Star, ArrowRight, ChefHat, Tablet, TrendingUp, Mail,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -189,6 +190,51 @@ export default function LandingPage() {
   const [plans, setPlans] = useState([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const catalogAudience = useMemo(() => detectCatalogAudience(), []);
+  const pricingCarouselRef = useRef(null);
+  const [pricingSlide, setPricingSlide] = useState(0);
+
+  const pricingSlideCount = useMemo(() => {
+    if (plansLoading) return 3;
+    return plans.length + 1;
+  }, [plansLoading, plans.length]);
+
+  const scrollPricingTo = (index) => {
+    const el = pricingCarouselRef.current;
+    const i = Math.max(0, Math.min(pricingSlideCount - 1, index));
+    const child = el?.children[i];
+    child?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    setPricingSlide(i);
+  };
+
+  useEffect(() => {
+    const el = pricingCarouselRef.current;
+    if (!el) return undefined;
+
+    const syncSlideFromScroll = () => {
+      const { children } = el;
+      if (!children?.length) return;
+      const mid = el.scrollLeft + el.clientWidth / 2;
+      let best = 0;
+      let bestDist = Infinity;
+      for (let j = 0; j < children.length; j += 1) {
+        const c = children[j];
+        const cx = c.offsetLeft + c.offsetWidth / 2;
+        const d = Math.abs(cx - mid);
+        if (d < bestDist) {
+          bestDist = d;
+          best = j;
+        }
+      }
+      setPricingSlide(best);
+    };
+
+    el.addEventListener('scroll', syncSlideFromScroll, { passive: true });
+    return () => el.removeEventListener('scroll', syncSlideFromScroll);
+  }, [pricingSlideCount]);
+
+  useEffect(() => {
+    setPricingSlide((prev) => Math.min(prev, Math.max(0, pricingSlideCount - 1)));
+  }, [pricingSlideCount]);
 
   useEffect(() => {
     let cancelled = false;
@@ -326,7 +372,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing — single horizontal row (scroll on narrow screens), tall cards */}
+      {/* Pricing — carousel (snap scroll, arrows, dots) */}
       <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-[1400px] mx-auto flex flex-col items-center">
           <div className="text-center mb-14 w-full">
@@ -343,15 +389,36 @@ export default function LandingPage() {
             )}
           </div>
 
-          <div className="w-full overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
-            <div className="flex justify-center min-w-full">
-              <div className="flex flex-nowrap gap-6 items-stretch min-h-[min(420px,70vh)] justify-center py-1">
+          <div className="relative w-full">
+            <button
+              type="button"
+              aria-label="Previous pricing plan"
+              onClick={() => scrollPricingTo(pricingSlide - 1)}
+              disabled={pricingSlide <= 0}
+              className="absolute left-0 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-md transition hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-35 sm:flex md:-left-1 lg:-left-2"
+            >
+              <ChevronLeft size={22} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              aria-label="Next pricing plan"
+              onClick={() => scrollPricingTo(pricingSlide + 1)}
+              disabled={pricingSlide >= pricingSlideCount - 1}
+              className="absolute right-0 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-md transition hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-35 sm:flex md:-right-1 lg:-right-2"
+            >
+              <ChevronRight size={22} strokeWidth={2} />
+            </button>
+
+            <div
+              ref={pricingCarouselRef}
+              className="flex min-h-[min(420px,70vh)] flex-nowrap items-stretch gap-6 overflow-x-auto scroll-smooth px-2 py-1 [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory sm:px-10 md:px-14 [&::-webkit-scrollbar]:hidden"
+            >
               {(plansLoading ? [1, 2, 3] : plans).map((plan, idx) => {
                 if (plansLoading) {
                   return (
                     <div
                       key={`sk-${idx}`}
-                      className="shrink-0 w-[min(100%,280px)] sm:w-[260px] rounded-2xl border border-gray-200 bg-gray-50 animate-pulse min-h-[380px]"
+                      className="min-h-[380px] w-[min(100%,280px)] shrink-0 snap-center rounded-2xl border border-gray-200 bg-gray-50 animate-pulse sm:w-[260px]"
                     />
                   );
                 }
@@ -363,7 +430,7 @@ export default function LandingPage() {
                 const ribbonBg = showRibbon ? buildPlanTagBackground(plan) : null;
 
                 let cardShell =
-                  'relative shrink-0 w-[min(100%,280px)] sm:w-[260px] rounded-2xl p-7 border flex flex-col min-h-[380px] transition-all snap-start ';
+                  'relative shrink-0 w-[min(100%,280px)] sm:w-[260px] rounded-2xl p-7 border flex flex-col min-h-[380px] transition-all snap-center ';
                 let cardStyle = undefined;
                 if (customCardBg) {
                   cardShell += lightOnCard ? 'shadow-lg border-white/25' : 'shadow-md border-gray-200';
@@ -464,7 +531,7 @@ export default function LandingPage() {
               })}
 
               {!plansLoading && (
-                <div className="relative shrink-0 w-[min(100%,280px)] sm:w-[260px] rounded-2xl p-7 border border-[#233d4d]/35 bg-gradient-to-b from-[#233d4d] to-[#152a38] text-white shadow-lg flex flex-col min-h-[380px] snap-start justify-self-center">
+                <div className="relative flex min-h-[380px] w-[min(100%,280px)] shrink-0 snap-center flex-col rounded-2xl border border-[#233d4d]/35 bg-gradient-to-b from-[#233d4d] to-[#152a38] p-7 text-white shadow-lg sm:w-[260px]">
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold bg-[#fa7237] text-white">
                     Tailor-made
                   </div>
@@ -487,8 +554,25 @@ export default function LandingPage() {
                   </a>
                 </div>
               )}
-              </div>
             </div>
+
+            {pricingSlideCount > 1 && (
+              <div className="mt-8 flex justify-center gap-2" role="tablist" aria-label="Pricing plans">
+                {Array.from({ length: pricingSlideCount }).map((_, i) => (
+                  <button
+                    key={`pricing-dot-${i}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={pricingSlide === i}
+                    aria-label={`Show plan ${i + 1} of ${pricingSlideCount}`}
+                    onClick={() => scrollPricingTo(i)}
+                    className={`h-2 rounded-full transition-all ${
+                      pricingSlide === i ? 'w-8 bg-[#fa7237]' : 'w-2 bg-gray-300 hover:bg-gray-400'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>

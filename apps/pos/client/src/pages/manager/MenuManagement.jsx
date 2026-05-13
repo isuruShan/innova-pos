@@ -347,7 +347,12 @@ export default function MenuManagement() {
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ ...EMPTY_FORM, category: categoryNames[0] || '' });
+    // Respect the category tab selected in the sidebar — do not always use the first category in the list.
+    const defaultCategory =
+      activeCategory !== 'All' && categoryNames.includes(activeCategory)
+        ? activeCategory
+        : categoryNames[0] || '';
+    setForm({ ...EMPTY_FORM, category: defaultCategory });
     setFormError('');
     setSlideOpen(true);
   };
