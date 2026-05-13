@@ -38,6 +38,12 @@ const getOrCreate = async (tenantId) => {
       businessName: tenant?.businessName || '',
       currency: dc.currency,
       currencySymbol: dc.currencySymbol,
+      receiptPrintAtByOrderType: {
+        'dine-in': 'completed',
+        takeaway: 'placement',
+        'uber-eats': 'placement',
+        pickme: 'placement',
+      },
     });
   }
   return s;
@@ -80,7 +86,7 @@ router.put('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
       'primaryColor', 'accentColor', 'sidebarColor', 'textColor', 'selectionTextColor',
       'address', 'phone', 'email', 'website',
       'paymentMethods', 'currency', 'currencySymbol', 'timezone',
-      'receiptHeader', 'receiptFooter', 'printReceiptByDefault', 'receiptPrintAtStatus',
+      'receiptHeader', 'receiptFooter', 'printReceiptByDefault', 'receiptPrintAtStatus', 'receiptPrintAtByOrderType',
     ];
 
     allowed.forEach(k => { if (req.body[k] !== undefined) s[k] = req.body[k]; });

@@ -51,7 +51,59 @@ async function notifyMerchantAdmins(tenantId, payload, options = {}) {
   return Notification.insertMany(docs);
 }
 
+async function notifyPosStaffOrderStatusChange({
+  tenantId,
+  storeId,
+  excludeUserId,
+  order,
+  prevStatus,
+  nextStatus,
+}) {
+  const tid = castTenantId(tenantId);
+  const roles = ['cashier', 'kitchen', 'manager', 'merchant_admin'];
+  const users = await User.find({
+    tenantId: tid,
+    role: { $in: roles },
+    isActive: true,
+  })
+    .select('_id storeIds')
+    .lean();
+
+  const sid = storeId ? String(storeId) : '';
+  const targets = users.filter((u) => {
+    if (excludeUserId && String(u._id) === String(excludeUserId)) return false;
+    const ids = (u.storeIds || []).map(String);
+    if (!ids.length) return true;
+    return sid && ids.includes(sid);
+  });
+
+  if (!targets.length) return [];
+
+  const num = order?.orderNumber != null ? String(order.orderNumber).padStart(3, '0') : '···';
+  const title = `Order #${num} → ${nextStatus}`;
+  const body = `Previously ${prevStatus}. Tap the order board to handle.`;
+
+  const docs = targets.map((u) => ({
+    tenantId: tid,
+    userId: u._id,
+    type: 'order_status_changed',
+    title,
+    body,
+    meta: {
+      resourceType: 'order',
+      resourceId: String(order._id),
+      prevStatus,
+      nextStatus,
+      storeId: sid,
+      orderType: order.orderType || '',
+    },
+  }));
+
+  return Notification.insertMany(docs);
+}
+
 module.exports = {
   createNotification,
   notifyMerchantAdmins,
+  notifyPosStaffOrderStatusChange,
 };

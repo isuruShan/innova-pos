@@ -214,6 +214,7 @@ export default function KitchenDisplay() {
     const bump = () => {
       qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
       qc.invalidateQueries({ queryKey: ['order-board'] });
+      qc.invalidateQueries({ queryKey: ['cashier-ready-orders'] });
     };
     window.addEventListener('pos-offline-sync-done', bump);
     window.addEventListener('pos-offline-queue', bump);
@@ -226,6 +227,7 @@ export default function KitchenDisplay() {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
     qc.invalidateQueries({ queryKey: ['order-board'] });
+    qc.invalidateQueries({ queryKey: ['cashier-ready-orders'] });
   };
 
   const { data: orders = [], isPending, dataUpdatedAt, isFetching } = useQuery({
@@ -345,6 +347,7 @@ export default function KitchenDisplay() {
         order={liveSelectedOrder}
         onClose={() => setSelectedOrder(null)}
         canCancel={false}
+        hidePricing
       />
     </div>
   );

@@ -35,6 +35,7 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
       receiptHeader: data.receiptHeader,
       printReceiptByDefault: data.printReceiptByDefault,
       receiptPrintAtStatus: data.receiptPrintAtStatus || 'placement',
+      receiptPrintAtByOrderType: data.receiptPrintAtByOrderType || null,
     };
 
     res.json(safe);
@@ -55,6 +56,7 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
       receiptFooter: 'Thank you for your visit!',
       printReceiptByDefault: false,
       receiptPrintAtStatus: 'placement',
+      receiptPrintAtByOrderType: null,
     });
   }
 });

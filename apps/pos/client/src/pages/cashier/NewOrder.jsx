@@ -10,7 +10,11 @@ import Navbar from '../../components/Navbar';
 import { CASHIER_NAV_GROUPS } from '../../constants/cashierLinks';
 import CashierSessionGate from '../../components/cashier/CashierSessionGate';
 import { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/cashierSessionContext';
-import { ORDER_TYPES, ORDER_TYPE_MAP } from '../../components/OrderTypeBadge';
+import OrderTypeBadge, { ORDER_TYPES, ORDER_TYPE_MAP } from '../../components/OrderTypeBadge';
+import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
+import { mergeOrderLists } from '../../offline/mergeOrders.js';
+import { listPendingOrders } from '../../offline/idb.js';
+import { resolveLiveOrder, useSyncOfflineOrderSelection } from '../../offline/orderSelection.js';
 import { formatCurrency } from '../../utils/format';
 import { useBranding } from '../../context/BrandingContext';
 import { useStoreContext } from '../../context/StoreContext';
@@ -336,6 +340,7 @@ export default function NewOrder() {
   const [quickMobile, setQuickMobile] = useState('');
   const [quickEmail, setQuickEmail] = useState('');
   const [quickFormError, setQuickFormError] = useState('');
+  const [readySlideOrder, setReadySlideOrder] = useState(null);
 
   const qc = useQueryClient();
   const branding = useBranding();
@@ -366,6 +371,7 @@ export default function NewOrder() {
       setQuickEmail('');
       setTableNumber('');
       setSelectedTableId('');
+      setReadySlideOrder(null);
     }
     prevStoreRef.current = selectedStoreId;
   }, [selectedStoreId]);
@@ -421,6 +427,38 @@ export default function NewOrder() {
     enabled: isStoreReady,
     staleTime: 60_000,
   });
+
+  const { data: readyOrders = [] } = useQuery({
+    queryKey: ['cashier-ready-orders', selectedStoreId],
+    queryFn: async () => {
+      const remote = await api.get('/orders?status=ready').then((r) => r.data);
+      const pendingLocal = await listPendingOrders();
+      const merged = mergeOrderLists(remote, pendingLocal, selectedStoreId);
+      return merged.filter((o) => o.status === 'ready');
+    },
+    enabled: isStoreReady,
+    refetchInterval: 6_000,
+  });
+
+  const liveReadyOrder = useMemo(
+    () => resolveLiveOrder(readyOrders, readySlideOrder),
+    [readyOrders, readySlideOrder],
+  );
+  useSyncOfflineOrderSelection(readyOrders, readySlideOrder, setReadySlideOrder);
+
+  useEffect(() => {
+    const bump = () => {
+      qc.invalidateQueries({ queryKey: ['cashier-ready-orders'] });
+      qc.invalidateQueries({ queryKey: ['order-board'] });
+      qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
+    };
+    window.addEventListener('pos-offline-sync-done', bump);
+    window.addEventListener('pos-offline-queue', bump);
+    return () => {
+      window.removeEventListener('pos-offline-sync-done', bump);
+      window.removeEventListener('pos-offline-queue', bump);
+    };
+  }, [qc]);
 
   const { data: loyaltyConfig } = useQuery({
     queryKey: ['loyalty-config'],
@@ -517,6 +555,7 @@ export default function NewOrder() {
       qc.invalidateQueries({ queryKey: [CASHIER_SESSION_QUERY_KEY] });
       qc.invalidateQueries({ queryKey: ['order-board'] });
       qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
+      qc.invalidateQueries({ queryKey: ['cashier-ready-orders'] });
       qc.invalidateQueries({ queryKey: ['customer-loyalty'] });
       qc.invalidateQueries({ queryKey: ['customers-search'] });
       setCart([]);
@@ -535,7 +574,7 @@ export default function NewOrder() {
       setTimeout(() => setSuccessMsg(''), 3000);
       if (
         createdOrder &&
-        shouldPrintReceiptOnOrderCreated(branding) &&
+        shouldPrintReceiptOnOrderCreated(branding, createdOrder) &&
         createdOrder.paymentCollected !== false
       ) {
         printReceipt(createdOrder, {
@@ -762,6 +801,41 @@ export default function NewOrder() {
     <CashierSessionGate>
     <div className="h-screen flex flex-col bg-[var(--pos-surface-inset)]">
       <Navbar groups={CASHIER_NAV_GROUPS} />
+      <div className="shrink-0 border-b border-slate-700/50 bg-[var(--pos-panel)]/90 px-3 py-2 flex items-center gap-2">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-green-400 shrink-0">Ready</span>
+        <div className="flex-1 min-w-0 overflow-x-auto flex items-center gap-2">
+          {!isStoreReady ? (
+            <span className="text-xs text-slate-500">Select a store…</span>
+          ) : readyOrders.length === 0 ? (
+            <span className="text-xs text-slate-500">No orders ready for pickup</span>
+          ) : (
+            readyOrders.map((o) => (
+              <button
+                key={o._id}
+                type="button"
+                onClick={() => setReadySlideOrder(o)}
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-green-500/35 bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-100 hover:bg-green-500/20 transition"
+              >
+                <span className="font-mono text-amber-400 font-semibold">
+                  {o._offlinePending ? '#' : `#${String(o.orderNumber).padStart(3, '0')}`}
+                </span>
+                <OrderTypeBadge
+                  orderType={o.orderType}
+                  tableNumber={o.tableNumber}
+                  reference={o.reference}
+                  size="xs"
+                />
+              </button>
+            ))
+          )}
+        </div>
+        <Link
+          to="/cashier/orders"
+          className="text-xs font-semibold text-amber-400 shrink-0 whitespace-nowrap hover:text-amber-300"
+        >
+          Order board →
+        </Link>
+      </div>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Menu */}
@@ -1353,6 +1427,11 @@ export default function NewOrder() {
           </div>
         </div>
       </div>
+      <OrderDetailSlideOver
+        order={liveReadyOrder}
+        onClose={() => setReadySlideOrder(null)}
+        canCancel
+      />
       {paymentModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center p-3 sm:p-4">
           <div className="w-full max-w-lg bg-[var(--pos-panel)] border border-slate-600/80 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl shadow-black/50 max-h-[92vh] overflow-y-auto">

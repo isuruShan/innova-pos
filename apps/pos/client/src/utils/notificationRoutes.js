@@ -10,5 +10,10 @@ export function notificationPathForPos(n, userRole) {
   if (type === 'reward_approved' || type === 'reward_rejected') return '/manager/loyalty/rewards';
   if (type === 'loyalty_retention_review') return '/manager/customers';
   if (type === 'loyalty_points_adjusted') return '/manager/customers';
+  if (type === 'order_status_changed') {
+    if (role === 'kitchen') return '/kitchen';
+    if (role === 'manager' || role === 'merchant_admin') return '/manager/orders';
+    return '/cashier/orders';
+  }
   return '/manager/notifications';
 }

@@ -33,11 +33,10 @@ function generateQrToken() {
   return crypto.randomBytes(24).toString('hex');
 }
 
-cafeTableSchema.pre('save', function ensureQrToken(next) {
+cafeTableSchema.pre('save', function ensureQrToken() {
   if (!this.qrToken) {
     this.qrToken = generateQrToken();
   }
-  next();
 });
 
 const CafeTable = mongoose.model('CafeTable', cafeTableSchema);

@@ -30,6 +30,7 @@ const notificationSchema = new mongoose.Schema(
         'subscription_due_soon',
         'subscription_deactivated',
         'temporary_activation_requested',
+        'order_status_changed',
       ],
       required: true,
     },

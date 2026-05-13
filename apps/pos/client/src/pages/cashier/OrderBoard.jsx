@@ -241,6 +241,7 @@ export default function OrderBoard() {
     const bump = () => {
       qc.invalidateQueries({ queryKey: ['order-board'] });
       qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
+      qc.invalidateQueries({ queryKey: ['cashier-ready-orders'] });
     };
     window.addEventListener('pos-offline-sync-done', bump);
     window.addEventListener('pos-offline-queue', bump);
@@ -276,6 +277,7 @@ export default function OrderBoard() {
     onSuccess: (updatedOrder, variables) => {
       qc.invalidateQueries({ queryKey: ['order-board'] });
       qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
+      qc.invalidateQueries({ queryKey: ['cashier-ready-orders'] });
       qc.invalidateQueries({ queryKey: ['sales-report'] });
       qc.invalidateQueries({ queryKey: ['recent-orders'] });
       qc.invalidateQueries({ queryKey: [CASHIER_SESSION_QUERY_KEY] });

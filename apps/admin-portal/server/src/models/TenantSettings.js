@@ -52,6 +52,11 @@ const tenantSettingsSchema = new mongoose.Schema(
       enum: ['placement', 'preparing', 'ready', 'completed', 'none'],
       default: 'placement',
     },
+    /** Per order type: when POS auto-prints (placement | preparing | ready | completed | none). */
+    receiptPrintAtByOrderType: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

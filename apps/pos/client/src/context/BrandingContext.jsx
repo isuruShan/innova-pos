@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import api from '../api/axios';
 import { useAuth } from './AuthContext';
 import { useTheme } from './ThemeContext';
+import { DEFAULT_RECEIPT_PRINT_AT_BY_ORDER_TYPE } from '../utils/receiptPolicy';
 
 /** Fixed chrome in light mode — readability does not follow tenant palette. */
 const LIGHT_MODE_CHROME = {
@@ -30,6 +31,7 @@ const DEFAULT_BRANDING = {
   receiptFooter: 'Thank you for your visit!',
   printReceiptByDefault: false,
   receiptPrintAtStatus: 'placement',
+  receiptPrintAtByOrderType: { ...DEFAULT_RECEIPT_PRINT_AT_BY_ORDER_TYPE },
 };
 
 const BrandingContext = createContext(DEFAULT_BRANDING);

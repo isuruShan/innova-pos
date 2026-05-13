@@ -15,6 +15,7 @@ const { applyPromotions } = require('../utils/applyPromotions');
 const { protect, authorize, tenantScope } = require('../middleware/auth');
 const { emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
+const { notifyPosStaffOrderStatusChange } = require('../lib/notificationHelpers');
 const {
   enrichItems,
   mergeItemsForUpdate,
@@ -565,6 +566,21 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
           { _id: order.customerId, tenantId: req.tenantId },
           { $set: { lastLoyaltyActivityAt: new Date(), retentionStatus: 'ok' } },
         );
+      }
+    }
+
+    if (prevStatus !== order.status) {
+      try {
+        await notifyPosStaffOrderStatusChange({
+          tenantId: req.tenantId,
+          storeId: order.storeId,
+          excludeUserId: req.user?.id,
+          order: order.toObject({ flattenMaps: true }),
+          prevStatus,
+          nextStatus: order.status,
+        });
+      } catch (notifyErr) {
+        console.error('notifyPosStaffOrderStatusChange', notifyErr);
       }
     }
 

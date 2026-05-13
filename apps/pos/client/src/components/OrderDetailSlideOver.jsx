@@ -8,14 +8,23 @@ import Badge from './Badge';
 import { ORDER_TYPES, ORDER_TYPE_MAP } from './OrderTypeBadge';
 import { useStoreContext } from '../context/StoreContext';
 
-const CACHEABLE_QUERIES = ['order-board', 'kitchen-orders', 'recent-orders', 'manager-orders', 'sales-report'];
+const CACHEABLE_QUERIES = ['order-board', 'kitchen-orders', 'cashier-ready-orders', 'recent-orders', 'manager-orders', 'sales-report'];
 
 const EDITABLE_STATUSES = ['pending'];
 
 const formatPrice = formatCurrency;
 const formatDateTime = fmtDT;
 
-function ItemRow({ item, onQtyChange, onRemove, editable }) {
+function ItemRow({
+  item,
+  index,
+  onQtyChange,
+  onRemove,
+  editable,
+  hidePricing,
+  showDelivered,
+  onDeliveredToggle,
+}) {
   return (
     <div className="flex items-center gap-3 py-2 border-b border-slate-700/40 last:border-0">
       <div className="flex-1 min-w-0">
@@ -32,11 +41,14 @@ function ItemRow({ item, onQtyChange, onRemove, editable }) {
             ))}
           </div>
         )}
-        <p className="text-xs text-slate-500 mt-0.5">{formatPrice(item.price)} each</p>
+        {!hidePricing && (
+          <p className="text-xs text-slate-500 mt-0.5">{formatPrice(item.price)} each</p>
+        )}
       </div>
       {editable ? (
         <div className="flex items-center gap-1.5">
           <button
+            type="button"
             onClick={() => onQtyChange(index, -1)}
             className="w-6 h-6 rounded-full bg-slate-700 hover:bg-red-500/30 text-slate-300 hover:text-red-400 flex items-center justify-center transition"
           >
@@ -44,14 +56,16 @@ function ItemRow({ item, onQtyChange, onRemove, editable }) {
           </button>
           <span className="w-6 text-center text-sm font-semibold text-[var(--pos-text-primary)]">{item.qty}</span>
           <button
+            type="button"
             onClick={() => onQtyChange(index, 1)}
             className="w-6 h-6 rounded-full bg-slate-700 hover:bg-amber-500/30 text-slate-300 hover:text-amber-400 flex items-center justify-center transition"
           >
             <Plus size={11} />
           </button>
           <button
+            type="button"
             onClick={() => onRemove(index)}
-            className="w-6 h-6 rounded-full text-slate-600 hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition ml-1"
+            className="w-6 h-6 rounded-full text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition ml-1"
           >
             <Trash2 size={11} />
           </button>
@@ -73,9 +87,11 @@ function ItemRow({ item, onQtyChange, onRemove, editable }) {
       ) : (
         <span className="text-sm font-semibold text-slate-400 ml-2">×{item.qty}</span>
       )}
-      <span className="text-sm font-semibold text-[var(--pos-text-primary)] w-14 text-right">
-        {formatPrice(item.price * item.qty)}
-      </span>
+      {!hidePricing && (
+        <span className="text-sm font-semibold text-[var(--pos-text-primary)] w-14 text-right">
+          {formatPrice(item.price * item.qty)}
+        </span>
+      )}
     </div>
   );
 }
@@ -117,7 +133,7 @@ function AddItemRow({ menuItems, existingIds, onAdd }) {
   );
 }
 
-export default function OrderDetailSlideOver({ order, onClose, canCancel = true }) {
+export default function OrderDetailSlideOver({ order, onClose, canCancel = true, hidePricing = false }) {
   const qc = useQueryClient();
   const { selectedStoreId, isStoreReady, stores } = useStoreContext();
   const selectedStore =
@@ -387,6 +403,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
                   item={item}
                   index={index}
                   editable={isEditable}
+                  hidePricing={hidePricing}
                   showDelivered={orderType === 'dine-in'}
                   onQtyChange={changeQty}
                   onRemove={removeItem}
@@ -401,46 +418,47 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true 
           )}
         </div>
 
-        {/* Financial breakdown */}
-        <div className="space-y-1 pt-1 border-t border-slate-700/50 text-sm">
-          <div className="flex justify-between text-slate-400">
-            <span>Subtotal</span>
-            <span>{formatPrice(isEditable ? subtotal : (order.subtotal ?? subtotal))}</span>
-          </div>
-          {/* Show stored promotions for non-editable orders */}
-          {!isEditable && (order.appliedPromotions || []).map((ap, i) => (
-            <div key={i} className="flex justify-between text-green-400">
-              <span className="flex items-center gap-1 truncate">
-                <Tag size={10} className="flex-shrink-0" />{ap.name}
+        {/* Financial breakdown — hidden in kitchen / no-price views */}
+        {!hidePricing && (
+          <div className="space-y-1 pt-1 border-t border-slate-700/50 text-sm">
+            <div className="flex justify-between text-slate-400">
+              <span>Subtotal</span>
+              <span>{formatPrice(isEditable ? subtotal : (order.subtotal ?? subtotal))}</span>
+            </div>
+            {!isEditable && (order.appliedPromotions || []).map((ap, i) => (
+              <div key={i} className="flex justify-between text-green-400">
+                <span className="flex items-center gap-1 truncate">
+                  <Tag size={10} className="flex-shrink-0" />{ap.name}
+                </span>
+                <span>-{formatPrice(ap.discountAmount)}</span>
+              </div>
+            ))}
+            {!isEditable && (order.discountTotal > 0) && (
+              <div className="flex justify-between text-green-300 font-medium">
+                <span>Total Discount</span>
+                <span>-{formatPrice(order.discountTotal)}</span>
+              </div>
+            )}
+            {!isEditable && order.taxAmount > 0 && (
+              <div className="flex justify-between text-slate-400">
+                <span>Tax ({order.taxRate}%)</span>
+                <span>{formatPrice(order.taxAmount)}</span>
+              </div>
+            )}
+            {!isEditable && order.serviceFeeAmount > 0 && (
+              <div className="flex justify-between text-slate-400">
+                <span>Service Fee</span>
+                <span>{formatPrice(order.serviceFeeAmount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-[var(--pos-text-primary)] font-bold text-base pt-1 border-t border-slate-700/40">
+              <span>Total</span>
+              <span className="text-amber-400">
+                {formatPrice(isEditable ? subtotal : order.totalAmount)}
               </span>
-              <span>-{formatPrice(ap.discountAmount)}</span>
             </div>
-          ))}
-          {!isEditable && (order.discountTotal > 0) && (
-            <div className="flex justify-between text-green-300 font-medium">
-              <span>Total Discount</span>
-              <span>-{formatPrice(order.discountTotal)}</span>
-            </div>
-          )}
-          {!isEditable && order.taxAmount > 0 && (
-            <div className="flex justify-between text-slate-400">
-              <span>Tax ({order.taxRate}%)</span>
-              <span>{formatPrice(order.taxAmount)}</span>
-            </div>
-          )}
-          {!isEditable && order.serviceFeeAmount > 0 && (
-            <div className="flex justify-between text-slate-400">
-              <span>Service Fee</span>
-              <span>{formatPrice(order.serviceFeeAmount)}</span>
-            </div>
-          )}
-          <div className="flex justify-between text-[var(--pos-text-primary)] font-bold text-base pt-1 border-t border-slate-700/40">
-            <span>Total</span>
-            <span className="text-amber-400">
-              {formatPrice(isEditable ? subtotal : order.totalAmount)}
-            </span>
           </div>
-        </div>
+        )}
 
         {error && (
           <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm flex items-center gap-2">

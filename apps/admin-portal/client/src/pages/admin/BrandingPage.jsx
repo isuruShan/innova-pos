@@ -3,6 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, Loader, CheckCircle, Save, Palette, X } from 'lucide-react';
 import api from '../../api/axios';
 import imageCompression from 'browser-image-compression';
+import {
+  RECEIPT_PRINT_AT_OPTIONS,
+  mergeReceiptPrintAtByOrderType,
+} from '../../utils/receiptPrintSettings';
 
 async function optimizeToWebP(file) {
   const compressed = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 512, useWebWorker: true });
@@ -36,12 +40,16 @@ export default function BrandingPage() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ['tenant-settings'],
     queryFn: async () => { const { data } = await api.get('/tenant-settings'); return data; },
-    onSuccess: (d) => setForm({ ...d }),
   });
 
   useEffect(() => {
-    if (settings && !form) setForm({ ...settings });
-  }, [settings]);
+    if (settings && !form) {
+      setForm({
+        ...settings,
+        receiptPrintAtByOrderType: mergeReceiptPrintAtByOrderType(settings),
+      });
+    }
+  }, [settings, form]);
 
   const updateMutation = useMutation({
     mutationFn: (payload) => api.put('/tenant-settings', payload),
@@ -99,6 +107,7 @@ export default function BrandingPage() {
       receiptFooter: form.receiptFooter,
       printReceiptByDefault: form.printReceiptByDefault,
       receiptPrintAtStatus: form.receiptPrintAtStatus || 'placement',
+      receiptPrintAtByOrderType: form.receiptPrintAtByOrderType || mergeReceiptPrintAtByOrderType(form),
     });
   };
 
@@ -251,22 +260,40 @@ export default function BrandingPage() {
             className="w-4 h-4 accent-brand-orange" />
           <span className="text-sm font-medium text-gray-700">Print receipt by default</span>
         </label>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Print bill when order reaches</label>
-          <select
-            value={form.receiptPrintAtStatus || 'placement'}
-            onChange={(e) => set('receiptPrintAtStatus')(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
-          >
-            <option value="placement">When order is placed (checkout)</option>
-            <option value="preparing">When sent to kitchen (preparing)</option>
-            <option value="ready">When order is ready</option>
-            <option value="completed">When order is completed</option>
-            <option value="none">Never print automatically</option>
-          </select>
-          <p className="text-xs text-gray-500 mt-1">
-            POS opens the receipt printer at this step (unless set to never). Checkout still records payment either way.
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-gray-700">Print bill by order type</p>
+          <p className="text-xs text-gray-500">
+            Dine-in often prints after payment at the table; takeaway and delivery usually print when the guest pays at the counter.
           </p>
+          {[
+            { key: 'dine-in', label: 'Dine-in' },
+            { key: 'takeaway', label: 'Take away' },
+            { key: 'uber-eats', label: 'Uber Eats' },
+            { key: 'pickme', label: 'PickMe' },
+          ].map(({ key, label }) => (
+            <div key={key}>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+              <select
+                value={form.receiptPrintAtByOrderType?.[key] || 'placement'}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    receiptPrintAtByOrderType: {
+                      ...(f.receiptPrintAtByOrderType || mergeReceiptPrintAtByOrderType(f)),
+                      [key]: e.target.value,
+                    },
+                  }))
+                }
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
+              >
+                {RECEIPT_PRINT_AT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
         </div>
       </div>
 
