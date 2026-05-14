@@ -50,8 +50,25 @@ async function start() {
 
   const clientDist = path.join(__dirname, '../../client/dist');
   const serveClient = isProd && fs.existsSync(clientDist);
+  if (isProd && !serveClient) {
+    console.warn(
+      `[qr-order-server] NODE_ENV=production but ${clientDist} is missing — run "pnpm --filter @qr-order/client run build" (API only until dist exists).`,
+    );
+  }
   if (serveClient) {
-    app.use(express.static(clientDist, { maxAge: '1y' }));
+    app.use(
+      express.static(clientDist, {
+        maxAge: '1y',
+        setHeaders(res, filePath) {
+          const p = String(filePath).replace(/\\/g, '/');
+          if (p.endsWith('/index.html') || p.endsWith('index.html')) {
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+          }
+        },
+      }),
+    );
   }
 
   app.get('/api/health', (_req, res) =>
@@ -59,7 +76,12 @@ async function start() {
   );
 
   if (serveClient) {
-    app.get('/{*path}', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+    app.get('/{*path}', (_req, res) => {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.sendFile(path.join(clientDist, 'index.html'));
+    });
   }
 
   // eslint-disable-next-line no-unused-vars

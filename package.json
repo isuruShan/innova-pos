@@ -10,6 +10,7 @@
     "upload": "pnpm --filter @services/upload-service dev",
     "public-web": "pnpm --filter @public-web/server --filter @public-web/client --parallel dev",
     "qr-order": "pnpm --filter @qr-order/server --filter @qr-order/client --parallel dev",
+    "build:qr-order-client": "pnpm --filter @qr-order/client run build",
     "admin": "pnpm --filter @admin-portal/server --filter @admin-portal/client --parallel dev",
     "dev": "pnpm --parallel --filter './apps/**' --filter './services/**' dev",
     "migrate:tenant": "node ./scripts/migrate-add-tenantid.js"

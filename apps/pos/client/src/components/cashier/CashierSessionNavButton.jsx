@@ -18,11 +18,14 @@ export default function CashierSessionNavButton() {
 
   const summary = useMemo(() => {
     if (!ctx?.session) return null;
+    const net = ctx.netCashMovements ?? 0;
+    const netLabel =
+      Math.abs(net) < 0.005 ? '' : ` · ${net >= 0 ? '+' : ''}${formatCurrency(net)} drawer adj.`;
     return {
-      line2: `${formatCurrency(ctx.cashSalesSoFar ?? 0)} cash`,
+      line2: `${formatCurrency(ctx.cashSalesSoFar ?? 0)} cash${netLabel}`,
       line3: `${formatCurrency(ctx.expected ?? 0)} expected`,
     };
-  }, [ctx?.session, ctx?.cashSalesSoFar, ctx?.expected]);
+  }, [ctx?.session, ctx?.cashSalesSoFar, ctx?.expected, ctx?.netCashMovements]);
 
   if (!ctx) return null;
 
@@ -97,7 +100,7 @@ export default function CashierSessionNavButton() {
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-1.5 z-[130] w-[min(calc(100vw-1.5rem),17rem)] rounded-xl border border-slate-600/80 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-hidden py-2 px-3"
+          className="absolute right-0 top-full mt-1.5 z-[130] w-[min(calc(100vw-1.5rem),19rem)] rounded-xl border border-slate-600/80 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-hidden py-2 px-3"
           role="dialog"
           aria-label="Cashier session details"
         >
@@ -115,7 +118,44 @@ export default function CashierSessionNavButton() {
               <span className="text-slate-500">Expected in drawer</span>
               <span className="text-[var(--pos-text-primary)] font-bold tabular-nums">{formatCurrency(ctx.expected ?? 0)}</span>
             </li>
+            {Math.abs(ctx.netCashMovements ?? 0) >= 0.005 && (
+              <li className="flex justify-between gap-2 text-xs">
+                <span className="text-slate-500">Net cash in / out</span>
+                <span
+                  className={`font-semibold tabular-nums ${
+                    (ctx.netCashMovements ?? 0) >= 0 ? 'text-emerald-400' : 'text-amber-300'
+                  }`}
+                >
+                  {(ctx.netCashMovements ?? 0) >= 0 ? '+' : ''}
+                  {formatCurrency(ctx.netCashMovements ?? 0)}
+                </span>
+              </li>
+            )}
           </ul>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                ctx.openCashMovementModal('in');
+              }}
+              disabled={ctx.cashMovementMutationPending}
+              className="py-2 rounded-xl bg-emerald-700/80 hover:bg-emerald-600 text-white text-xs font-semibold border border-emerald-500/40 disabled:opacity-50"
+            >
+              Cash in
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                ctx.openCashMovementModal('out');
+              }}
+              disabled={ctx.cashMovementMutationPending}
+              className="py-2 rounded-xl bg-amber-700/70 hover:bg-amber-600 text-white text-xs font-semibold border border-amber-500/40 disabled:opacity-50"
+            >
+              Cash out
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -123,7 +163,7 @@ export default function CashierSessionNavButton() {
               ctx.openCloseModal();
             }}
             disabled={ctx.closeMutationPending}
-            className="mt-3 w-full py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold border border-slate-500/50 disabled:opacity-50"
+            className="mt-2 w-full py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold border border-slate-500/50 disabled:opacity-50"
           >
             Close &amp; balance
           </button>

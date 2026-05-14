@@ -34,6 +34,19 @@ const cashierSessionSchema = new mongoose.Schema(
     cashSalesDuringSession: { type: Number },
     varianceAmount: { type: Number },
     varianceNotes: { type: String, default: '', trim: true },
+    cashMovements: {
+      type: [
+        {
+          kind: { type: String, enum: ['cash_in', 'cash_out'], required: true },
+          amount: { type: Number, required: true, min: 0 },
+          notes: { type: String, default: '', trim: true, maxlength: 2000 },
+          createdAt: { type: Date, default: Date.now },
+          createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        },
+      ],
+      default: [],
+    },
+    sessionCloseBreakdown: { type: mongoose.Schema.Types.Mixed },
   },
   { timestamps: true }
 );

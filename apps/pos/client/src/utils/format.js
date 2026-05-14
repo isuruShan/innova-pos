@@ -10,3 +10,20 @@ export const formatTime = (iso) =>
   new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 export const formatDateTime = (iso) =>
   new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+const PAYMENT_TYPE_LABELS = {
+  cash: 'Cash',
+  card: 'Card',
+  online: 'Online',
+  bank_transfer: 'Bank transfer',
+  pending: 'Pending',
+  unknown: 'Other',
+};
+
+/** Human-readable payment method for POS / session summaries. */
+export function formatPaymentTypeLabel(raw) {
+  if (raw == null || raw === '') return '—';
+  const s = String(raw).trim();
+  if (PAYMENT_TYPE_LABELS[s]) return PAYMENT_TYPE_LABELS[s];
+  return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}

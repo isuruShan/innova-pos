@@ -9,7 +9,7 @@ import Badge from '../../components/Badge';
 import OrderTypeBadge from '../../components/OrderTypeBadge';
 import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
-import { formatCurrency, formatDateTime } from '../../utils/format';
+import { formatCurrency, formatDateTime, formatPaymentTypeLabel } from '../../utils/format';
 import { useStoreContext, normalizeStoreId } from '../../context/StoreContext';
 import { StatsRowSkeleton, OrdersTableSkeleton } from '../../components/StoreSkeletons';
 import PosDateField from '../../components/PosDateField';
@@ -35,13 +35,6 @@ function sevenDaysAgo() {
 }
 
 const PAYMENT_LABELS = { cash: 'Cash', card: 'Card', online: 'Online', bank_transfer: 'Bank transfer' };
-
-function formatPaymentTypeLabel(raw) {
-  if (raw == null || raw === '') return '—';
-  const s = String(raw).trim();
-  if (PAYMENT_LABELS[s]) return PAYMENT_LABELS[s];
-  return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 export default function OrdersView() {
   const { selectedStoreId, isStoreReady, stores } = useStoreContext();

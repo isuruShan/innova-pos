@@ -139,6 +139,8 @@ export default function CashierSessionsPage() {
                   <th className="px-4 py-3 font-semibold">Closed</th>
                   <th className="px-4 py-3 font-semibold text-right">Opening</th>
                   <th className="px-4 py-3 font-semibold text-right">Cash sales</th>
+                  <th className="px-4 py-3 font-semibold text-right">Discounts</th>
+                  <th className="px-4 py-3 font-semibold text-right">Net cash in/out</th>
                   <th className="px-4 py-3 font-semibold text-right">Expected</th>
                   <th className="px-4 py-3 font-semibold text-right">Counted</th>
                   <th className="px-4 py-3 font-semibold text-right">Variance</th>
@@ -172,6 +174,29 @@ export default function CashierSessionsPage() {
                         {row.cashSalesDuringSession != null
                           ? formatCurrency(row.cashSalesDuringSession)
                           : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-slate-300">
+                        {row.sessionCloseBreakdown?.totalDiscounts != null
+                          ? formatCurrency(row.sessionCloseBreakdown.totalDiscounts)
+                          : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-slate-300">
+                        {row.sessionCloseBreakdown?.netCashMovements != null ? (
+                          <span
+                            className={
+                              Math.abs(row.sessionCloseBreakdown.netCashMovements) < 0.005
+                                ? 'text-slate-400'
+                                : row.sessionCloseBreakdown.netCashMovements >= 0
+                                  ? 'text-emerald-400'
+                                  : 'text-amber-300'
+                            }
+                          >
+                            {row.sessionCloseBreakdown.netCashMovements >= 0 ? '+' : ''}
+                            {formatCurrency(row.sessionCloseBreakdown.netCashMovements)}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-slate-300">
                         {row.expectedCashInDrawer != null
