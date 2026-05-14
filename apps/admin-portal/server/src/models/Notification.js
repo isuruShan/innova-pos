@@ -32,6 +32,7 @@ const notificationSchema = new mongoose.Schema(
         'temporary_activation_requested',
         'order_status_changed',
         'table_waiter_call',
+        'qr_order_updated',
       ],
       required: true,
     },
@@ -44,6 +45,7 @@ const notificationSchema = new mongoose.Schema(
       storeId: { type: String, default: '' },
       tableLabel: { type: String, default: '' },
       tableId: { type: String, default: '' },
+      changeKind: { type: String, default: '' },
     },
   },
   { timestamps: true }

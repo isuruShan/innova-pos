@@ -31,10 +31,11 @@ async function sumCashSales(tenantId, storeId, cashierId, openedAt, endDate) {
       $match: {
         tenantId: tid,
         storeId: sid,
-        createdBy: cid,
         status: 'completed',
         paymentType: 'cash',
         createdAt: { $gte: openedAt, $lte: endDate },
+        /** POS orders: created by this cashier. QR / table orders: no createdBy — attribute cash to who completed payment. */
+        $or: [{ createdBy: cid }, { orderSource: 'qr', updatedBy: cid }],
       },
     },
     { $group: { _id: null, total: { $sum: '$totalAmount' } } },

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, Plus, Minus, Trash2, Save, Link2, Hash, AlertTriangle, Tag, CheckCircle } from 'lucide-react';
 import api from '../api/axios';
@@ -148,6 +148,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
   const [items, setItems] = useState(order?.items || []);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState('');
+  const waiterDismissPostedRef = useRef(new Set());
 
   useEffect(() => {
     if (order) {
@@ -160,6 +161,24 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
       setError('');
     }
   }, [order?._id]);
+
+  useEffect(() => {
+    if (!order?._id) return;
+    const oid = String(order._id);
+    if (waiterDismissPostedRef.current.has(oid)) return;
+    waiterDismissPostedRef.current.add(oid);
+    if (waiterDismissPostedRef.current.size > 200) {
+      waiterDismissPostedRef.current.clear();
+      waiterDismissPostedRef.current.add(oid);
+    }
+    api
+      .post('/notifications/dismiss-waiter-calls-for-order', { orderId: oid })
+      .then(() => {
+        qc.invalidateQueries({ queryKey: ['waiter-call-notifications'] });
+        qc.invalidateQueries({ queryKey: ['qr-order-update-notifications'] });
+      })
+      .catch(() => {});
+  }, [order?._id, qc]);
 
   const { data: menuItems = [] } = useQuery({
     queryKey: ['menu', selectedStoreId],

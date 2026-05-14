@@ -1,7 +1,9 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
-const { protect, tenantScope, sendRouteError } = require('../middleware/auth');
+const Order = require('../models/Order');
+const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
+const { resolveSelectedStore } = require('../middleware/storeScope');
 
 const router = express.Router();
 
@@ -11,7 +13,7 @@ router.get('/unread-count', protect, tenantScope, async (req, res) => {
       tenantId: req.tenantId,
       userId: req.user.id,
       readAt: null,
-      type: { $ne: 'table_waiter_call' },
+      type: { $nin: ['table_waiter_call', 'qr_order_updated'] },
     });
     res.json({ count: n });
   } catch (err) {
@@ -49,7 +51,7 @@ router.get('/', protect, tenantScope, async (req, res) => {
     if (isBell) {
       const since = new Date(Date.now() - 86400000);
       parts.push({ $or: [{ readAt: null }, { readAt: { $gte: since } }] });
-      parts.push({ type: { $ne: 'table_waiter_call' } });
+      parts.push({ type: { $nin: ['table_waiter_call', 'qr_order_updated'] } });
     }
 
     const filter = parts.length ? { ...base, $and: parts } : base;
@@ -64,6 +66,52 @@ router.get('/', protect, tenantScope, async (req, res) => {
     sendRouteError(res, err, { req });
   }
 });
+
+/**
+ * When staff open an order, mark every unread `table_waiter_call` or `qr_order_updated`
+ * for that order or table+store as read so top bars / bell clear for all users.
+ */
+router.post(
+  '/dismiss-waiter-calls-for-order',
+  protect,
+  authorize('cashier', 'kitchen', 'manager', 'merchant_admin', 'superadmin'),
+  tenantScope,
+  resolveSelectedStore,
+  async (req, res) => {
+    try {
+      const orderId = String(req.body?.orderId || '').trim();
+      if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
+        return res.status(400).json({ message: 'orderId is required' });
+      }
+
+      const order = await Order.findOne({ _id: orderId, tenantId: req.tenantId }).lean();
+      if (!order) return res.status(404).json({ message: 'Order not found' });
+
+      if (req.storeId && order.storeId && String(order.storeId) !== String(req.storeId)) {
+        return res.status(403).json({ message: 'Order is not in the selected store' });
+      }
+
+      const sid = order.storeId ? String(order.storeId) : '';
+      const or = [{ 'meta.resourceType': 'order', 'meta.resourceId': String(order._id) }];
+      if (order.tableId) {
+        or.push({ 'meta.tableId': String(order.tableId) });
+      }
+
+      const filter = {
+        tenantId: req.tenantId,
+        type: { $in: ['table_waiter_call', 'qr_order_updated'] },
+        readAt: null,
+        ...(sid ? { 'meta.storeId': sid } : {}),
+        $or: or,
+      };
+
+      const result = await Notification.updateMany(filter, { $set: { readAt: new Date() } });
+      res.json({ ok: true, modifiedCount: result.modifiedCount });
+    } catch (err) {
+      sendRouteError(res, err, { req });
+    }
+  },
+);
 
 router.patch('/:id/read', protect, tenantScope, async (req, res) => {
   try {

@@ -11,7 +11,7 @@ const MenuItem = require(paths.models.MenuItem);
 const Order = require(paths.models.Order);
 const TenantSettings = require(paths.models.TenantSettings);
 const { enrichItems, recalculateOrderMoney, appendItemsToOrder } = require(paths.orderHelpers);
-const { notifyCashiersTableWaiterCall } = require(paths.notificationHelpers);
+const { notifyCashiersTableWaiterCall, notifyCashiersQrOrderChange } = require(paths.notificationHelpers);
 
 const router = express.Router();
 const WAITER_CALL_COOLDOWN_MS = 60_000;
@@ -143,7 +143,9 @@ router.post('/:tenantId/:storeId/:tableId/items', async (req, res) => {
       status: { $nin: ['completed', 'cancelled'] },
     });
 
+    let isNewOrder = false;
     if (!order) {
+      isNewOrder = true;
       const enrichedItems = await enrichItems(items, ctx.ids.tenantId, ctx.ids.storeId);
       order = new Order({
         tenantId: ctx.ids.tenantId,
@@ -169,6 +171,19 @@ router.post('/:tenantId/:storeId/:tableId/items', async (req, res) => {
         order.kitchenAddsStatus = 'pending_adds';
       }
       await order.save();
+    }
+
+    try {
+      const plain = order.toObject ? order.toObject({ flattenMaps: true }) : order;
+      await notifyCashiersQrOrderChange({
+        tenantId: ctx.ids.tenantId,
+        storeId: ctx.ids.storeId,
+        tableLabel: tbl.label,
+        order: plain,
+        changeKind: isNewOrder ? 'new_order' : 'items_added',
+      });
+    } catch (notifyErr) {
+      console.error('[qr-order-server] notifyCashiersQrOrderChange:', notifyErr?.message || notifyErr);
     }
 
     res.json(order);

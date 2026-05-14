@@ -19,5 +19,8 @@ export function notificationPathForPos(n, userRole) {
     if (role === 'manager' || role === 'merchant_admin') return '/manager/orders';
     return '/cashier/orders';
   }
+  if (type === 'qr_order_updated') {
+    return '/cashier/orders';
+  }
   return '/manager/notifications';
 }
