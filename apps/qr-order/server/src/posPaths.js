@@ -10,7 +10,9 @@ module.exports = {
     Store: path.join(posSrc, 'models/Store.js'),
     MenuItem: path.join(posSrc, 'models/MenuItem.js'),
     Order: path.join(posSrc, 'models/Order.js'),
+    TenantSettings: path.join(posSrc, 'models/TenantSettings.js'),
   },
   orderHelpers: path.join(posSrc, 'utils/orderHelpers.js'),
   notificationHelpers: path.join(posSrc, 'lib/notificationHelpers.js'),
+  menuItemImageUrls: path.join(posSrc, 'utils/menuItemImageUrls.js'),
 };

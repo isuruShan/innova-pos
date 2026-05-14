@@ -14,7 +14,7 @@ import { useStoreContext } from '../../context/StoreContext';
 import { MenuGridSkeleton } from '../../components/StoreSkeletons';
 
 const EMPTY_FORM = {
-  name: '', category: '', price: '', description: '', image: '', imageKey: '',
+  name: '', category: '', price: '', description: '', images: [],
   available: true, isCombo: false, comboItems: [],
 };
 
@@ -102,12 +102,64 @@ function ComboItemsPreview({ comboItems }) {
   );
 }
 
-// ─── Image upload field ───────────────────────────────────────────────────────
+// ─── Menu gallery (multiple sortable images) ─────────────────────────────────
 
-function ImageUploadField({ value, onChange }) {
+function MenuGalleryField({ images, onChange }) {
+  const move = (idx, delta) => {
+    const j = idx + delta;
+    if (j < 0 || j >= images.length) return;
+    const next = [...images];
+    [next[idx], next[j]] = [next[j], next[idx]];
+    onChange(next);
+  };
+  const removeAt = (idx) => onChange(images.filter((_, i) => i !== idx));
+  const append = (img) => onChange([...images, { url: img.url || '', key: img.key || '' }]);
+
+  return (
+    <div className="space-y-3">
+      <label className="block text-sm font-medium text-slate-300">Photos (first is primary on menus)</label>
+      {images.length > 0 && (
+        <div className="space-y-2">
+          {images.map((img, idx) => (
+            <div
+              key={`${idx}-${img.key || img.url}`}
+              className="flex items-center gap-2 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl p-2"
+            >
+              <div className="w-14 h-14 rounded-lg bg-slate-800 overflow-hidden shrink-0 border border-slate-600">
+                {img.url ? (
+                  <img src={img.url} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs text-slate-600">—</div>
+                )}
+              </div>
+              <span className="text-xs text-slate-500 flex-1 truncate">{img.key ? `S3: …${String(img.key).slice(-20)}` : img.url || '—'}</span>
+              <div className="flex flex-col gap-0.5 shrink-0">
+                <button type="button" disabled={idx === 0} onClick={() => move(idx, -1)}
+                  className="p-1 rounded bg-slate-700 text-slate-300 disabled:opacity-30 hover:bg-slate-600">
+                  <ChevronUp size={14} />
+                </button>
+                <button type="button" disabled={idx === images.length - 1} onClick={() => move(idx, 1)}
+                  className="p-1 rounded bg-slate-700 text-slate-300 disabled:opacity-30 hover:bg-slate-600">
+                  <ChevronDown size={14} />
+                </button>
+              </div>
+              <button type="button" onClick={() => removeAt(idx)} className="p-2 text-slate-500 hover:text-red-400 shrink-0">
+                <X size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <MenuGalleryAppend onAppend={append} />
+    </div>
+  );
+}
+
+function MenuGalleryAppend({ onAppend }) {
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
-  const [tab, setTab] = useState(value?.startsWith('http') || !value ? 'url' : 'file');
+  const [tab, setTab] = useState('url');
+  const [url, setUrl] = useState('');
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -117,7 +169,7 @@ function ImageUploadField({ value, onChange }) {
       const fd = new FormData();
       fd.append('image', file);
       const { data } = await api.post('/upload', fd);
-      onChange({ image: data.url, imageKey: data.key });
+      onAppend({ url: data.url, key: data.key });
       setTab('file');
     } catch {
       alert('Upload failed. Please try again.');
@@ -128,41 +180,29 @@ function ImageUploadField({ value, onChange }) {
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-1.5">
-        <label className="block text-sm font-medium text-slate-300">Image</label>
-        <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg p-0.5">
-          {[{ id: 'url', label: 'URL' }, { id: 'file', label: 'Upload' }].map(t => (
-            <button key={t.id} type="button" onClick={() => setTab(t.id)}
-              className={`px-3 py-1 rounded-md text-xs font-medium transition ${tab === t.id ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}>
-              {t.label}
-            </button>
-          ))}
-        </div>
+    <div className="border border-dashed border-slate-600 rounded-xl p-3 space-y-2">
+      <p className="text-xs text-slate-500">Add another image</p>
+      <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg p-0.5 w-fit">
+        {[{ id: 'url', label: 'URL' }, { id: 'file', label: 'Upload' }].map((t) => (
+          <button key={t.id} type="button" onClick={() => setTab(t.id)}
+            className={`px-3 py-1 rounded-md text-xs font-medium transition ${tab === t.id ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}>
+            {t.label}
+          </button>
+        ))}
       </div>
-
       {tab === 'url' ? (
-        <input type="url" value={value} onChange={e => onChange({ image: e.target.value, imageKey: '' })}
-          placeholder="https://images.unsplash.com/..."
-          className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
+        <div className="flex gap-2">
+          <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…"
+            className="flex-1 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+          <button type="button" disabled={!url.trim()} onClick={() => { onAppend({ url: url.trim(), key: '' }); setUrl(''); }}
+            className="px-3 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold disabled:opacity-40">Add</button>
+        </div>
       ) : (
         <div>
           <input type="file" ref={fileRef} onChange={handleFile} accept="image/*" className="hidden" />
           <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="w-full flex items-center justify-center gap-2 bg-[var(--pos-surface-inset)] border border-dashed border-slate-600 hover:border-amber-500 rounded-xl px-4 py-3 text-sm text-slate-400 hover:text-amber-400 transition disabled:opacity-50">
-            {uploading ? <><Upload size={15} className="animate-bounce" /> Uploading…</> : <><ImageIcon size={15} /> Click to upload image (max 5 MB)</>}
-          </button>
-        </div>
-      )}
-
-      {value && (
-        <div className="mt-2 relative group">
-          <img src={value}
-            alt="preview" className="h-24 w-full object-cover rounded-xl"
-            onError={e => e.target.style.display = 'none'} />
-          <button type="button" onClick={() => onChange({ image: '', imageKey: '' })}
-            className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 hover:bg-red-500 rounded-full flex items-center justify-center text-[var(--pos-text-primary)] transition opacity-0 group-hover:opacity-100">
-            <X size={11} />
+            className="w-full flex items-center justify-center gap-2 bg-[var(--pos-surface-inset)] border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-400 hover:text-amber-400 disabled:opacity-50">
+            {uploading ? <><Upload size={15} className="animate-bounce" /> Uploading…</> : <><ImageIcon size={15} /> Upload file</>}
           </button>
         </div>
       )}
@@ -359,10 +399,21 @@ export default function MenuManagement() {
 
   const openEdit = (item) => {
     setEditing(item);
+    const images =
+      item.images?.length > 0
+        ? item.images.map((x) => ({ url: x.url || '', key: x.key || '' }))
+        : item.image || item.imageKey
+          ? [{ url: item.image || '', key: item.imageKey || '' }]
+          : [];
     setForm({
-      name: item.name, category: item.category, price: item.price,
-      description: item.description, image: item.image, imageKey: item.imageKey || '', available: item.available,
-      isCombo: item.isCombo || false, comboItems: item.comboItems || [],
+      name: item.name,
+      category: item.category,
+      price: item.price,
+      description: item.description,
+      images,
+      available: item.available,
+      isCombo: item.isCombo || false,
+      comboItems: item.comboItems || [],
     });
     setFormError('');
     setSlideOpen(true);
@@ -374,12 +425,21 @@ export default function MenuManagement() {
     e.preventDefault();
     setFormError('');
     const rawPrice = Number(form.price);
-    const payload = { ...form, price: Number.isFinite(rawPrice) ? Math.round(rawPrice * 100) / 100 : NaN };
-    if (!payload.name.trim()) return setFormError('Name is required');
-    if (isNaN(payload.price) || payload.price < 0) return setFormError('Price must be a positive number');
-    if (payload.isCombo && payload.comboItems.length === 0)
+    const price = Number.isFinite(rawPrice) ? Math.round(rawPrice * 100) / 100 : NaN;
+    if (!form.name.trim()) return setFormError('Name is required');
+    if (isNaN(price) || price < 0) return setFormError('Price must be a positive number');
+    if (form.isCombo && form.comboItems.length === 0)
       return setFormError('A combo must have at least one item added');
-    if (!payload.isCombo) payload.comboItems = [];
+    const payload = {
+      name: form.name.trim(),
+      category: form.category,
+      price,
+      description: form.description,
+      images: form.images,
+      available: form.available,
+      isCombo: form.isCombo,
+      comboItems: form.isCombo ? form.comboItems : [],
+    };
     if (editing) updateMutation.mutate({ id: editing._id, data: payload });
     else createMutation.mutate(payload);
   };
@@ -444,8 +504,8 @@ export default function MenuManagement() {
                   item.isCombo ? 'border-amber-500/30 hover:border-amber-500/60' : 'border-slate-700/50 hover:border-slate-600'
                 }`}>
                 <div className="relative h-32 bg-slate-800 overflow-hidden">
-                  {item.image ? (
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                  {(item.images?.[0]?.url || item.image) ? (
+                    <img src={item.images?.[0]?.url || item.image} alt={item.name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-3xl">
                       {item.isCombo ? '🍱' : '🍔'}
@@ -554,9 +614,9 @@ export default function MenuManagement() {
               className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600 resize-none" />
           </div>
 
-          <ImageUploadField
-            value={form.image}
-            onChange={({ image, imageKey }) => setForm((f) => ({ ...f, image, imageKey }))}
+          <MenuGalleryField
+            images={form.images}
+            onChange={(images) => setForm((f) => ({ ...f, images }))}
           />
 
           {/* Combo builder */}

@@ -3,10 +3,13 @@ const mongoose = require('mongoose');
 const { sendRouteError } = require('@innovapos/shared-middleware');
 const paths = require('../posPaths');
 
+const { attachFreshMenuImageUrls } = require(paths.menuItemImageUrls);
+
 const CafeTable = require(paths.models.CafeTable);
 const Store = require(paths.models.Store);
 const MenuItem = require(paths.models.MenuItem);
 const Order = require(paths.models.Order);
+const TenantSettings = require(paths.models.TenantSettings);
 const { enrichItems, recalculateOrderMoney, appendItemsToOrder } = require(paths.orderHelpers);
 const { notifyCashiersTableWaiterCall } = require(paths.notificationHelpers);
 
@@ -58,13 +61,36 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
     const ctx = await loadTableSession(tenantId, storeId, tableId);
     if (ctx.error) return res.status(ctx.error.status).json({ message: ctx.error.message });
 
-    const menuItems = await MenuItem.find({
+    const menuItemsRaw = await MenuItem.find({
       tenantId: ctx.ids.tenantId,
       storeId: ctx.ids.storeId,
       available: true,
     })
       .sort({ category: 1, name: 1 })
       .lean();
+
+    const menuItems = await attachFreshMenuImageUrls(menuItemsRaw);
+
+    const brandingDoc = await TenantSettings.findOne({ tenantId: ctx.ids.tenantId })
+      .select(
+        'businessName tagline logoUrl primaryColor accentColor sidebarColor textColor selectionTextColor currency currencySymbol',
+      )
+      .lean();
+
+    const branding = brandingDoc
+      ? {
+          businessName: brandingDoc.businessName || '',
+          tagline: brandingDoc.tagline || '',
+          logoUrl: brandingDoc.logoUrl || '',
+          primaryColor: brandingDoc.primaryColor || '#1a1a2e',
+          accentColor: brandingDoc.accentColor || '#e94560',
+          sidebarColor: brandingDoc.sidebarColor || '#16213e',
+          textColor: brandingDoc.textColor || '#ffffff',
+          selectionTextColor: brandingDoc.selectionTextColor || '#ffffff',
+          currency: brandingDoc.currency || 'LKR',
+          currencySymbol: brandingDoc.currencySymbol || 'Rs.',
+        }
+      : null;
 
     const openOrder = await Order.findOne({
       tenantId: ctx.ids.tenantId,
@@ -79,6 +105,7 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
       tableId: String(ctx.ids.tableId),
       tableLabel: ctx.tbl.label,
       storeName: ctx.store.name,
+      branding,
       menuItems,
       order: openOrder,
     });

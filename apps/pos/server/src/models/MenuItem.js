@@ -6,6 +6,14 @@ const comboItemSchema = new mongoose.Schema({
   qty: { type: Number, required: true, min: 1, default: 1 },
 }, { _id: false });
 
+const menuItemImageSchema = new mongoose.Schema(
+  {
+    url: { type: String, default: '' },
+    key: { type: String, default: '' },
+  },
+  { _id: false },
+);
+
 const menuItemSchema = new mongoose.Schema(
   {
     tenantId: {
@@ -19,6 +27,8 @@ const menuItemSchema = new mongoose.Schema(
     category: { type: String, required: true, trim: true },
     price: { type: Number, required: true, min: 0 },
     description: { type: String, default: '' },
+    /** Ordered gallery (first is primary). Legacy `image` / `imageKey` kept for older clients. */
+    images: { type: [menuItemImageSchema], default: [] },
     image: { type: String, default: '' },
     imageKey: { type: String, default: '' },
     available: { type: Boolean, default: true },

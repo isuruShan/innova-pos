@@ -369,6 +369,9 @@ importers:
       '@innovapos/mongo-connection':
         specifier: workspace:*
         version: link:../../../packages/mongo-connection
+      '@innovapos/runtime-env':
+        specifier: workspace:*
+        version: link:../../../packages/runtime-env
       '@innovapos/shared-middleware':
         specifier: workspace:*
         version: link:../../../packages/shared-middleware
