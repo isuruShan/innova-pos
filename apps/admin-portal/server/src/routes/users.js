@@ -6,6 +6,7 @@ const { authenticateJWT, authorize, tenantScope, emitAudit, sendRouteError } = r
 const { childLogger } = require('@innovapos/logger');
 const { sendWelcomeEmail } = require('../utils/mailer');
 const { presignObjectKey } = require('../utils/s3Runtime');
+const { parsePageQuery, paginated } = require('../lib/listPagination');
 
 const router = express.Router();
 
@@ -35,20 +36,32 @@ async function attachFreshProfileImages(users) {
     : u));
 }
 
-// GET /users — list users in tenant
+// GET /users — list users in tenant (paginated: ?page=&limit=&role=)
 router.get('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
   try {
     const tenantId = req.user.role === 'superadmin' ? (req.query.tenantId || req.tenantId) : req.tenantId;
     if (!tenantId) return res.status(400).json({ message: 'tenantId required' });
 
-    let users = await User.find({ tenantId })
+    const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 100 });
+    const filter = { tenantId };
+    const roleQ = String(req.query.role || '').trim();
+    if (roleQ) {
+      const roles = roleQ.split(',').map((r) => r.trim()).filter(Boolean);
+      if (roles.length === 1) filter.role = roles[0];
+      else if (roles.length > 1) filter.role = { $in: roles };
+    }
+
+    const total = await User.countDocuments(filter);
+    let users = await User.find(filter)
       .populate('storeIds', 'name code')
       .populate('defaultStoreId', 'name code')
       .select('-password -resetPasswordToken -resetPasswordExpires')
       .sort({ role: 1, name: 1 })
+      .skip(skip)
+      .limit(limit)
       .lean();
     users = await attachFreshProfileImages(users);
-    res.json(users);
+    res.json(paginated(users, total, page, limit));
   } catch (err) {
     sendRouteError(res, err, { req });
   }

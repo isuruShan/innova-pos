@@ -61,12 +61,19 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
     const ctx = await loadTableSession(tenantId, storeId, tableId);
     if (ctx.error) return res.status(ctx.error.status).json({ message: ctx.error.message });
 
-    const menuItemsRaw = await MenuItem.find({
+    const menuFilter = {
       tenantId: ctx.ids.tenantId,
       storeId: ctx.ids.storeId,
       available: true,
-    })
+    };
+    const menuLimit = Math.min(120, Math.max(1, parseInt(req.query.menuLimit, 10) || 60));
+    const menuSkip = Math.max(0, parseInt(req.query.menuSkip, 10) || 0);
+
+    const menuTotal = await MenuItem.countDocuments(menuFilter);
+    const menuItemsRaw = await MenuItem.find(menuFilter)
       .sort({ category: 1, name: 1 })
+      .skip(menuSkip)
+      .limit(menuLimit)
       .lean();
 
     const menuItems = await attachFreshMenuImageUrls(menuItemsRaw);
@@ -107,6 +114,9 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
       storeName: ctx.store.name,
       branding,
       menuItems,
+      menuTotal,
+      menuSkip,
+      menuLimit,
       order: openOrder,
     });
   } catch (err) {

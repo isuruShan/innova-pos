@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { BrandingProvider } from './context/BrandingContext';
 import { StoreProvider } from './context/StoreContext';
+import PosNotificationStream from './components/PosNotificationStream';
 
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
@@ -57,6 +58,7 @@ export default function App() {
       <AuthProvider>
         <BrandingProvider>
           <StoreProvider>
+            <PosNotificationStream />
             <BrowserRouter>
               <Routes>
                 <Route path="/login" element={<Login />} />

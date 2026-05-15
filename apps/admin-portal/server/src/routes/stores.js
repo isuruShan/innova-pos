@@ -2,6 +2,7 @@ const express = require('express');
 const Store = require('../models/Store');
 const User = require('../models/User');
 const { authenticateJWT, authorize, tenantScope, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
+const { parsePageQuery, paginated } = require('../lib/listPagination');
 
 const router = express.Router();
 
@@ -29,11 +30,19 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
     const tenantId = resolveTenantId(req);
     if (!tenantId) return res.status(400).json({ message: 'tenantId required' });
 
+    const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 50, maxLimit: 200 });
+    const total = await Store.countDocuments({
+      tenantId,
+      ...(await assignedStoreFilter(req, tenantId)),
+    });
     const stores = await Store.find({
       tenantId,
       ...(await assignedStoreFilter(req, tenantId)),
-    }).sort({ isActive: -1, isDefault: -1, name: 1 });
-    res.json(stores);
+    })
+      .sort({ isActive: -1, isDefault: -1, name: 1 })
+      .skip(skip)
+      .limit(limit);
+    res.json(paginated(stores, total, page, limit));
   } catch (err) {
     sendRouteError(res, err, { req });
   }

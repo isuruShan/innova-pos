@@ -20,8 +20,12 @@ const app = express();
 const logger = createLogger('auth-service');
 app.locals.logger = logger;
 
-const limiterStore = await getRateLimitStore(logger);
-const limiterOpts = limiterStore ? { store: limiterStore } : {};
+const limiterStoreLogin = await getRateLimitStore(logger, { prefix: 'rl:auth:login' });
+const limiterStoreForgot = await getRateLimitStore(logger, { prefix: 'rl:auth:forgot' });
+const limiterStoreApi = await getRateLimitStore(logger, { prefix: 'rl:auth:api' });
+const loginLimiterOpts = limiterStoreLogin ? { store: limiterStoreLogin } : {};
+const forgotLimiterOpts = limiterStoreForgot ? { store: limiterStoreForgot } : {};
+const apiLimiterOpts = limiterStoreApi ? { store: limiterStoreApi } : {};
 
 connectDB(logger);
 
@@ -43,7 +47,7 @@ app.use(
 app.use(
   '/auth/login',
   rateLimit({
-    ...limiterOpts,
+    ...loginLimiterOpts,
     windowMs: 15 * 60 * 1000,
     max: 20,
     message: { message: 'Too many login attempts — please try again later.' },
@@ -53,14 +57,14 @@ app.use(
 app.use(
   '/auth/forgot-password',
   rateLimit({
-    ...limiterOpts,
+    ...forgotLimiterOpts,
     windowMs: 15 * 60 * 1000,
     max: 5,
     message: { message: 'Too many requests' },
   }),
 );
 
-app.use(rateLimit({ ...limiterOpts, windowMs: 15 * 60 * 1000, max: 500 }));
+app.use(rateLimit({ ...apiLimiterOpts, windowMs: 15 * 60 * 1000, max: 500 }));
 
 app.use(express.json({ limit: '2mb' }));
 

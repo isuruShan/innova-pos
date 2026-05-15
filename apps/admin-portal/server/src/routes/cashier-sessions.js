@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const CashierSession = require('../models/CashierSession');
 const User = require('../models/User');
 const { authenticateJWT, authorize, tenantScope, sendRouteError } = require('@innovapos/shared-middleware');
+const { parsePageQuery, paginated } = require('../lib/listPagination');
 
 const router = express.Router();
 
@@ -48,21 +49,25 @@ router.get('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
       filter.storeId = rawStore;
     }
 
+    const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 200 });
+
     if (req.user.role === 'superadmin') {
+      const total = await CashierSession.countDocuments(filter);
       const sessions = await CashierSession.find(filter)
         .populate('cashierId', 'name email role')
         .populate('storeId', 'name code')
         .sort({ closedAt: -1, openedAt: -1 })
-        .limit(400)
+        .skip(skip)
+        .limit(limit)
         .lean();
-      return res.json(sessions);
+      return res.json(paginated(sessions, total, page, limit));
     }
 
     const requester = await User.findOne({ _id: req.user.id, tenantId }).select('storeIds');
     const allowed = (requester?.storeIds || []).map((id) => String(id));
 
     if (!allowed.length) {
-      return res.json([]);
+      return res.json(paginated([], 0, 1, limit));
     }
 
     if (filter.storeId) {
@@ -73,14 +78,16 @@ router.get('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
       filter.storeId = { $in: allowed };
     }
 
+    const total = await CashierSession.countDocuments(filter);
     const sessions = await CashierSession.find(filter)
       .populate('cashierId', 'name email role')
       .populate('storeId', 'name code')
       .sort({ closedAt: -1, openedAt: -1 })
-      .limit(400)
+      .skip(skip)
+      .limit(limit)
       .lean();
 
-    res.json(sessions);
+    res.json(paginated(sessions, total, page, limit));
   } catch (err) {
     sendRouteError(res, err, { req });
   }

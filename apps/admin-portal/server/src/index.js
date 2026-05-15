@@ -27,8 +27,10 @@ const app = express();
 const logger = createLogger('admin-portal-server');
 app.locals.logger = logger;
 
-const limiterStore = await getRateLimitStore(logger);
-const limiterOpts = limiterStore ? { store: limiterStore } : {};
+const limiterStoreLogin = await getRateLimitStore(logger, { prefix: 'rl:admin:login' });
+const limiterStoreApi = await getRateLimitStore(logger, { prefix: 'rl:admin:api' });
+const loginLimiterOpts = limiterStoreLogin ? { store: limiterStoreLogin } : {};
+const apiLimiterOpts = limiterStoreApi ? { store: limiterStoreApi } : {};
 
 connectDB(logger);
 
@@ -61,9 +63,9 @@ app.use((req, res, next) => {
 
 app.use(
   '/api/auth/login',
-  rateLimit({ ...limiterOpts, windowMs: 15 * 60 * 1000, max: 20 }),
+  rateLimit({ ...loginLimiterOpts, windowMs: 15 * 60 * 1000, max: 20 }),
 );
-app.use(rateLimit({ ...limiterOpts, windowMs: 15 * 60 * 1000, max: 500 }));
+app.use(rateLimit({ ...apiLimiterOpts, windowMs: 15 * 60 * 1000, max: 500 }));
 app.use(express.json({ limit: '10mb' }));
 
 app.use('/api/auth',            require('./routes/auth'));

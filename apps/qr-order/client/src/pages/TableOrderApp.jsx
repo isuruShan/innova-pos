@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -18,10 +18,17 @@ function apiBase() {
   return (import.meta.env.VITE_QR_ORDER_API_URL || '').replace(/\/$/, '');
 }
 
-function sessionPath(tenantId, storeId, tableId) {
+const MENU_PAGE = 60;
+
+function sessionPath(tenantId, storeId, tableId, query = {}) {
   const base = apiBase();
   const path = `/api/public/table/${encodeURIComponent(tenantId)}/${encodeURIComponent(storeId)}/${encodeURIComponent(tableId)}`;
-  return base ? `${base}${path}` : path;
+  const qs = new URLSearchParams();
+  if (query.menuSkip != null) qs.set('menuSkip', String(query.menuSkip));
+  if (query.menuLimit != null) qs.set('menuLimit', String(query.menuLimit));
+  const q = qs.toString();
+  const full = q ? `${path}?${q}` : path;
+  return base ? `${base}${full}` : full;
 }
 
 function itemPhotoUrls(item) {
@@ -167,6 +174,8 @@ export default function TableOrderApp() {
   const [submitting, setSubmitting] = useState(false);
   const [callingWaiter, setCallingWaiter] = useState(false);
   const [detailItem, setDetailItem] = useState(null);
+  const [menuLoadingMore, setMenuLoadingMore] = useState(false);
+  const menuLenRef = useRef(0);
 
   const branding = payload?.branding;
   const currencySymbol = branding?.currencySymbol || '$';
@@ -188,31 +197,48 @@ export default function TableOrderApp() {
     };
   }, [branding]);
 
-  const fetchSession = useCallback(async () => {
-    if (!tenantId || !storeId || !tableId) return;
-    try {
-      const { data } = await axios.get(sessionPath(tenantId, storeId, tableId));
-      setPayload(data);
-      setLoadError(null);
-    } catch (e) {
-      setLoadError(e);
-      setPayload(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [tenantId, storeId, tableId]);
+  const fetchSession = useCallback(
+    async (appendMenu = false) => {
+      if (!tenantId || !storeId || !tableId) return;
+      try {
+        const menuSkip = appendMenu ? menuLenRef.current : 0;
+        const { data } = await axios.get(
+          sessionPath(tenantId, storeId, tableId, { menuSkip, menuLimit: MENU_PAGE }),
+        );
+        if (appendMenu) {
+          setPayload((prev) => ({
+            ...data,
+            menuItems: [...(prev?.menuItems || []), ...(data.menuItems || [])],
+          }));
+        } else {
+          setPayload(data);
+        }
+        const chunkLen = (data.menuItems || []).length;
+        menuLenRef.current = appendMenu ? menuLenRef.current + chunkLen : chunkLen;
+        setLoadError(null);
+      } catch (e) {
+        setLoadError(e);
+        if (!appendMenu) setPayload(null);
+      } finally {
+        setLoading(false);
+        setMenuLoadingMore(false);
+      }
+    },
+    [tenantId, storeId, tableId],
+  );
 
   useEffect(() => {
-    fetchSession();
+    fetchSession(false);
   }, [fetchSession]);
 
   useEffect(() => {
     if (!tenantId || !storeId || !tableId) return undefined;
-    const id = setInterval(() => fetchSession(), 12_000);
+    const id = setInterval(() => fetchSession(false), 12_000);
     return () => clearInterval(id);
   }, [tenantId, storeId, tableId, fetchSession]);
 
   const menuItems = payload?.menuItems || [];
+  const menuTotal = payload?.menuTotal != null ? Number(payload.menuTotal) : menuItems.length;
   const categories = useMemo(() => {
     const c = [...new Set(menuItems.map((m) => m.category).filter(Boolean))].sort();
     return ['All', ...c];
@@ -283,7 +309,7 @@ export default function TableOrderApp() {
       });
       setCart([]);
       setMsg('Sent to the kitchen. Thank you!');
-      fetchSession();
+      fetchSession(false);
       setTab('order');
       setTimeout(() => setMsg(''), 4000);
     } catch (e) {
@@ -520,6 +546,21 @@ export default function TableOrderApp() {
                   </div>
                 );
               })}
+              {filteredMenu.length > 0 && menuItems.length < menuTotal && (
+                <div className="flex justify-center pt-2">
+                  <button
+                    type="button"
+                    disabled={menuLoadingMore}
+                    onClick={() => {
+                      setMenuLoadingMore(true);
+                      fetchSession(true);
+                    }}
+                    className="px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700 bg-white shadow-sm disabled:opacity-50"
+                  >
+                    {menuLoadingMore ? 'Loading…' : 'Load more items'}
+                  </button>
+                </div>
+              )}
               {filteredMenu.length === 0 && (
                 <p className="text-center text-slate-500 py-12 text-sm">No items in this category.</p>
               )}

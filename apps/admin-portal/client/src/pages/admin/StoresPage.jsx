@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
+import ListPagination from '../../components/common/ListPagination';
+import { unwrapPagedList } from '../../utils/unwrapPagedList';
 
 export default function StoresPage() {
   const { isSuperAdmin } = useAuth();
@@ -15,19 +17,22 @@ export default function StoresPage() {
   const [editMeta, setEditMeta] = useState({ deactivatedBySuperadmin: false });
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_admin_stores') || 'table');
+  const [storePage, setStorePage] = useState(1);
 
-  const { data: stores = [], isLoading } = useQuery({
-    queryKey: ['admin-stores'],
+  const { data: storeList = { items: [], page: 1, pages: 1, total: 0 }, isLoading, isFetching } = useQuery({
+    queryKey: ['admin-stores', storePage],
     queryFn: async () => {
-      const { data } = await api.get('/stores');
-      return data;
+      const { data } = await api.get('/stores', { params: { page: storePage, limit: 20 } });
+      return unwrapPagedList(data);
     },
   });
+  const stores = storeList.items || [];
+
   const { data: users = [] } = useQuery({
     queryKey: ['users-for-store-access'],
     queryFn: async () => {
-      const { data } = await api.get('/users');
-      return data;
+      const { data } = await api.get('/users', { params: { page: 1, limit: 500 } });
+      return unwrapPagedList(data).items;
     },
   });
 
@@ -251,6 +256,14 @@ export default function StoresPage() {
           </table>
           </div>
         )}
+        <ListPagination
+          page={storeList.page}
+          pages={storeList.pages}
+          total={storeList.total}
+          onPageChange={setStorePage}
+          isFetching={isFetching}
+          className="px-4"
+        />
       </div>
 
       {editingStore && (

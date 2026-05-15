@@ -11,9 +11,13 @@ export default function DashboardPage() {
     queryFn: async () => { const { data } = await api.get('/subscriptions/my'); return data; },
   });
 
-  const { data: users } = useQuery({
-    queryKey: ['my-users'],
-    queryFn: async () => { const { data } = await api.get('/users'); return data; },
+  const { data: staffTotal } = useQuery({
+    queryKey: ['my-users-total'],
+    queryFn: async () => {
+      const { data } = await api.get('/users', { params: { page: 1, limit: 1 } });
+      const t = data?.total;
+      return typeof t === 'number' ? t : (Array.isArray(data) ? data.length : 0);
+    },
   });
 
   const tenant = sub?.tenant;
@@ -84,7 +88,7 @@ export default function DashboardPage() {
           },
           {
             label: 'Staff members',
-            value: users?.length ?? '—',
+            value: staffTotal ?? '—',
             icon: Users,
             color: '#0d9488',
           },

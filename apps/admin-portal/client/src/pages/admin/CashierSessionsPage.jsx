@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { RefreshCw, Wallet } from 'lucide-react';
 import api from '../../api/axios';
 import AdminDateField from '../../components/AdminDateField';
+import ListPagination from '../../components/common/ListPagination';
+import { unwrapPagedList } from '../../utils/unwrapPagedList';
 import { useStoreContext } from '../../context/StoreContext';
 
 function todayStr() {
@@ -30,6 +32,11 @@ export default function CashierSessionsPage() {
   const [fromDate, setFromDate] = useState(sevenDaysAgo());
   const [toDate, setToDate] = useState(todayStr());
   const [statusFilter, setStatusFilter] = useState(['closed', 'open']);
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [fromDate, toDate, statusFilter.join(','), selectedStoreId]);
 
   const params = useMemo(() => {
     const p = {};
@@ -41,15 +48,17 @@ export default function CashierSessionsPage() {
     return p;
   }, [fromDate, toDate, statusFilter]);
 
-  const { data: sessions = [], isPending, refetch, isFetching } = useQuery({
-    queryKey: ['admin-cashier-sessions', selectedStoreId, params],
+  const { data: sessionList = { items: [], page: 1, pages: 1, total: 0 }, isPending, refetch, isFetching } = useQuery({
+    queryKey: ['admin-cashier-sessions', selectedStoreId, params, page],
     queryFn: async () => {
-      const { data } = await api.get('/cashier-sessions', { params });
-      return Array.isArray(data) ? data : [];
+      const { data } = await api.get('/cashier-sessions', { params: { ...params, page, limit: 25 } });
+      return unwrapPagedList(data);
     },
     enabled: Boolean(stores.length),
     staleTime: 15_000,
   });
+  const sessions = sessionList.items || [];
+  const pageMeta = sessionList;
 
   const toggleStatus = (s) => {
     setStatusFilter((prev) =>
@@ -205,6 +214,15 @@ export default function CashierSessionsPage() {
             </tbody>
           </table>
         </div>
+      )}
+      {!isPending && sessions.length > 0 && (
+        <ListPagination
+          page={pageMeta.page}
+          pages={pageMeta.pages}
+          total={pageMeta.total}
+          onPageChange={setPage}
+          isFetching={isFetching}
+        />
       )}
     </div>
   );

@@ -124,7 +124,7 @@ export default function WaiterCallBar() {
         })
         .then((r) => r.data),
     enabled,
-    refetchInterval: 12_000,
+    refetchInterval: 60_000,
     refetchOnWindowFocus: true,
   });
 

@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Loader, UserCheck, UserX, Key, X, Pencil } from 'lucide-react';
 import api from '../../api/axios';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
+import ListPagination from '../../components/common/ListPagination';
+import { unwrapPagedList } from '../../utils/unwrapPagedList';
 
 const ROLE_COLORS = {
   merchant_admin: 'bg-purple-100 text-purple-700',
@@ -18,20 +20,40 @@ export default function UsersPage() {
   const [form, setForm] = useState({ name: '', email: '', role: 'cashier', storeIds: [], defaultStoreId: '' });
   const [errors, setErrors] = useState({});
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_admin_users') || 'table');
+  const [page, setPage] = useState(1);
 
-  const { data: users, isLoading } = useQuery({
-    queryKey: ['users'],
-    queryFn: async () => { const { data } = await api.get('/users'); return data; },
+  const { data: usersPage, isLoading, isFetching } = useQuery({
+    queryKey: ['users', page],
+    queryFn: async () => {
+      const { data } = await api.get('/users', { params: { page, limit: 25 } });
+      return unwrapPagedList(data);
+    },
   });
+  const users = usersPage?.items ?? [];
+  const pageMeta = usersPage || { page: 1, pages: 1, total: 0 };
+
+  const { data: adminsPage } = useQuery({
+    queryKey: ['users-admins-for-cap'],
+    queryFn: async () => {
+      const { data } = await api.get('/users', { params: { page: 1, limit: 100, role: 'merchant_admin' } });
+      return unwrapPagedList(data);
+    },
+  });
+  const adminCount = (adminsPage?.items || []).filter((u) => u.role === 'merchant_admin' && u.isActive).length;
   const { data: stores = [] } = useQuery({
     queryKey: ['stores'],
-    queryFn: async () => { const { data } = await api.get('/stores'); return data; },
+    queryFn: async () => {
+      const { data } = await api.get('/stores', { params: { page: 1, limit: 500 } });
+      return unwrapPagedList(data).items;
+    },
   });
 
   const createMutation = useMutation({
     mutationFn: (payload) => api.post('/users', payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['users-admins-for-cap'] });
+      queryClient.invalidateQueries({ queryKey: ['my-users-total'] });
       setShowModal(false);
       setForm({ name: '', email: '', role: 'cashier', storeIds: [], defaultStoreId: '' });
     },
@@ -41,6 +63,8 @@ export default function UsersPage() {
     mutationFn: ({ id, payload }) => api.put(`/users/${id}`, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['users-admins-for-cap'] });
+      queryClient.invalidateQueries({ queryKey: ['my-users-total'] });
       setShowModal(false);
       setEditingUser(null);
       setForm({ name: '', email: '', role: 'cashier', storeIds: [], defaultStoreId: '' });
@@ -50,7 +74,11 @@ export default function UsersPage() {
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, isActive }) => api.put(`/users/${id}`, { isActive }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['users-admins-for-cap'] });
+      queryClient.invalidateQueries({ queryKey: ['my-users-total'] });
+    },
   });
 
   const resetMutation = useMutation({
@@ -103,8 +131,6 @@ export default function UsersPage() {
     setViewMode(mode);
     localStorage.setItem('view_mode_admin_users', mode);
   };
-
-  const adminCount = users?.filter(u => u.role === 'merchant_admin' && u.isActive).length || 0;
 
   return (
     <div className="space-y-6">
@@ -222,6 +248,16 @@ export default function UsersPage() {
             <div className="text-center py-12 text-gray-400">No users found</div>
           )}
         </div>
+      )}
+
+      {!isLoading && (
+        <ListPagination
+          page={pageMeta.page}
+          pages={pageMeta.pages}
+          total={pageMeta.total}
+          onPageChange={(p) => setPage(p)}
+          isFetching={isFetching}
+        />
       )}
 
       {/* Add/Edit user modal */}

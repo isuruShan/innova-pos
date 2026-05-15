@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ContactRound, Plus, Search, Pencil, Trash2 } from 'lucide-react';
 import api from '../../api/axios';
 import AdminDateField from '../../components/AdminDateField';
+import ListPagination from '../../components/common/ListPagination';
+import { unwrapPagedList } from '../../utils/unwrapPagedList';
 
 const emptyForm = {
   name: '', mobile: '', email: '', birthday: '', notes: '',
@@ -14,12 +16,26 @@ export default function CustomersAdminPage() {
   const [search, setSearch] = useState('');
   const [editor, setEditor] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [page, setPage] = useState(1);
 
-  const { data: rows = [], isPending } = useQuery({
-    queryKey: ['admin-customers', search],
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  const { data: list = { items: [], page: 1, pages: 1, total: 0 }, isPending, isFetching } = useQuery({
+    queryKey: ['admin-customers', search, page],
     queryFn: () =>
-      api.get('/customers', { params: search.trim() ? { search: search.trim() } : {} }).then((r) => r.data),
+      api
+        .get('/customers', {
+          params: {
+            ...(search.trim() ? { search: search.trim() } : {}),
+            page,
+            limit: 25,
+          },
+        })
+        .then((r) => unwrapPagedList(r.data)),
   });
+  const rows = list.items || [];
 
   const saveCustomer = useMutation({
     mutationFn: async () => {
@@ -166,6 +182,16 @@ export default function CustomersAdminPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {!isPending && rows.length > 0 && (
+          <ListPagination
+            page={list.page}
+            pages={list.pages}
+            total={list.total}
+            onPageChange={setPage}
+            isFetching={isFetching}
+            className="px-4"
+          />
         )}
       </div>
 

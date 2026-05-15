@@ -4,6 +4,7 @@ const Promotion = require('../models/Promotion');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, resolveWriteStoreId } = require('../middleware/storeScope');
 const { createNotification } = require('../lib/notificationHelpers');
+const { parsePageQuery, paginated } = require('../lib/listPagination');
 
 const router = express.Router();
 
@@ -24,8 +25,10 @@ router.get('/', protect, authorize('merchant_admin'), tenantScope, async (req, r
       const q = new RegExp(String(req.query.search).trim(), 'i');
       filter.$or = [{ name: q }, { description: q }];
     }
-    const promotions = await Promotion.find(filter).sort({ createdAt: -1 }).limit(500);
-    res.json(promotions);
+    const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 100 });
+    const total = await Promotion.countDocuments(filter);
+    const promotions = await Promotion.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit);
+    res.json(paginated(promotions, total, page, limit));
   } catch (err) {
     sendRouteError(res, err, { req });
   }

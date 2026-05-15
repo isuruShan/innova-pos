@@ -12,6 +12,7 @@ const FormData = require('form-data');
 const { tenantPlanAudience } = require('../utils/planAudience');
 const { presignObjectKey } = require('../utils/s3Runtime');
 const { notifySuperAdmins } = require('../lib/notificationHelpers');
+const { parsePageQuery, paginated } = require('../lib/listPagination');
 
 const router = express.Router();
 
@@ -77,14 +78,18 @@ router.get('/receipts', authenticateJWT, async (req, res) => {
     const filter = tenantId ? { tenantId } : {};
     if (req.query.status) filter.status = req.query.status;
 
+    const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 100 });
+    const total = await PaymentReceipt.countDocuments(filter);
     let receipts = await PaymentReceipt.find(filter)
       .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
       .populate('tenantId', 'businessName slug')
       .populate('verifiedBy', 'name')
       .populate('requestedPlanId', 'name code amount currency billingCycle durationDays')
       .lean();
     receipts = await attachFreshReceiptUrls(receipts);
-    res.json(receipts);
+    res.json(paginated(receipts, total, page, limit));
   } catch (err) {
     sendRouteError(res, err, { req });
   }

@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Gift, Plus, Search, Pencil, Trash2, Check } from 'lucide-react';
 import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
 import RewardScopeCombobox from '../../components/RewardScopeCombobox';
+import ListPagination from '../../components/common/ListPagination';
+import { unwrapPagedList } from '../../utils/unwrapPagedList';
 
 const emptyForm = {
   name: '',
@@ -34,6 +36,11 @@ export default function LoyaltyRewardsAdminTab() {
   const [form, setForm] = useState(emptyForm);
   const [rejectFor, setRejectFor] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [listPage, setListPage] = useState(1);
+
+  useEffect(() => {
+    setListPage(1);
+  }, [search, approvalFilter, storeFilter]);
 
   const queryParams = () => {
     const p = {};
@@ -44,15 +51,23 @@ export default function LoyaltyRewardsAdminTab() {
     return p;
   };
 
-  const { data: rows = [], isPending } = useQuery({
-    queryKey: ['admin-loyalty-rewards-tab', search, approvalFilter, storeFilter],
-    queryFn: () => api.get('/loyalty/rewards', { params: queryParams() }).then((r) => r.data),
+  const { data: rewardList = { items: [], page: 1, pages: 1, total: 0 }, isPending, isFetching } = useQuery({
+    queryKey: ['admin-loyalty-rewards-tab', search, approvalFilter, storeFilter, listPage],
+    queryFn: () =>
+      api
+        .get('/loyalty/rewards', { params: { ...queryParams(), page: listPage, limit: 25 } })
+        .then((r) => unwrapPagedList(r.data)),
   });
+  const rows = rewardList.items || [];
 
-  const { data: pendingQueue = [] } = useQuery({
+  const { data: pendingQueueList = { items: [] } } = useQuery({
     queryKey: ['admin-loyalty-rewards-pending-only'],
-    queryFn: () => api.get('/loyalty/rewards', { params: { pending: true } }).then((r) => r.data),
+    queryFn: () =>
+      api
+        .get('/loyalty/rewards', { params: { pending: true, page: 1, limit: 200 } })
+        .then((r) => unwrapPagedList(r.data)),
   });
+  const pendingQueue = pendingQueueList.items || [];
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['admin-loyalty-rewards-tab'] });
@@ -324,6 +339,16 @@ export default function LoyaltyRewardsAdminTab() {
               </tbody>
             </table>
           </div>
+        )}
+        {!isPending && rows.length > 0 && (
+          <ListPagination
+            page={rewardList.page}
+            pages={rewardList.pages}
+            total={rewardList.total}
+            onPageChange={setListPage}
+            isFetching={isFetching}
+            className="px-4"
+          />
         )}
       </div>
 

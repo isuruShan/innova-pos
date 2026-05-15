@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Building2, Key, Wallet } from 'lucide-react';
 import api from '../../api/axios';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
+import { unwrapPagedList } from '../../utils/unwrapPagedList';
 
 export default function MerchantWorkspacePage() {
   const { id } = useParams();
@@ -27,21 +28,23 @@ export default function MerchantWorkspacePage() {
     },
   });
 
-  const { data: stores = [] } = useQuery({
+  const { data: storesList } = useQuery({
     queryKey: ['workspace-stores', id],
     queryFn: async () => {
-      const { data } = await api.get('/stores', { params: { tenantId: id } });
-      return data;
+      const { data } = await api.get('/stores', { params: { tenantId: id, page: 1, limit: 200 } });
+      return unwrapPagedList(data);
     },
   });
+  const stores = storesList?.items || [];
 
-  const { data: admins = [] } = useQuery({
+  const { data: adminsList } = useQuery({
     queryKey: ['workspace-admins', id],
     queryFn: async () => {
-      const { data } = await api.get('/users', { params: { tenantId: id } });
-      return data.filter((u) => u.role === 'merchant_admin');
+      const { data } = await api.get('/users', { params: { tenantId: id, role: 'merchant_admin', page: 1, limit: 50 } });
+      return unwrapPagedList(data);
     },
   });
+  const admins = (adminsList?.items || []).filter((u) => u.role === 'merchant_admin');
 
   const cashierRange = useMemo(() => {
     const end = new Date();
@@ -53,7 +56,7 @@ export default function MerchantWorkspacePage() {
     };
   }, []);
 
-  const { data: cashierSessions = [], isLoading: cashierSessionsLoading } = useQuery({
+  const { data: cashierSessionsList, isLoading: cashierSessionsLoading } = useQuery({
     queryKey: ['workspace-cashier-sessions', id, cashierRange.from, cashierRange.to],
     queryFn: async () => {
       const { data } = await api.get('/cashier-sessions', {
@@ -61,13 +64,16 @@ export default function MerchantWorkspacePage() {
           tenantId: id,
           from: `${cashierRange.from}T00:00:00`,
           until: `${cashierRange.to}T23:59:59`,
+          page: 1,
+          limit: 100,
         },
         headers: { 'x-store-id': 'all' },
       });
-      return Array.isArray(data) ? data : [];
+      return unwrapPagedList(data);
     },
     enabled: Boolean(id),
   });
+  const cashierSessions = cashierSessionsList?.items || [];
 
   const assignPlanMutation = useMutation({
     mutationFn: ({ planId, planLocked }) => api.put(`/tenants/${id}/plan`, { planId, planLocked }),

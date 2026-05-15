@@ -1,9 +1,11 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 const Notification = require('../models/Notification');
 const Order = require('../models/Order');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore } = require('../middleware/storeScope');
+const { subscribeUserNotifications, publishNotificationRefresh } = require('../lib/notificationBus');
 
 const router = express.Router();
 
@@ -19,6 +21,62 @@ router.get('/unread-count', protect, tenantScope, async (req, res) => {
   } catch (err) {
     sendRouteError(res, err, { req });
   }
+});
+
+/**
+ * SSE: push a lightweight signal when new notifications arrive (Redis pub/sub across PM2 workers).
+ * EventSource cannot send Authorization; pass the same JWT as `?token=` (HTTPS only in production).
+ */
+router.get('/stream', (req, res) => {
+  const raw = String(req.query.token || '').trim();
+  if (!raw) {
+    res.status(401).setHeader('Content-Type', 'text/plain');
+    return res.send('token required');
+  }
+  let decoded;
+  try {
+    decoded = jwt.verify(raw, process.env.JWT_SECRET);
+  } catch {
+    res.status(401).setHeader('Content-Type', 'text/plain');
+    return res.send('invalid token');
+  }
+  const tenantId = decoded.tenantId;
+  const userId = decoded.id;
+  if (!tenantId || !userId) {
+    res.status(401).setHeader('Content-Type', 'text/plain');
+    return res.send('invalid token payload');
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  if (typeof res.flushHeaders === 'function') res.flushHeaders();
+
+  const write = (obj) => {
+    res.write(`data: ${JSON.stringify(obj)}\n\n`);
+  };
+
+  write({ type: 'connected', at: Date.now() });
+
+  const onSignal = () => write({ type: 'refresh', at: Date.now() });
+  const unsubscribe = subscribeUserNotifications(tenantId, userId, onSignal);
+
+  const ping = setInterval(() => {
+    res.write(`: ping ${Date.now()}\n\n`);
+  }, 25_000);
+
+  const cleanup = () => {
+    clearInterval(ping);
+    try {
+      unsubscribe();
+    } catch (_) { /* ignore */ }
+  };
+
+  req.on('close', cleanup);
+  res.on('close', cleanup);
 });
 
 router.get('/', protect, tenantScope, async (req, res) => {
@@ -105,7 +163,10 @@ router.post(
         $or: or,
       };
 
+      const affected = await Notification.find(filter).select('userId').lean();
       const result = await Notification.updateMany(filter, { $set: { readAt: new Date() } });
+      const userIds = [...new Set((affected || []).map((a) => String(a.userId)).filter(Boolean))];
+      if (userIds.length) publishNotificationRefresh(req.tenantId, userIds);
       res.json({ ok: true, modifiedCount: result.modifiedCount });
     } catch (err) {
       sendRouteError(res, err, { req });
@@ -121,6 +182,7 @@ router.patch('/:id/read', protect, tenantScope, async (req, res) => {
       { new: true },
     );
     if (!doc) return res.status(404).json({ message: 'Notification not found' });
+    publishNotificationRefresh(req.tenantId, [req.user.id]);
     res.json(doc);
   } catch (err) {
     sendRouteError(res, err, { req });
@@ -133,6 +195,7 @@ router.post('/read-all', protect, tenantScope, async (req, res) => {
       { tenantId: req.tenantId, userId: req.user.id, readAt: null },
       { readAt: new Date() },
     );
+    publishNotificationRefresh(req.tenantId, [req.user.id]);
     res.json({ ok: true });
   } catch (err) {
     sendRouteError(res, err, { req });

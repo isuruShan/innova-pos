@@ -28,7 +28,7 @@ const app = express();
 const logger = createLogger('upload-service');
 app.locals.logger = logger;
 
-const limiterStore = await getRateLimitStore(logger);
+const limiterStore = await getRateLimitStore(logger, { prefix: 'rl:upload:http' });
 const limiterOpts = limiterStore ? { store: limiterStore } : {};
 
 // Trust proxy

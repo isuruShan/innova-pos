@@ -8,6 +8,7 @@ const { getEffectiveTier, tierFromPoints, lowestTier } = require('../lib/loyalty
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, resolveWriteStoreId } = require('../middleware/storeScope');
 const { createNotification, notifyMerchantAdmins } = require('../lib/notificationHelpers');
+const { parsePageQuery, paginated } = require('../lib/listPagination');
 
 const router = express.Router();
 
@@ -92,10 +93,10 @@ router.post('/retention/sync', protect, authorize('merchant_admin'), tenantScope
 
 router.get('/retention/pending', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
   try {
-    const rows = await Customer.find({ tenantId: req.tenantId, retentionStatus: 'pending_review' })
-      .sort({ updatedAt: -1 })
-      .limit(500)
-      .lean();
+    const baseFilter = { tenantId: req.tenantId, retentionStatus: 'pending_review' };
+    const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 100 });
+    const total = await Customer.countDocuments(baseFilter);
+    const rows = await Customer.find(baseFilter).sort({ updatedAt: -1 }).skip(skip).limit(limit).lean();
     const tiers = await LoyaltyTier.find({ tenantId: req.tenantId }).sort({ minLifetimePoints: 1 }).lean();
     const low = lowestTier(tiers);
     const enriched = rows.map((c) => ({
@@ -104,7 +105,7 @@ router.get('/retention/pending', protect, authorize('merchant_admin'), tenantSco
       pointsTier: tierFromPoints(c.lifetimePoints || 0, tiers),
       lowestTier: low,
     }));
-    res.json(enriched);
+    res.json(paginated(enriched, total, page, limit));
   } catch (err) {
     sendRouteError(res, err, { req });
   }
@@ -213,8 +214,10 @@ router.get('/rewards', protect, authorize('merchant_admin'), tenantScope, async 
       const q = new RegExp(String(req.query.search).trim(), 'i');
       filter.$or = [{ name: q }, { description: q }];
     }
-    const rows = await LoyaltyReward.find(filter).sort({ createdAt: -1 }).limit(500);
-    res.json(rows);
+    const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 100 });
+    const total = await LoyaltyReward.countDocuments(filter);
+    const rows = await LoyaltyReward.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+    res.json(paginated(rows, total, page, limit));
   } catch (err) {
     sendRouteError(res, err, { req });
   }

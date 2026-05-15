@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const { publishNotificationRefresh } = require('./notificationBus');
 
 function castTenantId(tenantId) {
   if (tenantId == null) return tenantId;
@@ -12,7 +13,7 @@ function castTenantId(tenantId) {
 }
 
 async function createNotification(tenantId, userId, payload) {
-  return Notification.create({
+  const doc = await Notification.create({
     tenantId: castTenantId(tenantId),
     userId,
     type: payload.type,
@@ -20,6 +21,8 @@ async function createNotification(tenantId, userId, payload) {
     body: payload.body || '',
     meta: payload.meta || {},
   });
+  publishNotificationRefresh(tenantId, [userId]);
+  return doc;
 }
 
 /** Notify every active merchant admin in the tenant */
@@ -48,7 +51,9 @@ async function notifyMerchantAdmins(tenantId, payload, options = {}) {
     meta: payload.meta || {},
   }));
 
-  return Notification.insertMany(docs);
+  const inserted = await Notification.insertMany(docs);
+  publishNotificationRefresh(tid, admins.map((a) => a._id));
+  return inserted;
 }
 
 async function notifyPosStaffOrderStatusChange({
@@ -99,7 +104,9 @@ async function notifyPosStaffOrderStatusChange({
     },
   }));
 
-  return Notification.insertMany(docs);
+  const inserted = await Notification.insertMany(docs);
+  publishNotificationRefresh(tid, targets.map((u) => u._id));
+  return inserted;
 }
 
 /**
@@ -153,7 +160,9 @@ async function notifyCashiersTableWaiterCall({
     },
   }));
 
-  return Notification.insertMany(docs);
+  const inserted = await Notification.insertMany(docs);
+  publishNotificationRefresh(tid, targets.map((u) => u._id));
+  return inserted;
 }
 
 /**
@@ -206,7 +215,9 @@ async function notifyCashiersQrOrderChange({ tenantId, storeId, tableLabel, orde
     },
   }));
 
-  return Notification.insertMany(docs);
+  const inserted = await Notification.insertMany(docs);
+  publishNotificationRefresh(tid, targets.map((u) => u._id));
+  return inserted;
 }
 
 module.exports = {

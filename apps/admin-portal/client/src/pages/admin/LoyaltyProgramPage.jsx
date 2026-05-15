@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Award, Plus, Trash2, RefreshCw, Users, Gift } from 'lucide-react';
 import api from '../../api/axios';
 import LoyaltyRewardsAdminTab from './LoyaltyRewardsAdminTab';
+import ListPagination from '../../components/common/ListPagination';
+import { unwrapPagedList } from '../../utils/unwrapPagedList';
 
 const emptyTier = { name: '', level: '1', minLifetimePoints: '0', description: '' };
 
@@ -16,21 +18,27 @@ export default function LoyaltyProgramPage() {
   const [resolveFor, setResolveFor] = useState(null);
   const [pointsAction, setPointsAction] = useState('keep');
   const [tierAction, setTierAction] = useState('computed');
+  const [retentionPage, setRetentionPage] = useState(1);
 
   const { data: cfg, isPending: cfgPending } = useQuery({
     queryKey: ['loyalty-config'],
     queryFn: () => api.get('/loyalty/config').then((r) => r.data),
   });
 
-  const { data: tiers = [], isPending: tiersPending } = useQuery({
+  const { data: tiersRaw = [], isPending: tiersPending } = useQuery({
     queryKey: ['loyalty-tiers'],
     queryFn: () => api.get('/loyalty/tiers').then((r) => r.data),
   });
+  const tiers = Array.isArray(tiersRaw) ? tiersRaw : unwrapPagedList(tiersRaw).items;
 
-  const { data: pendingRetention = [], isPending: pendPending } = useQuery({
-    queryKey: ['loyalty-retention-pending'],
-    queryFn: () => api.get('/loyalty/retention/pending').then((r) => r.data),
+  const { data: retentionList = { items: [], page: 1, pages: 1, total: 0 }, isPending: pendPending, isFetching: pendFetching } = useQuery({
+    queryKey: ['loyalty-retention-pending', retentionPage],
+    queryFn: () =>
+      api
+        .get('/loyalty/retention/pending', { params: { page: retentionPage, limit: 25 } })
+        .then((r) => unwrapPagedList(r.data)),
   });
+  const pendingRetention = retentionList.items || [];
 
   const saveCfg = useMutation({
     mutationFn: (payload) => api.put('/loyalty/config', payload),
@@ -308,45 +316,54 @@ export default function LoyaltyProgramPage() {
             No customers pending retention review.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 text-gray-700 text-left">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Customer</th>
-                  <th className="px-3 py-2 font-medium">Points</th>
-                  <th className="px-3 py-2 font-medium">Tier</th>
-                  <th className="px-3 py-2 font-medium">Last activity</th>
-                  <th className="px-3 py-2 font-medium w-28" />
-                </tr>
-              </thead>
-              <tbody>
-                {pendingRetention.map((row) => (
-                  <tr key={row._id} className="border-t border-gray-100">
-                    <td className="px-3 py-2">
-                      <div className="font-medium text-gray-900">{row.name || '—'}</div>
-                      <div className="text-xs text-gray-500">{row.email || row.mobile || ''}</div>
-                    </td>
-                    <td className="px-3 py-2 tabular-nums">{row.lifetimePoints ?? 0}</td>
-                    <td className="px-3 py-2">{row.effectiveTier?.name || '—'}</td>
-                    <td className="px-3 py-2 text-xs text-gray-600">
-                      {row.lastLoyaltyActivityAt
-                        ? new Date(row.lastLoyaltyActivityAt).toLocaleDateString()
-                        : '—'}
-                    </td>
-                    <td className="px-3 py-2">
-                      <button
-                        type="button"
-                        onClick={() => openResolve(row)}
-                        className="text-amber-700 hover:text-amber-900 text-xs font-semibold"
-                      >
-                        Resolve
-                      </button>
-                    </td>
+          <>
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-gray-700 text-left">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Customer</th>
+                    <th className="px-3 py-2 font-medium">Points</th>
+                    <th className="px-3 py-2 font-medium">Tier</th>
+                    <th className="px-3 py-2 font-medium">Last activity</th>
+                    <th className="px-3 py-2 font-medium w-28" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {pendingRetention.map((row) => (
+                    <tr key={row._id} className="border-t border-gray-100">
+                      <td className="px-3 py-2">
+                        <div className="font-medium text-gray-900">{row.name || '—'}</div>
+                        <div className="text-xs text-gray-500">{row.email || row.mobile || ''}</div>
+                      </td>
+                      <td className="px-3 py-2 tabular-nums">{row.lifetimePoints ?? 0}</td>
+                      <td className="px-3 py-2">{row.effectiveTier?.name || '—'}</td>
+                      <td className="px-3 py-2 text-xs text-gray-600">
+                        {row.lastLoyaltyActivityAt
+                          ? new Date(row.lastLoyaltyActivityAt).toLocaleDateString()
+                          : '—'}
+                      </td>
+                      <td className="px-3 py-2">
+                        <button
+                          type="button"
+                          onClick={() => openResolve(row)}
+                          className="text-amber-700 hover:text-amber-900 text-xs font-semibold"
+                        >
+                          Resolve
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <ListPagination
+              page={retentionList.page}
+              pages={retentionList.pages}
+              total={retentionList.total}
+              onPageChange={setRetentionPage}
+              isFetching={pendFetching}
+            />
+          </>
         )}
       </section>
 

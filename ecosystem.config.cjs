@@ -35,6 +35,17 @@
  *   pm2 logs
  *   pm2 logs pos-server
  *   pm2 logs qr-order-server
+ *
+ * ── PM2: “Process N not found” / speedList pm2_env crash ───────────────────
+ * The daemon’s idea of process IDs can get stale (crashes, kill -9, partial
+ * restarts). Fix: reset the daemon and start clean from this repo root:
+ *   pm2 kill
+ *   cd ~/Projects/splitsecond-pos && pm2 start ecosystem.config.cjs --env production
+ *   pm2 save
+ * If `pm2 list` still throws, upgrade PM2 (`npm i -g pm2@latest`) or remove the
+ * saved dump before starting: `mv ~/.pm2/dump.pm2 ~/.pm2/dump.pm2.bak`
+ * Single-core / small VPS: use one POS worker to simplify IDs:
+ *   PM2_INSTANCES=1 pm2 start ecosystem.config.cjs --env production
  */
 
 // ── Shared AWS bootstrap variables injected into every process ──────────────

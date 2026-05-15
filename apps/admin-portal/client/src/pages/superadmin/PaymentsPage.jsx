@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, XCircle, ExternalLink, RefreshCw, Loader, Receipt } from 'lucide-react';
 import api from '../../api/axios';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
+import ListPagination from '../../components/common/ListPagination';
+import { unwrapPagedList } from '../../utils/unwrapPagedList';
 
 const STATUS_STYLES = {
   pending:  'bg-yellow-100 text-yellow-700',
@@ -17,16 +19,22 @@ export default function PaymentsPage() {
   const [rejectingId, setRejectingId] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_payments') || 'grid');
+  const [page, setPage] = useState(1);
 
-  const { data: receipts, isLoading, refetch } = useQuery({
-    queryKey: ['receipts', statusFilter],
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter]);
+
+  const { data: receiptList = { items: [], page: 1, pages: 1, total: 0 }, isLoading, isFetching, refetch } = useQuery({
+    queryKey: ['receipts', statusFilter, page],
     queryFn: async () => {
-      const params = {};
+      const params = { page, limit: 25 };
       if (statusFilter) params.status = statusFilter;
       const { data } = await api.get('/subscriptions/receipts', { params });
-      return data;
+      return unwrapPagedList(data);
     },
   });
+  const receipts = receiptList.items || [];
 
   const mutation = useMutation({
     mutationFn: ({ id, payload }) => api.put(`/subscriptions/receipts/${id}/verify`, payload),
@@ -221,6 +229,15 @@ export default function PaymentsPage() {
             </div>
           ))}
         </div>
+      )}
+      {!isLoading && receipts?.length > 0 && (
+        <ListPagination
+          page={receiptList.page}
+          pages={receiptList.pages}
+          total={receiptList.total}
+          onPageChange={setPage}
+          isFetching={isFetching}
+        />
       )}
     </div>
   );

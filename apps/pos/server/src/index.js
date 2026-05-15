@@ -25,8 +25,19 @@ app.locals.logger = logger;
 
 const isProd = process.env.NODE_ENV === 'production';
 
-const limiterStore = await getRateLimitStore(logger);
-const limiterOpts = limiterStore ? { store: limiterStore } : {};
+/** In development, SPA polling (orders, reports, notifications) from one IP blows past limits quickly, especially with a shared Redis store. Production keeps limits unless DISABLE_RATE_LIMIT=1. */
+const skipHttpRateLimit =
+  process.env.DISABLE_RATE_LIMIT === '1' ||
+  process.env.DISABLE_RATE_LIMIT === 'true' ||
+  !isProd;
+
+const limiterStoreApi = await getRateLimitStore(logger, { prefix: 'rl:pos:api' });
+const limiterStoreAuth = await getRateLimitStore(logger, { prefix: 'rl:pos:auth' });
+const apiLimiterOpts = limiterStoreApi ? { store: limiterStoreApi } : {};
+const authLimiterOpts = limiterStoreAuth ? { store: limiterStoreAuth } : {};
+
+const { initNotificationBus } = require('./lib/notificationBus');
+await initNotificationBus(logger);
 
 connectDB(logger);
 
@@ -69,21 +80,25 @@ app.use((req, res, next) => {
 });
 
 const apiLimiter = rateLimit({
-  ...limiterOpts,
-  windowMs: 15 * 60 * 1000,
-  max: 500,
+  ...apiLimiterOpts,
+  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
+  max: Number(process.env.RATE_LIMIT_MAX || 500),
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many requests — please try again later.' },
+  skip: (req) =>
+    skipHttpRateLimit ||
+    (req.method === 'GET' && req.path === '/notifications/stream'),
 });
 
 const authLimiter = rateLimit({
-  ...limiterOpts,
-  windowMs: 15 * 60 * 1000,
-  max: 20,
+  ...authLimiterOpts,
+  windowMs: Number(process.env.RATE_LIMIT_AUTH_WINDOW_MS || 15 * 60 * 1000),
+  max: Number(process.env.RATE_LIMIT_AUTH_MAX || 20),
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many login attempts — please try again later.' },
+  skip: () => skipHttpRateLimit,
 });
 
 app.use('/api/', apiLimiter);

@@ -12,8 +12,9 @@ export function StoreProvider({ children }) {
   const { data: stores = [] } = useQuery({
     queryKey: ['stores', user?.tenantId],
     queryFn: async () => {
-      const { data } = await api.get('/stores');
-      return data;
+      const { data } = await api.get('/stores', { params: { page: 1, limit: 500 } });
+      if (Array.isArray(data)) return data;
+      return data?.items || [];
     },
     enabled: Boolean(user?.tenantId && !isSuperAdmin),
   });

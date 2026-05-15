@@ -7,6 +7,8 @@ import {
 import api from '../../api/axios';
 import AdminDateField from '../../components/AdminDateField';
 import { useStoreContext } from '../../context/StoreContext';
+import ListPagination from '../../components/common/ListPagination';
+import { unwrapPagedList } from '../../utils/unwrapPagedList';
 const EMPTY = {
   name: '',
   description: '',
@@ -38,6 +40,11 @@ export default function PromotionsAdminPage() {
   const [formError, setFormError] = useState('');
   const [rejectFor, setRejectFor] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [listPage, setListPage] = useState(1);
+
+  useEffect(() => {
+    setListPage(1);
+  }, [search, approvalFilter, storeFilter]);
 
   const listParams = () => {
     const p = {};
@@ -48,15 +55,23 @@ export default function PromotionsAdminPage() {
     return p;
   };
 
-  const { data: promotions = [], isPending } = useQuery({
-    queryKey: ['admin-promotions', search, approvalFilter, storeFilter],
-    queryFn: () => api.get('/promotions', { params: listParams() }).then((r) => r.data),
+  const { data: promoList = { items: [], page: 1, pages: 1, total: 0 }, isPending, isFetching } = useQuery({
+    queryKey: ['admin-promotions', search, approvalFilter, storeFilter, listPage],
+    queryFn: () =>
+      api
+        .get('/promotions', { params: { ...listParams(), page: listPage, limit: 25 } })
+        .then((r) => unwrapPagedList(r.data)),
   });
+  const promotions = promoList.items || [];
 
-  const { data: pendingOnly = [], isPending: pendingListLoading } = useQuery({
+  const { data: pendingList = { items: [] }, isPending: pendingListLoading } = useQuery({
     queryKey: ['admin-promotions-pending'],
-    queryFn: () => api.get('/promotions', { params: { pending: true } }).then((r) => r.data),
+    queryFn: () =>
+      api
+        .get('/promotions', { params: { pending: true, page: 1, limit: 200 } })
+        .then((r) => unwrapPagedList(r.data)),
   });
+  const pendingOnly = pendingList.items || [];
 
   const { data: menuItems = [] } = useQuery({
     queryKey: ['admin-menu', selectedStoreId],
@@ -421,6 +436,16 @@ export default function PromotionsAdminPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {!isPending && promotions.length > 0 && (
+          <ListPagination
+            page={promoList.page}
+            pages={promoList.pages}
+            total={promoList.total}
+            onPageChange={setListPage}
+            isFetching={isFetching}
+            className="px-4"
+          />
         )}
       </div>
 
