@@ -14,7 +14,6 @@ async function start() {
   const fs = require('fs');
   const helmet = require('helmet');
   const compression = require('compression');
-  const rateLimit = require('express-rate-limit');
   const { getClientErrorPayload, createCorsMiddleware } = require('@innovapos/shared-middleware');
   const connectDB = require('./config/db');
 
@@ -36,17 +35,9 @@ async function start() {
     return qrCors(req, res, next);
   });
 
-  const publicLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 200,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: 'Too many requests — please try again later.' },
-  });
-
   app.use(express.json({ limit: '2mb' }));
 
-  app.use('/api/public/table', publicLimiter, require('./routes/tableSession'));
+  app.use('/api/public/table', require('./routes/tableSession'));
 
   const clientDist = path.join(__dirname, '../../client/dist');
   const serveClient = isProd && fs.existsSync(clientDist);

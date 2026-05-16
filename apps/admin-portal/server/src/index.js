@@ -12,14 +12,8 @@ async function start() {
 
   const express = require('express');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const { createLogger } = require('@innovapos/logger');
-const {
-  getRateLimitStore,
-  shouldUseHttpRateLimit,
-  getClientErrorPayload,
-  createCorsMiddleware,
-} = require('@innovapos/shared-middleware');
+const { getClientErrorPayload, createCorsMiddleware } = require('@innovapos/shared-middleware');
 const connectDB = require('./config/db');
 const { getMailConfigurationIssue } = require('@innovapos/mail-transport');
 const Tenant = require('./models/Tenant');
@@ -31,15 +25,6 @@ const { notifySuperAdmins } = require('./lib/notificationHelpers');
 const app = express();
 const logger = createLogger('admin-portal-server');
 app.locals.logger = logger;
-
-let loginLimiterOpts = {};
-let apiLimiterOpts = {};
-if (shouldUseHttpRateLimit(process.env.NODE_ENV === 'production')) {
-  const limiterStoreLogin = await getRateLimitStore(logger, { prefix: 'rl:admin:login' });
-  const limiterStoreApi = await getRateLimitStore(logger, { prefix: 'rl:admin:api' });
-  loginLimiterOpts = limiterStoreLogin ? { store: limiterStoreLogin } : {};
-  apiLimiterOpts = limiterStoreApi ? { store: limiterStoreApi } : {};
-}
 
 connectDB(logger);
 
@@ -70,11 +55,6 @@ app.use((req, res, next) => {
   return adminCors(req, res, next);
 });
 
-app.use(
-  '/api/auth/login',
-  rateLimit({ ...loginLimiterOpts, windowMs: 15 * 60 * 1000, max: 20 }),
-);
-app.use(rateLimit({ ...apiLimiterOpts, windowMs: 15 * 60 * 1000, max: 500 }));
 app.use(express.json({ limit: '10mb' }));
 
 app.use('/api/auth',            require('./routes/auth'));

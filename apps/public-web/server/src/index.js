@@ -20,17 +20,13 @@ async function start() {
 
   const express = require('express');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const { createLogger } = require('@innovapos/logger');
-const { getRateLimitStore, getClientErrorPayload, createCorsMiddleware } = require('@innovapos/shared-middleware');
+const { getClientErrorPayload, createCorsMiddleware } = require('@innovapos/shared-middleware');
 const connectDB = require('./config/db');
 
 const app = express();
 const logger = createLogger('public-web-server');
 app.locals.logger = logger;
-
-const limiterStoreHttp = await getRateLimitStore(logger, { prefix: 'rl:publicweb:http' });
-const httpLimiterOpts = limiterStoreHttp ? { store: limiterStoreHttp } : {};
 
 connectDB(logger);
 
@@ -54,16 +50,12 @@ app.use(
   }),
 );
 
-app.use(rateLimit({ ...httpLimiterOpts, windowMs: 15 * 60 * 1000, max: 200 }));
 app.use(express.json({ limit: '2mb' }));
-
-const contactRouter = require('./routes/contact');
-await contactRouter.initContactRateLimit(logger);
 
 app.use('/applications', require('./routes/applications'));
 app.use('/plans', require('./routes/plans'));
 app.use('/newsletter', require('./routes/newsletter'));
-app.use('/contact', contactRouter);
+app.use('/contact', require('./routes/contact'));
 
 app.get('/health', (_req, res) =>
   res.json({ status: 'ok', service: 'public-web-server', ts: new Date().toISOString() })

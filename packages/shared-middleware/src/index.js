@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
-const { getRateLimitStore, isRateLimitDisabled, shouldUseHttpRateLimit } = require('./rateLimitStore');
 const { getClientErrorPayload, logRouteError, sendRouteError } = require('./routeErrors');
 const { createCorsMiddleware } = require('./corsMiddleware');
 
@@ -107,9 +106,6 @@ module.exports = {
   tenantScope,
   requireActiveSubscription,
   emitAudit,
-  getRateLimitStore,
-  isRateLimitDisabled,
-  shouldUseHttpRateLimit,
   getClientErrorPayload,
   logRouteError,
   sendRouteError,

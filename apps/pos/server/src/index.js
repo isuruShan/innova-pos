@@ -14,14 +14,8 @@ const path = require('path');
 const fs = require('fs');
 const helmet = require('helmet');
 const compression = require('compression');
-const rateLimit = require('express-rate-limit');
 const { createLogger, childLogger } = require('@innovapos/logger');
-const {
-  getRateLimitStore,
-  shouldUseHttpRateLimit,
-  getClientErrorPayload,
-  createCorsMiddleware,
-} = require('@innovapos/shared-middleware');
+const { getClientErrorPayload, createCorsMiddleware } = require('@innovapos/shared-middleware');
 const connectDB = require('./config/db');
 
 const app = express();
@@ -29,18 +23,6 @@ const logger = createLogger('pos-server');
 app.locals.logger = logger;
 
 const isProd = process.env.NODE_ENV === 'production';
-
-/** Skipped in development or when DISABLE_RATE_LIMIT=true (see @innovapos/shared-middleware). */
-const skipHttpRateLimit = !shouldUseHttpRateLimit(isProd);
-
-let limiterStoreApi;
-let limiterStoreAuth;
-if (!skipHttpRateLimit) {
-  limiterStoreApi = await getRateLimitStore(logger, { prefix: 'rl:pos:api' });
-  limiterStoreAuth = await getRateLimitStore(logger, { prefix: 'rl:pos:auth' });
-}
-const apiLimiterOpts = limiterStoreApi ? { store: limiterStoreApi } : {};
-const authLimiterOpts = limiterStoreAuth ? { store: limiterStoreAuth } : {};
 
 const { initNotificationBus } = require('./lib/notificationBus');
 await initNotificationBus(logger);
@@ -85,58 +67,7 @@ app.use((req, res, next) => {
   return posCors(req, res, next);
 });
 
-/** JSON before rate limiters so login can be keyed by email (not shared NAT / 127.0.0.1). */
 app.use('/api', express.json({ limit: '10mb' }));
-
-const AUTH_CREDENTIAL_PATHS = new Set([
-  '/api/auth/login',
-  '/api/auth/forgot-password',
-  '/api/auth/reset-password',
-]);
-
-function isCredentialAuthPost(req) {
-  if (req.method !== 'POST') return false;
-  const path = (req.originalUrl || req.url || '').split('?')[0];
-  return AUTH_CREDENTIAL_PATHS.has(path);
-}
-
-const apiLimiter = rateLimit({
-  ...apiLimiterOpts,
-  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
-  max: Number(process.env.RATE_LIMIT_MAX || 500),
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: 'Too many requests — please try again later.' },
-  skip: (req) =>
-    skipHttpRateLimit ||
-    (req.method === 'GET' && req.path === '/notifications/stream'),
-});
-
-const authLimiter = rateLimit({
-  ...authLimiterOpts,
-  windowMs: Number(process.env.RATE_LIMIT_AUTH_WINDOW_MS || 15 * 60 * 1000),
-  max: Number(process.env.RATE_LIMIT_AUTH_MAX || 30),
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: 'Too many login attempts — please try again later.' },
-  skip: (req) => skipHttpRateLimit || !isCredentialAuthPost(req),
-  /** Count failed attempts only — a successful login does not burn the quota. */
-  skipSuccessfulRequests: true,
-  keyGenerator: (req) => {
-    const email = req.body?.email && String(req.body.email).toLowerCase().trim();
-    if (email && isCredentialAuthPost(req)) return `email:${email}`;
-    return req.ip || 'unknown';
-  },
-});
-
-app.use('/api/', apiLimiter);
-app.use('/api/auth', authLimiter);
-
-if (!skipHttpRateLimit) {
-  logger.info('Rate limiting active (auth: credential POSTs only, per email or IP)');
-} else {
-  logger.info('Rate limiting skipped (development or DISABLE_RATE_LIMIT)');
-}
 
 // Routes
 app.use('/api/auth',       require('./routes/auth'));

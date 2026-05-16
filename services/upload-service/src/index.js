@@ -20,24 +20,12 @@ async function start() {
 
   const express = require('express');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const { createLogger } = require('@innovapos/logger');
-const {
-  getRateLimitStore,
-  shouldUseHttpRateLimit,
-  getClientErrorPayload,
-  createCorsMiddleware,
-} = require('@innovapos/shared-middleware');
+const { getClientErrorPayload, createCorsMiddleware } = require('@innovapos/shared-middleware');
 
 const app = express();
 const logger = createLogger('upload-service');
 app.locals.logger = logger;
-
-let limiterOpts = {};
-if (shouldUseHttpRateLimit(process.env.NODE_ENV === 'production')) {
-  const limiterStore = await getRateLimitStore(logger, { prefix: 'rl:upload:http' });
-  limiterOpts = limiterStore ? { store: limiterStore } : {};
-}
 
 // Trust proxy
 app.set('trust proxy', 1);
@@ -52,15 +40,6 @@ app.use(
   createCorsMiddleware({
     allowedOrigins,
     production: process.env.NODE_ENV === 'production',
-  }),
-);
-
-app.use(
-  rateLimit({
-    ...limiterOpts,
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: { message: 'Too many upload requests' },
   }),
 );
 

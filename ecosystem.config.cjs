@@ -56,8 +56,6 @@ const awsEnv = {
   AWS_DEFAULT_REGION:              process.env.AWS_REGION || 'us-east-1',
   AWS_SECRETS_MANAGER_SECRET_ID:   process.env.AWS_SECRETS_MANAGER_SECRET_ID || 'ip-consolidated-secrets',
   // AWS_SECRETS_MERGE_MODE: 'fill',  // change to 'override' if the secret should always win
-  /** Set to true/1 in Secrets Manager to skip HTTP rate limits (and Redis for limits). */
-  DISABLE_RATE_LIMIT:              process.env.DISABLE_RATE_LIMIT || '',
 };
 
 module.exports = {
@@ -79,8 +77,6 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production',
         PORT: 5000,
-        /** Failed login / forgot-password attempts per email (or IP) per 15 min window */
-        RATE_LIMIT_AUTH_MAX: 60,
         ...awsEnv,
       },
       error_file: './logs/pos-error.log',

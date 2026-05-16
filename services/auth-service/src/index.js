@@ -11,31 +11,13 @@ async function start() {
 
   const express = require('express');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const { createLogger } = require('@innovapos/logger');
-const {
-  getRateLimitStore,
-  shouldUseHttpRateLimit,
-  getClientErrorPayload,
-  createCorsMiddleware,
-} = require('@innovapos/shared-middleware');
+const { getClientErrorPayload, createCorsMiddleware } = require('@innovapos/shared-middleware');
 const connectDB = require('./config/db');
 
 const app = express();
 const logger = createLogger('auth-service');
 app.locals.logger = logger;
-
-let loginLimiterOpts = {};
-let forgotLimiterOpts = {};
-let apiLimiterOpts = {};
-if (shouldUseHttpRateLimit(process.env.NODE_ENV === 'production')) {
-  const limiterStoreLogin = await getRateLimitStore(logger, { prefix: 'rl:auth:login' });
-  const limiterStoreForgot = await getRateLimitStore(logger, { prefix: 'rl:auth:forgot' });
-  const limiterStoreApi = await getRateLimitStore(logger, { prefix: 'rl:auth:api' });
-  loginLimiterOpts = limiterStoreLogin ? { store: limiterStoreLogin } : {};
-  forgotLimiterOpts = limiterStoreForgot ? { store: limiterStoreForgot } : {};
-  apiLimiterOpts = limiterStoreApi ? { store: limiterStoreApi } : {};
-}
 
 connectDB(logger);
 
@@ -52,29 +34,6 @@ app.use(
     production: process.env.NODE_ENV === 'production',
   }),
 );
-
-// Auth-specific rate limiter
-app.use(
-  '/auth/login',
-  rateLimit({
-    ...loginLimiterOpts,
-    windowMs: 15 * 60 * 1000,
-    max: 20,
-    message: { message: 'Too many login attempts — please try again later.' },
-  }),
-);
-
-app.use(
-  '/auth/forgot-password',
-  rateLimit({
-    ...forgotLimiterOpts,
-    windowMs: 15 * 60 * 1000,
-    max: 5,
-    message: { message: 'Too many requests' },
-  }),
-);
-
-app.use(rateLimit({ ...apiLimiterOpts, windowMs: 15 * 60 * 1000, max: 500 }));
 
 app.use(express.json({ limit: '2mb' }));
 
