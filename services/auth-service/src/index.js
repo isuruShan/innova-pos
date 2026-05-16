@@ -13,19 +13,29 @@ async function start() {
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { createLogger } = require('@innovapos/logger');
-const { getRateLimitStore, getClientErrorPayload, createCorsMiddleware } = require('@innovapos/shared-middleware');
+const {
+  getRateLimitStore,
+  shouldUseHttpRateLimit,
+  getClientErrorPayload,
+  createCorsMiddleware,
+} = require('@innovapos/shared-middleware');
 const connectDB = require('./config/db');
 
 const app = express();
 const logger = createLogger('auth-service');
 app.locals.logger = logger;
 
-const limiterStoreLogin = await getRateLimitStore(logger, { prefix: 'rl:auth:login' });
-const limiterStoreForgot = await getRateLimitStore(logger, { prefix: 'rl:auth:forgot' });
-const limiterStoreApi = await getRateLimitStore(logger, { prefix: 'rl:auth:api' });
-const loginLimiterOpts = limiterStoreLogin ? { store: limiterStoreLogin } : {};
-const forgotLimiterOpts = limiterStoreForgot ? { store: limiterStoreForgot } : {};
-const apiLimiterOpts = limiterStoreApi ? { store: limiterStoreApi } : {};
+let loginLimiterOpts = {};
+let forgotLimiterOpts = {};
+let apiLimiterOpts = {};
+if (shouldUseHttpRateLimit(process.env.NODE_ENV === 'production')) {
+  const limiterStoreLogin = await getRateLimitStore(logger, { prefix: 'rl:auth:login' });
+  const limiterStoreForgot = await getRateLimitStore(logger, { prefix: 'rl:auth:forgot' });
+  const limiterStoreApi = await getRateLimitStore(logger, { prefix: 'rl:auth:api' });
+  loginLimiterOpts = limiterStoreLogin ? { store: limiterStoreLogin } : {};
+  forgotLimiterOpts = limiterStoreForgot ? { store: limiterStoreForgot } : {};
+  apiLimiterOpts = limiterStoreApi ? { store: limiterStoreApi } : {};
+}
 
 connectDB(logger);
 

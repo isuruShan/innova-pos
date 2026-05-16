@@ -1,13 +1,15 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
+const { getRateLimitStore } = require('@innovapos/shared-middleware');
 const { sendEmail } = require('../utils/mailer');
 
 const router = express.Router();
 
 let contactLimiter = null;
 
-/** @param {unknown} [store] */
-function initContactRateLimit(store) {
+/** Own Redis store instance — never pass a store shared with app.use(rateLimit(...)). */
+async function initContactRateLimit(logger) {
+  const store = await getRateLimitStore(logger, { prefix: 'rl:publicweb:contact' });
   contactLimiter = rateLimit({
     ...(store ? { store } : {}),
     windowMs: 60 * 60 * 1000,

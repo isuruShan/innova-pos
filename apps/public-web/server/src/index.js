@@ -30,7 +30,6 @@ const logger = createLogger('public-web-server');
 app.locals.logger = logger;
 
 const limiterStoreHttp = await getRateLimitStore(logger, { prefix: 'rl:publicweb:http' });
-const limiterStoreContact = await getRateLimitStore(logger, { prefix: 'rl:publicweb:contact' });
 const httpLimiterOpts = limiterStoreHttp ? { store: limiterStoreHttp } : {};
 
 connectDB(logger);
@@ -59,7 +58,7 @@ app.use(rateLimit({ ...httpLimiterOpts, windowMs: 15 * 60 * 1000, max: 200 }));
 app.use(express.json({ limit: '2mb' }));
 
 const contactRouter = require('./routes/contact');
-contactRouter.initContactRateLimit(limiterStoreContact);
+await contactRouter.initContactRateLimit(logger);
 
 app.use('/applications', require('./routes/applications'));
 app.use('/plans', require('./routes/plans'));

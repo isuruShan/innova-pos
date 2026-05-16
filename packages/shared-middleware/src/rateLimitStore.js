@@ -3,17 +3,28 @@
 let redisClient;
 let redisVerified = false;
 
+function isRateLimitDisabled() {
+  return (
+    process.env.DISABLE_RATE_LIMIT === '1' ||
+    process.env.DISABLE_RATE_LIMIT === 'true'
+  );
+}
+
+/** Production HTTP rate limits unless DISABLE_RATE_LIMIT or non-production NODE_ENV. */
+function shouldUseHttpRateLimit(isProd = process.env.NODE_ENV === 'production') {
+  return Boolean(isProd) && !isRateLimitDisabled();
+}
+
 /**
- * Shared Redis connection for rate-limit stores. Each `getRateLimitStore` call returns a **new**
- * `RedisStore` instance (required by express-rate-limit v8 — stores must not be shared across limiters).
+ * Shared Redis connection for rate-limit stores. Each call returns a **new** RedisStore instance
+ * (required by express-rate-limit v8 — never reuse the same store object on two limiters).
  *
- * Set RATE_LIMIT_REDIS_URL or REDIS_URL (must include password if Redis requires AUTH).
- * If unset or connection fails, returns undefined (memory store).
- *
- * @param {{ error?: Function; warn?: Function; info?: Function } | null} [logger]
- * @param {{ prefix?: string }} [options] Redis key prefix; must differ for each limiter in the same process.
+ * Set RATE_LIMIT_REDIS_URL or REDIS_URL (include password if Redis requires AUTH).
+ * Returns undefined when rate limits are disabled, URL unset, or Redis is unavailable.
  */
 async function getRateLimitStore(logger, options = {}) {
+  if (isRateLimitDisabled()) return undefined;
+
   const url = String(process.env.RATE_LIMIT_REDIS_URL || process.env.REDIS_URL || '').trim();
   if (!url) return undefined;
 
@@ -70,4 +81,8 @@ async function getRateLimitStore(logger, options = {}) {
   }
 }
 
-module.exports = { getRateLimitStore };
+module.exports = {
+  getRateLimitStore,
+  isRateLimitDisabled,
+  shouldUseHttpRateLimit,
+};

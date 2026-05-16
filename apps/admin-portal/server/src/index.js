@@ -14,7 +14,12 @@ async function start() {
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { createLogger } = require('@innovapos/logger');
-const { getRateLimitStore, getClientErrorPayload, createCorsMiddleware } = require('@innovapos/shared-middleware');
+const {
+  getRateLimitStore,
+  shouldUseHttpRateLimit,
+  getClientErrorPayload,
+  createCorsMiddleware,
+} = require('@innovapos/shared-middleware');
 const connectDB = require('./config/db');
 const { getMailConfigurationIssue } = require('@innovapos/mail-transport');
 const Tenant = require('./models/Tenant');
@@ -27,10 +32,14 @@ const app = express();
 const logger = createLogger('admin-portal-server');
 app.locals.logger = logger;
 
-const limiterStoreLogin = await getRateLimitStore(logger, { prefix: 'rl:admin:login' });
-const limiterStoreApi = await getRateLimitStore(logger, { prefix: 'rl:admin:api' });
-const loginLimiterOpts = limiterStoreLogin ? { store: limiterStoreLogin } : {};
-const apiLimiterOpts = limiterStoreApi ? { store: limiterStoreApi } : {};
+let loginLimiterOpts = {};
+let apiLimiterOpts = {};
+if (shouldUseHttpRateLimit(process.env.NODE_ENV === 'production')) {
+  const limiterStoreLogin = await getRateLimitStore(logger, { prefix: 'rl:admin:login' });
+  const limiterStoreApi = await getRateLimitStore(logger, { prefix: 'rl:admin:api' });
+  loginLimiterOpts = limiterStoreLogin ? { store: limiterStoreLogin } : {};
+  apiLimiterOpts = limiterStoreApi ? { store: limiterStoreApi } : {};
+}
 
 connectDB(logger);
 

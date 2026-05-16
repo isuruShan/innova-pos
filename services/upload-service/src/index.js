@@ -22,14 +22,22 @@ async function start() {
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { createLogger } = require('@innovapos/logger');
-const { getRateLimitStore, getClientErrorPayload, createCorsMiddleware } = require('@innovapos/shared-middleware');
+const {
+  getRateLimitStore,
+  shouldUseHttpRateLimit,
+  getClientErrorPayload,
+  createCorsMiddleware,
+} = require('@innovapos/shared-middleware');
 
 const app = express();
 const logger = createLogger('upload-service');
 app.locals.logger = logger;
 
-const limiterStore = await getRateLimitStore(logger, { prefix: 'rl:upload:http' });
-const limiterOpts = limiterStore ? { store: limiterStore } : {};
+let limiterOpts = {};
+if (shouldUseHttpRateLimit(process.env.NODE_ENV === 'production')) {
+  const limiterStore = await getRateLimitStore(logger, { prefix: 'rl:upload:http' });
+  limiterOpts = limiterStore ? { store: limiterStore } : {};
+}
 
 // Trust proxy
 app.set('trust proxy', 1);

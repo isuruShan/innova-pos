@@ -16,7 +16,12 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { createLogger, childLogger } = require('@innovapos/logger');
-const { getRateLimitStore, getClientErrorPayload, createCorsMiddleware } = require('@innovapos/shared-middleware');
+const {
+  getRateLimitStore,
+  shouldUseHttpRateLimit,
+  getClientErrorPayload,
+  createCorsMiddleware,
+} = require('@innovapos/shared-middleware');
 const connectDB = require('./config/db');
 
 const app = express();
@@ -25,13 +30,9 @@ app.locals.logger = logger;
 
 const isProd = process.env.NODE_ENV === 'production';
 
-/** In development, SPA polling (orders, reports, notifications) from one IP blows past limits quickly, especially with a shared Redis store. Production keeps limits unless DISABLE_RATE_LIMIT=1. */
-const skipHttpRateLimit =
-  process.env.DISABLE_RATE_LIMIT === '1' ||
-  process.env.DISABLE_RATE_LIMIT === 'true' ||
-  !isProd;
+/** Skipped in development or when DISABLE_RATE_LIMIT=true (see @innovapos/shared-middleware). */
+const skipHttpRateLimit = !shouldUseHttpRateLimit(isProd);
 
-/** When limits are off, do not connect Redis for rate limiting (avoids NOAUTH noise if REDIS_URL is wrong). */
 let limiterStoreApi;
 let limiterStoreAuth;
 if (!skipHttpRateLimit) {
