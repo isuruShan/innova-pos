@@ -38,6 +38,8 @@ function initNotificationBus(logger) {
       });
       await pubClient.connect();
       await subClient.connect();
+      await pubClient.ping();
+      await subClient.ping();
       await subClient.pSubscribe('pos:notif:*:*', (message, channel) => {
         bus.emit(String(channel), message);
       });

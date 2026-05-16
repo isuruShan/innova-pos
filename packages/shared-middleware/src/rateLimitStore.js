@@ -1,12 +1,14 @@
 'use strict';
 
 let redisClient;
+let redisVerified = false;
 
 /**
  * Shared Redis connection for rate-limit stores. Each `getRateLimitStore` call returns a **new**
  * `RedisStore` instance (required by express-rate-limit v8 — stores must not be shared across limiters).
  *
- * Set RATE_LIMIT_REDIS_URL or REDIS_URL. If unset or connection fails, returns undefined (memory store).
+ * Set RATE_LIMIT_REDIS_URL or REDIS_URL (must include password if Redis requires AUTH).
+ * If unset or connection fails, returns undefined (memory store).
  *
  * @param {{ error?: Function; warn?: Function; info?: Function } | null} [logger]
  * @param {{ prefix?: string }} [options] Redis key prefix; must differ for each limiter in the same process.
@@ -16,11 +18,18 @@ async function getRateLimitStore(logger, options = {}) {
   if (!url) return undefined;
 
   try {
-    if (!redisClient) {
+    if (!redisClient || !redisVerified) {
       const { createClient } = require('redis');
+      if (redisClient && !redisVerified) {
+        try {
+          await redisClient.quit();
+        } catch (_) { /* ignore */ }
+        redisClient = undefined;
+      }
       redisClient = createClient({ url });
       redisClient.on('error', (err) => {
         const msg = err && err.message ? err.message : String(err);
+        redisVerified = false;
         if (logger && typeof logger.error === 'function') {
           logger.error('[rate-limit-redis] client error', { error: msg });
         } else {
@@ -28,6 +37,8 @@ async function getRateLimitStore(logger, options = {}) {
         }
       });
       await redisClient.connect();
+      await redisClient.ping();
+      redisVerified = true;
       if (logger && typeof logger.info === 'function') {
         logger.info('Rate limiting: using Redis store');
       }
@@ -47,6 +58,12 @@ async function getRateLimitStore(logger, options = {}) {
       logger.warn('[rate-limit-redis] disabled, using in-memory store', { error: msg });
     } else {
       console.warn('[rate-limit-redis] disabled, using in-memory store', msg);
+    }
+    redisVerified = false;
+    if (redisClient) {
+      try {
+        await redisClient.quit();
+      } catch (_) { /* ignore */ }
     }
     redisClient = undefined;
     return undefined;

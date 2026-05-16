@@ -31,8 +31,13 @@ const skipHttpRateLimit =
   process.env.DISABLE_RATE_LIMIT === 'true' ||
   !isProd;
 
-const limiterStoreApi = await getRateLimitStore(logger, { prefix: 'rl:pos:api' });
-const limiterStoreAuth = await getRateLimitStore(logger, { prefix: 'rl:pos:auth' });
+/** When limits are off, do not connect Redis for rate limiting (avoids NOAUTH noise if REDIS_URL is wrong). */
+let limiterStoreApi;
+let limiterStoreAuth;
+if (!skipHttpRateLimit) {
+  limiterStoreApi = await getRateLimitStore(logger, { prefix: 'rl:pos:api' });
+  limiterStoreAuth = await getRateLimitStore(logger, { prefix: 'rl:pos:auth' });
+}
 const apiLimiterOpts = limiterStoreApi ? { store: limiterStoreApi } : {};
 const authLimiterOpts = limiterStoreAuth ? { store: limiterStoreAuth } : {};
 
@@ -79,6 +84,21 @@ app.use((req, res, next) => {
   return posCors(req, res, next);
 });
 
+/** JSON before rate limiters so login can be keyed by email (not shared NAT / 127.0.0.1). */
+app.use('/api', express.json({ limit: '10mb' }));
+
+const AUTH_CREDENTIAL_PATHS = new Set([
+  '/api/auth/login',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password',
+]);
+
+function isCredentialAuthPost(req) {
+  if (req.method !== 'POST') return false;
+  const path = (req.originalUrl || req.url || '').split('?')[0];
+  return AUTH_CREDENTIAL_PATHS.has(path);
+}
+
 const apiLimiter = rateLimit({
   ...apiLimiterOpts,
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
@@ -94,17 +114,28 @@ const apiLimiter = rateLimit({
 const authLimiter = rateLimit({
   ...authLimiterOpts,
   windowMs: Number(process.env.RATE_LIMIT_AUTH_WINDOW_MS || 15 * 60 * 1000),
-  max: Number(process.env.RATE_LIMIT_AUTH_MAX || 20),
+  max: Number(process.env.RATE_LIMIT_AUTH_MAX || 30),
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many login attempts — please try again later.' },
-  skip: () => skipHttpRateLimit,
+  skip: (req) => skipHttpRateLimit || !isCredentialAuthPost(req),
+  /** Count failed attempts only — a successful login does not burn the quota. */
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => {
+    const email = req.body?.email && String(req.body.email).toLowerCase().trim();
+    if (email && isCredentialAuthPost(req)) return `email:${email}`;
+    return req.ip || 'unknown';
+  },
 });
 
 app.use('/api/', apiLimiter);
 app.use('/api/auth', authLimiter);
 
-app.use(express.json({ limit: '10mb' }));
+if (!skipHttpRateLimit) {
+  logger.info('Rate limiting active (auth: credential POSTs only, per email or IP)');
+} else {
+  logger.info('Rate limiting skipped (development or DISABLE_RATE_LIMIT)');
+}
 
 // Routes
 app.use('/api/auth',       require('./routes/auth'));

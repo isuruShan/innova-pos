@@ -77,6 +77,8 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production',
         PORT: 5000,
+        /** Failed login / forgot-password attempts per email (or IP) per 15 min window */
+        RATE_LIMIT_AUTH_MAX: 60,
         ...awsEnv,
       },
       error_file: './logs/pos-error.log',
