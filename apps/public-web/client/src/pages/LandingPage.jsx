@@ -60,8 +60,8 @@ const STATS = [
   { value: '24/7', label: 'Support when you need it' },
 ];
 
-/** Public pricing catalogue: Sri Lanka vs international (no login). */
-function detectCatalogAudience() {
+/** Fallback when server geo is unavailable (dev on localhost). */
+function detectCatalogAudienceFallback() {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (tz === 'Asia/Colombo') return 'local';
@@ -189,7 +189,7 @@ function ContactSection() {
 export default function LandingPage() {
   const [plans, setPlans] = useState([]);
   const [plansLoading, setPlansLoading] = useState(true);
-  const catalogAudience = useMemo(() => detectCatalogAudience(), []);
+  const [catalogAudience, setCatalogAudience] = useState('international');
   const pricingCarouselRef = useRef(null);
   const [pricingSlide, setPricingSlide] = useState(0);
 
@@ -238,7 +238,27 @@ export default function LandingPage() {
 
   useEffect(() => {
     let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await api.get('/plans/public/audience');
+        if (!cancelled) {
+          const a = data?.audience;
+          if (a === 'local' || a === 'international') setCatalogAudience(a);
+          else setCatalogAudience(detectCatalogAudienceFallback());
+        }
+      } catch {
+        if (!cancelled) setCatalogAudience(detectCatalogAudienceFallback());
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     const loadPlans = async () => {
+      setPlansLoading(true);
       try {
         const { data } = await api.get('/plans/public', {
           params: { audience: catalogAudience },
@@ -379,8 +399,8 @@ export default function LandingPage() {
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">Simple, transparent pricing</h2>
             <p className="text-gray-600 text-lg max-w-2xl mx-auto">
               {catalogAudience === 'local'
-                ? 'Start with a 30-day free trial, no credit card required.'
-                : 'Start with a 30-day free trial, no credit card required.'}
+                ? 'Pricing in LKR for venues in Sri Lanka. Start with a 30-day free trial — no credit card required.'
+                : 'International pricing (USD). Start with a 30-day free trial — no credit card required.'}
             </p>
             {!plansLoading && plans.length === 0 && (
               <p className="text-gray-600 text-sm mt-4 max-w-xl mx-auto">
