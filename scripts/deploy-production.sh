@@ -35,7 +35,7 @@ echo "==> git pull"
 git pull --ff-only origin main
 
 echo "==> pnpm install"
-pnpm install --frozen-lockfile
+pnpm install 
 
 echo "==> Build client bundles"
 pnpm --filter @pos/client run build
