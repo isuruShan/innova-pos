@@ -25,6 +25,7 @@ import LoyaltyRewardsPage from './pages/manager/LoyaltyRewardsPage';
 import ApprovalsPage from './pages/manager/ApprovalsPage';
 import CafeTablesPage from './pages/manager/CafeTablesPage';
 import NotificationsPage from './pages/manager/NotificationsPage';
+import SubscriptionBlocked from './pages/SubscriptionBlocked';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 10_000 } },
@@ -37,6 +38,7 @@ function normalizeRole(role) {
 const RoleRoute = ({ children, roles }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
+  if (user.subscriptionActive === false) return <SubscriptionBlocked />;
   const r = normalizeRole(user.role);
   if (!roles.some((allowed) => normalizeRole(allowed) === r)) return <Navigate to="/login" replace />;
   return children;
@@ -45,6 +47,7 @@ const RoleRoute = ({ children, roles }) => {
 const RootRedirect = () => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
+  if (user.subscriptionActive === false) return <SubscriptionBlocked />;
   const r = normalizeRole(user.role);
   if (r === 'cashier') return <Navigate to="/cashier/order" replace />;
   if (r === 'kitchen') return <Navigate to="/kitchen" replace />;

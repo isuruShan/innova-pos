@@ -4,6 +4,7 @@ import { Building2, MapPin, FileText, Upload, X, ArrowLeft, ArrowRight, Loader }
 import { COUNTRIES } from '../constants/countries';
 import { validateEmail } from '../utils/phone';
 import api from '../api';
+import { PLACEHOLDERS, LIMITS } from '../utils/formFields';
 
 export default function SignupBusinessPage() {
   const navigate = useNavigate();
@@ -193,7 +194,8 @@ export default function SignupBusinessPage() {
                     type="text"
                     value={form.businessName}
                     onChange={set('businessName')}
-                    placeholder="The Coffee Corner"
+                    placeholder={PLACEHOLDERS.businessName}
+                    maxLength={LIMITS.businessName}
                     className={`w-full border rounded-lg pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
                       errors.businessName ? 'border-red-400' : 'border-gray-300'
                     }`}
@@ -208,7 +210,8 @@ export default function SignupBusinessPage() {
                   type="text"
                   value={form.ownerName}
                   onChange={set('ownerName')}
-                  placeholder="Legal owner name as on registration"
+                  placeholder={PLACEHOLDERS.ownerName}
+                  maxLength={LIMITS.personName}
                   className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
                     errors.ownerName ? 'border-red-400' : 'border-gray-300'
                   }`}
@@ -228,7 +231,8 @@ export default function SignupBusinessPage() {
                     type="text"
                     value={form.street1}
                     onChange={set('street1')}
-                    placeholder="Building / street"
+                    placeholder={PLACEHOLDERS.addressLine1}
+                    maxLength={LIMITS.addressLine}
                     className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${
                       errors.street1 ? 'border-red-400' : 'border-gray-300'
                     }`}
@@ -244,7 +248,8 @@ export default function SignupBusinessPage() {
                     type="text"
                     value={form.street2}
                     onChange={set('street2')}
-                    placeholder="Suite, unit, floor"
+                    placeholder={PLACEHOLDERS.addressLine2}
+                    maxLength={LIMITS.addressLine}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
                   />
                 </div>
@@ -256,7 +261,8 @@ export default function SignupBusinessPage() {
                       type="text"
                       value={form.zipCode}
                       onChange={set('zipCode')}
-                      placeholder="00100"
+                      placeholder={PLACEHOLDERS.postalCode}
+                      maxLength={LIMITS.postalCodeMax}
                       className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${
                         errors.zipCode ? 'border-red-400' : 'border-gray-300'
                       }`}
@@ -269,7 +275,8 @@ export default function SignupBusinessPage() {
                       type="text"
                       value={form.city}
                       onChange={set('city')}
-                      placeholder="Colombo"
+                      placeholder={PLACEHOLDERS.city}
+                      maxLength={LIMITS.addressLine}
                       className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${
                         errors.city ? 'border-red-400' : 'border-gray-300'
                       }`}
@@ -285,7 +292,8 @@ export default function SignupBusinessPage() {
                       type="text"
                       value={form.state}
                       onChange={set('state')}
-                      placeholder="Western Province"
+                      placeholder={PLACEHOLDERS.state}
+                      maxLength={LIMITS.addressLine}
                       className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${
                         errors.state ? 'border-red-400' : 'border-gray-300'
                       }`}

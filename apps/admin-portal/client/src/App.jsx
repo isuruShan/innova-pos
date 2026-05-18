@@ -13,6 +13,9 @@ import ApplicationDetailPage from './pages/superadmin/ApplicationDetailPage';
 import PaymentsPage from './pages/superadmin/PaymentsPage';
 import PlansPage from './pages/superadmin/PlansPage';
 import MerchantWorkspacePage from './pages/superadmin/MerchantWorkspacePage';
+import MerchantStoresPage from './pages/superadmin/MerchantStoresPage';
+import PaymentProviderSettingsPage from './pages/superadmin/PaymentProviderSettingsPage';
+import MerchantSubscriptionGate from './components/MerchantSubscriptionGate';
 
 // Merchant admin pages
 import DashboardPage from './pages/admin/DashboardPage';
@@ -30,7 +33,7 @@ const PrivateRoute = ({ children, roles }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
-  return children;
+  return <MerchantSubscriptionGate>{children}</MerchantSubscriptionGate>;
 };
 
 const RootRedirect = () => {
@@ -75,6 +78,16 @@ export default function App() {
           <Route path="/plans" element={
             <PrivateRoute roles={['superadmin']}>
               <Layout><PlansPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/payment-setup" element={
+            <PrivateRoute roles={['superadmin']}>
+              <Layout><PaymentProviderSettingsPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/merchants/:id/stores" element={
+            <PrivateRoute roles={['superadmin']}>
+              <Layout><MerchantStoresPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/merchants/:id" element={

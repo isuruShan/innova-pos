@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Loader } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { fieldAttrs } from '../utils/formFields';
 export default function LoginPage() {
   const { login, logout, user } = useAuth();
   const navigate = useNavigate();
@@ -26,7 +27,10 @@ export default function LoginPage() {
       if (u.isTemporaryPassword) {
         navigate('/profile?changePassword=1', { replace: true });
       } else {
-        navigate(u.role === 'superadmin' ? '/merchants' : '/dashboard', { replace: true });
+        navigate(
+          u.role === 'superadmin' ? '/merchants' : (u.subscriptionActive === false ? '/subscription' : '/dashboard'),
+          { replace: true },
+        );
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'Invalid credentials';
@@ -103,7 +107,8 @@ export default function LoginPage() {
                   value={form.email}
                   onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                   required
-                  placeholder="admin@yourbusiness.com"
+                  placeholder={fieldAttrs('email').placeholder}
+                  maxLength={fieldAttrs('email').maxLength}
                   className="w-full bg-white/10 border border-white/20 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-teal"
                 />
               </div>
@@ -118,7 +123,8 @@ export default function LoginPage() {
                   value={form.password}
                   onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
                   required
-                  placeholder="••••••••"
+                  placeholder={fieldAttrs('password').placeholder}
+                  maxLength={fieldAttrs('password').maxLength}
                   className="w-full bg-white/10 border border-white/20 rounded-lg pl-9 pr-10 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-teal"
                 />
                 <button type="button" onClick={() => setShowPass(s => !s)}

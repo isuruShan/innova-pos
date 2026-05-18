@@ -10,6 +10,7 @@ import {
   nationalMobileMaxDigits,
 } from '../utils/phone';
 import api from '../api';
+import { PLACEHOLDERS, LIMITS } from '../utils/formFields';
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -153,8 +154,8 @@ export default function SignupPage() {
             <form onSubmit={handleNext} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  { label: 'First name', key: 'firstName', placeholder: 'John' },
-                  { label: 'Last name', key: 'lastName', placeholder: 'Silva' },
+                  { label: 'First name', key: 'firstName', placeholder: PLACEHOLDERS.personName, max: LIMITS.personName },
+                  { label: 'Last name', key: 'lastName', placeholder: PLACEHOLDERS.personName, max: LIMITS.personName },
                 ].map((f) => (
                   <div key={f.key}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
@@ -163,6 +164,7 @@ export default function SignupPage() {
                       value={form[f.key]}
                       onChange={set(f.key)}
                       placeholder={f.placeholder}
+                      maxLength={f.max}
                       autoComplete="given-name"
                       className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
                         errors[f.key] ? 'border-red-400' : 'border-gray-300'
@@ -223,7 +225,8 @@ export default function SignupPage() {
                     type="email"
                     value={form.email}
                     onChange={set('email')}
-                    placeholder="john@yourbusiness.com"
+                    placeholder={PLACEHOLDERS.email}
+                    maxLength={LIMITS.email}
                     autoComplete="email"
                     className={`w-full border rounded-lg pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
                       errors.email ? 'border-red-400' : 'border-gray-300'

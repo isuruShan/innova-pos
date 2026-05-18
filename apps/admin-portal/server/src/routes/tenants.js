@@ -7,7 +7,9 @@ const { authenticateJWT, authorize, emitAudit, sendRouteError } = require('@inno
 const { tenantPlanAudience } = require('../utils/planAudience');
 const { presignObjectKey } = require('../utils/s3Runtime');
 const { sendEmail } = require('../utils/mailer');
-const { notifySuperAdmins } = require('../lib/notificationHelpers');
+const { notifySuperAdmins, notifyMerchantAdmins } = require('../lib/notificationHelpers');
+const { notifySubscriptionEvent } = require('../lib/subscriptionNotify');
+const { resolveTenantPeriodEnd } = require('../lib/subscriptionDates');
 
 const router = express.Router();
 
@@ -33,9 +35,17 @@ async function attachFreshTenantLogos(tenants) {
 // GET /tenants — list all tenants (superadmin only)
 router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {
-    const { status, search, page = 1, limit = 20 } = req.query;
+    const {
+      status,
+      subscriptionStatus,
+      search,
+      dueWithinDays,
+      page = 1,
+      limit = 20,
+    } = req.query;
     const filter = {};
     if (status) filter.status = status;
+    if (subscriptionStatus) filter.subscriptionStatus = subscriptionStatus;
     if (search) {
       filter.$or = [
         { businessName: { $regex: search, $options: 'i' } },
@@ -70,11 +80,45 @@ router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
       adminMap[k].push({ name: u.name, email: u.email });
     });
 
+    const subEnds = await Subscription.aggregate([
+      { $match: { tenantId: { $in: tenantIds } } },
+      { $sort: { endDate: -1 } },
+      {
+        $group: {
+          _id: '$tenantId',
+          endDate: { $first: '$endDate' },
+        },
+      },
+    ]);
+    const subEndMap = Object.fromEntries(subEnds.map((s) => [String(s._id), s.endDate]));
+
+    let enriched = tenants.map((t) => {
+      const latestSubEnd = subEndMap[t._id.toString()] || null;
+      const subscriptionEndDate = resolveTenantPeriodEnd(t, latestSubEnd);
+      return {
+        ...t,
+        admins: adminMap[t._id.toString()] || [],
+        subscriptionEndDate: subscriptionEndDate ? subscriptionEndDate.toISOString() : null,
+        latestSubscriptionEnd: latestSubEnd ? new Date(latestSubEnd).toISOString() : null,
+      };
+    });
+
+    const dueDays = parseInt(dueWithinDays, 10);
+    if (Number.isFinite(dueDays) && dueDays > 0) {
+      const now = Date.now();
+      const maxMs = dueDays * 86400000;
+      enriched = enriched.filter((t) => {
+        if (!t.subscriptionEndDate) return false;
+        const diff = new Date(t.subscriptionEndDate).getTime() - now;
+        return diff > 0 && diff <= maxMs;
+      });
+    }
+
     res.json({
-      tenants: tenants.map(t => ({ ...t, admins: adminMap[t._id.toString()] || [] })),
-      total,
+      tenants: enriched,
+      total: dueDays > 0 ? enriched.length : total,
       page: parseInt(page),
-      pages: Math.ceil(total / parseInt(limit)),
+      pages: Math.ceil((dueDays > 0 ? enriched.length : total) / parseInt(limit)),
     });
   } catch (err) {
     sendRouteError(res, err, { req });
@@ -178,12 +222,25 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
       return res.status(400).json({ message: 'Invalid status' });
     }
 
-    const tenant = await Tenant.findByIdAndUpdate(
-      req.params.id,
-      { status, updatedBy: req.user.id },
-      { new: true }
-    );
+    const update = { status, updatedBy: req.user.id };
+    if (status === 'suspended') update.suspensionReason = 'superadmin';
+    if (status === 'active') update.suspensionReason = '';
+
+    const tenant = await Tenant.findByIdAndUpdate(req.params.id, update, { new: true });
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+    if (status === 'suspended') {
+      await notifySubscriptionEvent(tenant._id, {
+        type: 'subscription_rejected',
+        title: 'Account suspended',
+        body: `Merchant "${tenant.businessName}" was suspended by platform admin.`,
+        meta: { resourceType: 'tenant', resourceId: String(tenant._id) },
+        merchantEmail: {
+          subject: 'Cafinity account suspended',
+          html: `<p>Hi,</p><p>Your merchant account has been suspended. Sign in to the admin portal and open <strong>Subscription</strong> for details, or contact support.</p>`,
+        },
+      }).catch(() => {});
+    }
 
     await emitAudit({
       req,

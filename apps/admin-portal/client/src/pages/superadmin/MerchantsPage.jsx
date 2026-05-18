@@ -20,15 +20,19 @@ const SUB_STATUS_CONFIG = {
 export default function MerchantsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [subscriptionFilter, setSubscriptionFilter] = useState('');
+  const [dueWithinDays, setDueWithinDays] = useState('');
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_merchants') || 'grid');
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['tenants', search, statusFilter, page],
+    queryKey: ['tenants', search, statusFilter, subscriptionFilter, dueWithinDays, page],
     queryFn: async () => {
       const params = { page, limit: 20 };
       if (search) params.search = search;
       if (statusFilter) params.status = statusFilter;
+      if (subscriptionFilter) params.subscriptionStatus = subscriptionFilter;
+      if (dueWithinDays) params.dueWithinDays = dueWithinDays;
       const { data } = await api.get('/tenants', { params });
       return data;
     },
@@ -50,15 +54,29 @@ export default function MerchantsPage() {
         <div className="relative flex-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search by name or slug..."
+            placeholder="Search by business name or slug…"
             className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" />
         </div>
         <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
-          <option value="">All statuses</option>
+          <option value="">All account statuses</option>
           <option value="active">Active</option>
           <option value="suspended">Suspended</option>
           <option value="cancelled">Cancelled</option>
+        </select>
+        <select value={subscriptionFilter} onChange={e => { setSubscriptionFilter(e.target.value); setPage(1); }}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
+          <option value="">All subscriptions</option>
+          <option value="trial">Trial</option>
+          <option value="active">Active</option>
+          <option value="expired">Expired</option>
+        </select>
+        <select value={dueWithinDays} onChange={e => { setDueWithinDays(e.target.value); setPage(1); }}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
+          <option value="">Any due date</option>
+          <option value="3">Due within 3 days</option>
+          <option value="7">Due within 7 days</option>
+          <option value="30">Due within 30 days</option>
         </select>
         <button onClick={() => refetch()} className="flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
           <RefreshCw size={14} />
@@ -75,7 +93,7 @@ export default function MerchantsPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                {['Merchant', 'Status', 'Subscription', 'Assigned plan', 'Admins', 'Actions'].map((h) => (
+                {['Merchant', 'Status', 'Subscription', 'Due date', 'Assigned plan', 'Admins', 'Actions'].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -100,6 +118,11 @@ export default function MerchantsPage() {
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${SUB_STATUS_CONFIG[tenant.subscriptionStatus] || 'bg-gray-100 text-gray-600'}`}>
                         {tenant.subscriptionStatus}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-700 whitespace-nowrap">
+                      {tenant.subscriptionEndDate
+                        ? new Date(tenant.subscriptionEndDate).toLocaleDateString()
+                        : '—'}
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-700">
                       {tenant.assignedPlanId?.name || 'Not assigned'}

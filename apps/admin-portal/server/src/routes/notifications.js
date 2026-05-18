@@ -1,13 +1,17 @@
 const express = require('express');
 const Notification = require('../models/Notification');
 const { protect, tenantScope, sendRouteError } = require('../middleware/auth');
+const { excludePosNotificationsFilter } = require('../lib/notificationTypes');
 
 const router = express.Router();
 
 router.get('/unread-count', protect, tenantScope, async (req, res) => {
   try {
-    const base = { userId: req.user.id, readAt: null };
-    if (req.user.role !== 'superadmin' && req.tenantId) base.tenantId = req.tenantId;
+    const base = excludePosNotificationsFilter({
+      userId: req.user.id,
+      readAt: null,
+      ...(req.user.role !== 'superadmin' && req.tenantId ? { tenantId: req.tenantId } : {}),
+    });
     const n = await Notification.countDocuments(base);
     res.json({ count: n });
   } catch (err) {
@@ -24,8 +28,10 @@ router.get('/', protect, tenantScope, async (req, res) => {
     );
     const skip = Math.max(0, parseInt(req.query.skip, 10) || 0);
 
-    const filter = { userId: req.user.id };
-    if (req.user.role !== 'superadmin' && req.tenantId) filter.tenantId = req.tenantId;
+    const filter = excludePosNotificationsFilter({
+      userId: req.user.id,
+      ...(req.user.role !== 'superadmin' && req.tenantId ? { tenantId: req.tenantId } : {}),
+    });
     if (isBell) {
       const since = new Date(Date.now() - 86400000);
       filter.$or = [{ readAt: null }, { readAt: { $gte: since } }];

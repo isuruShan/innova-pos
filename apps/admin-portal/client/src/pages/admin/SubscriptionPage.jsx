@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, Loader, CheckCircle, Clock, AlertTriangle, ExternalLink, FileText } from 'lucide-react';
 import api from '../../api/axios';
@@ -8,9 +9,12 @@ export default function SubscriptionPage() {
   const queryClient = useQueryClient();
   const fileRef = useRef(null);
   const [form, setForm] = useState({ amount: '', bankReference: '', bankName: '', paymentDate: '', notes: '', planId: '' });
+  const [paymentMethod, setPaymentMethod] = useState('bank_transfer');
   const [file, setFile] = useState(null);
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [paypalReady, setPaypalReady] = useState(false);
 
   const { data } = useQuery({
     queryKey: ['my-subscription'],
@@ -24,6 +28,20 @@ export default function SubscriptionPage() {
     },
   });
 
+  const { data: paymentOptions } = useQuery({
+    queryKey: ['merchant-payment-options'],
+    queryFn: async () => {
+      const { data } = await api.get('/platform-payments/merchant-options');
+      return data;
+    },
+  });
+
+  const schedulePlanMutation = useMutation({
+    mutationFn: (planId) => api.post('/subscriptions/schedule-plan', { planId }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-subscription'] }),
+    onError: (err) => setErrors({ api: err.response?.data?.message || 'Could not schedule plan change' }),
+  });
+
   const uploadMutation = useMutation({
     mutationFn: (fd) => api.post('/subscriptions/receipts', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
     onSuccess: () => {
@@ -34,6 +52,35 @@ export default function SubscriptionPage() {
     },
     onError: (err) => setErrors({ api: err.response?.data?.message || 'Upload failed' }),
   });
+
+  const stripeCheckoutMutation = useMutation({
+    mutationFn: () => api.post('/subscriptions/checkout/stripe', { planId: form.planId }),
+    onSuccess: ({ data }) => {
+      if (data?.url) window.location.href = data.url;
+    },
+    onError: (err) => setErrors({ api: err.response?.data?.message || 'Stripe checkout failed' }),
+  });
+
+  const paypalCaptureMutation = useMutation({
+    mutationFn: (orderId) => api.post('/subscriptions/checkout/paypal/capture', { orderId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      setSubmitted(true);
+      setErrors({});
+    },
+    onError: (err) => setErrors({ api: err.response?.data?.message || 'PayPal capture failed' }),
+  });
+
+  useEffect(() => {
+    const payment = searchParams.get('payment');
+    if (payment === 'success') {
+      queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      setSubmitted(true);
+      searchParams.delete('payment');
+      searchParams.delete('session_id');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, queryClient]);
 
   const requestActivationMutation = useMutation({
     mutationFn: () => api.post(`/tenants/${data?.tenant?._id}/temporary-activation/request`),
@@ -102,6 +149,39 @@ export default function SubscriptionPage() {
     if (!selectedPlan) return;
     setForm((f) => ({ ...f, amount: String(selectedPlan.amount) }));
   }, [selectedPlan?._id]);
+
+  useEffect(() => {
+    if (paymentMethod !== 'paypal' || !paymentOptions?.paypal?.enabled || !paymentOptions.paypal.clientId) {
+      setPaypalReady(false);
+      return undefined;
+    }
+    const currency = selectedPlan?.currency || 'USD';
+    const script = document.createElement('script');
+    script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(paymentOptions.paypal.clientId)}&currency=${encodeURIComponent(currency)}`;
+    script.async = true;
+    script.onload = () => setPaypalReady(true);
+    document.body.appendChild(script);
+    return () => {
+      script.remove();
+      setPaypalReady(false);
+    };
+  }, [paymentMethod, paymentOptions, selectedPlan?.currency]);
+
+  const paypalContainerRef = useRef(null);
+  useEffect(() => {
+    if (!paypalReady || paymentMethod !== 'paypal' || !window.paypal || !form.planId || !paypalContainerRef.current) return;
+    paypalContainerRef.current.innerHTML = '';
+    window.paypal.Buttons({
+      createOrder: async () => {
+        const { data } = await api.post('/subscriptions/checkout/paypal/create-order', { planId: form.planId });
+        return data.orderId;
+      },
+      onApprove: async (data) => {
+        await paypalCaptureMutation.mutateAsync(data.orderID);
+      },
+      onError: () => setErrors({ api: 'PayPal payment failed' }),
+    }).render(paypalContainerRef.current);
+  }, [paypalReady, paymentMethod, form.planId]);
 
   const trialDaysLeft = tenant?.trialEndsAt
     ? Math.max(0, Math.ceil((new Date(tenant.trialEndsAt) - Date.now()) / (1000 * 60 * 60 * 24)))
@@ -207,10 +287,43 @@ export default function SubscriptionPage() {
         </div>
       )}
 
-      {/* Upload payment receipt — available during trial and after */}
+      {tenant?.pendingPlanId && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-900">
+          <p className="font-semibold">Plan change scheduled</p>
+          <p className="mt-1">
+            You will move to <strong>{tenant.pendingPlanId.name}</strong>
+            {tenant.pendingPlanEffectiveAt
+              ? ` on ${new Date(tenant.pendingPlanEffectiveAt).toLocaleDateString()}`
+              : ' at the end of your current period'}
+            . Complete payment before that date.
+          </p>
+        </div>
+      )}
+
+      {plans.length > 1 && !tenant?.planLocked && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
+          <h3 className="font-semibold text-gray-900">Change subscription plan</h3>
+          <p className="text-sm text-gray-500">Select a plan to switch to after your current period ends. Payment activates the new plan.</p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              defaultValue=""
+              onChange={(e) => {
+                if (e.target.value) schedulePlanMutation.mutate(e.target.value);
+              }}
+            >
+              <option value="">Choose a plan…</option>
+              {plans.filter((p) => p._id !== tenant?.assignedPlanId?._id).map((p) => (
+                <option key={p._id} value={p._id}>{p.name} ({p.currency} {Number(p.amount).toLocaleString()})</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
       {tenant && (
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-900 mb-1">Upload payment receipt</h3>
+        <h3 className="font-semibold text-gray-900 mb-1">Pay for subscription</h3>
         <p className="text-sm text-gray-500 mb-4">
           {tenant.subscriptionStatus === 'trial'
             ? 'Pay by bank transfer and submit the details below — you can do this anytime during your trial so verification can finish before the trial ends.'
@@ -228,6 +341,51 @@ export default function SubscriptionPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {paymentOptions?.stripe?.enabled && (
+                <button type="button" onClick={() => setPaymentMethod('stripe')} className={`px-3 py-1.5 rounded-lg text-sm border ${paymentMethod === 'stripe' ? 'border-brand-orange bg-brand-orange/10' : 'border-gray-300'}`}>Card (Stripe)</button>
+              )}
+              {paymentOptions?.paypal?.enabled && (
+                <button type="button" onClick={() => setPaymentMethod('paypal')} className={`px-3 py-1.5 rounded-lg text-sm border ${paymentMethod === 'paypal' ? 'border-brand-orange bg-brand-orange/10' : 'border-gray-300'}`}>PayPal</button>
+              )}
+              {(paymentOptions?.bankAccounts?.length || true) && (
+                <button type="button" onClick={() => setPaymentMethod('bank_transfer')} className={`px-3 py-1.5 rounded-lg text-sm border ${paymentMethod === 'bank_transfer' ? 'border-brand-orange bg-brand-orange/10' : 'border-gray-300'}`}>Bank transfer</button>
+              )}
+            </div>
+            {paymentMethod === 'stripe' && (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600">Pay securely with card via Stripe.</p>
+                <button
+                  type="button"
+                  disabled={!form.planId || stripeCheckoutMutation.isPending}
+                  onClick={() => stripeCheckoutMutation.mutate()}
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold disabled:opacity-60"
+                >
+                  {stripeCheckoutMutation.isPending ? 'Redirecting…' : 'Pay with card'}
+                </button>
+              </div>
+            )}
+            {paymentMethod === 'paypal' && (
+              <div className="space-y-3 min-h-[48px]">
+                <p className="text-sm text-gray-600">Complete payment with PayPal.</p>
+                {!form.planId && <p className="text-xs text-amber-700">Select a plan first.</p>}
+                <div ref={paypalContainerRef} />
+                {paypalCaptureMutation.isPending && <p className="text-sm text-gray-500">Confirming payment…</p>}
+              </div>
+            )}
+            {paymentMethod === 'bank_transfer' && paymentOptions?.bankAccounts?.length > 0 && (
+              <div className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                <p className="font-medium text-gray-900">Transfer to:</p>
+                {paymentOptions.bankAccounts.map((b) => (
+                  <div key={b._id}>
+                    <p className="font-medium">{b.label} — {b.bankName}</p>
+                    <p>{b.accountName} · {b.accountNumber}{b.branch ? ` · ${b.branch}` : ''}</p>
+                    {b.instructions && <p className="text-xs text-gray-500 mt-0.5">{b.instructions}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+            {paymentMethod === 'bank_transfer' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Plan *</label>
@@ -281,7 +439,8 @@ export default function SubscriptionPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Bank reference / transaction ID *</label>
               <input type="text" value={form.bankReference} onChange={e => { setForm(f => ({ ...f, bankReference: e.target.value })); setErrors(e2 => ({ ...e2, bankReference: '' })); }}
-                placeholder="TXN12345678"
+                placeholder="e.g. TXN-2026-001234"
+                maxLength={64}
                 className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${errors.bankReference ? 'border-red-400' : 'border-gray-300'}`} />
               {errors.bankReference && <p className="text-xs text-red-500 mt-0.5">{errors.bankReference}</p>}
             </div>
@@ -289,7 +448,7 @@ export default function SubscriptionPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Bank name</label>
               <input type="text" value={form.bankName} onChange={e => setForm(f => ({ ...f, bankName: e.target.value }))}
-                placeholder="Commercial Bank"
+                placeholder="e.g. Commercial Bank"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30" />
             </div>
 
@@ -316,14 +475,18 @@ export default function SubscriptionPage() {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 resize-none" />
             </div>
 
+            )}
+
             {errors.api && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{errors.api}</p>}
 
+            {paymentMethod === 'bank_transfer' && (
             <button type="submit" disabled={uploadMutation.isPending}
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60"
             >
               {uploadMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Upload size={14} />}
               Submit receipt
             </button>
+            )}
           </form>
         )}
       </div>

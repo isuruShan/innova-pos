@@ -5,6 +5,7 @@ import {
   ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell,
 } from 'lucide-react';
 import NotificationBell from '../NotificationBell';
+import SubscriptionDueBanner from '../SubscriptionDueBanner';
 import { useAuth } from '../../context/AuthContext';
 import { useStoreContext } from '../../context/StoreContext';
 
@@ -21,6 +22,7 @@ const SUPERADMIN_NAV_GROUPS = [
     items: [
       { label: 'Payments', icon: Receipt, to: '/payments' },
       { label: 'Plans', icon: CreditCard, to: '/plans' },
+      { label: 'Payment setup', icon: Wallet, to: '/payment-setup' },
     ],
   },
 ];
@@ -63,7 +65,14 @@ export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { stores, selectedStoreId, selectStore } = useStoreContext();
 
-  const navItems = isSuperAdmin ? SUPERADMIN_NAV_FLAT : ADMIN_NAV_FLAT;
+  const subscriptionLocked = !isSuperAdmin && user?.subscriptionActive === false;
+  const merchantNavGroups = subscriptionLocked
+    ? [{ title: 'Billing', items: [{ label: 'Subscription', icon: CreditCard, to: '/subscription' }] }]
+    : ADMIN_NAV_GROUPS;
+  const navGroups = isSuperAdmin ? SUPERADMIN_NAV_GROUPS : merchantNavGroups;
+  const navItems = isSuperAdmin
+    ? SUPERADMIN_NAV_FLAT
+    : (subscriptionLocked ? [{ label: 'Subscription', to: '/subscription' }] : ADMIN_NAV_FLAT);
 
   const handleLogout = () => {
     logout();
@@ -106,7 +115,7 @@ export default function Layout({ children }) {
 
         {/* Nav */}
         <nav className="admin-sidebar-scroll flex-1 overflow-y-auto overscroll-contain py-4 px-3 space-y-1">
-          {(isSuperAdmin ? SUPERADMIN_NAV_GROUPS : ADMIN_NAV_GROUPS).map((group) => (
+          {navGroups.map((group) => (
             <details key={group.title} open className="group mb-1">
               <summary className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500 font-semibold cursor-pointer list-none flex items-center justify-between select-none [&::-webkit-details-marker]:hidden">
                 {group.title}
@@ -181,7 +190,7 @@ export default function Layout({ children }) {
 
           <div className="flex items-center gap-3">
             {user && <NotificationBell />}
-            {!isSuperAdmin && (
+            {!isSuperAdmin && !subscriptionLocked && (
               <select
                 value={selectedStoreId}
                 onChange={(e) => selectStore(e.target.value)}
@@ -207,6 +216,7 @@ export default function Layout({ children }) {
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+          {!isSuperAdmin && <SubscriptionDueBanner />}
           {children}
         </main>
       </div>

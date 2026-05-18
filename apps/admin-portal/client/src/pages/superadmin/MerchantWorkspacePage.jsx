@@ -187,68 +187,17 @@ export default function MerchantWorkspacePage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-        <h3 className="font-semibold text-gray-900">Store Management</h3>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!storeForm.name.trim() || !storeForm.code.trim()) return;
-            createStoreMutation.mutate(storeForm);
-          }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-3"
-        >
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Store Name</label>
-            <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Store name" value={storeForm.name} onChange={(e) => setStoreForm((p) => ({ ...p, name: e.target.value }))} />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Store Code</label>
-            <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Store code" value={storeForm.code} onChange={(e) => setStoreForm((p) => ({ ...p, code: e.target.value }))} />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Address</label>
-            <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Address" value={storeForm.address} onChange={(e) => setStoreForm((p) => ({ ...p, address: e.target.value }))} />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Phone</label>
-            <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Phone" value={storeForm.phone} onChange={(e) => setStoreForm((p) => ({ ...p, phone: e.target.value }))} />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-xs text-gray-500 mb-1">Payment Methods (cash required)</label>
-            <div className="flex flex-wrap gap-3">
-              {['cash', 'card', 'bank_transfer', 'mobile_wallet'].map((m) => (
-                <label key={m} className="text-sm text-gray-700 flex items-center gap-1.5">
-                  <input
-                    type="checkbox"
-                    checked={storeForm.paymentMethods.includes(m)}
-                    disabled={m === 'cash'}
-                    onChange={() => setStoreForm((p) => {
-                      const has = p.paymentMethods.includes(m);
-                      const next = has ? p.paymentMethods.filter((x) => x !== m) : [...p.paymentMethods, m];
-                      if (!next.includes('cash')) next.unshift('cash');
-                      return { ...p, paymentMethods: [...new Set(next)] };
-                    })}
-                  />
-                  <span className="capitalize">{m.replace('_', ' ')}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-          <div className="md:col-span-2">
-            <button type="submit" className="px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold">Create store</button>
-          </div>
-        </form>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {stores.map((store) => (
-            <StoreCard
-              key={store._id}
-              store={store}
-              onSave={(payload) => updateStoreMutation.mutate({ storeId: store._id, payload: { ...payload, tenantId: id } })}
-            />
-          ))}
-          {!stores.length && <p className="text-sm text-gray-500">No stores found for this merchant.</p>}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-gray-900">Stores</h3>
+          <p className="text-sm text-gray-500 mt-0.5">{stores.length} branch{stores.length === 1 ? '' : 'es'} configured</p>
         </div>
+        <Link
+          to={`/merchants/${id}/stores`}
+          className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold hover:opacity-90"
+        >
+          Manage stores
+        </Link>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
+import { fieldAttrs, PLACEHOLDERS } from '../../utils/formFields';
 import { useAuth } from '../../context/AuthContext';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
 import ListPagination from '../../components/common/ListPagination';
@@ -138,9 +139,12 @@ export default function StoresPage() {
 
       {isSuperAdmin && (
         <form onSubmit={onCreate} className="rounded-xl border border-gray-200 bg-white p-4 grid gap-3 md:grid-cols-2">
-          <div><label className="block text-xs text-gray-500 mb-1">Store Name</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Store name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} /></div>
-          <div><label className="block text-xs text-gray-500 mb-1">Store Code</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Code (e.g. COL-01)" value={form.code} onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))} /></div>
-          <div><label className="block text-xs text-gray-500 mb-1">Address</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Address (optional)" value={form.address} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} /></div>
+          <div><label className="block text-xs text-gray-500 mb-1">Store Name</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder={PLACEHOLDERS.storeName}
+          maxLength={fieldAttrs('storeName').maxLength} value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} /></div>
+          <div><label className="block text-xs text-gray-500 mb-1">Store Code</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder={PLACEHOLDERS.storeCode}
+          maxLength={fieldAttrs('storeCode').maxLength} value={form.code} onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))} /></div>
+          <div><label className="block text-xs text-gray-500 mb-1">Address</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder={PLACEHOLDERS.addressLine1}
+          maxLength={fieldAttrs('addressLine1').maxLength} value={form.address} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} /></div>
           <div><label className="block text-xs text-gray-500 mb-1">Phone</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Phone (optional)" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} /></div>
           <div className="md:col-span-2">
             <label className="block text-xs text-gray-500 mb-1">Payment Methods (cash required)</label>
@@ -274,7 +278,8 @@ export default function StoresPage() {
               <button onClick={() => setEditingStore(null)} className="text-gray-400 hover:text-gray-600">x</button>
             </div>
             <form onSubmit={onEditSave} className="space-y-3">
-              <div><label className="block text-xs text-gray-500 mb-1">Store Name</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Store name" value={editForm.name} onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))} /></div>
+              <div><label className="block text-xs text-gray-500 mb-1">Store Name</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder={PLACEHOLDERS.storeName}
+          maxLength={fieldAttrs('storeName').maxLength} value={editForm.name} onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))} /></div>
               <div><label className="block text-xs text-gray-500 mb-1">Store Code</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Code" value={editForm.code} onChange={(e) => setEditForm((p) => ({ ...p, code: e.target.value }))} /></div>
               <div><label className="block text-xs text-gray-500 mb-1">Address</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Address" value={editForm.address} onChange={(e) => setEditForm((p) => ({ ...p, address: e.target.value }))} /></div>
               <div><label className="block text-xs text-gray-500 mb-1">Phone</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Phone" value={editForm.phone} onChange={(e) => setEditForm((p) => ({ ...p, phone: e.target.value }))} /></div>

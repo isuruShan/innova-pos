@@ -5,6 +5,7 @@ import api from '../../api/axios';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
 import ListPagination from '../../components/common/ListPagination';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
+import { fieldAttrs, validateEmail, validatePersonName } from '../../utils/formFields';
 
 const ROLE_COLORS = {
   merchant_admin: 'bg-purple-100 text-purple-700',
@@ -88,9 +89,10 @@ export default function UsersPage() {
 
   const validateAndSubmit = () => {
     const e = {};
-    if (!form.name.trim()) e.name = 'Name required';
-    if (!form.email.trim()) e.email = 'Email required';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Invalid email';
+    const nameCheck = validatePersonName(form.name, { label: 'Name' });
+    if (!nameCheck.ok) e.name = nameCheck.error;
+    const emailCheck = validateEmail(form.email);
+    if (!emailCheck.ok) e.email = emailCheck.error;
     if (!form.role) e.role = 'Role required';
     if (Object.keys(e).length) { setErrors(e); return; }
     const payload = {
@@ -276,12 +278,12 @@ export default function UsersPage() {
             </div>
             <div className="space-y-4">
               {[
-                { label: 'Full name', key: 'name', placeholder: 'John Silva' },
-                { label: 'Email', key: 'email', type: 'email', placeholder: 'john@yourbusiness.com' },
+                { label: 'Full name', key: 'name', ...fieldAttrs('staffName') },
+                { label: 'Email', key: 'email', type: 'email', ...fieldAttrs('email') },
               ].map(f => (
                 <div key={f.key}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
-                  <input type={f.type || 'text'} value={form[f.key]} placeholder={f.placeholder}
+                  <input type={f.type || 'text'} value={form[f.key]} placeholder={f.placeholder} maxLength={f.maxLength}
                     onChange={e => { setForm(p => ({ ...p, [f.key]: e.target.value })); setErrors(e2 => ({ ...e2, [f.key]: '' })); }}
                     className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${errors[f.key] ? 'border-red-400' : 'border-gray-300'}`} />
                   {errors[f.key] && <p className="text-xs text-red-500 mt-0.5">{errors[f.key]}</p>}

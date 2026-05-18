@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@innovapos/form-validation": "workspace:*",
     "axios": "^1.16.0",
     "lucide-react": "^1.14.0",
     "react": "^19.2.5",

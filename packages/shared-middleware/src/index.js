@@ -49,17 +49,15 @@ const tenantScope = (req, res, next) => {
 };
 
 /**
- * Blocks POS access if the tenant subscription has expired.
- * Superadmins and merchant_admins bypass (so they can still log in to fix things).
+ * Blocks POS access when subscription is inactive (all roles except superadmin).
  */
 const requireActiveSubscription = (req, res, next) => {
   if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
-  const bypassRoles = ['superadmin', 'merchant_admin'];
-  if (bypassRoles.includes(req.user.role)) return next();
+  if (req.user.role === 'superadmin') return next();
   if (req.user.subscriptionActive === false) {
     return res.status(402).json({
-      message: 'Subscription expired. Please renew to continue.',
-      code: 'SUBSCRIPTION_EXPIRED',
+      message: 'Subscription inactive. Renew your subscription in the admin portal.',
+      code: 'SUBSCRIPTION_INACTIVE',
     });
   }
   next();
@@ -100,11 +98,20 @@ const emitAudit = async ({
   }
 };
 
+const {
+  requireTenantServiceWhenInactive,
+  requireActiveSubscriptionForPos,
+  isSubscriptionServiceRoute,
+} = require('./tenantAccess');
+
 module.exports = {
   authenticateJWT,
   authorize,
   tenantScope,
   requireActiveSubscription,
+  requireTenantServiceWhenInactive,
+  requireActiveSubscriptionForPos,
+  isSubscriptionServiceRoute,
   emitAudit,
   getClientErrorPayload,
   logRouteError,

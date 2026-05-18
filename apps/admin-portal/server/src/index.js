@@ -13,14 +13,20 @@ async function start() {
   const express = require('express');
 const helmet = require('helmet');
 const { createLogger } = require('@innovapos/logger');
-const { getClientErrorPayload, createCorsMiddleware } = require('@innovapos/shared-middleware');
+const jwt = require('jsonwebtoken');
+const {
+  getClientErrorPayload,
+  createCorsMiddleware,
+  requireTenantServiceWhenInactive,
+} = require('@innovapos/shared-middleware');
 const connectDB = require('./config/db');
 const { getMailConfigurationIssue } = require('@innovapos/mail-transport');
 const Tenant = require('./models/Tenant');
 const Subscription = require('./models/Subscription');
 const User = require('./models/User');
 const { sendEmail } = require('./utils/mailer');
-const { notifySuperAdmins } = require('./lib/notificationHelpers');
+const { notifySuperAdmins, notifyMerchantAdmins } = require('./lib/notificationHelpers');
+const { applyDuePendingPlanSwitches } = require('./lib/subscriptionActivation');
 
 const app = express();
 const logger = createLogger('admin-portal-server');
@@ -55,13 +61,32 @@ app.use((req, res, next) => {
   return adminCors(req, res, next);
 });
 
+app.use('/api/subscriptions/webhooks', require('./routes/subscriptionWebhooks').router);
+
 app.use(express.json({ limit: '10mb' }));
+
+function attachUserIfToken(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) return next();
+  try {
+    const decoded = jwt.verify(header.split(' ')[1], process.env.JWT_SECRET);
+    req.user = decoded;
+    req.tenantId = decoded.tenantId || null;
+  } catch {
+    /* route handlers return 401 when auth required */
+  }
+  return next();
+}
+
+app.use('/api', attachUserIfToken, requireTenantServiceWhenInactive);
 
 app.use('/api/auth',            require('./routes/auth'));
 app.use('/api/applications',    require('./routes/applications'));
 app.use('/api/tenants',         require('./routes/tenants'));
+app.use('/api/subscriptions/checkout', require('./routes/subscriptionCheckout'));
 app.use('/api/subscriptions',   require('./routes/subscriptions'));
 app.use('/api/plans',           require('./routes/plans'));
+app.use('/api/platform-payments', require('./routes/platform-payments'));
 app.use('/api/tenant-settings', require('./routes/tenantSettings'));
 app.use('/api/users',           require('./routes/users'));
 app.use('/api/stores',          require('./routes/stores'));
@@ -158,6 +183,13 @@ app.listen(PORT, '0.0.0.0', () => {
               ),
             );
 
+            await notifyMerchantAdmins(t._id, {
+              type: 'subscription_due_soon',
+              title: 'Trial ending soon',
+              body: `Your trial ends on ${end.toDateString()}. Please renew to avoid interruption.`,
+              meta: { resourceType: 'tenant', resourceId: String(t._id), dueDate: end.toISOString() },
+            }).catch(() => {});
+
             await Tenant.findByIdAndUpdate(t._id, { subscriptionExpiryReminderSentForEndDate: end }).catch(() => {});
           }
         }
@@ -170,6 +202,7 @@ app.listen(PORT, '0.0.0.0', () => {
             await Tenant.findByIdAndUpdate(t._id, {
               subscriptionStatus: 'expired',
               status: 'suspended',
+              suspensionReason: 'trial_ended',
               subscriptionDeactivationNotifiedForEndDate: end,
             }).catch(() => {});
 
@@ -262,6 +295,13 @@ app.listen(PORT, '0.0.0.0', () => {
               ),
             );
 
+            await notifyMerchantAdmins(tenantId, {
+              type: 'subscription_due_soon',
+              title: 'Subscription due soon',
+              body: `Your subscription ends on ${end.toDateString()}. Please renew within 3 days.`,
+              meta: { resourceType: 'tenant', resourceId: String(tenantId), dueDate: end.toISOString() },
+            }).catch(() => {});
+
             await Tenant.findByIdAndUpdate(t._id, { subscriptionExpiryReminderSentForEndDate: end }).catch(() => {});
           }
         }
@@ -274,6 +314,7 @@ app.listen(PORT, '0.0.0.0', () => {
             await Tenant.findByIdAndUpdate(t._id, {
               subscriptionStatus: 'expired',
               status: 'suspended',
+              suspensionReason: 'payment_overdue',
               subscriptionDeactivationNotifiedForEndDate: end,
             }).catch(() => {});
 
@@ -303,6 +344,11 @@ app.listen(PORT, '0.0.0.0', () => {
             }).catch(() => {});
           }
         }
+      }
+
+      const applied = await applyDuePendingPlanSwitches().catch(() => 0);
+      if (applied > 0) {
+        logger.info('Applied pending subscription plan switches', { count: applied });
       }
     } catch (err) {
       logger.error('Subscription monitor failed', { error: err.message });

@@ -11,7 +11,9 @@ const axios = require('axios');
 const FormData = require('form-data');
 const { tenantPlanAudience } = require('../utils/planAudience');
 const { presignObjectKey } = require('../utils/s3Runtime');
-const { notifySuperAdmins } = require('../lib/notificationHelpers');
+const { notifySuperAdmins, notifyMerchantAdmins } = require('../lib/notificationHelpers');
+const { notifySubscriptionEvent } = require('../lib/subscriptionNotify');
+const { resolveTenantPeriodEnd } = require('../lib/subscriptionDates');
 const { parsePageQuery, paginated } = require('../lib/listPagination');
 
 const router = express.Router();
@@ -98,9 +100,26 @@ router.get('/receipts', authenticateJWT, async (req, res) => {
 // POST /subscriptions/receipts — merchant uploads a payment receipt
 router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.single('receipt'), async (req, res) => {
   try {
-    const { amount, bankReference, bankName, paymentDate, notes, planId } = req.body;
-    if (!amount || !bankReference || !paymentDate) {
-      return res.status(400).json({ message: 'amount, bankReference, and paymentDate are required' });
+    const {
+      amount,
+      bankReference,
+      bankName,
+      paymentDate,
+      notes,
+      planId,
+      paymentMethod = 'bank_transfer',
+    } = req.body;
+    const method = ['bank_transfer', 'stripe', 'paypal'].includes(paymentMethod)
+      ? paymentMethod
+      : 'bank_transfer';
+    if (method === 'bank_transfer' && (!amount || !bankReference || !paymentDate)) {
+      return res.status(400).json({ message: 'amount, bankReference, and paymentDate are required for bank transfer' });
+    }
+    if (method !== 'bank_transfer') {
+      return res.status(400).json({
+        message: 'Use the online checkout option for card or PayPal payments.',
+        code: 'USE_ONLINE_CHECKOUT',
+      });
     }
     const amountValue = Number(amount);
     if (!Number.isFinite(amountValue) || amountValue <= 0) {
@@ -144,6 +163,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
 
     const receipt = await PaymentReceipt.create({
       tenantId: req.tenantId,
+      paymentMethod: method,
       amount: amountValue,
       currency: requestedPlan.currency || 'LKR',
       requestedPlanId: requestedPlan._id,
@@ -169,6 +189,13 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
           body: `A merchant submitted a payment receipt for "${tenant.businessName}".`,
           meta: { resourceType: 'tenant', resourceId: String(req.tenantId), receiptId: String(receipt._id) },
         });
+
+        await notifyMerchantAdmins(req.tenantId, {
+          type: 'subscription_payment_completed',
+          title: 'Payment submitted',
+          body: 'Your payment receipt was submitted and is awaiting verification.',
+          meta: { resourceType: 'tenant', resourceId: String(req.tenantId), receiptId: String(receipt._id) },
+        }, { excludeUserId: req.user.id }).catch(() => {});
 
         await Promise.all(
           supers.map((sa) =>
@@ -221,10 +248,20 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
       receipt.updatedBy = req.user.id;
       await receipt.save();
 
-      await sendEmail({
-        to: receipt.tenantId?.email || '',
-        subject: 'Payment Receipt Update — Cafinity',
-        html: `<p>Your payment receipt was not accepted. Reason: ${rejectionReason}</p>`,
+      const tenantId = receipt.tenantId?._id || receipt.tenantId;
+      await notifySubscriptionEvent(tenantId, {
+        type: 'payment_receipt_rejected',
+        title: 'Payment not accepted',
+        body: `Your payment receipt was rejected: ${rejectionReason}`,
+        meta: { resourceType: 'tenant', resourceId: String(tenantId), receiptId: String(receipt._id) },
+        merchantEmail: {
+          subject: 'Payment receipt not accepted — Cafinity',
+          html: `<p>Hi,</p><p>Your payment receipt was not accepted.</p><p><strong>Reason:</strong> ${rejectionReason}</p><p>Please submit a new receipt from the Subscription page.</p>`,
+        },
+        superEmail: {
+          subject: 'Payment receipt rejected',
+          html: `<p>A payment receipt was rejected for merchant ID ${tenantId}.</p>`,
+        },
       }).catch(() => {});
 
       return res.json({ message: 'Receipt rejected', receipt });
@@ -320,6 +357,13 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
           meta: { resourceType: 'tenant', resourceId: String(tenant._id), subscriptionEndDate: newEnd.toISOString() },
         });
 
+        await notifyMerchantAdmins(tenant._id, {
+          type: 'subscription_approved',
+          title: 'Subscription activated',
+          body: `Your subscription is active until ${newEnd.toDateString()}.`,
+          meta: { resourceType: 'tenant', resourceId: String(tenant._id), subscriptionEndDate: newEnd.toISOString() },
+        }).catch(() => {});
+
         await Promise.all(
           supers.map((sa) =>
             sendEmail({
@@ -368,10 +412,58 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
   }
 });
 
+// POST /subscriptions/schedule-plan — change plan at end of current period
+router.post('/schedule-plan', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
+  try {
+    const { planId } = req.body;
+    if (!planId) return res.status(400).json({ message: 'planId is required' });
+
+    const tenant = await Tenant.findById(req.tenantId);
+    if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+    const audience = tenantPlanAudience(tenant.countryIso);
+    const plan = await SubscriptionPlan.findOne({ _id: planId, isActive: true, planAudience: audience });
+    if (!plan) return res.status(400).json({ message: 'Selected plan is not available' });
+
+    const latestSub = await Subscription.findOne({ tenantId: tenant._id }).sort({ endDate: -1 }).lean();
+    const effectiveAt = resolveTenantPeriodEnd(tenant, latestSub?.endDate) || new Date();
+
+    tenant.pendingPlanId = plan._id;
+    tenant.pendingPlanEffectiveAt = effectiveAt;
+    tenant.updatedBy = req.user.id;
+    await tenant.save();
+
+    await notifySubscriptionEvent(tenant._id, {
+      type: 'subscription_plan_scheduled',
+      title: 'Plan change scheduled',
+      body: `Your plan will change to ${plan.name} on ${new Date(effectiveAt).toDateString()}.`,
+      meta: { resourceType: 'tenant', resourceId: String(tenant._id), planId: String(plan._id) },
+      merchantEmail: {
+        subject: 'Subscription plan change scheduled — Cafinity',
+        html: `<p>Hi,</p><p>You scheduled a change to <strong>${plan.name}</strong>, effective on <strong>${new Date(effectiveAt).toDateString()}</strong>.</p><p>Complete payment before that date to activate the new plan.</p>`,
+      },
+      superEmail: {
+        subject: 'Merchant scheduled plan change',
+        html: `<p>Merchant <strong>${tenant.businessName}</strong> scheduled plan <strong>${plan.name}</strong> effective ${new Date(effectiveAt).toDateString()}.</p>`,
+      },
+    }).catch(() => {});
+
+    res.json({
+      pendingPlanId: tenant.pendingPlanId,
+      pendingPlanEffectiveAt: tenant.pendingPlanEffectiveAt,
+      message: `Plan will change on ${new Date(effectiveAt).toDateString()} after payment.`,
+    });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 // GET /subscriptions/my — merchant's own subscription status
 router.get('/my', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
   try {
-    const tenant = await Tenant.findById(req.tenantId).populate('assignedPlanId', 'name code amount currency billingCycle durationDays isActive');
+    const tenant = await Tenant.findById(req.tenantId)
+      .populate('assignedPlanId', 'name code amount currency billingCycle durationDays isActive')
+      .populate('pendingPlanId', 'name code amount currency billingCycle durationDays isActive');
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
 
     const subscriptions = await Subscription.find({ tenantId: req.tenantId }).sort({ endDate: -1 });
