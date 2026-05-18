@@ -4,7 +4,7 @@ const path = require('path');
 
 /**
  * Load env the same way production apps do: dotenv from common paths, then
- * AWS Secrets Manager when AWS_SECRETS_MANAGER_SECRET_ID is set.
+ * cloud secrets when SECRETS_PROVIDER / Key Vault / Secrets Manager bootstrap is set.
  *
  * Used by CLI scripts (seed, remove-super-admin) so they work on EC2 with only
  * Secrets Manager–backed config.
@@ -21,13 +21,13 @@ async function loadEnvForScripts() {
   require('dotenv').config();
 
   try {
-    const { loadAwsSecretsManagerEnv } = require('@innovapos/runtime-env');
-    const res = await loadAwsSecretsManagerEnv();
+    const { loadSecretsEnv } = require('@innovapos/runtime-env');
+    const res = await loadSecretsEnv();
     if (res.loaded) {
-      console.log(`[env] Merged ${res.keysApplied ?? 0} keys from AWS Secrets Manager`);
+      console.log(`[env] Merged ${res.keysApplied ?? 0} keys from ${res.provider} secrets`);
     }
   } catch (e) {
-    console.warn('[env] AWS Secrets Manager:', e.message);
+    console.warn('[env] Cloud secrets:', e.message);
   }
 }
 

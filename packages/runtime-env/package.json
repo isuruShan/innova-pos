@@ -2,10 +2,12 @@
   "name": "@innovapos/runtime-env",
   "version": "1.0.0",
   "private": true,
-  "description": "Load .env then merge AWS Secrets Manager JSON into process.env (local + prod)",
+  "description": "Load .env then merge cloud secrets (Azure Key Vault or AWS Secrets Manager) into process.env",
   "main": "index.js",
   "type": "commonjs",
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.775.0"
+    "@aws-sdk/client-secrets-manager": "^3.775.0",
+    "@azure/identity": "^4.8.0",
+    "@azure/keyvault-secrets": "^4.9.0"
   }
 }

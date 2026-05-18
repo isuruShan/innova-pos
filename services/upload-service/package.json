@@ -1,7 +1,7 @@
 {
   "name": "@services/upload-service",
   "version": "1.0.0",
-  "description": "S3 upload service with image validation for InnovaPOS platform",
+  "description": "Object storage upload service (Azure Blob or AWS S3) with image validation",
   "main": "src/index.js",
   "type": "commonjs",
   "scripts": {
@@ -9,8 +9,7 @@
     "dev": "nodemon --inspect=9230 src/index.js"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.775.0",
-    "@aws-sdk/s3-request-presigner": "^3.775.0",
+    "@innovapos/object-storage": "workspace:*",
     "@innovapos/runtime-env": "workspace:*",
     "@innovapos/logger": "workspace:*",
     "@innovapos/shared-middleware": "workspace:*",

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Production deploy on EC2: pull, install, build SPAs, reload PM2.
+# Production deploy: pull, install, build SPAs, reload PM2.
+# Works on Azure VM or EC2 — set CLOUD_PROVIDER / Key Vault or Secrets Manager bootstrap before running.
 # Run from repo root: ./scripts/deploy-production.sh
 set -euo pipefail
 

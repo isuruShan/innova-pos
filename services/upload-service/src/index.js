@@ -11,10 +11,10 @@ if (!String(process.env.INTERNAL_SERVICE_KEY || '').trim()) {
 
 async function start() {
   try {
-    const { loadAwsSecretsManagerEnv } = require('@innovapos/runtime-env');
-    await loadAwsSecretsManagerEnv();
+    const { loadSecretsEnvOrExit } = require('@innovapos/runtime-env');
+    await loadSecretsEnvOrExit();
   } catch (e) {
-    console.error('[runtime-env] Failed to load AWS Secrets Manager:', e.message);
+    console.error('[runtime-env] Failed to load secrets:', e.message);
     process.exit(1);
   }
 
@@ -60,9 +60,11 @@ app.use((err, req, res, _next) => {
   res.status(st).json(getClientErrorPayload(err, st));
 });
 
-const PORT = parseInt(process.env.PORT, 10) || 3002;
-app.listen(PORT, '0.0.0.0', () => {
-  logger.info(`Upload service running on :${PORT}`);
+  const PORT = parseInt(process.env.PORT, 10) || 3002;
+  app.listen(PORT, '0.0.0.0', () => {
+    const { resolveStorageProvider } = require('@innovapos/object-storage');
+    const storage = resolveStorageProvider();
+    logger.info(`Upload service running on :${PORT}`, { storage });
   if (!String(process.env.INTERNAL_SERVICE_KEY || '').trim()) {
     logger.warn(
       'INTERNAL_SERVICE_KEY is unset — server-to-server uploads will get 401. Set it in services/upload-service/.env or repo-root .env (must match public-web-server).'

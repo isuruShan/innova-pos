@@ -4,25 +4,23 @@
  * PM2 process configuration – all apps in the monorepo (POS, admin, public web,
  * QR table-order API, auth, upload).
  *
- * ── AWS Secrets Manager ────────────────────────────────────────────────────
- * Every app calls loadAwsSecretsManagerEnv() at startup, which fetches a
- * single JSON secret from AWS Secrets Manager and merges it into process.env.
- * The loader only fires when AWS_SECRETS_MANAGER_SECRET_ID is present.
+ * ── Cloud secrets & storage (config only — no code changes to switch) ─────
+ * Every app calls loadSecretsEnv() at startup and merges one JSON secret into
+ * process.env. Upload service uses STORAGE_PROVIDER for Azure Blob or AWS S3.
  *
- * Recommended: attach an IAM role to the EC2 instance with permission:
- *   secretsmanager:GetSecretValue  on  arn:aws:secretsmanager:REGION:ACCT:secret:YOUR_SECRET_NAME-*
- * No static credentials are needed when running on EC2 with an instance role.
+ * Azure VM (recommended for full Azure):
+ *   CLOUD_PROVIDER=azure   (or SECRETS_PROVIDER=azure / STORAGE_PROVIDER=azure)
+ *   AZURE_KEY_VAULT_URL=https://YOUR-VAULT.vault.azure.net/
+ *   AZURE_KEY_VAULT_SECRET_NAME=innovapos-production-env
+ *   VM system-assigned managed identity → Key Vault Secrets User + Storage roles
  *
- * If you are NOT using an instance role, create a minimal .env file in the
- * project root with just the bootstrap variables:
- *   AWS_REGION=us-east-1
- *   AWS_SECRETS_MANAGER_SECRET_ID=innovapos/production
- *   AWS_ACCESS_KEY_ID=AKIAxxxx          # only if no instance role
- *   AWS_SECRET_ACCESS_KEY=xxxx          # only if no instance role
+ * AWS EC2 (legacy):
+ *   CLOUD_PROVIDER=aws
+ *   AWS_SECRETS_MANAGER_SECRET_ID=your-secret-id
+ *   IAM instance role: secretsmanager:GetSecretValue + S3
  *
- * Merge behaviour (default: fill):
- *   - fill     → Secrets Manager only sets keys that are blank after dotenv
- *   - override → Secrets Manager always wins (set AWS_SECRETS_MERGE_MODE=override)
+ * Merge: SECRETS_MERGE_MODE=fill (default) or override
+ * See docs/AZURE_PRODUCTION_DEPLOY.md
  * ──────────────────────────────────────────────────────────────────────────
  *
  * Start / reload:
@@ -48,15 +46,27 @@
  *   PM2_INSTANCES=1 pm2 start ecosystem.config.cjs --env production
  */
 
-// ── Shared AWS bootstrap variables injected into every process ──────────────
-// Change SECRET_ID to your actual Secrets Manager secret name or ARN.
-// All other values (MONGO_URI, JWT_SECRET, etc.) come from the secret itself.
-const awsEnv = {
-  AWS_REGION:                      process.env.AWS_REGION || 'us-east-1',
-  AWS_DEFAULT_REGION:              process.env.AWS_REGION || 'us-east-1',
-  AWS_SECRETS_MANAGER_SECRET_ID:   process.env.AWS_SECRETS_MANAGER_SECRET_ID || 'ip-consolidated-secrets',
-  // AWS_SECRETS_MERGE_MODE: 'fill',  // change to 'override' if the secret should always win
-};
+// Bootstrap env on the host (not inside Key Vault / Secrets Manager JSON).
+function cloudBootstrapEnv() {
+  const cloud = String(process.env.CLOUD_PROVIDER || process.env.SECRETS_PROVIDER || 'azure').toLowerCase();
+  if (cloud === 'aws') {
+    return {
+      SECRETS_PROVIDER: 'aws',
+      STORAGE_PROVIDER: process.env.STORAGE_PROVIDER || 'aws',
+      AWS_REGION: process.env.AWS_REGION || 'us-east-1',
+      AWS_DEFAULT_REGION: process.env.AWS_REGION || 'us-east-1',
+      AWS_SECRETS_MANAGER_SECRET_ID: process.env.AWS_SECRETS_MANAGER_SECRET_ID || '',
+    };
+  }
+  return {
+    SECRETS_PROVIDER: 'azure',
+    STORAGE_PROVIDER: process.env.STORAGE_PROVIDER || 'azure',
+    AZURE_KEY_VAULT_URL: process.env.AZURE_KEY_VAULT_URL || '',
+    AZURE_KEY_VAULT_SECRET_NAME: process.env.AZURE_KEY_VAULT_SECRET_NAME || 'innovapos-production-env',
+  };
+}
+
+const cloudEnv = cloudBootstrapEnv();
 
 module.exports = {
   apps: [
@@ -77,7 +87,7 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production',
         PORT: 5000,
-        ...awsEnv,
+        ...cloudEnv,
       },
       error_file: './logs/pos-error.log',
       out_file:   './logs/pos-out.log',
@@ -103,7 +113,7 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production',
         PORT: 5001,
-        ...awsEnv,
+        ...cloudEnv,
       },
       error_file: './logs/admin-error.log',
       out_file:   './logs/admin-out.log',
@@ -129,7 +139,7 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production',
         PORT: 5002,
-        ...awsEnv,
+        ...cloudEnv,
       },
       error_file: './logs/public-web-error.log',
       out_file:   './logs/public-web-out.log',
@@ -156,7 +166,7 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production',
         PORT: 5010,
-        ...awsEnv,
+        ...cloudEnv,
         // Set CORS_ORIGIN to the deployed guest SPA origin(s), comma-separated.
       },
       error_file: './logs/qr-order-error.log',
@@ -183,7 +193,7 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production',
         PORT: 3001,
-        ...awsEnv,
+        ...cloudEnv,
       },
       error_file: './logs/auth-error.log',
       out_file:   './logs/auth-out.log',
@@ -209,7 +219,7 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production',
         PORT: 3002,
-        ...awsEnv,
+        ...cloudEnv,
       },
       error_file: './logs/upload-error.log',
       out_file:   './logs/upload-out.log',

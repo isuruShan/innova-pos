@@ -3,10 +3,10 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 async function start() {
   try {
-    const { loadAwsSecretsManagerEnv } = require('@innovapos/runtime-env');
-    await loadAwsSecretsManagerEnv();
+    const { loadSecretsEnvOrExit } = require('@innovapos/runtime-env');
+    await loadSecretsEnvOrExit();
   } catch (e) {
-    console.error('[runtime-env] Failed to load AWS Secrets Manager:', e.message);
+    console.error('[runtime-env] Failed to load secrets:', e.message);
     process.exit(1);
   }
 
