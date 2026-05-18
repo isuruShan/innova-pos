@@ -1,0 +1,15 @@
+{
+  "name": "@innovapos/vite-native-bindings",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ensures Rolldown platform native bindings are installed (Vite 8 on Linux/macOS/Windows)",
+  "optionalDependencies": {
+    "@rolldown/binding-darwin-arm64": "1.0.0-rc.18",
+    "@rolldown/binding-darwin-x64": "1.0.0-rc.18",
+    "@rolldown/binding-linux-arm64-gnu": "1.0.0-rc.18",
+    "@rolldown/binding-linux-arm64-musl": "1.0.0-rc.18",
+    "@rolldown/binding-linux-x64-gnu": "1.0.0-rc.18",
+    "@rolldown/binding-linux-x64-musl": "1.0.0-rc.18",
+    "@rolldown/binding-win32-x64-msvc": "1.0.0-rc.18"
+  }
+}

@@ -114,12 +114,41 @@ Object keys stay the same shape as before: `tenants/{tenantId}/menu/{uuid}.webp`
 
 ## Step 5 — Install app on the VM
 
-Same as EC2: Node 20+, pnpm, PM2, git clone.
+Same as EC2: **Node 20 LTS** (recommended), pnpm, PM2, git clone.
+
+**Do not use Node 24 for Vite dev** until Rolldown fully supports it — production `vite build` also needs Rolldown native bindings.
 
 ```bash
-sudo apt update && sudo apt install -y git
-# Node 20 + pnpm + pm2 (see EC2_PRODUCTION_DEPLOY.md Step 4)
+sudo apt update && sudo apt install -y git curl
+# Node 20 LTS (example via NodeSource)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v   # should show v20.x
+
+corepack enable
+corepack prepare pnpm@9.15.0 --activate
 ```
+
+### Vite / Rolldown: `Cannot find @rolldown/binding-linux-x64-gnu`
+
+This means `node_modules` was installed on another OS or optional deps were skipped. **Always install on the VM:**
+
+```bash
+cd /path/to/innova-pos
+chmod +x scripts/ensure-native-bindings.sh
+./scripts/ensure-native-bindings.sh
+```
+
+Or manually:
+
+```bash
+rm -rf node_modules apps/*/client/node_modules packages/*/node_modules
+pnpm install
+```
+
+Never copy `node_modules` from your laptop to the VM.
+
+**Production** only needs `pnpm run build` once per deploy (via `deploy-production.sh`), not `pnpm dev`.
 
 Bootstrap file on the VM (e.g. `/etc/innovapos/bootstrap.env`):
 
