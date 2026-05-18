@@ -80,6 +80,19 @@ router.get('/receipts', authenticateJWT, async (req, res) => {
     const filter = tenantId ? { tenantId } : {};
     if (req.query.status) filter.status = req.query.status;
 
+    const search = String(req.query.search || req.query.q || '').trim();
+    if (search && req.user.role === 'superadmin') {
+      const Tenant = require('../models/Tenant');
+      const re = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      const tenants = await Tenant.find({ businessName: re }).select('_id').lean();
+      const ids = tenants.map((t) => t._id);
+      if (!ids.length) {
+        const { page, limit } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 100 });
+        return res.json(paginated([], 0, page, limit));
+      }
+      filter.tenantId = { $in: ids };
+    }
+
     const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 100 });
     const total = await PaymentReceipt.countDocuments(filter);
     let receipts = await PaymentReceipt.find(filter)

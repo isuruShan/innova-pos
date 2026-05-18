@@ -4,9 +4,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, Loader, CheckCircle, Clock, AlertTriangle, ExternalLink, FileText } from 'lucide-react';
 import api from '../../api/axios';
 import AdminDateField from '../../components/AdminDateField';
+import PlanChangeModal from '../../components/subscription/PlanChangeModal';
+import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
+import { useToast } from '../../context/ToastContext';
 
 export default function SubscriptionPage() {
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const [planModalOpen, setPlanModalOpen] = useState(false);
   const fileRef = useRef(null);
   const [form, setForm] = useState({ amount: '', bankReference: '', bankName: '', paymentDate: '', notes: '', planId: '' });
   const [paymentMethod, setPaymentMethod] = useState('bank_transfer');
@@ -38,8 +43,16 @@ export default function SubscriptionPage() {
 
   const schedulePlanMutation = useMutation({
     mutationFn: (planId) => api.post('/subscriptions/schedule-plan', { planId }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-subscription'] }),
-    onError: (err) => setErrors({ api: err.response?.data?.message || 'Could not schedule plan change' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      setPlanModalOpen(false);
+      toast.success('Plan change scheduled');
+    },
+    onError: (err) => {
+      const msg = err.response?.data?.message || 'Could not schedule plan change';
+      setErrors({ api: msg });
+      toast.error(msg);
+    },
   });
 
   const uploadMutation = useMutation({
@@ -301,23 +314,26 @@ export default function SubscriptionPage() {
       )}
 
       {plans.length > 1 && !tenant?.planLocked && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-3">
-          <h3 className="font-semibold text-gray-900">Change subscription plan</h3>
-          <p className="text-sm text-gray-500">Select a plan to switch to after your current period ends. Payment activates the new plan.</p>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <select
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              defaultValue=""
-              onChange={(e) => {
-                if (e.target.value) schedulePlanMutation.mutate(e.target.value);
-              }}
-            >
-              <option value="">Choose a plan…</option>
-              {plans.filter((p) => p._id !== tenant?.assignedPlanId?._id).map((p) => (
-                <option key={p._id} value={p._id}>{p.name} ({p.currency} {Number(p.amount).toLocaleString()})</option>
-              ))}
-            </select>
+        <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="font-semibold text-gray-900">Subscription plan</h3>
+            <p className="text-sm text-gray-500 mt-1">Switch plans at the end of your current billing period.</p>
           </div>
+          <button
+            type="button"
+            onClick={() => setPlanModalOpen(true)}
+            className="px-4 py-2 rounded-lg border border-brand-orange text-brand-orange text-sm font-semibold hover:bg-brand-orange/5"
+          >
+            Change plan
+          </button>
+          <PlanChangeModal
+            open={planModalOpen}
+            onClose={() => { setPlanModalOpen(false); toast.info('Plan change cancelled'); }}
+            plans={plans.filter((p) => p._id !== tenant?.assignedPlanId?._id)}
+            currentPlanId={tenant?.assignedPlanId?._id}
+            onSelect={(planId) => schedulePlanMutation.mutate(planId)}
+            isPending={schedulePlanMutation.isPending}
+          />
         </div>
       )}
 
@@ -343,13 +359,20 @@ export default function SubscriptionPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex flex-wrap gap-2">
               {paymentOptions?.stripe?.enabled && (
-                <button type="button" onClick={() => setPaymentMethod('stripe')} className={`px-3 py-1.5 rounded-lg text-sm border ${paymentMethod === 'stripe' ? 'border-brand-orange bg-brand-orange/10' : 'border-gray-300'}`}>Card (Stripe)</button>
+                <button type="button" title="Pay with card (Stripe)" onClick={() => setPaymentMethod('stripe')} className={`px-4 py-2 rounded-lg border flex items-center gap-2 ${paymentMethod === 'stripe' ? 'border-brand-orange bg-brand-orange/10' : 'border-gray-300'}`}>
+                  <PaymentMethodLogo method="stripe" imageUrl={paymentOptions?.stripe?.imageUrl} />
+                </button>
               )}
               {paymentOptions?.paypal?.enabled && (
-                <button type="button" onClick={() => setPaymentMethod('paypal')} className={`px-3 py-1.5 rounded-lg text-sm border ${paymentMethod === 'paypal' ? 'border-brand-orange bg-brand-orange/10' : 'border-gray-300'}`}>PayPal</button>
+                <button type="button" title="Pay with PayPal" onClick={() => setPaymentMethod('paypal')} className={`px-4 py-2 rounded-lg border flex items-center gap-2 ${paymentMethod === 'paypal' ? 'border-brand-orange bg-brand-orange/10' : 'border-gray-300'}`}>
+                  <PaymentMethodLogo method="paypal" imageUrl={paymentOptions?.paypal?.imageUrl} />
+                </button>
               )}
               {(paymentOptions?.bankAccounts?.length || true) && (
-                <button type="button" onClick={() => setPaymentMethod('bank_transfer')} className={`px-3 py-1.5 rounded-lg text-sm border ${paymentMethod === 'bank_transfer' ? 'border-brand-orange bg-brand-orange/10' : 'border-gray-300'}`}>Bank transfer</button>
+                <button type="button" title="Bank transfer" onClick={() => setPaymentMethod('bank_transfer')} className={`px-4 py-2 rounded-lg border flex items-center gap-2 ${paymentMethod === 'bank_transfer' ? 'border-brand-orange bg-brand-orange/10' : 'border-gray-300'}`}>
+                  <PaymentMethodLogo method="bank_transfer" />
+                  <span className="text-sm text-gray-700">Bank</span>
+                </button>
               )}
             </div>
             {paymentMethod === 'stripe' && (
@@ -386,6 +409,7 @@ export default function SubscriptionPage() {
               </div>
             )}
             {paymentMethod === 'bank_transfer' && (
+            <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Plan *</label>
@@ -438,18 +462,30 @@ export default function SubscriptionPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Bank reference / transaction ID *</label>
-              <input type="text" value={form.bankReference} onChange={e => { setForm(f => ({ ...f, bankReference: e.target.value })); setErrors(e2 => ({ ...e2, bankReference: '' })); }}
+              <input
+                type="text"
+                value={form.bankReference}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, bankReference: e.target.value }));
+                  setErrors((e2) => ({ ...e2, bankReference: '' }));
+                }}
                 placeholder="e.g. TXN-2026-001234"
                 maxLength={64}
-                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${errors.bankReference ? 'border-red-400' : 'border-gray-300'}`} />
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${errors.bankReference ? 'border-red-400' : 'border-gray-300'}`}
+              />
               {errors.bankReference && <p className="text-xs text-red-500 mt-0.5">{errors.bankReference}</p>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Bank name</label>
-              <input type="text" value={form.bankName} onChange={e => setForm(f => ({ ...f, bankName: e.target.value }))}
+              <input
+                type="text"
+                value={form.bankName}
+                onChange={(e) => setForm((f) => ({ ...f, bankName: e.target.value }))}
                 placeholder="e.g. Commercial Bank"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30" />
+                maxLength={120}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+              />
             </div>
 
             <div>
@@ -471,22 +507,25 @@ export default function SubscriptionPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
-              <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 resize-none" />
+              <textarea
+                value={form.notes}
+                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                rows={2}
+                maxLength={2000}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 resize-none"
+              />
             </div>
 
-            )}
-
-            {errors.api && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{errors.api}</p>}
-
-            {paymentMethod === 'bank_transfer' && (
             <button type="submit" disabled={uploadMutation.isPending}
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60"
             >
               {uploadMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Upload size={14} />}
               Submit receipt
             </button>
+            </div>
             )}
+
+            {errors.api && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{errors.api}</p>}
           </form>
         )}
       </div>

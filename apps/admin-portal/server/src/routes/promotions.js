@@ -11,6 +11,17 @@ const router = express.Router();
 router.get('/', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
   try {
     const filter = { tenantId: req.tenantId };
+    const now = new Date();
+    await Promotion.updateMany(
+      { tenantId: req.tenantId, endDate: { $lt: now }, active: true },
+      { active: false },
+    );
+    const showAll = req.query.showAll === 'true' || req.query.status === 'all';
+    if (!showAll && req.query.active !== 'false') {
+      filter.active = true;
+    } else if (req.query.active === 'false') {
+      filter.active = false;
+    }
     if (req.query.pending === 'true') {
       filter.approvalStatus = 'pending';
     } else if (req.query.approvalStatus) {

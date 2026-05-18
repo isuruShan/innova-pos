@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { Plus, Save, Trash2 } from 'lucide-react';
+import SideDrawer from '../../components/common/SideDrawer';
+import { useToast } from '../../context/ToastContext';
 import api from '../../api/axios';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
 import { buildPlanCardBackground, buildPlanTagBackground, planUsesLightText } from '../../utils/planAppearance';
@@ -44,6 +47,8 @@ export default function PlansPage() {
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_plans') || 'table');
+  const [planDrawerOpen, setPlanDrawerOpen] = useState(false);
+  const toast = useToast();
   const [listStatus, setListStatus] = useState(() => localStorage.getItem('plans_list_status') || 'active');
 
   const { data: plans = [], isLoading } = useQuery({
@@ -68,6 +73,8 @@ export default function PlansPage() {
       setEditingId(null);
       setForm(INITIAL_FORM);
       setError('');
+      setPlanDrawerOpen(false);
+      toast.success('Plan saved');
     },
     onError: (err) => setError(err.response?.data?.message || 'Failed to save plan'),
   });
@@ -83,12 +90,14 @@ export default function PlansPage() {
   });
 
   const resetForm = () => {
+    setPlanDrawerOpen(false);
     setEditingId(null);
     setForm(INITIAL_FORM);
     setError('');
   };
 
   const startEdit = (plan) => {
+    setPlanDrawerOpen(true);
     setEditingId(plan._id);
     setError('');
     setForm({
@@ -187,12 +196,28 @@ export default function PlansPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-gray-900">Subscription Plans</h2>
-        <p className="text-sm text-gray-500 mt-0.5">Manage global monthly/yearly/custom plans for all channels.</p>
+        <p className="text-sm text-gray-500 mt-0.5">Manage global monthly/yearly/custom plans for all channels. <Link to="/payment-setup" className="text-brand-orange font-medium hover:underline">Payment setup</Link></p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-900 mb-4">{editingId ? 'Edit plan' : 'Create plan'}</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex justify-end">
+        <button type="button" onClick={() => { resetForm(); setPlanDrawerOpen(true); }} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold">
+          <Plus size={16} /> Create plan
+        </button>
+      </div>
+      <SideDrawer
+        open={planDrawerOpen}
+        onClose={() => { setPlanDrawerOpen(false); resetForm(); toast.info('Cancelled'); }}
+        title={editingId ? 'Edit plan' : 'Create plan'}
+        subtitle="Plans are shared across all merchants"
+        width="max-w-2xl"
+        footer={(
+          <div className="flex gap-2 justify-end">
+            <button type="button" onClick={() => { setPlanDrawerOpen(false); resetForm(); toast.info('Cancelled'); }} className="px-4 py-2 text-sm border border-gray-300 rounded-lg">Cancel</button>
+            <button type="submit" form="plan-drawer-form" disabled={saveMutation.isPending} className="px-4 py-2 text-sm rounded-lg bg-brand-orange text-white font-semibold disabled:opacity-60">Save plan</button>
+          </div>
+        )}
+      >
+        <form id="plan-drawer-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Plan Name</label>
@@ -582,7 +607,7 @@ export default function PlansPage() {
             )}
           </div>
         </form>
-      </div>
+      </SideDrawer>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -628,7 +653,7 @@ export default function PlansPage() {
                 </p>
                 <p className="text-sm text-gray-800 mt-2">{p.currency} {Number(p.amount).toLocaleString()}</p>
                 <div className="flex flex-wrap gap-2 mt-4">
-                  <button onClick={() => startEdit(p)} className="px-3 py-1.5 text-xs rounded-lg border border-gray-300 text-gray-700">
+                  <button onClick={() => { startEdit(p); setPlanDrawerOpen(true); }} className="px-3 py-1.5 text-xs rounded-lg border border-gray-300 text-gray-700">
                     Edit
                   </button>
                   {p.isActive && !p.isDefault && (
@@ -679,7 +704,7 @@ export default function PlansPage() {
                     <td className="px-4 py-3 text-gray-600">{p.isActive ? 'Yes' : 'No'}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
-                        <button onClick={() => startEdit(p)} className="px-3 py-1.5 text-xs rounded-lg border border-gray-300 text-gray-700">
+                        <button onClick={() => { startEdit(p); setPlanDrawerOpen(true); }} className="px-3 py-1.5 text-xs rounded-lg border border-gray-300 text-gray-700">
                           Edit
                         </button>
                         {p.isActive && !p.isDefault && (

@@ -6,6 +6,9 @@ import { useStoreContext } from '../../context/StoreContext';
 import RewardScopeCombobox from '../../components/RewardScopeCombobox';
 import ListPagination from '../../components/common/ListPagination';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
+import SideDrawer from '../../components/common/SideDrawer';
+import FormField, { inputClass } from '../../components/common/FormField';
+import { useToast } from '../../context/ToastContext';
 
 const emptyForm = {
   name: '',
@@ -25,7 +28,8 @@ const emptyForm = {
   active: true,
 };
 
-export default function LoyaltyRewardsAdminTab() {
+export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) {
+  const toast = useToast();
   const qc = useQueryClient();
   const { stores, selectedStoreId, isStoreReady } = useStoreContext();
   const [formError, setFormError] = useState('');
@@ -41,6 +45,33 @@ export default function LoyaltyRewardsAdminTab() {
   useEffect(() => {
     setListPage(1);
   }, [search, approvalFilter, storeFilter]);
+
+  useEffect(() => {
+    if (!initialRewardId || editor !== null) return;
+    api.get(`/loyalty/rewards/${initialRewardId}`).then((r) => {
+      const row = r.data;
+      setEditor(row);
+      setForm({
+        name: row.name || '',
+        description: row.description || '',
+        redemptionType: row.redemptionType || 'points',
+        pointsCost: String(row.pointsCost ?? 100),
+        rewardType: row.rewardType || 'order_discount_amount',
+        discountAmount: String(row.discountAmount ?? ''),
+        discountPercent: row.discountPercent != null ? String(row.discountPercent) : '',
+        minTierLevel: String(row.minTierLevel ?? 1),
+        rewardScope: row.storeId ? 'store' : 'tenant',
+        storeId: row.storeId ? String(row.storeId) : '',
+        applicableItems: row.applicableItems || [],
+        applicableItemNames: row.applicableItemNames || [],
+        applicableCategories: row.applicableCategories || [],
+        maxDiscountAmount: row.maxDiscountAmount != null ? String(row.maxDiscountAmount) : '',
+        active: row.active !== false,
+      });
+    }).catch(() => {});
+  }, [initialRewardId]);
+
+
 
   const queryParams = () => {
     const p = {};
@@ -75,6 +106,13 @@ export default function LoyaltyRewardsAdminTab() {
     qc.invalidateQueries({ queryKey: ['notifications-unread-count'] });
   };
 
+  const closeEditor = (cancelled) => {
+    setEditor(null);
+    setForm(emptyForm);
+    setFormError('');
+    if (cancelled) toast.info('Changes discarded');
+  };
+
   const { data: menuItems = [] } = useQuery({
     queryKey: ['admin-menu-loyalty-rewards', selectedStoreId],
     queryFn: () => api.get('/menu').then((r) => r.data),
@@ -86,9 +124,8 @@ export default function LoyaltyRewardsAdminTab() {
       id ? api.put(`/loyalty/rewards/${id}`, payload) : api.post('/loyalty/rewards', payload),
     onSuccess: () => {
       invalidate();
-      setEditor(null);
-      setForm(emptyForm);
-      setFormError('');
+      closeEditor(false);
+      toast.success('Reward saved');
     },
     onError: (e) => setFormError(e.response?.data?.message || 'Save failed'),
   });
@@ -353,25 +390,20 @@ export default function LoyaltyRewardsAdminTab() {
       </div>
 
       {editor !== null && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40"
-          onClick={() => {
-            setEditor(null);
-            setForm(emptyForm);
-            setFormError('');
-          }}
-          role="presentation"
+        <SideDrawer
+          open
+          onClose={() => closeEditor(true)}
+          title={editor._id ? 'Edit loyalty reward' : 'New loyalty reward'}
+          subtitle="Configure how members redeem this reward."
+          width="max-w-lg"
+          footer={(
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => closeEditor(true)} className="px-3 py-2 text-sm border border-gray-300 rounded-lg">Cancel</button>
+              <button type="submit" form="reward-drawer-form" disabled={save.isPending} className="px-4 py-2 rounded-lg bg-brand-teal text-white text-sm font-semibold disabled:opacity-50">Save reward</button>
+            </div>
+          )}
         >
-          <div
-            className="bg-white rounded-xl max-w-lg w-full p-5 shadow-xl border border-gray-200 max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {editor._id ? 'Edit reward' : 'New reward'}
-            </h3>
-            <form onSubmit={submit} className="space-y-3">
+            <form id="reward-drawer-form" onSubmit={submit} className="space-y-3">
               <label className="block text-xs text-gray-600">
                 Scope
                 <select
@@ -537,29 +569,8 @@ export default function LoyaltyRewardsAdminTab() {
               {formError ? (
                 <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{formError}</div>
               ) : null}
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditor(null);
-                    setForm(emptyForm);
-                    setFormError('');
-                  }}
-                  className="px-3 py-2 text-sm text-gray-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={save.isPending}
-                  className="px-4 py-2 rounded-lg bg-brand-teal text-white text-sm font-medium disabled:opacity-50"
-                >
-                  Save
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
+        </SideDrawer>
       )}
 
       {rejectFor && (

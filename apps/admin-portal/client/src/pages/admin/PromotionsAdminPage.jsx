@@ -9,6 +9,10 @@ import AdminDateField from '../../components/AdminDateField';
 import { useStoreContext } from '../../context/StoreContext';
 import ListPagination from '../../components/common/ListPagination';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
+import SideDrawer from '../../components/common/SideDrawer';
+import { useToast } from '../../context/ToastContext';
+import FormField, { inputClass } from '../../components/common/FormField';
+import PromotionTypeFields from '../../components/promotions/PromotionTypeFields';
 const EMPTY = {
   name: '',
   description: '',
@@ -26,6 +30,15 @@ const EMPTY = {
   applicableItems: [],
   applicableItemNames: [],
   applicableCategories: [],
+  bundleItems: [],
+  bundlePrice: '',
+  buyItem: '',
+  buyItemName: '',
+  buyQty: '1',
+  getFreeItem: '',
+  getFreeItemName: '',
+  getFreeQty: '1',
+  flatPrice: '',
 };
 
 export default function PromotionsAdminPage() {
@@ -34,6 +47,8 @@ export default function PromotionsAdminPage() {
   const { stores, selectedStoreId, isStoreReady } = useStoreContext();
   const [search, setSearch] = useState('');
   const [approvalFilter, setApprovalFilter] = useState('all');
+  const [activeFilter, setActiveFilter] = useState('active');
+  const toast = useToast();
   const [storeFilter, setStoreFilter] = useState('');
   const [slide, setSlide] = useState(null);
   const [form, setForm] = useState(EMPTY);
@@ -44,7 +59,7 @@ export default function PromotionsAdminPage() {
 
   useEffect(() => {
     setListPage(1);
-  }, [search, approvalFilter, storeFilter]);
+  }, [search, approvalFilter, storeFilter, activeFilter]);
 
   const listParams = () => {
     const p = {};
@@ -52,11 +67,14 @@ export default function PromotionsAdminPage() {
     if (approvalFilter !== 'all') p.approvalStatus = approvalFilter;
     if (storeFilter === 'tenant') p.storeId = 'tenant';
     else if (storeFilter) p.storeId = storeFilter;
+    if (activeFilter === 'active') p.active = 'true';
+    else if (activeFilter === 'inactive') p.active = 'false';
+    else if (activeFilter === 'all') p.showAll = 'true';
     return p;
   };
 
   const { data: promoList = { items: [], page: 1, pages: 1, total: 0 }, isPending, isFetching } = useQuery({
-    queryKey: ['admin-promotions', search, approvalFilter, storeFilter, listPage],
+    queryKey: ['admin-promotions', search, approvalFilter, storeFilter, activeFilter, listPage],
     queryFn: () =>
       api
         .get('/promotions', { params: { ...listParams(), page: listPage, limit: 25 } })
@@ -73,11 +91,29 @@ export default function PromotionsAdminPage() {
   });
   const pendingOnly = pendingList.items || [];
 
+  const { data: tiers = [] } = useQuery({
+    queryKey: ['loyalty-tiers-promo'],
+    queryFn: () => api.get('/loyalty/tiers').then((r) => r.data),
+  });
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['admin-categories-promo', selectedStoreId],
+    queryFn: () => api.get('/categories', { params: { active: true } }).then((r) => r.data),
+    enabled: isStoreReady,
+  });
+
   const { data: menuItems = [] } = useQuery({
     queryKey: ['admin-menu', selectedStoreId],
     queryFn: () => api.get('/menu').then((r) => r.data),
     enabled: isStoreReady,
   });
+
+
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (!editId || slide !== null) return;
+    api.get(`/promotions/${editId}`).then((r) => openEdit(r.data)).catch(() => {});
+  }, [searchParams]);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['admin-promotions'] });
@@ -91,7 +127,8 @@ export default function PromotionsAdminPage() {
     mutationFn: (payload) => api.post('/promotions', payload),
     onSuccess: () => {
       invalidate();
-      closeSlide();
+      closeSlide(false);
+      toast.success('Promotion created');
     },
     onError: (e) => setFormError(e.response?.data?.message || 'Failed'),
   });
@@ -100,7 +137,8 @@ export default function PromotionsAdminPage() {
     mutationFn: ({ id, payload }) => api.put(`/promotions/${id}`, payload),
     onSuccess: () => {
       invalidate();
-      closeSlide();
+      closeSlide(false);
+      toast.success('Promotion updated');
     },
     onError: (e) => setFormError(e.response?.data?.message || 'Failed'),
   });
@@ -124,10 +162,14 @@ export default function PromotionsAdminPage() {
     },
   });
 
-  const closeSlide = () => {
+  const closeSlide = (cancelled) => {
     setSlide(null);
     setForm(EMPTY);
     setFormError('');
+    const next = new URLSearchParams(searchParams);
+    next.delete('edit');
+    setSearchParams(next, { replace: true });
+    if (cancelled === true) toast.info('Changes discarded');
   };
 
   const openNew = () => {
@@ -163,6 +205,15 @@ export default function PromotionsAdminPage() {
       applicableItems: p.applicableItems || [],
       applicableItemNames: p.applicableItemNames || [],
       applicableCategories: p.applicableCategories || [],
+      bundleItems: p.bundleItems || [],
+      bundlePrice: String(p.bundlePrice ?? ''),
+      buyItem: p.buyItem ? String(p.buyItem) : '',
+      buyItemName: p.buyItemName || '',
+      buyQty: String(p.buyQty ?? 1),
+      getFreeItem: p.getFreeItem ? String(p.getFreeItem) : '',
+      getFreeItemName: p.getFreeItemName || '',
+      getFreeQty: String(p.getFreeQty ?? 1),
+      flatPrice: String(p.flatPrice ?? ''),
     });
     setFormError('');
   };
@@ -194,6 +245,19 @@ export default function PromotionsAdminPage() {
     if (!form.startDate || !form.endDate) return setFormError('Dates required');
     if (form.startDate > form.endDate) return setFormError('Invalid date range');
 
+    if (form.type === 'bundle') {
+      if (!form.bundleItems?.length || form.bundleItems.some((b) => !b.menuItem)) return setFormError('Add at least one bundle item');
+      if (form.bundlePrice === '' || Number.isNaN(+form.bundlePrice)) return setFormError('Bundle price is required');
+    }
+    if (form.type === 'buyXgetY') {
+      if (!form.buyItem || !form.getFreeItem) return setFormError('Select buy and free products');
+    }
+    if (form.type === 'flatPrice') {
+      const hasScope = (form.applicableItems?.length > 0) || (form.applicableCategories?.length > 0);
+      if (!hasScope) return setFormError('Select products or categories for flat price');
+      if (form.flatPrice === '' || Number.isNaN(+form.flatPrice)) return setFormError('Flat price is required');
+    }
+
     const base = {
       name: form.name.trim(),
       description: form.description.trim(),
@@ -205,15 +269,15 @@ export default function PromotionsAdminPage() {
       applicableItems: form.applicableItems || [],
       applicableItemNames: form.applicableItemNames || [],
       applicableCategories: form.applicableCategories || [],
-      bundleItems: [],
-      bundlePrice: 0,
-      buyItem: null,
-      buyItemName: '',
-      buyQty: 1,
-      getFreeItem: null,
-      getFreeItemName: '',
-      getFreeQty: 1,
-      flatPrice: 0,
+      bundleItems: form.bundleItems || [],
+      bundlePrice: +form.bundlePrice || 0,
+      buyItem: form.buyItem || null,
+      buyItemName: form.buyItemName,
+      buyQty: +form.buyQty || 1,
+      getFreeItem: form.getFreeItem || null,
+      getFreeItemName: form.getFreeItemName,
+      getFreeQty: +form.getFreeQty || 1,
+      flatPrice: +form.flatPrice || 0,
       discountAmount: +form.discountAmount || 0,
       discountPercent: +form.discountPercent || 0,
       maxDiscountAmount:
@@ -348,6 +412,16 @@ export default function PromotionsAdminPage() {
               </option>
             ))}
           </select>
+          <select
+            value={activeFilter}
+            onChange={(e) => { setActiveFilter(e.target.value); setListPage(1); }}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            title="Filter by active state"
+          >
+            <option value="active">Active only</option>
+            <option value="inactive">Inactive only</option>
+            <option value="all">All promotions</option>
+          </select>
         </div>
         <div className="relative flex-1 max-w-md">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -450,25 +524,21 @@ export default function PromotionsAdminPage() {
       </div>
 
       {slide !== null && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto"
-          onClick={closeSlide}
-          role="presentation"
+        <SideDrawer
+          open
+          onClose={() => closeSlide(true)}
+          title={slide._id ? 'Edit promotion' : 'New promotion'}
+          subtitle="Create any promotion type for your stores."
+          width="max-w-lg"
+          footer={(
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => closeSlide(true)} className="px-3 py-2 text-sm border border-gray-300 rounded-lg">Cancel</button>
+              <button type="submit" form="promo-drawer-form" className="px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold">Save</button>
+            </div>
+          )}
         >
-          <div
-            className="bg-white rounded-xl max-w-lg w-full p-5 shadow-xl border border-gray-200 my-8"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">
-              {slide._id ? 'Edit promotion' : 'New promotion'}
-            </h3>
-            <p className="text-xs text-gray-500 mb-4">
-              This screen supports percentage and flat discounts. Use the POS app for bundles and buy-X-get-Y promos.
-            </p>
             {formError ? <p className="text-sm text-red-600 mb-2">{formError}</p> : null}
-            <form onSubmit={submit} className="space-y-3">
+            <form id="promo-drawer-form" onSubmit={submit} className="space-y-3">
               <label className="block text-xs text-gray-600">
                 Scope
                 <select
@@ -507,8 +577,12 @@ export default function PromotionsAdminPage() {
                 >
                   <option value="percentageDiscount">Percentage discount</option>
                   <option value="flatDiscount">Flat discount (amount)</option>
+                  <option value="flatPrice">Flat price</option>
+                  <option value="bundle">Bundle</option>
+                  <option value="buyXgetY">Buy X get Y</option>
                 </select>
               </label>
+              <PromotionTypeFields form={form} setForm={setForm} menuItems={menuItems} categories={categories} tiers={tiers} />
               <label className="block text-xs text-gray-600">
                 Name *
                 <input
@@ -640,21 +714,8 @@ export default function PromotionsAdminPage() {
                 />
                 Active when approved
               </label>
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={closeSlide} className="px-3 py-2 text-sm text-gray-700">
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={createMut.isPending || updateMut.isPending}
-                  className="px-4 py-2 rounded-lg bg-brand-teal text-white text-sm font-medium disabled:opacity-50"
-                >
-                  Save
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
+        </SideDrawer>
       )}
 
       {rejectFor && (

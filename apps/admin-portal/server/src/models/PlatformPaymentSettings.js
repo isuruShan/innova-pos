@@ -10,6 +10,8 @@ const bankAccountSchema = new mongoose.Schema(
     swiftCode: { type: String, default: '', trim: true },
     instructions: { type: String, default: '', trim: true },
     isActive: { type: Boolean, default: true },
+    imageUrl: { type: String, default: '', trim: true },
+    imageKey: { type: String, default: '', trim: true },
   },
   { _id: true },
 );
@@ -25,6 +27,8 @@ const platformPaymentSettingsSchema = new mongoose.Schema(
       webhookSecret: { type: String, default: '', select: false },
       secretKeySet: { type: Boolean, default: false },
       webhookSecretSet: { type: Boolean, default: false },
+      imageUrl: { type: String, default: '', trim: true },
+      imageKey: { type: String, default: '', trim: true },
     },
     paypal: {
       enabled: { type: Boolean, default: false },
@@ -32,6 +36,8 @@ const platformPaymentSettingsSchema = new mongoose.Schema(
       clientSecret: { type: String, default: '', select: false },
       clientSecretSet: { type: Boolean, default: false },
       mode: { type: String, enum: ['sandbox', 'live'], default: 'sandbox' },
+      imageUrl: { type: String, default: '', trim: true },
+      imageKey: { type: String, default: '', trim: true },
     },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },

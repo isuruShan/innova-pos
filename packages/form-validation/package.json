@@ -7,6 +7,7 @@
   "module": "browser.js",
   "exports": {
     ".": "./index.js",
+    "./browser": "./browser.js",
     "./browser.js": "./browser.js"
   },
   "type": "commonjs",

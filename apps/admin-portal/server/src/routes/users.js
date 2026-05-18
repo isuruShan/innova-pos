@@ -51,6 +51,18 @@ router.get('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
       else if (roles.length > 1) filter.role = { $in: roles };
     }
 
+    const search = String(req.query.search || req.query.q || '').trim();
+    if (search) {
+      const re = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      filter.$or = [{ name: re }, { email: re }];
+    }
+
+    const storeQ = String(req.query.storeIds || req.query.storeId || '').trim();
+    if (storeQ) {
+      const storeIds = storeQ.split(',').map((s) => s.trim()).filter(Boolean);
+      if (storeIds.length) filter.storeIds = { $in: storeIds };
+    }
+
     const total = await User.countDocuments(filter);
     let users = await User.find(filter)
       .populate('storeIds', 'name code')

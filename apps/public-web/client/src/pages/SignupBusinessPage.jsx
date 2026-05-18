@@ -2,9 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Building2, MapPin, FileText, Upload, X, ArrowLeft, ArrowRight, Loader } from 'lucide-react';
 import { COUNTRIES } from '../constants/countries';
-import { validateEmail } from '../utils/phone';
 import api from '../api';
-import { PLACEHOLDERS, LIMITS } from '../utils/formFields';
+import { fieldAttrs, validateEmail, validateSignupBusiness } from '../utils/formFields';
 
 export default function SignupBusinessPage() {
   const navigate = useNavigate();
@@ -55,27 +54,8 @@ export default function SignupBusinessPage() {
     };
 
   const validate = () => {
-    const e = {};
-    if (!form.businessName.trim()) e.businessName = 'Business name is required';
-    else if (form.businessName.length > 120) e.businessName = 'Business name is too long';
-
-    if (!form.ownerName.trim()) e.ownerName = 'Owner name is required';
-    else if (form.ownerName.length > 120) e.ownerName = 'Owner name is too long';
-
-    if (!form.street1.trim()) e.street1 = 'Street line 1 is required';
-    const zip = form.zipCode.trim();
-    if (!zip) e.zipCode = 'ZIP / postal code is required';
-    else if (zip.length < 2 || zip.length > 16) e.zipCode = 'Enter a valid postal code (2–16 characters)';
-
-    if (!form.city.trim()) e.city = 'City is required';
-    if (!form.state.trim()) e.state = 'State / province is required';
-    if (!form.businessCountry.trim()) e.businessCountry = 'Country is required';
-
-    if (form.isRegistered) {
-      if (!form.registrationNumber.trim()) e.registrationNumber = 'Registration number is required';
-      if (!brFile) e.brFile = 'BR certificate image is required';
-    }
-
+    const e = validateSignupBusiness(form, { isRegistered: form.isRegistered });
+    if (form.isRegistered && !brFile) e.brFile = 'BR certificate image is required';
     return e;
   };
 
@@ -146,6 +126,15 @@ export default function SignupBusinessPage() {
 
   if (!personal) return null;
 
+  const businessAttrs = fieldAttrs('businessName');
+  const ownerAttrs = fieldAttrs('ownerName');
+  const street1Attrs = fieldAttrs('addressLine1');
+  const street2Attrs = fieldAttrs('addressLine2');
+  const zipAttrs = fieldAttrs('postalCode');
+  const cityAttrs = fieldAttrs('city');
+  const stateAttrs = fieldAttrs('region');
+  const regAttrs = fieldAttrs('registrationNumber');
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="px-4 py-5 border-b bg-white">
@@ -194,8 +183,8 @@ export default function SignupBusinessPage() {
                     type="text"
                     value={form.businessName}
                     onChange={set('businessName')}
-                    placeholder={PLACEHOLDERS.businessName}
-                    maxLength={LIMITS.businessName}
+                    placeholder={businessAttrs.placeholder}
+                    maxLength={businessAttrs.maxLength}
                     className={`w-full border rounded-lg pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
                       errors.businessName ? 'border-red-400' : 'border-gray-300'
                     }`}
@@ -210,8 +199,8 @@ export default function SignupBusinessPage() {
                   type="text"
                   value={form.ownerName}
                   onChange={set('ownerName')}
-                  placeholder={PLACEHOLDERS.ownerName}
-                  maxLength={LIMITS.personName}
+                  placeholder={ownerAttrs.placeholder}
+                  maxLength={ownerAttrs.maxLength}
                   className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
                     errors.ownerName ? 'border-red-400' : 'border-gray-300'
                   }`}
@@ -231,8 +220,9 @@ export default function SignupBusinessPage() {
                     type="text"
                     value={form.street1}
                     onChange={set('street1')}
-                    placeholder={PLACEHOLDERS.addressLine1}
-                    maxLength={LIMITS.addressLine}
+                    placeholder={street1Attrs.placeholder}
+                    maxLength={street1Attrs.maxLength}
+                    autoComplete={street1Attrs.autoComplete}
                     className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${
                       errors.street1 ? 'border-red-400' : 'border-gray-300'
                     }`}
@@ -248,8 +238,9 @@ export default function SignupBusinessPage() {
                     type="text"
                     value={form.street2}
                     onChange={set('street2')}
-                    placeholder={PLACEHOLDERS.addressLine2}
-                    maxLength={LIMITS.addressLine}
+                    placeholder={street2Attrs.placeholder}
+                    maxLength={street2Attrs.maxLength}
+                    autoComplete={street2Attrs.autoComplete}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
                   />
                 </div>
@@ -261,8 +252,9 @@ export default function SignupBusinessPage() {
                       type="text"
                       value={form.zipCode}
                       onChange={set('zipCode')}
-                      placeholder={PLACEHOLDERS.postalCode}
-                      maxLength={LIMITS.postalCodeMax}
+                      placeholder={zipAttrs.placeholder}
+                      maxLength={zipAttrs.maxLength}
+                      autoComplete={zipAttrs.autoComplete}
                       className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${
                         errors.zipCode ? 'border-red-400' : 'border-gray-300'
                       }`}
@@ -275,8 +267,9 @@ export default function SignupBusinessPage() {
                       type="text"
                       value={form.city}
                       onChange={set('city')}
-                      placeholder={PLACEHOLDERS.city}
-                      maxLength={LIMITS.addressLine}
+                      placeholder={cityAttrs.placeholder}
+                      maxLength={cityAttrs.maxLength}
+                      autoComplete={cityAttrs.autoComplete}
                       className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${
                         errors.city ? 'border-red-400' : 'border-gray-300'
                       }`}
@@ -292,8 +285,9 @@ export default function SignupBusinessPage() {
                       type="text"
                       value={form.state}
                       onChange={set('state')}
-                      placeholder={PLACEHOLDERS.state}
-                      maxLength={LIMITS.addressLine}
+                      placeholder={stateAttrs.placeholder}
+                      maxLength={stateAttrs.maxLength}
+                      autoComplete={stateAttrs.autoComplete}
                       className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${
                         errors.state ? 'border-red-400' : 'border-gray-300'
                       }`}
@@ -341,7 +335,8 @@ export default function SignupBusinessPage() {
                           type="text"
                           value={form.registrationNumber}
                           onChange={set('registrationNumber')}
-                          placeholder="BR 12345678"
+                          placeholder={regAttrs.placeholder}
+                          maxLength={regAttrs.maxLength}
                           className={`w-full border rounded-lg pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
                             errors.registrationNumber ? 'border-red-400' : 'border-gray-300'
                           }`}

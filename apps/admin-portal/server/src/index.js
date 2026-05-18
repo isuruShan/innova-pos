@@ -27,6 +27,7 @@ const User = require('./models/User');
 const { sendEmail } = require('./utils/mailer');
 const { notifySuperAdmins, notifyMerchantAdmins } = require('./lib/notificationHelpers');
 const { applyDuePendingPlanSwitches } = require('./lib/subscriptionActivation');
+const { processLoyaltyRetentionPeriods } = require('./lib/processLoyaltyRetention');
 
 const app = express();
 const logger = createLogger('admin-portal-server');
@@ -98,6 +99,8 @@ app.use('/api/customers', require('./routes/customers'));
 app.use('/api/promotions', require('./routes/promotions'));
 app.use('/api/menu', require('./routes/menu'));
 app.use('/api/categories', require('./routes/categories'));
+app.use('/api/reports', require('./routes/reports'));
+app.use('/api/orders', require('./routes/orders'));
 
 app.get('/api/health', (_req, res) =>
   res.json({ status: 'ok', service: 'admin-portal-server', ts: new Date().toISOString() })
@@ -350,6 +353,9 @@ app.listen(PORT, '0.0.0.0', () => {
       if (applied > 0) {
         logger.info('Applied pending subscription plan switches', { count: applied });
       }
+      await processLoyaltyRetentionPeriods(logger).catch((e) => {
+        logger.warn('Loyalty retention processing failed', { error: e.message });
+      });
     } catch (err) {
       logger.error('Subscription monitor failed', { error: err.message });
     } finally {

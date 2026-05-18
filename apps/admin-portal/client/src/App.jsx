@@ -19,6 +19,7 @@ import MerchantSubscriptionGate from './components/MerchantSubscriptionGate';
 
 // Merchant admin pages
 import DashboardPage from './pages/admin/DashboardPage';
+import AnalyticsPage from './pages/admin/AnalyticsPage';
 import BrandingPage from './pages/admin/BrandingPage';
 import UsersPage from './pages/admin/UsersPage';
 import SubscriptionPage from './pages/admin/SubscriptionPage';
@@ -100,6 +101,11 @@ export default function App() {
           <Route path="/dashboard" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><DashboardPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/analytics" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><AnalyticsPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/branding" element={

@@ -6,11 +6,10 @@ import {
   buildMobileE164,
   formatNationalInput,
   digitsOnly,
-  validateEmail,
   nationalMobileMaxDigits,
 } from '../utils/phone';
 import api from '../api';
-import { PLACEHOLDERS, LIMITS } from '../utils/formFields';
+import { fieldAttrs, validateSignupPersonal } from '../utils/formFields';
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -26,13 +25,7 @@ export default function SignupPage() {
   const mobileE164 = buildMobileE164(dial, nationalDigits, nationalMax);
 
   const validateFields = () => {
-    const e = {};
-    if (!form.firstName.trim()) e.firstName = 'First name is required';
-    else if (form.firstName.trim().length > 80) e.firstName = 'First name is too long';
-    if (!form.lastName.trim()) e.lastName = 'Last name is required';
-    else if (form.lastName.trim().length > 80) e.lastName = 'Last name is too long';
-    if (!form.email.trim()) e.email = 'Email is required';
-    else if (!validateEmail(form.email)) e.email = 'Enter a valid email address';
+    const e = validateSignupPersonal(form);
     const natLen = digitsOnly(nationalDigits).length;
     if (countryIso === 'LK') {
       if (natLen !== 9) {
@@ -116,6 +109,11 @@ export default function SignupPage() {
     if (errors[k]) setErrors((e) => ({ ...e, [k]: '' }));
   };
 
+  const firstAttrs = fieldAttrs('personName');
+  const lastAttrs = { ...fieldAttrs('personName'), autoComplete: 'family-name' };
+  const emailAttrs = fieldAttrs('email');
+  const mobileAttrs = fieldAttrs('mobile', { countryIso });
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="px-4 py-5 border-b bg-white">
@@ -154,8 +152,8 @@ export default function SignupPage() {
             <form onSubmit={handleNext} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 {[
-                  { label: 'First name', key: 'firstName', placeholder: PLACEHOLDERS.personName, max: LIMITS.personName },
-                  { label: 'Last name', key: 'lastName', placeholder: PLACEHOLDERS.personName, max: LIMITS.personName },
+                  { label: 'First name', key: 'firstName', attrs: firstAttrs },
+                  { label: 'Last name', key: 'lastName', attrs: lastAttrs },
                 ].map((f) => (
                   <div key={f.key}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
@@ -163,9 +161,9 @@ export default function SignupPage() {
                       type="text"
                       value={form[f.key]}
                       onChange={set(f.key)}
-                      placeholder={f.placeholder}
-                      maxLength={f.max}
-                      autoComplete="given-name"
+                      placeholder={f.attrs.placeholder}
+                      maxLength={f.attrs.maxLength}
+                      autoComplete={f.attrs.autoComplete}
                       className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
                         errors[f.key] ? 'border-red-400' : 'border-gray-300'
                       }`}
@@ -197,12 +195,12 @@ export default function SignupPage() {
                     <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     <input
                       type="tel"
-                      inputMode="numeric"
+                      inputMode={mobileAttrs.inputMode}
                       autoComplete="tel-national"
                       value={formatNationalInput(nationalDigits, nationalMax)}
                       onChange={handleNationalChange}
-                      placeholder={countryIso === 'LK' ? '77 123 4567' : 'National number'}
-                      maxLength={countryIso === 'LK' ? 11 : undefined}
+                      placeholder={mobileAttrs.placeholder}
+                      maxLength={mobileAttrs.maxLength}
                       className={`w-full border rounded-lg pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
                         errors.mobile ? 'border-red-400' : 'border-gray-300'
                       }`}
@@ -225,9 +223,9 @@ export default function SignupPage() {
                     type="email"
                     value={form.email}
                     onChange={set('email')}
-                    placeholder={PLACEHOLDERS.email}
-                    maxLength={LIMITS.email}
-                    autoComplete="email"
+                    placeholder={emailAttrs.placeholder}
+                    maxLength={emailAttrs.maxLength}
+                    autoComplete={emailAttrs.autoComplete}
                     className={`w-full border rounded-lg pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
                       errors.email ? 'border-red-400' : 'border-gray-300'
                     }`}

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Camera, Save } from 'lucide-react';
 import api from '../api/axios';
+import { fieldAttrs, validatePersonName, validatePassword } from '../utils/formFields';
 import SlideOver from './SlideOver';
 import { useAuth } from '../context/AuthContext';
 
@@ -103,9 +104,13 @@ export default function ProfileSlideOver({ open, onClose }) {
     }
   };
 
+  const nameAttrs = fieldAttrs('personName');
+  const passwordAttrs = fieldAttrs('password');
+
   const handleSaveName = () => {
     setError('');
-    if (!name.trim()) return setError('Name cannot be empty');
+    const check = validatePersonName(name, { label: 'Name' });
+    if (!check.ok) return setError(check.error);
     if (name.trim() === user?.name) return onClose();
     saveMutation.mutate({ name: name.trim() });
   };
@@ -113,7 +118,8 @@ export default function ProfileSlideOver({ open, onClose }) {
   const handleChangePassword = () => {
     setError('');
     if (!currentPassword.trim()) return setError('Enter your current password.');
-    if (!newPassword || newPassword.length < 8) return setError('New password must be at least 8 characters.');
+    const pwCheck = validatePassword(newPassword);
+    if (!pwCheck.ok) return setError(pwCheck.error);
     if (newPassword !== confirmPassword) return setError('New passwords do not match.');
     saveMutation.mutate({ currentPassword: currentPassword.trim(), newPassword });
   };
@@ -188,6 +194,7 @@ export default function ProfileSlideOver({ open, onClose }) {
                   autoComplete="new-password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
+                  maxLength={passwordAttrs.maxLength}
                   className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-4 py-2 text-sm text-[var(--pos-text-primary)]"
                 />
               </div>
@@ -221,7 +228,8 @@ export default function ProfileSlideOver({ open, onClose }) {
             value={name}
             onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSaveName()}
-            placeholder="Your name"
+            placeholder={nameAttrs.placeholder}
+            maxLength={nameAttrs.maxLength}
             className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
           />
         </div>

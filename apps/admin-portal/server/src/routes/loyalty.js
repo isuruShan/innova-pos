@@ -32,7 +32,14 @@ router.get('/config', protect, authorize('cashier', 'manager', 'merchant_admin')
 
 router.put('/config', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
   try {
-    const { spendPerEarnBlock, pointsPerEarnBlock, isEnabled, pointsRetentionDays } = req.body;
+    const {
+      spendPerEarnBlock,
+      pointsPerEarnBlock,
+      isEnabled,
+      pointsRetentionMode,
+      pointsRetentionStartDate,
+      retentionDowngradeToLevel1,
+    } = req.body;
     const patch = {
       tenantId: req.tenantId,
       updatedBy: req.user.id,
@@ -40,11 +47,22 @@ router.put('/config', protect, authorize('merchant_admin'), tenantScope, async (
       ...(pointsPerEarnBlock != null ? { pointsPerEarnBlock: Number(pointsPerEarnBlock) } : {}),
       ...(typeof isEnabled === 'boolean' ? { isEnabled } : {}),
     };
-    if (pointsRetentionDays !== undefined) {
-      const raw = pointsRetentionDays === null || pointsRetentionDays === ''
-        ? null
-        : Number(pointsRetentionDays);
-      patch.pointsRetentionDays = raw === null || Number.isNaN(raw) ? null : Math.max(0, raw);
+    if (pointsRetentionMode !== undefined) {
+      const mode = ['none', 'monthly', 'quarterly', 'yearly'].includes(pointsRetentionMode)
+        ? pointsRetentionMode
+        : 'none';
+      patch.pointsRetentionMode = mode;
+      if (mode === 'none') {
+        patch.pointsRetentionStartDate = null;
+      }
+    }
+    if (pointsRetentionStartDate !== undefined) {
+      patch.pointsRetentionStartDate = pointsRetentionStartDate
+        ? new Date(pointsRetentionStartDate)
+        : null;
+    }
+    if (typeof retentionDowngradeToLevel1 === 'boolean') {
+      patch.retentionDowngradeToLevel1 = retentionDowngradeToLevel1;
     }
     const cfg = await LoyaltyProgramConfig.findOneAndUpdate(
       { tenantId: req.tenantId },

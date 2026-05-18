@@ -9,6 +9,11 @@ const { sendApplicationReceivedEmail } = require('../utils/mailer');
 const { childLogger } = require('@innovapos/logger');
 const { buildMobileE164 } = require('../utils/phone');
 const AdminPortalUser = require('../../../../admin-portal/server/src/models/User');
+const {
+  validateEmail,
+  validateSignupPersonal,
+  validateSignupBusiness,
+} = require('@innovapos/form-validation');
 
 const router = express.Router();
 
@@ -23,7 +28,10 @@ const upload = multer({
   },
 });
 
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function firstValidationError(errors) {
+  const key = Object.keys(errors)[0];
+  return key ? errors[key] : null;
+}
 
 /**
  * GET /applications/availability?email=&mobileE164=
@@ -41,8 +49,9 @@ router.get('/availability', async (req, res) => {
     const out = { emailAvailable: true, mobileAvailable: true, reasons: [] };
 
     if (email) {
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({ message: 'Invalid email' });
+      const emailCheck = validateEmail(email);
+      if (!emailCheck.ok) {
+        return res.status(400).json({ message: emailCheck.error });
       }
       const [appDup, userDup] = await Promise.all([
         MerchantApplication.findOne({ 'personal.email': email }).select('status'),
@@ -99,24 +108,36 @@ router.post('/', upload.single('brFile'), async (req, res) => {
       return res.status(400).json({ message: `Missing required fields: ${missingP.join(', ')}` });
     }
 
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: 'Invalid email address' });
+    const personalErrors = validateSignupPersonal({ firstName, lastName, email });
+    const personalMsg = firstValidationError(personalErrors);
+    if (personalMsg) {
+      return res.status(400).json({ message: personalMsg, errors: personalErrors });
     }
 
-    if (!mobileE164 || mobileE164.length < 10) {
+    if (!mobileE164 || mobileE164.length < 10 || mobileE164.length > 20) {
       return res.status(400).json({ message: 'Invalid mobile number' });
     }
 
-    const requiredBiz = { businessName, ownerName, street1, zipCode, city, state, businessCountry };
-    const missingB = Object.entries(requiredBiz).filter(([, v]) => !String(v || '').trim()).map(([k]) => k);
-    if (missingB.length) {
-      return res.status(400).json({ message: `Missing required business fields: ${missingB.join(', ')}` });
+    const reg = isRegistered === 'true' || isRegistered === true;
+    const businessErrors = validateSignupBusiness(
+      {
+        businessName,
+        ownerName,
+        street1,
+        street2,
+        zipCode,
+        city,
+        state,
+        businessCountry,
+        registrationNumber,
+      },
+      { isRegistered: reg },
+    );
+    const businessMsg = firstValidationError(businessErrors);
+    if (businessMsg) {
+      return res.status(400).json({ message: businessMsg, errors: businessErrors });
     }
 
-    const reg = isRegistered === 'true' || isRegistered === true;
-    if (reg && !String(registrationNumber || '').trim()) {
-      return res.status(400).json({ message: 'Registration number is required for registered businesses' });
-    }
     if (reg && !req.file) {
       return res.status(400).json({ message: 'BR certificate file is required for registered businesses' });
     }

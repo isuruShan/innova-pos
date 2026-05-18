@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -228,14 +229,16 @@ export default function OrderBoard() {
   const availablePaymentMethods = selectedStore?.paymentMethods?.length
     ? selectedStore.paymentMethods
     : ['cash'];
+  const [searchParams, setSearchParams] = useSearchParams();
+  const orderFromUrl = searchParams.get('order');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [completePaymentOrder, setCompletePaymentOrder] = useState(null);
   const [completePaymentType, setCompletePaymentType] = useState('cash');
 
   useEffect(() => {
-    setSelectedOrder(null);
-  }, [selectedStoreId]);
+    if (!orderFromUrl) setSelectedOrder(null);
+  }, [selectedStoreId, orderFromUrl]);
 
   useEffect(() => {
     const bump = () => {
@@ -263,6 +266,16 @@ export default function OrderBoard() {
   });
 
   useSyncOfflineOrderSelection(orders, selectedOrder, setSelectedOrder);
+
+  useEffect(() => {
+    if (!orderFromUrl || !isStoreReady) return;
+    const found = orders.find((o) => String(o._id) === orderFromUrl);
+    if (found) {
+      setSelectedOrder(found);
+      return;
+    }
+    api.get(`/orders/${orderFromUrl}`).then((r) => setSelectedOrder(r.data)).catch(() => {});
+  }, [orderFromUrl, orders, isStoreReady]);
 
   const mutation = useMutation({
     mutationFn: async ({ id, status, paymentType: pt, paymentAmount: pa }) => {
@@ -392,7 +405,14 @@ export default function OrderBoard() {
 
       <OrderDetailSlideOver
         order={liveSelectedOrder}
-        onClose={() => setSelectedOrder(null)}
+        onClose={() => {
+          setSelectedOrder(null);
+          if (orderFromUrl) {
+            const next = new URLSearchParams(searchParams);
+            next.delete('order');
+            setSearchParams(next, { replace: true });
+          }
+        }}
       />
 
       {completePaymentOrder && (

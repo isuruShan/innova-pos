@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Loader, UserCheck, UserX, Key, X, Pencil } from 'lucide-react';
+import { Plus, Loader, UserCheck, UserX, Key, X, Pencil, Search } from 'lucide-react';
+import TooltipWrap from '../../components/common/TooltipWrap';
+import { useToast } from '../../context/ToastContext';
 import api from '../../api/axios';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
 import ListPagination from '../../components/common/ListPagination';
@@ -22,11 +24,19 @@ export default function UsersPage() {
   const [errors, setErrors] = useState({});
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_admin_users') || 'table');
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [roleFilters, setRoleFilters] = useState([]);
+  const [storeFilters, setStoreFilters] = useState([]);
+  const toast = useToast();
 
   const { data: usersPage, isLoading, isFetching } = useQuery({
-    queryKey: ['users', page],
+    queryKey: ['users', page, search, roleFilters, storeFilters],
     queryFn: async () => {
-      const { data } = await api.get('/users', { params: { page, limit: 25 } });
+      const params = { page, limit: 25 };
+      if (search.trim()) params.search = search.trim();
+      if (roleFilters.length) params.role = roleFilters.join(',');
+      if (storeFilters.length) params.storeIds = storeFilters.join(',');
+      const { data } = await api.get('/users', { params });
       return unwrapPagedList(data);
     },
   });
@@ -57,6 +67,7 @@ export default function UsersPage() {
       queryClient.invalidateQueries({ queryKey: ['my-users-total'] });
       setShowModal(false);
       setForm({ name: '', email: '', role: 'cashier', storeIds: [], defaultStoreId: '' });
+      toast.success('User created');
     },
     onError: (err) => setErrors({ api: err.response?.data?.message || 'Failed to create user' }),
   });
@@ -69,6 +80,7 @@ export default function UsersPage() {
       setShowModal(false);
       setEditingUser(null);
       setForm({ name: '', email: '', role: 'cashier', storeIds: [], defaultStoreId: '' });
+      toast.success('User updated');
     },
     onError: (err) => setErrors({ api: err.response?.data?.message || 'Failed to update user' }),
   });
@@ -150,6 +162,57 @@ export default function UsersPage() {
       </div>
       <ViewModeToggle mode={viewMode} setMode={onViewModeChange} />
 
+      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+        <div className="relative max-w-md">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search by name or email…"
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+          />
+        </div>
+        <div className="flex flex-wrap gap-4">
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Roles</p>
+            <div className="flex flex-wrap gap-2">
+              {['merchant_admin', 'manager', 'cashier', 'kitchen'].map((role) => (
+                <label key={role} className="inline-flex items-center gap-1.5 text-xs text-gray-700 border border-gray-200 rounded-lg px-2 py-1">
+                  <input
+                    type="checkbox"
+                    checked={roleFilters.includes(role)}
+                    onChange={(e) => {
+                      setPage(1);
+                      setRoleFilters((prev) => (e.target.checked ? [...prev, role] : prev.filter((r) => r !== role)));
+                    }}
+                  />
+                  {role.replace('_', ' ')}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Stores</p>
+            <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
+              {stores.map((s) => (
+                <label key={s._id} className="inline-flex items-center gap-1.5 text-xs text-gray-700 border border-gray-200 rounded-lg px-2 py-1">
+                  <input
+                    type="checkbox"
+                    checked={storeFilters.includes(s._id)}
+                    onChange={(e) => {
+                      setPage(1);
+                      setStoreFilters((prev) => (e.target.checked ? [...prev, s._id] : prev.filter((id) => id !== s._id)));
+                    }}
+                  />
+                  {s.name}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {adminCount >= 2 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
           You have reached the maximum of 2 admin users. You can still add staff (managers, cashiers, kitchen).
@@ -176,11 +239,9 @@ export default function UsersPage() {
                 </p>
               )}
               <div className="mt-4 flex items-center gap-2">
-                <button onClick={() => toggleMutation.mutate({ id: u._id, isActive: !u.isActive })} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
-                  {u.isActive ? <UserX size={14} /> : <UserCheck size={14} />}
-                </button>
-                <button onClick={() => resetMutation.mutate(u._id)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"><Key size={14} /></button>
-                <button onClick={() => openEdit(u)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"><Pencil size={14} /></button>
+                <TooltipWrap title={u.isActive ? "Deactivate user" : "Activate user"}><button onClick={() => toggleMutation.mutate({ id: u._id, isActive: !u.isActive })} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">{u.isActive ? <UserX size={14} /> : <UserCheck size={14} />}</button></TooltipWrap>
+                <TooltipWrap title="Send password reset email"><button onClick={() => resetMutation.mutate(u._id)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"><Key size={14} /></button></TooltipWrap>
+                <TooltipWrap title="Edit user"><button onClick={() => openEdit(u)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"><Pencil size={14} /></button></TooltipWrap>
               </div>
             </div>
           ))}

@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Upload, Loader, CheckCircle, Save, Palette, X } from 'lucide-react';
+import { Upload, Loader, CheckCircle, Save, Palette, X, Receipt, Printer } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 import api from '../../api/axios';
+import { fieldAttrs, LIMITS } from '../../utils/formFields';
 import imageCompression from 'browser-image-compression';
 import {
   RECEIPT_PRINT_AT_OPTIONS,
@@ -29,6 +31,7 @@ async function optimizeToWebP(file) {
 }
 
 export default function BrandingPage() {
+  const toast = useToast();
   const queryClient = useQueryClient();
   const fileRef = useRef(null);
   const [logoPreview, setLogoPreview] = useState(null);
@@ -56,8 +59,10 @@ export default function BrandingPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant-settings'] });
       setSaved(true);
+      toast.success('Settings saved');
       setTimeout(() => setSaved(false), 3000);
     },
+    onError: () => toast.error('Failed to save settings'),
   });
 
   const logoMutation = useMutation({
@@ -166,18 +171,25 @@ export default function BrandingPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         <h3 className="font-semibold text-gray-900">Business Information</h3>
         {[
-          { label: 'Business name', key: 'businessName', placeholder: 'The Coffee Corner' },
-          { label: 'Tagline', key: 'tagline', placeholder: 'Great coffee, every time' },
-          { label: 'Address', key: 'address', placeholder: '123 Main Street, Colombo' },
-          { label: 'Phone', key: 'phone', placeholder: '+94 77 000 0000' },
-          { label: 'Email', key: 'email', type: 'email', placeholder: 'info@business.com' },
-          { label: 'Website', key: 'website', placeholder: 'https://yourbusiness.com' },
-        ].map(f => (
+          { label: 'Business name', key: 'businessName', attrs: fieldAttrs('businessName') },
+          { label: 'Tagline', key: 'tagline', attrs: fieldAttrs('tagline') },
+          { label: 'Address', key: 'address', attrs: fieldAttrs('addressLine1') },
+          { label: 'Phone', key: 'phone', attrs: fieldAttrs('phoneDisplay') },
+          { label: 'Email', key: 'email', type: 'email', attrs: fieldAttrs('email') },
+          { label: 'Website', key: 'website', attrs: fieldAttrs('website') },
+        ].map((f) => (
           <div key={f.key}>
             <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
-            <input type={f.type || 'text'} value={form[f.key] || ''} onChange={e => set(f.key)(e.target.value)}
-              placeholder={f.placeholder}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" />
+            <input
+              type={f.type || 'text'}
+              value={form[f.key] || ''}
+              onChange={(e) => set(f.key)(e.target.value)}
+              placeholder={f.attrs.placeholder}
+              maxLength={f.attrs.maxLength}
+              autoComplete={f.attrs.autoComplete}
+              inputMode={f.attrs.inputMode}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
+            />
           </div>
         ))}
       </div>
@@ -195,7 +207,7 @@ export default function BrandingPage() {
               value={form.currency || ''}
               onChange={(e) => set('currency')(e.target.value.toUpperCase())}
               placeholder="LKR"
-              maxLength={8}
+              maxLength={LIMITS.currencyCode}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
             />
           </div>
@@ -205,7 +217,7 @@ export default function BrandingPage() {
               value={form.currencySymbol || ''}
               onChange={(e) => set('currencySymbol')(e.target.value)}
               placeholder="Rs."
-              maxLength={8}
+              maxLength={LIMITS.currencySymbol}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
             />
           </div>
@@ -241,59 +253,80 @@ export default function BrandingPage() {
       </div>
 
       {/* Receipt */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h3 className="font-semibold text-gray-900">Receipt Settings</h3>
-        {[
-          { label: 'Receipt header', key: 'receiptHeader', placeholder: 'Thank you for visiting!' },
-          { label: 'Receipt footer', key: 'receiptFooter', placeholder: 'Visit us again soon.' },
-        ].map(f => (
-          <div key={f.key}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
-            <input type="text" value={form[f.key] || ''} onChange={e => set(f.key)(e.target.value)}
-              placeholder={f.placeholder}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" />
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white flex items-start gap-3">
+          <span className="p-2 rounded-lg bg-brand-orange/10 text-brand-orange"><Receipt size={18} /></span>
+          <div>
+            <h3 className="font-semibold text-gray-900">Receipt settings</h3>
+            <p className="text-sm text-gray-500 mt-0.5">Control receipt copy and when bills print automatically in the POS.</p>
           </div>
-        ))}
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" checked={form.printReceiptByDefault || false}
-            onChange={e => set('printReceiptByDefault')(e.target.checked)}
-            className="w-4 h-4 accent-brand-orange" />
-          <span className="text-sm font-medium text-gray-700">Print receipt by default</span>
-        </label>
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-gray-700">Print bill by order type</p>
-          <p className="text-xs text-gray-500">
-            Dine-in often prints after payment at the table; takeaway and delivery usually print when the guest pays at the counter.
-          </p>
-          {[
-            { key: 'dine-in', label: 'Dine-in' },
-            { key: 'takeaway', label: 'Take away' },
-            { key: 'uber-eats', label: 'Uber Eats' },
-            { key: 'pickme', label: 'PickMe' },
-          ].map(({ key, label }) => (
-            <div key={key}>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
-              <select
-                value={form.receiptPrintAtByOrderType?.[key] || 'placement'}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    receiptPrintAtByOrderType: {
-                      ...(f.receiptPrintAtByOrderType || mergeReceiptPrintAtByOrderType(f)),
-                      [key]: e.target.value,
-                    },
-                  }))
-                }
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
-              >
-                {RECEIPT_PRINT_AT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+        </div>
+        <div className="p-6 space-y-6">
+          <div className="grid sm:grid-cols-2 gap-4">
+            {[
+              { label: 'Receipt header', key: 'receiptHeader', attrs: fieldAttrs('receiptLine') },
+              { label: 'Receipt footer', key: 'receiptFooter', attrs: { ...fieldAttrs('receiptLine'), placeholder: 'Visit us again soon.' } },
+            ].map((f) => (
+              <div key={f.key}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
+                <input
+                  type="text"
+                  value={form[f.key] || ''}
+                  onChange={(e) => set(f.key)(e.target.value)}
+                  placeholder={f.attrs.placeholder}
+                  maxLength={f.attrs.maxLength}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
+                />
+              </div>
+            ))}
+          </div>
+          <label className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.printReceiptByDefault || false}
+              onChange={(e) => set('printReceiptByDefault')(e.target.checked)}
+              className="w-4 h-4 accent-brand-orange"
+            />
+            <span>
+              <span className="text-sm font-medium text-gray-800 flex items-center gap-1.5"><Printer size={14} /> Print receipt by default at checkout</span>
+              <span className="block text-xs text-gray-500 mt-0.5">Cashiers can still toggle printing per order.</span>
+            </span>
+          </label>
+          <div>
+            <p className="text-sm font-semibold text-gray-900 mb-1">Auto-print timing by order type</p>
+            <p className="text-xs text-gray-500 mb-4">Choose when the POS prints a bill for each channel.</p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {[
+                { key: 'dine-in', label: 'Dine-in', hint: 'Table service' },
+                { key: 'takeaway', label: 'Take away', hint: 'Counter pickup' },
+                { key: 'uber-eats', label: 'Uber Eats', hint: 'Delivery partner' },
+                { key: 'pickme', label: 'PickMe', hint: 'Delivery partner' },
+              ].map(({ key, label, hint }) => (
+                <div key={key} className="rounded-xl border border-gray-200 p-3 bg-white">
+                  <p className="text-sm font-medium text-gray-900">{label}</p>
+                  <p className="text-[11px] text-gray-500 mb-2">{hint}</p>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Print when</label>
+                  <select
+                    value={form.receiptPrintAtByOrderType?.[key] || 'placement'}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        receiptPrintAtByOrderType: {
+                          ...(f.receiptPrintAtByOrderType || mergeReceiptPrintAtByOrderType(f)),
+                          [key]: e.target.value,
+                        },
+                      }))
+                    }
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+                  >
+                    {RECEIPT_PRINT_AT_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       </div>
 

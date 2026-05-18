@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle, XCircle, ExternalLink, RefreshCw, Loader, Receipt } from 'lucide-react';
+import { CheckCircle, XCircle, ExternalLink, RefreshCw, Loader, Receipt, Search } from 'lucide-react';
 import api from '../../api/axios';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
 import ListPagination from '../../components/common/ListPagination';
@@ -20,16 +20,18 @@ export default function PaymentsPage() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_payments') || 'grid');
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     setPage(1);
-  }, [statusFilter]);
+  }, [statusFilter, search]);
 
   const { data: receiptList = { items: [], page: 1, pages: 1, total: 0 }, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['receipts', statusFilter, page],
+    queryKey: ['receipts', statusFilter, page, search],
     queryFn: async () => {
       const params = { page, limit: 25 };
       if (statusFilter) params.status = statusFilter;
+      if (search.trim()) params.search = search.trim();
       const { data } = await api.get('/subscriptions/receipts', { params });
       return unwrapPagedList(data);
     },
@@ -67,7 +69,17 @@ export default function PaymentsPage() {
         <p className="text-sm text-gray-500 mt-0.5">Verify merchant payment receipts and extend subscriptions</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4 flex gap-3 flex-wrap">
+      <div className="bg-white rounded-xl border border-gray-200 p-4 flex gap-3 flex-wrap items-center">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by merchant name…"
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+          />
+        </div>
         {['pending', 'verified', 'rejected'].map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
             className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${

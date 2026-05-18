@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Save, Loader, CheckCircle, AlertTriangle } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { fieldAttrs, validatePersonName, validatePassword } from '../../utils/formFields';
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
@@ -10,6 +11,7 @@ export default function ProfilePage() {
 
   const [nameForm, setNameForm] = useState({ name: '' });
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
+  const [nameError, setNameError] = useState('');
   const [pwErrors, setPwErrors] = useState({});
   const [saved, setSaved] = useState({ name: false, password: false });
 
@@ -38,21 +40,29 @@ export default function ProfilePage() {
     onError: (err) => setPwErrors({ api: err.response?.data?.message || 'Failed to update password' }),
   });
 
-  const validatePassword = () => {
+  const validatePasswordForm = () => {
     const e = {};
     if (!pwForm.currentPassword) e.currentPassword = 'Current password required';
-    if (!pwForm.newPassword || pwForm.newPassword.length < 8) e.newPassword = 'New password must be at least 8 characters';
+    const pwCheck = validatePassword(pwForm.newPassword);
+    if (!pwCheck.ok) e.newPassword = pwCheck.error;
     if (pwForm.newPassword !== pwForm.confirm) e.confirm = 'Passwords do not match';
     return e;
   };
 
+  const nameAttrs = fieldAttrs('personName');
+
   const handleSaveName = () => {
-    if (!nameForm.name.trim()) return;
-    profileMutation.mutate({ name: nameForm.name });
+    const check = validatePersonName(nameForm.name, { label: 'Full name' });
+    if (!check.ok) {
+      setNameError(check.error);
+      return;
+    }
+    setNameError('');
+    profileMutation.mutate({ name: nameForm.name.trim() });
   };
 
   const handleSavePassword = () => {
-    const errs = validatePassword();
+    const errs = validatePasswordForm();
     if (Object.keys(errs).length) {
       setPwErrors(errs);
       return;
@@ -89,10 +99,16 @@ export default function ProfilePage() {
             id="profile-full-name"
             type="text"
             value={nameForm.name}
-            onChange={(e) => setNameForm({ name: e.target.value })}
-            className={`${inputClass} border-gray-300`}
+            onChange={(e) => {
+              setNameForm({ name: e.target.value });
+              if (nameError) setNameError('');
+            }}
+            placeholder={nameAttrs.placeholder}
+            maxLength={nameAttrs.maxLength}
+            className={`${inputClass} ${nameError ? 'border-red-400' : 'border-gray-300'}`}
             autoComplete="name"
           />
+          {nameError && <p className="text-xs text-red-500 mt-1">{nameError}</p>}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Email address</label>
@@ -168,6 +184,7 @@ export default function ProfilePage() {
             }}
             className={`${inputClass} ${pwErrors.newPassword ? 'border-red-400' : 'border-gray-300'}`}
             autoComplete="new-password"
+            maxLength={fieldAttrs('password').maxLength}
           />
           {pwErrors.newPassword && <p className="text-xs text-red-500 mt-0.5">{pwErrors.newPassword}</p>}
         </div>

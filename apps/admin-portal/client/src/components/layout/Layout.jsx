@@ -2,12 +2,11 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Palette, CreditCard, Building2,
-  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell,
+  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3,
 } from 'lucide-react';
 import NotificationBell from '../NotificationBell';
 import SubscriptionDueBanner from '../SubscriptionDueBanner';
 import { useAuth } from '../../context/AuthContext';
-import { useStoreContext } from '../../context/StoreContext';
 
 const SUPERADMIN_NAV_GROUPS = [
   {
@@ -32,6 +31,7 @@ const ADMIN_NAV_GROUPS = [
     title: 'Business',
     items: [
       { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
+      { label: 'Analytics', icon: BarChart3, to: '/analytics' },
       { label: 'Notifications', icon: Bell, to: '/notifications' },
       { label: 'Branding & Settings', icon: Palette, to: '/branding' },
       { label: 'Users', icon: Users, to: '/users' },
@@ -63,8 +63,6 @@ export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { stores, selectedStoreId, selectStore } = useStoreContext();
-
   const subscriptionLocked = !isSuperAdmin && user?.subscriptionActive === false;
   const merchantNavGroups = subscriptionLocked
     ? [{ title: 'Billing', items: [{ label: 'Subscription', icon: CreditCard, to: '/subscription' }] }]
@@ -190,17 +188,6 @@ export default function Layout({ children }) {
 
           <div className="flex items-center gap-3">
             {user && <NotificationBell />}
-            {!isSuperAdmin && !subscriptionLocked && (
-              <select
-                value={selectedStoreId}
-                onChange={(e) => selectStore(e.target.value)}
-                className="h-9 rounded-lg border border-gray-300 bg-white px-2.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
-              >
-                {stores.map((store) => (
-                  <option key={store._id} value={store._id}>{store.name}</option>
-                ))}
-              </select>
-            )}
             {user?.isTemporaryPassword && (
               <Link to="/profile?changePassword=1"
                 className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 border border-amber-200 text-amber-700">

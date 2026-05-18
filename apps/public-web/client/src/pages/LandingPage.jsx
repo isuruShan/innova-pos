@@ -9,6 +9,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import api from '../api';
 import { buildPlanCardBackground, buildPlanTagBackground, planUsesLightText } from '../utils/planAppearance';
+import { fieldAttrs, validateContactForm } from '../utils/formFields';
 
 const FEATURES = [
   {
@@ -102,13 +103,30 @@ const ENTERPRISE_DISPLAY = {
 
 function ContactSection() {
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
+  const [errors, setErrors] = useState({});
   const [status, setStatus] = useState(null);
+
+  const nameAttrs = fieldAttrs('personName');
+  const emailAttrs = fieldAttrs('email');
+  const subjectAttrs = fieldAttrs('subject');
+  const messageAttrs = fieldAttrs('message');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const fieldErrs = validateContactForm(form);
+    if (Object.keys(fieldErrs).length) {
+      setErrors(fieldErrs);
+      return;
+    }
+    setErrors({});
     setStatus('loading');
     try {
-      await api.post('/contact', form);
+      await api.post('/contact', {
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        subject: form.subject.trim(),
+        message: form.message.trim(),
+      });
       setStatus('success');
       setForm({ name: '', email: '', subject: '', message: '' });
     } catch {
@@ -134,19 +152,26 @@ function ContactSection() {
           <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-200 p-8 space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {[
-                { label: 'Full name', key: 'name', type: 'text', placeholder: 'John Silva' },
-                { label: 'Email address', key: 'email', type: 'email', placeholder: 'john@example.com' },
-              ].map(field => (
+                { label: 'Full name', key: 'name', type: 'text', attrs: nameAttrs },
+                { label: 'Email address', key: 'email', type: 'email', attrs: emailAttrs },
+              ].map((field) => (
                 <div key={field.key}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
                   <input
                     type={field.type}
                     value={form[field.key]}
-                    onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))}
-                    placeholder={field.placeholder}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
+                    onChange={(e) => {
+                      setForm((f) => ({ ...f, [field.key]: e.target.value }));
+                      if (errors[field.key]) setErrors((err) => ({ ...err, [field.key]: '' }));
+                    }}
+                    placeholder={field.attrs.placeholder}
+                    maxLength={field.attrs.maxLength}
+                    autoComplete={field.attrs.autoComplete}
+                    className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
+                      errors[field.key] ? 'border-red-400' : 'border-gray-300'
+                    }`}
                   />
+                  {errors[field.key] && <p className="text-xs text-red-500 mt-1">{errors[field.key]}</p>}
                 </div>
               ))}
             </div>
@@ -155,21 +180,34 @@ function ContactSection() {
               <input
                 type="text"
                 value={form.subject}
-                onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
-                placeholder="How can we help?"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, subject: e.target.value }));
+                  if (errors.subject) setErrors((err) => ({ ...err, subject: '' }));
+                }}
+                placeholder={subjectAttrs.placeholder}
+                maxLength={subjectAttrs.maxLength}
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
+                  errors.subject ? 'border-red-400' : 'border-gray-300'
+                }`}
               />
+              {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
               <textarea
                 value={form.message}
-                onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, message: e.target.value }));
+                  if (errors.message) setErrors((err) => ({ ...err, message: '' }));
+                }}
                 rows={4}
-                required
-                placeholder="Tell us about your business and what you need..."
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange resize-none"
+                placeholder={messageAttrs.placeholder}
+                maxLength={messageAttrs.maxLength}
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange resize-none ${
+                  errors.message ? 'border-red-400' : 'border-gray-300'
+                }`}
               />
+              {errors.message && <p className="text-xs text-red-500 mt-1">{errors.message}</p>}
             </div>
             {status === 'error' && <p className="text-sm text-red-600">Failed to send. Please try again.</p>}
             <button

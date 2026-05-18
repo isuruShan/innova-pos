@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Search, SlidersHorizontal, RefreshCw, ChevronDown, X,
@@ -38,6 +39,8 @@ const PAYMENT_LABELS = { cash: 'Cash', card: 'Card', online: 'Online', bank_tran
 
 export default function OrdersView() {
   const { selectedStoreId, isStoreReady, stores } = useStoreContext();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const orderFromUrl = searchParams.get('order');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -75,8 +78,18 @@ export default function OrdersView() {
   }, [fromDate, toDate, statusFilter, orderTypeFilter, paymentTypeFilter, search]);
 
   useEffect(() => {
-    setSelectedOrder(null);
-  }, [selectedStoreId]);
+    if (!orderFromUrl) setSelectedOrder(null);
+  }, [selectedStoreId, orderFromUrl]);
+
+  useEffect(() => {
+    if (!orderFromUrl || !isStoreReady) return;
+    const found = orders.find((o) => String(o._id) === orderFromUrl);
+    if (found) {
+      setSelectedOrder(found);
+      return;
+    }
+    api.get(`/orders/${orderFromUrl}`).then((r) => setSelectedOrder(r.data)).catch(() => {});
+  }, [orderFromUrl, orders, isStoreReady]);
 
   const { data: orders = [], isPending, refetch, isFetching } = useQuery({
     queryKey: ['manager-orders', selectedStoreId, params],
@@ -363,7 +376,14 @@ export default function OrdersView() {
 
       <OrderDetailSlideOver
         order={liveSelected}
-        onClose={() => setSelectedOrder(null)}
+        onClose={() => {
+          setSelectedOrder(null);
+          if (orderFromUrl) {
+            const next = new URLSearchParams(searchParams);
+            next.delete('order');
+            setSearchParams(next, { replace: true });
+          }
+        }}
         canCancel={true}
       />
     </div>

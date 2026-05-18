@@ -1,21 +1,15 @@
-import {
-  LIMITS,
-  PLACEHOLDERS,
-  fieldAttrs,
-  validateEmail,
-  validatePassword,
-  validatePersonName,
-  validateMobile,
-  trim,
-} from '@innovapos/form-validation/browser.js';
-
 export {
   LIMITS,
   PLACEHOLDERS,
   fieldAttrs,
+  trim,
   validateEmail,
   validatePassword,
   validatePersonName,
+  validateBusinessName,
   validateMobile,
-  trim,
-};
+  validateAddressLine,
+  validateNotes,
+  validateStoreName,
+  validateStoreCode,
+} from '@innovapos/form-validation/browser.js';
