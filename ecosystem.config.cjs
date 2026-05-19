@@ -1,5 +1,27 @@
 'use strict';
 
+const path = require('path');
+const fs = require('fs');
+
+/** Load vault bootstrap before cloudEnv is built (PM2 does not read your shell profile). */
+function loadHostBootstrapEnv() {
+  const candidates = [
+    process.env.INNOVA_BOOTSTRAP_ENV,
+    '/etc/innovapos/bootstrap.env',
+    path.join(__dirname, 'bootstrap.env'),
+  ].filter(Boolean);
+  for (const filePath of candidates) {
+    if (fs.existsSync(filePath)) {
+      require('dotenv').config({ path: filePath });
+      console.log(`[ecosystem] Loaded bootstrap env from ${filePath}`);
+      return filePath;
+    }
+  }
+  return null;
+}
+
+loadHostBootstrapEnv();
+
 /**
  * PM2 process configuration – all apps in the monorepo (POS, admin, public web,
  * QR table-order API, auth, upload).

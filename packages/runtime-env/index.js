@@ -117,8 +117,23 @@ async function loadAzureKeyVaultEnv(options = {}) {
 
   const override = resolveMergeMode(options) === 'override';
   const client = new SecretClient(vaultUrl, new DefaultAzureCredential());
-  const secret = await client.getSecret(secretName);
-  const str = secret?.value;
+  let secret;
+  try {
+    secret = await client.getSecret(secretName);
+  } catch (err) {
+    const msg = String(err?.message || err);
+    if (msg.includes('Forbidden') || err?.statusCode === 403) {
+      throw new Error(
+        `Key Vault access denied for secret "${secretName}". Assign role "Key Vault Secrets User" ` +
+          `to the VM managed identity (or your user for CLI) on vault ${vaultUrl}. ` +
+          `App needs secrets/get, not keys/read. If you saw keys/read, use the Secrets blade or ` +
+          '`az keyvault secret set`, not Keys. Wait 5–10 min after IAM changes.`,
+        { cause: err },
+      );
+    }
+    throw err;
+  }
+  const str = String(secret?.value || '').trim();
   if (!str) return { loaded: false, provider: 'azure' };
 
   let parsed;
@@ -159,12 +174,28 @@ async function loadSecretsEnv(options = {}) {
  * Load secrets at process startup; exit on failure when a provider is configured.
  */
 async function loadSecretsEnvOrExit(log = console) {
+  const provider = resolveSecretsProvider();
   try {
     const res = await loadSecretsEnv();
     if (res.loaded) {
       log.log(`[runtime-env] Loaded ${res.keysApplied ?? 0} keys from ${res.provider} secrets`);
-    } else if (resolveSecretsProvider() !== 'none') {
-      log.warn('[runtime-env] Secrets provider configured but nothing was loaded');
+      if (!process.env.MONGO_URI && !process.env.MONGODB_URI && !process.env.MONGODB_ATLAS_URI) {
+        log.warn('[runtime-env] MONGO_URI is not set after loading secrets — check Key Vault JSON');
+      }
+      return res;
+    }
+
+    if (provider !== 'none') {
+      const hint =
+        provider === 'azure'
+          ? 'Set AZURE_KEY_VAULT_URL and AZURE_KEY_VAULT_SECRET_NAME in bootstrap.env (see bootstrap.env.example). VM identity needs Key Vault Secrets User.'
+          : 'Set AWS_SECRETS_MANAGER_SECRET_ID and IAM GetSecretValue on the instance role.';
+      const msg = `[runtime-env] ${provider} secrets were not loaded. ${hint}`;
+      if (process.env.NODE_ENV === 'production') {
+        log.error(msg);
+        process.exit(1);
+      }
+      log.warn(msg);
     }
     return res;
   } catch (e) {

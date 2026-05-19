@@ -15,7 +15,7 @@ This guide covers a **full Azure production** setup. The application picks **sec
 
 ```bash
 CLOUD_PROVIDER=azure
-AZURE_KEY_VAULT_URL=https://kv-innovapos-prod.vault.azure.net/
+AZURE_KEY_VAULT_URL=https://cafinity-dev-key.vault.azure.net/
 AZURE_KEY_VAULT_SECRET_NAME=innovapos-production-env
 ```
 
@@ -88,7 +88,7 @@ az account set --subscription "<subscription-id>"
 
 # Local file secrets.production.json (gitignored) — from secrets.example.json
 az keyvault secret set \
-  --vault-name kv-innovapos-prod \
+  --vault-name cafinity-dev-key \
   --name innovapos-production-env \
   --file secrets.production.json
 ```
@@ -150,19 +150,34 @@ Never copy `node_modules` from your laptop to the VM.
 
 **Production** only needs `pnpm run build` once per deploy (via `deploy-production.sh`), not `pnpm dev`.
 
-Bootstrap file on the VM (e.g. `/etc/innovapos/bootstrap.env`):
+Bootstrap file on the VM — **required for PM2** (shell `export` alone is not enough):
+
+```bash
+sudo mkdir -p /etc/innovapos
+sudo cp bootstrap.env.example /etc/innovapos/bootstrap.env
+sudo nano /etc/innovapos/bootstrap.env
+```
+
+Contents:
 
 ```bash
 CLOUD_PROVIDER=azure
-AZURE_KEY_VAULT_URL=https://kv-innovapos-prod.vault.azure.net/
+AZURE_KEY_VAULT_URL=https://cafinity-dev-key.vault.azure.net/
 AZURE_KEY_VAULT_SECRET_NAME=innovapos-production-env
 ```
 
-Load before PM2:
+Or copy the same file to `~/InnovaSolution/innova-pos/bootstrap.env` in the repo root.
+
+`ecosystem.config.cjs` loads `bootstrap.env` automatically before starting apps.
+
+Verify Key Vault + `MONGO_URI` on the VM:
 
 ```bash
-set -a && source /etc/innovapos/bootstrap.env && set +a
+cd ~/InnovaSolution/innova-pos
+node scripts/verify-keyvault-env.js
 ```
+
+You should see `loadSecretsEnv: { loaded: true, ... }` and `MONGO_URI set: true`.
 
 ---
 
@@ -171,7 +186,7 @@ set -a && source /etc/innovapos/bootstrap.env && set +a
 ```bash
 cd /path/to/splitsecond-pos
 export CLOUD_PROVIDER=azure
-export AZURE_KEY_VAULT_URL=https://kv-innovapos-prod.vault.azure.net/
+export AZURE_KEY_VAULT_URL=https://cafinity-dev-key.vault.azure.net/
 export AZURE_KEY_VAULT_SECRET_NAME=innovapos-production-env
 
 ./scripts/deploy-production.sh
@@ -222,8 +237,78 @@ Redeploy / `pm2 reload` after changing bootstrap or secret JSON. No application 
 
 ## Troubleshooting
 
+### `Forbidden` / `keys/read` / `ForbiddenByRbac` on `cafinity-dev-key`
+
+**What the error means**
+
+| Field | Your error | What the app needs |
+|--------|------------|-------------------|
+| Action | `Microsoft.KeyVault/vaults/keys/read` | `Microsoft.KeyVault/vaults/secrets/get` |
+| Caller | `appid=04b07795-8ddb-461a-bbee-02f9e1bf7b46` = **Azure CLI** (your login) | VM **managed identity** when Node starts |
+| Assignment | `(not found)` | No RBAC role on this vault yet |
+
+So this is usually **you** (Portal or `az` CLI), not the POS app, trying to use **Keys** or listing the vault without a role. The app only reads a **Secret** named e.g. `innovapos-production-env`.
+
+**Fix — two identities**
+
+1. **Your user** (create/edit secrets via CLI or Portal → **Secrets**, not Keys):
+
+```bash
+VAULT_ID="/subscriptions/69a02a12-7297-410c-a6de-2d3c9aba54be/resourceGroups/cafinity-group/providers/Microsoft.KeyVault/vaults/cafinity-dev-key"
+
+# Replace with your signed-in user object id from: az ad signed-in-user show --query id -o tsv
+USER_OID="aa385f70-7cb0-48ba-8ba6-59f8e8e11c23"
+
+az role assignment create \
+  --role "Key Vault Secrets Officer" \
+  --assignee-object-id "$USER_OID" \
+  --assignee-principal-type User \
+  --scope "$VAULT_ID"
+```
+
+2. **Azure VM** (runtime — read secret only):
+
+```bash
+# VM → Identity → System assigned → copy Object (principal) ID
+VM_OID="<vm-managed-identity-object-id>"
+
+az role assignment create \
+  --role "Key Vault Secrets User" \
+  --assignee-object-id "$VM_OID" \
+  --assignee-principal-type ServicePrincipal \
+  --scope "$VAULT_ID"
+```
+
+Wait **5–10 minutes** after role assignment, then:
+
+```bash
+# Create/update the app config secret (not a Key)
+az keyvault secret set \
+  --vault-name cafinity-dev-key \
+  --name innovapos-production-env \
+  --file secrets.production.json
+```
+
+**Bootstrap on the VM** (must match vault name):
+
+```bash
+AZURE_KEY_VAULT_URL=https://cafinity-dev-key.vault.azure.net/
+AZURE_KEY_VAULT_SECRET_NAME=innovapos-production-env
+```
+
+**Portal:** open **Secrets** → **Generate/Import**. Do not use **Keys** unless you manage certificates.
+
+**Verify CLI can read the secret:**
+
+```bash
+az keyvault secret show --vault-name cafinity-dev-key --name innovapos-production-env --query value -o tsv | head -c 80
+```
+
+---
+
 | Symptom | Check |
 |---------|--------|
+| `MongoDB connection string missing` but secret has `MONGO_URI` | Key Vault never loaded: add `bootstrap.env`, VM has **Key Vault Secrets User**, run `node scripts/verify-keyvault-env.js`, then `pm2 reload ecosystem.config.cjs --env production` |
 | `Failed to load secrets` | VM identity has **Key Vault Secrets User**; vault URL and secret name match bootstrap |
 | Upload 500 / storage error | `AZURE_STORAGE_ACCOUNT_NAME` in vault JSON; **Storage Blob Data Contributor** on VM |
 | Images 403 / no presign URL | **Storage Blob Delegator** on VM |
