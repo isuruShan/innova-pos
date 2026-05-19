@@ -170,14 +170,19 @@ Or copy the same file to `~/InnovaSolution/innova-pos/bootstrap.env` in the repo
 
 `ecosystem.config.cjs` loads `bootstrap.env` automatically before starting apps.
 
-Verify Key Vault + `MONGO_URI` on the VM:
+Verify Key Vault + `MONGO_URI` on the VM (install workspace deps first):
 
 ```bash
 cd ~/InnovaSolution/innova-pos
-node scripts/verify-keyvault-env.js
+pnpm install
+cp bootstrap.env.example bootstrap.env   # or use /etc/innovapos/bootstrap.env
+# edit AZURE_KEY_VAULT_URL and AZURE_KEY_VAULT_SECRET_NAME
+pnpm run verify:secrets
 ```
 
-You should see `loadSecretsEnv: { loaded: true, ... }` and `MONGO_URI set: true`.
+You should see `bootstrap: ... (N keys)`, `loadSecretsEnv: { loaded: true, ... }`, and `MONGO_URI set: true`.
+
+If you see `Cannot find module '@innovapos/runtime-env'`, run `pnpm install` at the repo root (do not copy `node_modules` from another machine).
 
 ---
 
@@ -308,7 +313,8 @@ az keyvault secret show --vault-name cafinity-dev-key --name innovapos-productio
 
 | Symptom | Check |
 |---------|--------|
-| `MongoDB connection string missing` but secret has `MONGO_URI` | Key Vault never loaded: add `bootstrap.env`, VM has **Key Vault Secrets User**, run `node scripts/verify-keyvault-env.js`, then `pm2 reload ecosystem.config.cjs --env production` |
+| `MongoDB connection string missing` but secret has `MONGO_URI` | Key Vault never loaded: add `bootstrap.env`, VM has **Key Vault Secrets User**, run `pnpm install && pnpm run verify:secrets`, then `pm2 reload ecosystem.config.cjs --env production` |
+| `Cannot find module '@innovapos/runtime-env'` | Run `pnpm install` at monorepo root; use `pnpm run verify:secrets` |
 | `Failed to load secrets` | VM identity has **Key Vault Secrets User**; vault URL and secret name match bootstrap |
 | Upload 500 / storage error | `AZURE_STORAGE_ACCOUNT_NAME` in vault JSON; **Storage Blob Data Contributor** on VM |
 | Images 403 / no presign URL | **Storage Blob Delegator** on VM |

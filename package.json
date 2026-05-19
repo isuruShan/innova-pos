@@ -13,10 +13,14 @@
     "build:qr-order-client": "pnpm --filter @qr-order/client run build",
     "admin": "pnpm --filter @admin-portal/server --filter @admin-portal/client --parallel dev",
     "dev": "pnpm --parallel --filter './apps/**' --filter './services/**' dev",
-    "migrate:tenant": "node ./scripts/migrate-add-tenantid.js"
+    "migrate:tenant": "node ./scripts/migrate-add-tenantid.js",
+    "verify:secrets": "node ./scripts/verify-keyvault-env.js"
+  },
+  "dependencies": {
+    "@innovapos/runtime-env": "workspace:*",
+    "dotenv": "^17.4.2"
   },
   "devDependencies": {
-    "dotenv": "^17.4.2",
     "mongoose": "^9.6.1"
   },
   "engines": {
