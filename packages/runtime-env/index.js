@@ -126,8 +126,8 @@ async function loadAzureKeyVaultEnv(options = {}) {
       throw new Error(
         `Key Vault access denied for secret "${secretName}". Assign role "Key Vault Secrets User" ` +
           `to the VM managed identity (or your user for CLI) on vault ${vaultUrl}. ` +
-          `App needs secrets/get, not keys/read. If you saw keys/read, use the Secrets blade or ` +
-          '`az keyvault secret set`, not Keys. Wait 5–10 min after IAM changes.`,
+          'App needs secrets/get, not keys/read. If you saw keys/read, use the Secrets blade or ' +
+          '`az keyvault secret set`, not Keys. Wait 5-10 min after IAM changes.',
         { cause: err },
       );
     }
