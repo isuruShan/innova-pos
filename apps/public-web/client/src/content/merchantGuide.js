@@ -257,45 +257,92 @@ export const GUIDE_SECTIONS = [
     id: 'menu',
     slug: 'menu',
     title: '6. Menu, categories & inventory',
-    summary: 'Categories, items, combos, availability, and stock in the POS manager area.',
+    summary: 'Build categories, configure menu items with prices and images, create combo meals, manage availability, and track inventory with stock alerts.',
     overview:
-      'The menu powers the register grid, kitchen routing, and guest QR menu. Managers maintain categories and items in the POS under Menu (not in the admin portal), keeping pricing close to the people who run service.\n\n' +
-      'Items support categories, prices, optional combos, images, and per-store availability. Mark items unavailable when you are out of stock so cashiers cannot sell what the kitchen cannot make.\n\n' +
-      'Inventory tracking complements the menu with stock levels and supplier records for purchasing discipline—use it when low-stock awareness matters to your operation.',
+      'The menu powers the register grid, kitchen routing, and guest QR menu. Managers maintain categories and items in the POS under Menu (not in the admin portal), keeping pricing close to the people who run service. Menu management is store-scoped—select the correct store in the POS navigation bar before building or editing.\n\n' +
+      'Items support categories, prices, descriptions, multiple images, combo composition, and per-store availability flags. When you run out of an ingredient or discontinue a product temporarily, mark it unavailable so cashiers cannot sell what the kitchen cannot make—the item stays in your catalog for later reactivation.\n\n' +
+      'Inventory tracking complements the menu with stock levels, minimum thresholds, and supplier records for purchasing discipline. Use inventory when low-stock awareness and supplier contact matter to your operation; skip it if you manage stock externally or run a service business with minimal physical goods.',
     prerequisites: [
       'Manager (or merchant admin) access to the POS',
-      'Active store selected in the POS',
-      'Category structure planned (for example drinks, food, retail)',
-      'Price list and any combo rules ready to enter',
+      'Active store selected in the POS navigation bar',
+      'Category structure planned (for example Beverages, Food, Desserts, Retail)',
+      'Price list ready with currency matching branding configuration',
+      'Product images prepared if you use photos on the register or QR menu',
+      'Combo rules decided (which items bundle together and at what price)',
     ],
     steps: [
       {
-        heading: 'Create categories',
+        heading: 'Create and order categories',
         body:
-          'In POS → Menu (manager), add categories that match how you want items grouped on the register and QR menu.\n\n' +
-          'Order categories logically for fast cashier taps during rush periods—popular categories first.',
+          'Open POS → Menu (manager role only) and create categories that match how you want items grouped on the register grid and QR menu. Name each category clearly (for example, Hot Drinks, Cold Drinks, Sandwiches, Salads) so cashiers recognize them instantly during rush.\n\n' +
+          'Reorder categories by dragging or using provided controls—place high-volume categories first so cashiers reach them without scrolling. Categories appear in this order on the register, kitchen display, and guest-facing QR menu.\n\n' +
+          'Avoid too many categories if your menu is small (three to five usually suffices for a café); use more granular categories when you have dozens of products and need segmentation for reporting or kitchen routing. You can rename or delete empty categories later without affecting existing items.',
       },
       {
-        heading: 'Add menu items',
+        heading: 'Add menu items with pricing and descriptions',
         body:
-          'Create items with name, price, category, and optional images. Link combo or modifier behavior as your setup supports.\n\n' +
-          'Set availability per store when the same item differs between locations.',
-        tip: 'Enter prices in the currency configured in branding; mismatched expectations usually mean branding was not set before menu build.',
+          'Click Add item (or similar control in the menu interface), then enter name, price, and category. Name should match what cashiers and guests call the product (for example, Caramel Latte, not CL-001). Price uses the currency configured in Admin → Branding & Settings—if branding shows LKR, enter prices in rupees without symbols.\n\n' +
+          'Add a description if helpful for QR menu guests or training—describe ingredients, allergens, or preparation style (for example, "Espresso with steamed milk and caramel syrup"). Descriptions are optional; many fast-service venues skip them when names are self-explanatory.\n\n' +
+          'Set the item active and available by default. Save the item to make it sellable on the register immediately. Repeat for every product you want on the menu, grouping similar items in the same category as you go.',
+        tip: 'Enter prices in the currency configured in branding; mismatched expectations usually mean branding was not set before menu build. Fix currency in branding first, then rebuild or update menu prices.',
       },
       {
-        heading: 'Manage availability',
+        heading: 'Upload product images',
         body:
-          'Toggle items available or unavailable without deleting them. Unavailable items stay in the catalog for later but disappear from the sellable grid.\n\n' +
-          'Review availability at open and after 86 incidents so the register matches the kitchen.',
+          'Edit any item and upload one or more images. The first image becomes the primary photo shown on the register grid and QR menu; additional images provide alternate views or preparation shots. Use the reorder controls to change which image is primary after uploading multiple.\n\n' +
+          'Images can be uploaded from your device or referenced by URL if you host them elsewhere. The system optimizes uploaded images for web and mobile display (resized and compressed to balance quality and load speed). Test how images look on a cashier tablet and a guest phone before finalizing—very dark or low-contrast photos can be hard to recognize quickly.\n\n' +
+          'Images are optional but strongly recommended for QR ordering where guests browse without staff guidance. Register-only venues can skip images if cashiers know products by name and category.',
+        tip: 'Use well-lit, simple product photos with minimal background clutter—guests should recognize the item in under a second when scrolling the QR menu.',
       },
       {
-        heading: 'Track inventory (optional)',
+        heading: 'Build combo meals',
         body:
-          'Use inventory tools in the manager area to record stock levels and suppliers. Update counts when deliveries arrive or when counts drift.\n\n' +
-          'Inventory supports awareness; it does not replace physical stock checks in the walk-in.',
+          'Create a new menu item and mark it as a combo (toggle or checkbox depending on UI version). Name the combo meal (for example, Breakfast Combo or Family Meal) and set the combo price—this is what the guest pays for the whole bundle.\n\n' +
+          'Add component items by selecting existing menu items and setting quantities. For example, a Breakfast Combo might include 1 Coffee, 1 Croissant, and 1 Orange Juice. The system lists individual item prices for reference so you can verify the combo saves guests money versus ordering separately.\n\n' +
+          'Combo quantities multiply with the ordered amount: if a customer orders 2 Breakfast Combos, the kitchen sees 2 Coffees, 2 Croissants, and 2 Orange Juices. Use combos when you want to move multiple products together at a discount or to simplify ordering (for example, lunch sets, sharing platters, drink + snack bundles).\n\n' +
+          'Combos cannot contain other combos—only standalone items. Choose a category for the combo item itself (for example, Meal Deals) so it appears in a logical spot on the menu.',
+        tip: 'Price combos at least 10–15% below the sum of individual items so guests perceive value—too small a discount and they will skip the combo in favor of customizing their order.',
+      },
+      {
+        heading: 'Set per-store availability',
+        body:
+          'When you operate multiple stores, decide if an item is available at all locations or only specific sites. Edit the item and toggle availability per store (UI may show store checkboxes or a similar mechanism). Items available at no stores are effectively hidden everywhere; items available at some stores appear only on those stores' registers and QR menus.\n\n' +
+          'Use per-store availability when product mix differs by location (for example, one branch sells alcohol and another does not, or a downtown store offers breakfast items a suburban location skips). Guests scanning QR codes at a specific table see only items available at that table's store.\n\n' +
+          'For single-store operators, this setting is always checked for the one store and does not require attention.',
+      },
+      {
+        heading: 'Manage availability and temporary outages',
+        body:
+          'Toggle any item available or unavailable without deleting it. Unavailable items disappear from the sellable register grid and QR menu but stay in your catalog for historical orders and future reactivation. Use unavailable to handle 86 situations (out of stock mid-service), seasonal items (pumpkin spice only in autumn), or test products you are phasing out.\n\n' +
+          'Review availability at the start of every shift—mark items unavailable if you are low on ingredients or the kitchen cannot prepare them today. After restocking or resolving prep issues, toggle items available again so cashiers can sell them. Unavailable items show on the menu management screen with a visual indicator (grayed out or labeled) so managers know what is currently off the board.\n\n' +
+          'Do not delete items that have historical orders—archiving or marking unavailable preserves past sales data and lets you reactivate the product later without recreating it.',
+        tip: 'Train staff to check the menu availability screen before opening and after major prep or delivery events—nothing frustrates guests more than ordering an item that arrives as "sorry, we are out."',
+      },
+      {
+        heading: 'Track inventory with stock levels and suppliers',
+        body:
+          'Open POS → Inventory (manager role) to record items you want to track for stock awareness. Create an inventory record with item name (for example, Whole Milk 1L, Coffee Beans Dark Roast), unit (pieces, liters, kilograms, or custom), current quantity, and minimum threshold.\n\n' +
+          'The minimum threshold triggers a low-stock alert when quantity falls below it—set thresholds based on lead time and daily usage rate (for example, if you use 10 kg of coffee per day and restock weekly, set the threshold to 30 kg so you reorder before running out). The system shows stock status as OK, Low, Critical, or Out of Stock based on how current quantity compares to the threshold.\n\n' +
+          'Assign suppliers to each inventory item for quick contact when reordering. Add supplier name and contact details under POS → Suppliers, then link suppliers to inventory items so you see who to call when an item hits low stock. One item can have multiple suppliers if you source from different vendors.\n\n' +
+          'Inventory tracking does not automatically decrement stock when orders are placed—it is a manual awareness tool. Update quantities when deliveries arrive, when you count stock during inventory audits, or when you notice drift from expected levels.',
+        tip: 'Use inventory for high-value or critical items where running out stops service—milk, coffee beans, proteins, alcohol. Skip inventory for low-cost, easy-to-replace items like napkins or stir sticks unless tracking matters to your cost control.',
+      },
+      {
+        heading: 'Update stock quantities and review alerts',
+        body:
+          'Edit inventory items to adjust current quantity when stock changes. Some UI versions support inline editing—click the quantity, type the new value, and save. Use this after receiving deliveries (add quantity), after audits (correct to actual count), or when you discover shrinkage or spoilage (reduce quantity).\n\n' +
+          'The inventory list shows stock status for every item. Filter by Low or Critical to see what needs attention, then contact the linked suppliers or place orders through your usual process. Items marked Out of Stock should be made unavailable on the menu (if they are sold as standalone menu items) or flagged for combo meals that depend on them.\n\n' +
+          'Run periodic inventory counts (weekly or monthly depending on volume) where you physically verify stock and update system quantities. Discrepancies between expected and actual stock highlight waste, theft, or data entry errors—investigate large variances and adjust processes before the next count.',
+      },
+      {
+        heading: 'Archive or delete old items and categories',
+        body:
+          'When you permanently discontinue a product, mark it unavailable rather than deleting it if it has any historical orders—deletion can break receipt lookups and analytics. If you must delete an item with no order history, remove it from the menu list (usually a delete or archive button on the item row).\n\n' +
+          'Delete or merge categories when your menu structure changes—move items to a new category before deleting the old one so nothing becomes orphaned. Empty categories can be deleted without affecting menu integrity.\n\n' +
+          'For seasonal or test items, use unavailable to hide them off-season and reactivate next year without rebuilding descriptions, images, and pricing from scratch.',
       },
     ],
-    outcome: 'Your menu is categorized, priced, and available per store so cashiers and QR guests order only what you can fulfill.',
+    outcome: 'Your menu is categorized, priced, illustrated with images, and scoped correctly per store. Combo meals bundle products at attractive prices, availability toggles reflect real kitchen capacity, and inventory tracking alerts you to low stock before outages disrupt service.',
   },
   {
     id: 'pos-operations',
