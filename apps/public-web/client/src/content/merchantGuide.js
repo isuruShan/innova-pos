@@ -306,8 +306,8 @@ export const GUIDE_SECTIONS = [
       {
         heading: 'Set per-store availability',
         body:
-          'When you operate multiple stores, decide if an item is available at all locations or only specific sites. Edit the item and toggle availability per store (UI may show store checkboxes or a similar mechanism). Items available at no stores are effectively hidden everywhere; items available at some stores appear only on those stores' registers and QR menus.\n\n' +
-          'Use per-store availability when product mix differs by location (for example, one branch sells alcohol and another does not, or a downtown store offers breakfast items a suburban location skips). Guests scanning QR codes at a specific table see only items available at that table's store.\n\n' +
+          'When you operate multiple stores, decide if an item is available at all locations or only specific sites. Edit the item and toggle availability per store (UI may show store checkboxes or a similar mechanism). Items available at no stores are effectively hidden everywhere; items available at some stores appear only on those stores\' registers and QR menus.\n\n' +
+          'Use per-store availability when product mix differs by location (for example, one branch sells alcohol and another does not, or a downtown store offers breakfast items a suburban location skips). Guests scanning QR codes at a specific table see only items available at that table\'s store.\n\n' +
           'For single-store operators, this setting is always checked for the one store and does not require attention.',
       },
       {
