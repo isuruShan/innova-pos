@@ -16,6 +16,23 @@ export default function SignupPage() {
   const [countryIso, setCountryIso] = useState(DEFAULT_COUNTRY_CODE);
   const [nationalDigits, setNationalDigits] = useState('');
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '' });
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem('signup_personal');
+    if (!stored) return;
+    try {
+      const p = JSON.parse(stored);
+      setForm({
+        firstName: p.firstName || '',
+        lastName: p.lastName || '',
+        email: p.email || '',
+      });
+      if (p.countryIso) setCountryIso(p.countryIso);
+      if (p.mobileNational) setNationalDigits(p.mobileNational);
+    } catch {
+      /* ignore corrupt session */
+    }
+  }, []);
   const [errors, setErrors] = useState({});
   const [checking, setChecking] = useState(false);
 
@@ -109,8 +126,8 @@ export default function SignupPage() {
     if (errors[k]) setErrors((e) => ({ ...e, [k]: '' }));
   };
 
-  const firstAttrs = fieldAttrs('personName');
-  const lastAttrs = { ...fieldAttrs('personName'), autoComplete: 'family-name' };
+  const firstAttrs = fieldAttrs('firstName');
+  const lastAttrs = fieldAttrs('lastName');
   const emailAttrs = fieldAttrs('email');
   const mobileAttrs = fieldAttrs('mobile', { countryIso });
 

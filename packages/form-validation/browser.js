@@ -36,10 +36,12 @@ export const LIMITS = {
 };
 
 export const PLACEHOLDERS = {
-  personName: 'e.g. John Silva',
-  staffName: 'e.g. Sarah Smith',
+  firstName: 'e.g. John',
+  lastName: 'e.g. Doe',
+  personName: 'e.g. John Doe',
+  staffName: 'e.g. John Doe',
   businessName: 'e.g. The Coffee Corner',
-  ownerName: 'e.g. Jane Perera',
+  ownerName: 'e.g. John Doe',
   email: 'e.g. name@yourbusiness.com',
   password: 'At least 8 characters',
   passwordNew: 'Enter new password',
@@ -47,8 +49,8 @@ export const PLACEHOLDERS = {
   mobileGeneric: 'National number without country code',
   addressLine1: 'Building name and street',
   addressLine2: 'Suite, unit, or floor (optional)',
-  city: 'e.g. Colombo',
-  state: 'e.g. Western Province',
+  city: 'e.g. Austin',
+  state: 'e.g. Texas',
   postalCode: 'e.g. 00100',
   country: 'e.g. Sri Lanka',
   storeName: 'e.g. Main Street branch',
@@ -277,6 +279,10 @@ export function fieldAttrs(type, options = {}) {
   const { countryIso = 'LK' } = options;
   const base = { maxLength: undefined, placeholder: '', inputMode: undefined, autoComplete: undefined };
   switch (type) {
+    case 'firstName':
+      return { ...base, maxLength: LIMITS.personName, placeholder: PLACEHOLDERS.firstName, autoComplete: 'given-name' };
+    case 'lastName':
+      return { ...base, maxLength: LIMITS.personName, placeholder: PLACEHOLDERS.lastName, autoComplete: 'family-name' };
     case 'personName':
       return { ...base, maxLength: LIMITS.personName, placeholder: PLACEHOLDERS.personName, autoComplete: 'given-name' };
     case 'staffName':

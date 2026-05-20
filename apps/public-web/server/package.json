@@ -13,6 +13,7 @@
     "@innovapos/runtime-env": "workspace:*",
     "@innovapos/logger": "workspace:*",
     "@innovapos/mail-transport": "workspace:*",
+    "@innovapos/platform-contact": "workspace:*",
     "@innovapos/form-validation": "workspace:*",
     "@innovapos/shared-middleware": "workspace:*",
     "dotenv": "^17.4.2",

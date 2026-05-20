@@ -89,6 +89,7 @@ app.use('/api/subscriptions/checkout', require('./routes/subscriptionCheckout'))
 app.use('/api/subscriptions',   require('./routes/subscriptions'));
 app.use('/api/plans',           require('./routes/plans'));
 app.use('/api/platform-payments', require('./routes/platform-payments'));
+app.use('/api/platform-contact', require('./routes/platformContact'));
 app.use('/api/tenant-settings', require('./routes/tenantSettings'));
 app.use('/api/users',           require('./routes/users'));
 app.use('/api/stores',          require('./routes/stores'));

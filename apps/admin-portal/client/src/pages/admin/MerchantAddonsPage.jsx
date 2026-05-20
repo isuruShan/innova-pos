@@ -30,6 +30,7 @@ export default function MerchantAddonsPage() {
   const [selectedAddon, setSelectedAddon] = useState(null);
   /** 'review' | 'method' | 'pay' */
   const [flowStep, setFlowStep] = useState(null);
+  const [viewOnly, setViewOnly] = useState(false);
   const [chosenMethod, setChosenMethod] = useState(null);
 
   const [addonForm, setAddonForm] = useState({ bankReference: '', bankName: '', paymentDate: '', notes: '' });
@@ -112,6 +113,7 @@ export default function MerchantAddonsPage() {
   const closeFlow = useCallback(() => {
     setSelectedAddon(null);
     setFlowStep(null);
+    setViewOnly(false);
     setChosenMethod(null);
     setAddonForm({ bankReference: '', bankName: '', paymentDate: '', notes: '' });
     setAddonFile(null);
@@ -123,19 +125,24 @@ export default function MerchantAddonsPage() {
     }, { replace: true });
   }, [setSearchParams]);
 
-  const openAddon = useCallback((row) => {
+  const openAddon = useCallback((row, { readOnly = false } = {}) => {
     setAddonApiError('');
     setSelectedAddon(row);
     setFlowStep('review');
+    setViewOnly(readOnly);
     setChosenMethod(null);
   }, []);
+
+  const openViewAddon = useCallback((row) => openAddon(row, { readOnly: true }), [openAddon]);
 
   useEffect(() => {
     const code = String(searchParams.get('code') || '').trim().toLowerCase();
     if (!code || !catalog.length) return;
     const row = catalog.find((a) => a.code === code);
-    if (row && row.canSubscribe) openAddon(row);
-  }, [searchParams, catalog, openAddon]);
+    if (!row) return;
+    if (row.canSubscribe) openAddon(row);
+    else if (row.alreadyActive || row.pendingVerification) openViewAddon(row);
+  }, [searchParams, catalog, openAddon, openViewAddon]);
 
   const paypalCurrency = useMemo(
     () => selectedAddon?.priced?.currency || 'USD',
@@ -254,6 +261,7 @@ export default function MerchantAddonsPage() {
         isLoading={catalogPending}
         variant="list"
         onReview={openAddon}
+        onView={openViewAddon}
         onUnsubscribe={handleUnsubscribe}
         unsubscribePending={unsubscribeMutation.isPending}
         unsubscribingCode={unsubscribingCode}
@@ -302,7 +310,15 @@ export default function MerchantAddonsPage() {
                   </p>
                   <p className="text-xs text-gray-500 mt-1">{selectedAddon.billingLabel}</p>
                 </div>
-                {methodOptions.length === 0 ? (
+                {viewOnly ? (
+                  <button
+                    type="button"
+                    onClick={closeFlow}
+                    className="w-full py-3 rounded-xl border border-gray-300 text-gray-800 text-sm font-semibold hover:bg-gray-50"
+                  >
+                    Close
+                  </button>
+                ) : methodOptions.length === 0 ? (
                   <div className="flex items-start gap-2 text-amber-800 text-sm bg-amber-50 border border-amber-200 rounded-lg p-3">
                     <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                     <span>No payment methods are enabled yet. Ask your platform administrator to configure PayPal, bank accounts, or Stripe.</span>

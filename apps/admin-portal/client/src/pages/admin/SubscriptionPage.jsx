@@ -263,6 +263,7 @@ export default function SubscriptionPage() {
           variant="tiles"
           linkToAddonsPage={false}
           onReview={(row) => navigate(`/addons?code=${encodeURIComponent(row.code)}`)}
+          onView={(row) => navigate(`/addons?code=${encodeURIComponent(row.code)}`)}
           onUnsubscribe={handleAddonUnsubscribe}
           unsubscribePending={unsubscribeMutation.isPending}
           unsubscribingCode={unsubscribingCode}

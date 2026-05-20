@@ -39,7 +39,33 @@ export default function SignupBusinessPage() {
       return;
     }
     setPersonal(p);
+    const bizStored = sessionStorage.getItem('signup_business');
+    if (bizStored) {
+      try {
+        const b = JSON.parse(bizStored);
+        setForm((f) => ({
+          ...f,
+          businessName: b.businessName ?? f.businessName,
+          ownerName: b.ownerName ?? f.ownerName,
+          street1: b.street1 ?? f.street1,
+          street2: b.street2 ?? f.street2,
+          zipCode: b.zipCode ?? f.zipCode,
+          city: b.city ?? f.city,
+          state: b.state ?? f.state,
+          businessCountry: b.businessCountry ?? f.businessCountry,
+          isRegistered: Boolean(b.isRegistered),
+          registrationNumber: b.registrationNumber ?? f.registrationNumber,
+        }));
+      } catch {
+        /* ignore */
+      }
+    }
   }, [navigate]);
+
+  useEffect(() => {
+    if (!personal) return;
+    sessionStorage.setItem('signup_business', JSON.stringify(form));
+  }, [form, personal]);
 
   const set =
     (k) =>
@@ -111,6 +137,7 @@ export default function SignupBusinessPage() {
       await api.post('/applications', fd);
 
       sessionStorage.removeItem('signup_personal');
+      sessionStorage.removeItem('signup_business');
       navigate('/signup/complete');
     } catch (err) {
       const msg = err.response?.data?.message || 'Something went wrong. Please try again.';

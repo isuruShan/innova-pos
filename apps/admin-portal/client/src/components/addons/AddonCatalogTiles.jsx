@@ -21,6 +21,7 @@ function formatPeriodEnd(iso) {
  * @param {Array} props.catalog
  * @param {boolean} [props.isLoading]
  * @param {(row: object) => void} [props.onReview]
+ * @param {(row: object) => void} [props.onView]
  * @param {(row: object) => void} [props.onUnsubscribe]
  * @param {boolean} [props.unsubscribePending]
  * @param {string} [props.unsubscribingCode]
@@ -29,41 +30,69 @@ function formatPeriodEnd(iso) {
 export function AddonActionButton({
   row,
   onReview,
+  onView,
   onUnsubscribe,
   unsubscribePending,
   unsubscribingCode,
 }) {
   const busy = unsubscribePending && unsubscribingCode === row.code;
 
-  if (row.pendingVerification) {
-    return (
-      <button
-        type="button"
-        disabled
-        className="px-4 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 text-sm font-semibold cursor-not-allowed inline-flex items-center gap-1.5"
-      >
-        <Clock size={15} /> Pending approval
-      </button>
-    );
-  }
-
   if (row.alreadyActive) {
     if (row.cancelScheduled) {
       return (
-        <p className="text-xs text-gray-600 text-right max-w-[200px]">
-          Active until <strong>{formatPeriodEnd(row.periodEndsAt)}</strong>
-        </p>
+        <div className="flex flex-col items-stretch sm:items-end gap-2">
+          <p className="text-xs text-gray-600 text-right max-w-[200px]">
+            Active until <strong>{formatPeriodEnd(row.periodEndsAt)}</strong>
+          </p>
+          <button
+            type="button"
+            onClick={() => onView?.(row)}
+            className="px-4 py-2 rounded-lg border border-gray-300 text-gray-800 hover:bg-gray-50 text-sm font-semibold"
+          >
+            View
+          </button>
+        </div>
       );
     }
     return (
-      <button
-        type="button"
-        onClick={() => onUnsubscribe?.(row)}
-        disabled={busy || !row.canUnsubscribe}
-        className="px-4 py-2 rounded-lg border border-red-200 text-red-700 hover:bg-red-50 text-sm font-semibold disabled:opacity-50"
-      >
-        {busy ? 'Scheduling…' : 'Unsubscribe'}
-      </button>
+      <div className="flex flex-wrap gap-2 justify-end">
+        <button
+          type="button"
+          onClick={() => onView?.(row)}
+          className="px-4 py-2 rounded-lg border border-gray-300 text-gray-800 hover:bg-gray-50 text-sm font-semibold"
+        >
+          View
+        </button>
+        <button
+          type="button"
+          onClick={() => onUnsubscribe?.(row)}
+          disabled={busy || !row.canUnsubscribe}
+          className="px-4 py-2 rounded-lg border border-red-200 text-red-700 hover:bg-red-50 text-sm font-semibold disabled:opacity-50"
+        >
+          {busy ? 'Scheduling…' : 'Unsubscribe'}
+        </button>
+      </div>
+    );
+  }
+
+  if (row.pendingVerification) {
+    return (
+      <div className="flex flex-wrap gap-2 justify-end">
+        <button
+          type="button"
+          onClick={() => onView?.(row)}
+          className="px-4 py-2 rounded-lg border border-gray-300 text-gray-800 hover:bg-gray-50 text-sm font-semibold"
+        >
+          View
+        </button>
+        <button
+          type="button"
+          disabled
+          className="px-4 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 text-sm font-semibold cursor-not-allowed inline-flex items-center gap-1.5"
+        >
+          <Clock size={15} /> Pending approval
+        </button>
+      </div>
     );
   }
 
@@ -86,6 +115,7 @@ export default function AddonCatalogTiles({
   catalog = [],
   isLoading = false,
   onReview,
+  onView,
   onUnsubscribe,
   unsubscribePending = false,
   unsubscribingCode = '',
@@ -166,6 +196,7 @@ export default function AddonCatalogTiles({
                   <AddonActionButton
                     row={row}
                     onReview={onReview}
+                    onView={onView}
                     onUnsubscribe={onUnsubscribe}
                     unsubscribePending={unsubscribePending}
                     unsubscribingCode={unsubscribingCode}
@@ -209,6 +240,7 @@ export default function AddonCatalogTiles({
                   <AddonActionButton
                     row={row}
                     onReview={onReview}
+                    onView={onView}
                     onUnsubscribe={onUnsubscribe}
                     unsubscribePending={unsubscribePending}
                     unsubscribingCode={unsubscribingCode}

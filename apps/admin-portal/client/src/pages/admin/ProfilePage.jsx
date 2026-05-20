@@ -4,9 +4,10 @@ import { Save, Loader, CheckCircle, AlertTriangle } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { fieldAttrs, validatePersonName, validatePassword } from '../../utils/formFields';
+import PlatformContactSection from '../../components/profile/PlatformContactSection';
 
 export default function ProfilePage() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, isSuperAdmin } = useAuth();
   const mustChange = Boolean(user?.isTemporaryPassword);
 
   const [nameForm, setNameForm] = useState({ name: '' });
@@ -75,7 +76,7 @@ export default function ProfilePage() {
     'w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange';
 
   return (
-    <div className="max-w-xl space-y-6">
+    <div className={`space-y-6 ${isSuperAdmin ? 'max-w-3xl' : 'max-w-xl'}`}>
       <div>
         <h2 className="text-xl font-bold text-gray-900">My Profile</h2>
         <p className="text-sm text-gray-500 mt-0.5">Manage your account settings</p>
@@ -228,6 +229,8 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {isSuperAdmin && <PlatformContactSection />}
     </div>
   );
 }

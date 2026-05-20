@@ -1,0 +1,10 @@
+{
+  "name": "@innovapos/platform-contact",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.js",
+  "type": "commonjs",
+  "dependencies": {
+    "ioredis": "^5.6.1"
+  }
+}

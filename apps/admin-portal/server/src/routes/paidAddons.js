@@ -1,16 +1,29 @@
 'use strict';
 
 const express = require('express');
+const multer = require('multer');
+const axios = require('axios');
+const FormData = require('form-data');
 const PaidAddonDefinition = require('../models/PaidAddonDefinition');
 const Tenant = require('../models/Tenant');
-const { authenticateJWT, authorize, sendRouteError } = require('@innovapos/shared-middleware');
+const { authenticateJWT, authorize, sendRouteError, resolveUploadProxyTimeoutMs } = require('@innovapos/shared-middleware');
 const { ensureDefaultPaidAddons, priceAddonForPlan, getAddonByCode } = require('../lib/addonBilling');
 const SubscriptionPlan = require('../models/SubscriptionPlan');
 const { tenantPlanAudience } = require('../utils/planAudience');
 const { applyQrOrderingExpiryIfNeeded } = require('../lib/addonPeriod');
 const { getAddonMerchantState } = require('../lib/addonMerchantState');
+const { resolveMediaUrls } = require('../lib/resolveMediaUrls');
 
 const router = express.Router();
+
+const screenshotUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ok = ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype);
+    cb(ok ? null : new Error('Only JPEG, PNG, or WebP images allowed'), ok);
+  },
+});
 
 /** Resolve plan document used to price add-ons for this tenant (same rules as GET /quote/:code). */
 async function resolvePlanForTenantAddons(tenant) {
@@ -34,12 +47,13 @@ async function resolvePlanForTenantAddons(tenant) {
 async function buildCatalogRow(tenant, addon, plan, billingLabel) {
   const priced = priceAddonForPlan(addon, plan);
   const state = await getAddonMerchantState(tenant, addon.code);
+  const screenshotUrls = await resolveMediaUrls(addon.screenshotUrls || []);
   return {
     code: addon.code,
     name: addon.name,
     shortDescription: addon.shortDescription,
     longDescription: addon.longDescription,
-    screenshotUrls: addon.screenshotUrls || [],
+    screenshotUrls,
     priced,
     billingLabel,
     plan: plan ? { name: plan.name, billingCycle: plan.billingCycle, code: plan.code } : null,
@@ -114,11 +128,61 @@ router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {
     await ensureDefaultPaidAddons();
     const rows = await PaidAddonDefinition.find().sort({ sortOrder: 1, name: 1 }).lean();
-    res.json(rows);
+    const enriched = await Promise.all(
+      rows.map(async (row) => ({
+        ...row,
+        screenshotUrls: row.screenshotUrls || [],
+        screenshotPreviewUrls: await resolveMediaUrls(row.screenshotUrls || []),
+      })),
+    );
+    res.json(enriched);
   } catch (err) {
     sendRouteError(res, err, { req });
   }
 });
+
+router.post(
+  '/:code/screenshots',
+  authenticateJWT,
+  authorize('superadmin'),
+  screenshotUpload.single('screenshot'),
+  async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+      const code = String(req.params.code || '').trim().toLowerCase();
+      let doc = await PaidAddonDefinition.findOne({ code });
+      if (!doc) return res.status(404).json({ message: 'Add-on not found' });
+
+      const form = new FormData();
+      form.append('file', req.file.buffer, {
+        filename: req.file.originalname || 'addon-screenshot.webp',
+        contentType: req.file.mimetype,
+      });
+      form.append('type', 'addon-screenshot');
+      const uploadRes = await axios.post(
+        `${process.env.UPLOAD_SERVICE_URL || 'http://localhost:3002'}/upload`,
+        form,
+        {
+          headers: { ...form.getHeaders(), Authorization: req.headers.authorization },
+          timeout: resolveUploadProxyTimeoutMs(),
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
+        },
+      );
+      const key = uploadRes.data?.key;
+      if (!key) return res.status(500).json({ message: 'Upload did not return a file key' });
+
+      doc.screenshotUrls = [...(doc.screenshotUrls || []), key];
+      doc.updatedBy = req.user.id;
+      await doc.save();
+
+      const url = (await resolveMediaUrls([key]))[0] || '';
+      res.json({ key, url, screenshotUrls: doc.screenshotUrls });
+    } catch (err) {
+      sendRouteError(res, err, { req });
+    }
+  },
+);
 
 router.put('/:code', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {
@@ -186,7 +250,7 @@ router.get('/quote/:code', authenticateJWT, authorize('merchant_admin'), async (
         name: addon.name,
         shortDescription: addon.shortDescription,
         longDescription: addon.longDescription,
-        screenshotUrls: addon.screenshotUrls || [],
+        screenshotUrls: await resolveMediaUrls(addon.screenshotUrls || []),
       },
       priced,
       billingLabel,

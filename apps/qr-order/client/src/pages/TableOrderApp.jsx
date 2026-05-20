@@ -313,6 +313,12 @@ export default function TableOrderApp() {
     return `${currencySymbol}${x.toFixed(2)}`;
   };
 
+  const showToast = (text, ms = 2200) => {
+    setMsg(text);
+    const t = setTimeout(() => setMsg(''), ms);
+    return () => clearTimeout(t);
+  };
+
   const addOne = (item) => {
     setCart((prev) => {
       const id = String(item._id);
@@ -322,10 +328,10 @@ export default function TableOrderApp() {
       }
       return [...prev, { menuItem: id, name: item.name, price: item.price, qty: 1 }];
     });
+    showToast(`Added ${item.name} to cart`);
   };
 
   const changeQty = (menuItemId, delta) => {
-    if (delta < 0 && order) return;
     setCart((prev) =>
       prev
         .map((x) => (x.menuItem === menuItemId ? { ...x, qty: x.qty + delta } : x))
@@ -334,7 +340,6 @@ export default function TableOrderApp() {
   };
 
   const removeLine = (menuItemId) => {
-    if (order) return;
     setCart((prev) => prev.filter((x) => x.menuItem !== menuItemId));
   };
 
@@ -606,14 +611,9 @@ export default function TableOrderApp() {
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
-                          disabled={!!order}
-                          title={
-                            order
-                              ? 'Confirmed orders cannot be changed from this page. Ask staff if you need a change.'
-                              : undefined
-                          }
-                          className="p-1.5 rounded-lg border border-slate-600 text-slate-200 disabled:opacity-35 disabled:cursor-not-allowed"
+                          className="p-1.5 rounded-lg border border-slate-600 text-slate-200"
                           onClick={() => changeQty(c.menuItem, -1)}
+                          aria-label="Decrease quantity"
                         >
                           <Minus size={16} />
                         </button>
@@ -627,9 +627,8 @@ export default function TableOrderApp() {
                         </button>
                         <button
                           type="button"
-                          disabled={!!order}
-                          title={order ? 'Cannot remove lines after order is placed.' : 'Remove from cart'}
-                          className="p-1.5 rounded-lg border border-red-500/50 text-red-400 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                          title="Remove from cart"
+                          className="p-1.5 rounded-lg border border-red-500/50 text-red-400 hover:bg-red-500/10"
                           onClick={() => removeLine(c.menuItem)}
                           aria-label="Remove line"
                         >

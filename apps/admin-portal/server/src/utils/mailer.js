@@ -1,13 +1,16 @@
 const { getMailTransporter, getMailConfigurationIssue } = require('@innovapos/mail-transport');
+const { getPlatformContact, wrapEmailHtml } = require('@innovapos/platform-contact');
 
 const sendEmail = async ({ to, subject, html }) => {
   if (!to) return;
+  const contact = await getPlatformContact().catch(() => null);
+  const wrapped = wrapEmailHtml(html, contact);
   const t = getMailTransporter();
   await t.sendMail({
     from: `Cafinity <${process.env.EMAIL_FROM || 'innovasolutionslk@gmail.com'}>`,
     to,
     subject,
-    html,
+    html: wrapped,
   });
 };
 
@@ -16,7 +19,6 @@ const sendWelcomeEmail = async ({ to, name, tempPassword, loginUrl }) => {
     to,
     subject: 'Welcome to Cafinity — Your account is ready',
     html: `
-      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
         <div style="background:#1a1a2e;padding:32px;border-radius:12px 12px 0 0;text-align:center">
           <h1 style="color:#ffffff;font-size:24px;margin:0">Welcome to Cafinity!</h1>
         </div>
@@ -37,10 +39,7 @@ const sendWelcomeEmail = async ({ to, name, tempPassword, loginUrl }) => {
           <a href="${loginUrl}" style="display:inline-block;background:#e94560;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:12px">
             Access your admin portal
           </a>
-
-          <p style="color:#9ca3af;font-size:12px;margin-top:32px">Cafinity</p>
         </div>
-      </div>
     `,
   });
 };
@@ -50,7 +49,6 @@ const sendRejectionEmail = async ({ to, name, reason }) => {
     to,
     subject: 'Update on your Cafinity application',
     html: `
-      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
         <div style="background:#1a1a2e;padding:32px;border-radius:12px 12px 0 0;text-align:center">
           <h1 style="color:#ffffff;font-size:24px;margin:0">Application Update</h1>
         </div>
@@ -63,13 +61,8 @@ const sendRejectionEmail = async ({ to, name, reason }) => {
             <p style="margin:0;color:#1f2937">${reason}</p>
           </div>
 
-          <p>If you believe this is an error or would like to re-apply with updated information, please contact us at
-            <a href="mailto:innovasolutionslk@gmail.com" style="color:#e94560">innovasolutionslk@gmail.com</a>.
-          </p>
-
-          <p style="color:#9ca3af;font-size:12px;margin-top:32px">Cafinity</p>
+          <p>If you believe this is an error or would like to re-apply with updated information, please contact us.</p>
         </div>
-      </div>
     `,
   });
 };
@@ -79,12 +72,10 @@ const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
     to,
     subject: 'Cafinity password reset request',
     html: `
-      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
         <h2 style="color:#1a1a2e">Reset your password</h2>
         <p>Hi ${name || 'there'},</p>
         <p>Use this link to reset your password. It expires in 30 minutes.</p>
         <p><a href="${resetUrl}" style="display:inline-block;background:#e94560;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Reset Password</a></p>
-      </div>
     `,
   });
 };
