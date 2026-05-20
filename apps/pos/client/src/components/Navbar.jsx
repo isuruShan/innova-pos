@@ -5,10 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { LogOut, UserCircle, Settings, Store, ChevronDown, Check } from 'lucide-react';
 import ProfileSlideOver, { AvatarDisplay } from './ProfileSlideOver';
 import { useStoreContext, normalizeStoreId } from '../context/StoreContext';
-import { useBranding, LIGHT_THEME_ACCENT_HEX, LIGHT_THEME_SIDEBAR_HEX } from '../context/BrandingContext';
-import { useTheme } from '../context/ThemeContext';
+import { useBranding } from '../context/BrandingContext';
 import { navActiveLinkTextColor, tintedRowTextColor } from '../utils/colorContrast';
-import ThemeToggle from './ThemeToggle';
 import NotificationBell from './NotificationBell';
 import CashierSessionNavButton from './cashier/CashierSessionNavButton';
 import OfflineBanner from './OfflineBanner';
@@ -114,18 +112,12 @@ export function AvatarMenu({ user, onLogout }) {
 }
 
 function StoreSwitcher({ stores, selectedStoreId, selectStore }) {
-  const { theme } = useTheme();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
   const storeListActiveFg = useMemo(
-    () =>
-      tintedRowTextColor(
-        '#f59e0b',
-        theme === 'light' ? LIGHT_THEME_SIDEBAR_HEX : '#151f2e',
-        0.15,
-      ),
-    [theme],
+    () => tintedRowTextColor('#f59e0b', '#151f2e', 0.15),
+    [],
   );
 
   useEffect(() => {
@@ -328,14 +320,11 @@ export default function Navbar({ links = [], groups: groupsProp }) {
   const { user, logout } = useAuth();
   const { stores, selectedStoreId, selectStore } = useStoreContext();
   const branding = useBranding();
-  const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const accentResolved =
-    theme === 'light' ? LIGHT_THEME_ACCENT_HEX : branding.accentColor || '#e94560';
-  const sidebarResolved =
-    theme === 'light' ? LIGHT_THEME_SIDEBAR_HEX : branding.sidebarColor || '#16213e';
+  const accentResolved = branding.accentColor || '#e94560';
+  const sidebarResolved = branding.sidebarColor || '#16213e';
 
   const navTabActiveFg = useMemo(
     () => navActiveLinkTextColor(accentResolved, sidebarResolved, 0.22),
@@ -418,7 +407,6 @@ export default function Navbar({ links = [], groups: groupsProp }) {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        <ThemeToggle />
         {user?.tenantId ? (
           <div className="flex items-center shrink-0 z-[60]">
             <NotificationBell />

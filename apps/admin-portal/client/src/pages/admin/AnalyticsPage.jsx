@@ -87,13 +87,34 @@ export default function AnalyticsPage() {
     refetchInterval: 30_000,
   });
 
+  const { data: orderVolume, isPending: volumePending } = useQuery({
+    queryKey: ['analytics-order-volume', selectedStoreId, dateFrom, dateTo],
+    queryFn: () => api.get('/analytics/order-volume', { params: { from: dateFrom, to: dateTo }, headers: { 'x-store-id': selectedStoreId } }).then((r) => r.data),
+    enabled: storeReady && Boolean(dateFrom && dateTo && !rangeInvalid),
+    refetchInterval: 30_000,
+  });
+
+  const { data: topItemsData, isPending: topItemsPending } = useQuery({
+    queryKey: ['analytics-top-items', selectedStoreId, dateFrom, dateTo],
+    queryFn: () => api.get('/analytics/top-items', { params: { from: dateFrom, to: dateTo, limit: 10 }, headers: { 'x-store-id': selectedStoreId } }).then((r) => r.data),
+    enabled: storeReady && Boolean(dateFrom && dateTo && !rangeInvalid),
+    refetchInterval: 30_000,
+  });
+
+  const { data: anlyStatus } = useQuery({
+    queryKey: ['analytics-status'],
+    queryFn: () => api.get('/analytics/status').then((r) => r.data),
+    staleTime: 60_000,
+  });
+
+  /** Recent orders: live transactional data (not anly aggregates). */
   const { data: recentOrders = [], isPending: recentPending } = useQuery({
-    queryKey: ['analytics-recent', selectedStoreId, dateFrom, dateTo],
+    queryKey: ['analytics-recent', selectedStoreId],
     queryFn: () => api.get('/orders', {
-      params: { since: `${dateFrom}T00:00:00.000`, until: `${dateTo}T23:59:59.999`, limit: 10 },
+      params: { limit: 10 },
       headers: { 'x-store-id': selectedStoreId },
     }).then((r) => r.data),
-    enabled: storeReady && Boolean(dateFrom && dateTo && !rangeInvalid),
+    enabled: storeReady,
     refetchInterval: 30_000,
   });
 
@@ -114,7 +135,14 @@ export default function AnalyticsPage() {
     return dailyData.reduce((best, d) => (d.revenue > best.revenue ? d : best), dailyData[0]);
   }, [dailyData]);
 
-  const loading = !storeReady || (!rangeInvalid && (salesPending || recentPending));
+  const volumeDaily = orderVolume?.daily?.map((d) => ({
+    ...d,
+    label: formatDate(d.date + 'T00:00:00'),
+  })) || [];
+
+  const topItems = topItemsData?.topItems || [];
+
+  const loading = !storeReady || (!rangeInvalid && (salesPending || volumePending || topItemsPending || recentPending));
   const selectedStore = stores.find((s) => s._id === selectedStoreId);
 
   return (
@@ -122,6 +150,13 @@ export default function AnalyticsPage() {
       <div>
         <h2 className="text-xl font-bold text-gray-900">Analytics</h2>
         <p className="text-sm text-gray-500 mt-0.5">Sales performance for the selected store and date range.</p>
+        {anlyStatus?.enabled && anlyStatus?.intervalMs ? (
+          <p className="text-xs text-gray-400 mt-1">
+            Order volume and top sellers refresh every {Math.round(anlyStatus.intervalMs / 60000)} min
+            {anlyStatus.lastRunAt ? ` (last sync ${formatTime(anlyStatus.lastRunAt)})` : ''}.
+            Today&apos;s figures are live; earlier days use pre-aggregated data.
+          </p>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -221,7 +256,20 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="font-semibold text-gray-900 mb-1">Daily order volume</h3>
+              <p className="text-xs text-gray-500 mb-4">Completed orders per day (pre-aggregated; today is live)</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={volumeDaily}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="orders" fill="#38bdf8" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
             <div className="bg-white rounded-xl border border-gray-200 p-5">
               <h3 className="font-semibold text-gray-900 mb-3">Promotion impact</h3>
               {sortedPromos.length ? (
@@ -237,8 +285,41 @@ export default function AnalyticsPage() {
                 <p className="text-sm text-gray-500">No promotion discounts in this period.</p>
               )}
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h3 className="font-semibold text-gray-900 mb-3">Recent orders</h3>
+              <h3 className="font-semibold text-gray-900 mb-4">Top selling items</h3>
+              {topItems.length > 0 ? (
+                <div className="space-y-3">
+                  {topItems.slice(0, 8).map((item, i) => (
+                    <div key={item.menuItemId || item.name} className="flex items-center gap-3">
+                      <span className="text-xs font-bold text-gray-400 w-4">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-gray-800 truncate">{item.name}</span>
+                          <span className="text-xs text-gray-500 ml-2 shrink-0">{item.qty} sold</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-brand-orange rounded-full"
+                            style={{ width: `${Math.min(100, (item.qty / topItems[0].qty) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <span className="text-xs font-semibold text-gray-700 w-20 text-right tabular-nums">
+                        {formatCurrency(item.revenue)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-12">No sales data in this period</p>
+              )}
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h3 className="font-semibold text-gray-900 mb-1">Recent orders</h3>
+              <p className="text-xs text-gray-500 mb-3">Live from transactional data</p>
               <div className="space-y-2 text-sm">
                 {recentOrders.map((o) => (
                   <div key={o._id} className="flex items-center gap-2 border-b border-gray-50 pb-2">
@@ -247,7 +328,7 @@ export default function AnalyticsPage() {
                     <span className="text-xs text-gray-400">{formatTime(o.createdAt)}</span>
                   </div>
                 ))}
-                {!recentOrders.length && <p className="text-gray-500 text-center py-6">No orders in range</p>}
+                {!recentOrders.length && <p className="text-gray-500 text-center py-6">No orders yet</p>}
               </div>
             </div>
           </div>

@@ -2,7 +2,7 @@
 
 Complete list of environment variables for all applications in the monorepo.
 
-**Last updated:** 2026-05-19
+**Last updated:** 2026-05-20
 
 ---
 
@@ -189,9 +189,17 @@ Set in `deploy.env` or `apps/pos/client/.env.production` before `pnpm --filter @
 | `PAYPAL_CLIENT_ID`                         | Optional      |                                |
 | `PAYPAL_CLIENT_SECRET`                     | Optional      |                                |
 | `CORS_ORIGIN`                              | Production    |                                |
+| **Analytics ETL (`anly_*` collections)**   |               |                                |
+| `ANLY_SYNC_ENABLED`                        | No            | Default `true` — periodic sync from `orders` to `anly_*` |
+| `ANLY_SYNC_INTERVAL_MS`                    | No            | Default `300000` (5 min) — lower for fresher aggregates (e.g. `60000`) |
+| `ANLY_BACKFILL_DAYS`                       | No            | Default `90` — initial historical backfill per tenant on first run |
+| `ANLY_SYNC_BATCH_SIZE`                     | No            | Default `2000` — max completed orders processed per tenant per tick |
+| `ANLY_SYNC_LEADER`                         | No            | Default `true` — set `false` on secondary admin-server instances to avoid duplicate ETL |
 
 
 **Example:** `apps/admin-portal/server/.env.example`
+
+**Analytics collections (Mongo, same DB as `MONGO_URI`):** `anly_sync_state`, `anly_daily_store_metrics`, `anly_item_sales_daily`, `anly_processed_orders`. Populated by admin-server ETL; read via `GET /api/analytics/order-volume` and `GET /api/analytics/top-items`. Recent orders stay on transactional `orders`.
 
 ---
 

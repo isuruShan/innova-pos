@@ -28,6 +28,7 @@ const { sendEmail } = require('./utils/mailer');
 const { notifySuperAdmins, notifyMerchantAdmins } = require('./lib/notificationHelpers');
 const { applyDuePendingPlanSwitches } = require('./lib/subscriptionActivation');
 const { processLoyaltyRetentionPeriods } = require('./lib/processLoyaltyRetention');
+const { startAnlySyncScheduler } = require('./jobs/anlySync');
 
 const app = express();
 const logger = createLogger('admin-portal-server');
@@ -102,6 +103,7 @@ app.use('/api/promotions', require('./routes/promotions'));
 app.use('/api/menu', require('./routes/menu'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/orders', require('./routes/orders'));
 
 app.get('/api/health', (_req, res) =>
@@ -370,6 +372,8 @@ app.listen(PORT, '0.0.0.0', () => {
   setInterval(() => {
     checkSubscriptions().catch(() => {});
   }, 3 * 60 * 60 * 1000);
+
+  startAnlySyncScheduler(logger);
 });
 }
 

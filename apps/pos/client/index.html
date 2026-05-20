@@ -3,8 +3,7 @@
   <head>
     <script>
       try {
-        var __t = localStorage.getItem('pos_theme');
-        document.documentElement.dataset.theme = (__t === 'light' || __t === 'dark') ? __t : 'dark';
+        document.documentElement.dataset.theme = 'dark';
       } catch (e) {
         document.documentElement.dataset.theme = 'dark';
       }

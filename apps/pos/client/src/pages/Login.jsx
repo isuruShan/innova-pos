@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import ThemeToggle from '../components/ThemeToggle';
 import { fieldAttrs } from '../utils/formFields';
 
 export default function Login() {
@@ -43,9 +42,6 @@ export default function Login() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-[var(--pos-page-bg)] px-4">
-      <div className="absolute top-4 right-4 z-10">
-        <ThemeToggle className="border-slate-600/40 bg-[var(--pos-panel)]/80" />
-      </div>
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-5">
           <img src="/logo-1.png" alt="Cafinity" className="h-14 w-auto rounded-xl shadow-lg" />
