@@ -166,7 +166,12 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
         const uploadRes = await axios.post(
           `${process.env.UPLOAD_SERVICE_URL || 'http://localhost:3002'}/upload`,
           form,
-          { headers: { ...form.getHeaders(), Authorization: token }, timeout: 30000 }
+          {
+            headers: { ...form.getHeaders(), Authorization: token },
+            timeout: require('@innovapos/shared-middleware').resolveUploadProxyTimeoutMs(),
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity,
+          },
         );
         receiptFileKey = uploadRes.data.key;
       } catch (uploadErr) {

@@ -211,7 +211,12 @@ router.post(
       const uploadRes = await axios.post(
         `${process.env.UPLOAD_SERVICE_URL || 'http://localhost:3002'}/upload`,
         form,
-        { headers: { ...form.getHeaders(), Authorization: token }, timeout: 30000 },
+        {
+          headers: { ...form.getHeaders(), Authorization: token },
+          timeout: require('@innovapos/shared-middleware').resolveUploadProxyTimeoutMs(),
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
+        },
       );
       const { key } = uploadRes.data;
       const url = await presignObjectKey(key, 86400);

@@ -103,6 +103,7 @@ const {
   requireActiveSubscriptionForPos,
   isSubscriptionServiceRoute,
 } = require('./tenantAccess');
+const { resolveUploadProxyTimeoutMs } = require('./uploadTimeout');
 
 module.exports = {
   authenticateJWT,
@@ -117,4 +118,5 @@ module.exports = {
   logRouteError,
   sendRouteError,
   createCorsMiddleware,
+  resolveUploadProxyTimeoutMs,
 };

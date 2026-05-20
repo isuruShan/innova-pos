@@ -3,6 +3,9 @@ const multer = require('multer');
 const axios = require('axios');
 const FormData = require('form-data');
 const { protect } = require('../middleware/auth');
+const { resolveUploadProxyTimeoutMs } = require('@innovapos/shared-middleware');
+
+const uploadTimeoutMs = resolveUploadProxyTimeoutMs();
 
 const router = express.Router();
 
@@ -44,7 +47,9 @@ router.post('/', protect, upload.single('image'), async (req, res) => {
         ...form.getHeaders(),
         Authorization: token,
       },
-      timeout: 30000,
+      timeout: uploadTimeoutMs,
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
     });
 
     res.status(response.status).json(response.data);

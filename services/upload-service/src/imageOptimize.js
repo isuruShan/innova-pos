@@ -23,7 +23,8 @@ async function optimizeImageToWebp(inputBuffer) {
       .resize(maxDim, maxDim, { fit: 'inside', withoutEnlargement: true });
   }
 
-  const buffer = await img.webp({ quality, effort: 4 }).toBuffer();
+  const effort = Math.min(6, Math.max(0, parseInt(process.env.UPLOAD_WEBP_EFFORT || '3', 10) || 3));
+  const buffer = await img.webp({ quality, effort }).toBuffer();
   return { buffer, mimeType: 'image/webp' };
 }
 

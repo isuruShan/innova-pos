@@ -186,6 +186,39 @@ If you see `Cannot find module '@innovapos/runtime-env'`, run `pnpm install` at 
 
 ---
 
+## Step 5b — Vite build URLs (including table QR codes)
+
+`VITE_*` variables are **baked into the browser bundle at `pnpm run build`**. Key Vault / PM2 env does **not** update an already-built POS client.
+
+Café table QR codes in the POS manager need the **guest order app origin** (`qr-order-server`, port **5010** by default) — **never** the POS URL (`:5000`).
+
+```bash
+cd ~/InnovaSolution/innova-pos
+cp deploy.env.example deploy.env
+nano deploy.env
+```
+
+Example for a single public IP (replace with your VM IP or `https://order.yourdomain.com`):
+
+```bash
+VITE_API_URL=http://3.210.65.252:5000/api
+VITE_ADMIN_URL=http://3.210.65.252:5001
+VITE_PUBLIC_WEB_API_URL=http://3.210.65.252:5002
+VITE_QR_ORDER_WEB_ORIGIN=http://3.210.65.252:5010
+```
+
+Open **NSG / firewall** for **5010** if guests scan QR on phones. Rebuild after any URL change:
+
+```bash
+source deploy.env
+pnpm --filter @pos/client run build
+pm2 reload ecosystem.config.cjs --env production
+```
+
+Or use `./scripts/deploy-production.sh`, which sources `deploy.env` before all client builds.
+
+---
+
 ## Step 6 — Deploy
 
 ```bash
@@ -197,7 +230,7 @@ export AZURE_KEY_VAULT_SECRET_NAME=innovapos-production-env
 ./scripts/deploy-production.sh
 ```
 
-The script pulls `main`, `pnpm install`, builds SPAs, `pm2 reload`. Set `VITE_*` in `deploy.env` at repo root for build-time client URLs.
+The script pulls `main`, `pnpm install`, builds SPAs, `pm2 reload`. Set `VITE_*` in `deploy.env` at repo root (see Step 5b).
 
 ---
 
@@ -236,7 +269,7 @@ Redeploy / `pm2 reload` after changing bootstrap or secret JSON. No application 
 | Auth | 3001 |
 | Upload | 3002 |
 | Audit | 3004 |
-| QR order | (see ecosystem.config.cjs) |
+| QR order (guest SPA + API) | 5010 |
 
 ---
 
@@ -318,6 +351,7 @@ az keyvault secret show --vault-name cafinity-dev-key --name innovapos-productio
 | `Failed to load secrets` | VM identity has **Key Vault Secrets User**; vault URL and secret name match bootstrap |
 | Upload 500 / storage error | `AZURE_STORAGE_ACCOUNT_NAME` in vault JSON; **Storage Blob Data Contributor** on VM |
 | Images 403 / no presign URL | **Storage Blob Delegator** on VM |
+| `timeout of 30000ms exceeded` on image upload | Pull latest code (120s proxy timeout + Azure SAS key cache). Ensure `upload-service` is running. Optional: `UPLOAD_PROXY_TIMEOUT_MS=180000` in Key Vault JSON. Rebuild POS client if using old bundle. |
 | `DefaultAzureCredential` failed | System-assigned identity enabled; not running outside Azure without service principal |
 | Old AWS env still used | Remove `AWS_SECRETS_MANAGER_SECRET_ID` from bootstrap; set `CLOUD_PROVIDER=azure` |
 
@@ -325,6 +359,7 @@ az keyvault secret show --vault-name cafinity-dev-key --name innovapos-productio
 
 ## Related docs
 
+- `docs/ENV_VARIABLES.md` — full environment variable reference (also `docs/ENV_VARIABLES.docx`)
 - `secrets.example.json` — template for Key Vault JSON
 - `docs/EC2_PRODUCTION_DEPLOY.md` — AWS EC2 path (legacy)
 - `ecosystem.config.cjs` — PM2 bootstrap env

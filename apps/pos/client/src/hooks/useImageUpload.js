@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { optimizeImage, readAsDataURL } from '../utils/imageUpload';
-import api from '../api/axios';
+import { postUpload } from '../api/uploadRequest';
 
 /**
  * Hook for handling image uploads with automatic compression and WebP conversion.
@@ -28,8 +28,7 @@ export const useImageUpload = (type = 'menu') => {
       formData.append('image', optimized);
       formData.append('type', type);
 
-      const { data } = await api.post('/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const { data } = await postUpload(formData, {
         onUploadProgress: (e) => {
           const pct = Math.round((e.loaded / e.total) * 50) + 50;
           setProgress(pct);

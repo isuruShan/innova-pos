@@ -188,7 +188,9 @@ router.post('/', upload.single('brFile'), async (req, res) => {
               ...form.getHeaders(),
               'x-service-key': String(process.env.INTERNAL_SERVICE_KEY ?? '').trim(),
             },
-            timeout: 30000,
+            timeout: require('@innovapos/shared-middleware').resolveUploadProxyTimeoutMs(),
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity,
           }
         );
         brDocumentKey = uploadRes.data.key;

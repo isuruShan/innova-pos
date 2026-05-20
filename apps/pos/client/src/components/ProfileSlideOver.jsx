@@ -91,9 +91,12 @@ export default function ProfileSlideOver({ open, onClose }) {
     setUploading(true);
     setError('');
     try {
+      const { optimizeImage } = await import('../utils/imageUpload');
+      const { postUpload } = await import('../api/uploadRequest');
+      const optimized = await optimizeImage(file, 'profile');
       const fd = new FormData();
-      fd.append('image', file);
-      const { data } = await api.post('/upload', fd);
+      fd.append('image', optimized);
+      const { data } = await postUpload(fd);
       // Persist key only; backend returns fresh URL on auth/me
       saveMutation.mutate({ profileImageKey: data.key });
     } catch {

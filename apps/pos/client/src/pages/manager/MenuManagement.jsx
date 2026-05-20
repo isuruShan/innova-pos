@@ -166,9 +166,12 @@ function MenuGalleryAppend({ onAppend }) {
     if (!file) return;
     setUploading(true);
     try {
+      const { optimizeImage } = await import('../../utils/imageUpload');
+      const optimized = await optimizeImage(file, 'menu');
       const fd = new FormData();
-      fd.append('image', file);
-      const { data } = await api.post('/upload', fd);
+      fd.append('image', optimized);
+      const { postUpload } = await import('../../api/uploadRequest');
+      const { data } = await postUpload(fd);
       onAppend({ url: data.url, key: data.key });
       setTab('file');
     } catch {
