@@ -389,38 +389,123 @@ export const GUIDE_SECTIONS = [
     id: 'promotions',
     slug: 'promotions',
     title: '9. Promotions',
-    summary: 'Create, approve, and apply promotions at checkout.',
+    summary: 'Create, approve, and apply percentage, flat, bundle, Buy X Get Y, and flat-price promotions at checkout.',
     overview:
-      'Promotions reduce price or change basket behavior at checkout—percentage off, fixed amount, or structured deals depending on your configuration. Managers typically create promotions in the POS where they understand daypart and menu constraints.\n\n' +
-      'Some venues require merchant admin approval before a promotion goes live. Use approval workflows so discounted selling is deliberate, not accidental.\n\n' +
-      'Applied discounts appear on receipts and feed analytics so you can measure promotion lift versus margin.',
+      'Promotions reduce price or change basket behavior at checkout across five distinct types: **percentage discounts**, **flat amount discounts**, **bundle deals**, **Buy X Get Y offers**, and **flat-price specials**. Managers typically create promotions in the POS where they understand daypart and menu constraints.\n\n' +
+      'Each promotion type serves different marketing goals—use percentage or flat discounts for broad sale events, bundles for meal deals, Buy X Get Y for inventory rotation, and flat pricing for happy hour specials.\n\n' +
+      'Some venues require merchant admin approval before a promotion goes live. Use approval workflows so discounted selling is deliberate, not accidental. Applied discounts appear on receipts and feed analytics so you can measure promotion lift versus margin.',
     prerequisites: [
       'Manager or merchant admin POS access',
       'Clear rules for who may create versus approve promotions',
       'Menu items and categories stable enough to target promotions',
+      'Understanding of margin and ideal discount depth per promotion type',
     ],
     steps: [
       {
-        heading: 'Create a promotion',
+        heading: 'Choose the right promotion type',
         body:
-          'Managers open promotion tools in the POS and define name, type, value, and eligibility (items, categories, dates, or channels as supported).\n\n' +
-          'Save as draft or submit for approval depending on your workflow—do not train cashiers on a deal until it is active.',
+          '**Percentage discount** — Take a percent off eligible items or the entire order. Example: "20% off all beverages" or "15% off orders over $50".\n\n' +
+          '**Flat discount** — Subtract a fixed amount from eligible items or the total. Example: "$5 off any sandwich" or "$10 off orders over $40".\n\n' +
+          '**Bundle deal** — Sell a predefined set of items together at a special price. Example: "Burger + Fries + Drink for $12" (normally $17).\n\n' +
+          '**Buy X Get Y** — When a customer buys X of one product, they get Y of another (or the same) product free. Example: "Buy 2 coffees, get 1 free" or "Buy any entree, get a dessert free".\n\n' +
+          '**Flat price** — Offer selected items at a single fixed price during the promotion period. Example: "All pastries $3 each during morning hours" or "Any large pizza $15 this weekend".',
+        tip: 'Pick bundle deals when you want to move specific combos; use percentage discounts for store-wide sales; use Buy X Get Y to clear slow movers or reward repeat visits.',
+      },
+      {
+        heading: 'Create a percentage discount promotion',
+        body:
+          '**Step 1** — Open Admin → Promotions (or POS → Promotions if manager), then click Create promotion.\n\n' +
+          '**Step 2** — Name: "Weekend Beverage Sale", Description: "20% off all drinks Saturday and Sunday".\n\n' +
+          '**Step 3** — Type: Percentage discount. Discount percent: 20.\n\n' +
+          '**Step 4** — Scope: Select "Beverages" category (or pick specific drink items if you want narrower targeting).\n\n' +
+          '**Step 5** — Dates: Start date Saturday, end date Sunday. Active: Yes (or submit for approval).\n\n' +
+          '**Step 6** — Optional: Min order amount if you only want the discount on orders over a threshold (leave blank for no minimum).\n\n' +
+          '**Step 7** — Save. If approval is required, the promotion enters pending state; merchant admins approve it on Admin → Promotions.\n\n' +
+          '**Example outcome**: A customer ordering a $6 latte sees $4.80 at checkout (20% off). Receipt shows "Weekend Beverage Sale: -$1.20".',
+      },
+      {
+        heading: 'Create a flat discount promotion',
+        body:
+          '**Step 1** — Create promotion, name it "Sandwich Special", description "$3 off any sandwich".\n\n' +
+          '**Step 2** — Type: Flat discount. Discount amount: 3.\n\n' +
+          '**Step 3** — Scope: Select the "Sandwiches" category or individual sandwich items.\n\n' +
+          '**Step 4** — Dates: Set start and end dates for how long the deal runs.\n\n' +
+          '**Step 5** — Optional: Min order amount (e.g., 15) if you only want the $3 off when the order total is at least $15.\n\n' +
+          '**Step 6** — Save and approve if needed.\n\n' +
+          '**Example outcome**: A $10 turkey sandwich is sold for $7. Receipt line: "Sandwich Special: -$3.00".',
+        tip: 'Use max discount amount to cap the flat discount on very expensive items if you apply it order-wide instead of per-item.',
+      },
+      {
+        heading: 'Create a bundle deal promotion',
+        body:
+          '**Step 1** — Create promotion, name "Lunch Combo", description "Burger + Fries + Soda for $12".\n\n' +
+          '**Step 2** — Type: Bundle deal.\n\n' +
+          '**Step 3** — Add bundle items:\n  • Burger (quantity 1)\n  • Fries (quantity 1)\n  • Soda (quantity 1)\n\n' +
+          '**Step 4** — Bundle price: 12. (Assume individual prices total $17—customer saves $5.)\n\n' +
+          '**Step 5** — Dates: Choose weekdays for lunch rush or all week if it's a permanent combo.\n\n' +
+          '**Step 6** — Save. Cashiers apply "Lunch Combo" at checkout when a customer orders those exact items.\n\n' +
+          '**Example outcome**: Order shows Burger ($8), Fries ($4), Soda ($5). Promotion "Lunch Combo" reduces total to $12. Receipt: "Lunch Combo bundle: $12.00 (saved $5.00)".',
+        tip: 'Bundles work best when the items are frequently ordered together—avoid obscure combos guests rarely want.',
+      },
+      {
+        heading: 'Create a Buy X Get Y promotion',
+        body:
+          '**Step 1** — Create promotion, name "Coffee Loyalty", description "Buy 2 coffees, get 1 free".\n\n' +
+          '**Step 2** — Type: Buy X Get Y.\n\n' +
+          '**Step 3** — Buy product: Select "Coffee" from menu. Buy quantity: 2.\n\n' +
+          '**Step 4** — Free product: Select "Coffee" again (same item). Free quantity: 1.\n\n' +
+          '**Step 5** — Dates: Ongoing or limited-time.\n\n' +
+          '**Step 6** — Save. When a customer orders 3 coffees, they pay for 2 and get the third free.\n\n' +
+          '**Example outcome**: Three $4 coffees ordered = $12 total. Promotion applies: customer pays $8, gets 1 free ($4 discount). Receipt: "Coffee Loyalty: -$4.00".\n\n' +
+          '**Variation example**: "Buy any entree, get dessert free"—set buy product to any entree item or category, free product to any dessert. Great for clearing dessert inventory.',
+        tip: 'This type drives repeat visits and upsell—promote it visibly so guests know to order the threshold quantity.',
+      },
+      {
+        heading: 'Create a flat-price promotion',
+        body:
+          '**Step 1** — Create promotion, name "Happy Hour Pizzas", description "Any large pizza $15, 4–6 PM".\n\n' +
+          '**Step 2** — Type: Flat price.\n\n' +
+          '**Step 3** — Scope: Select all large pizza items (Margherita, Pepperoni, Veggie, etc.) or the "Large Pizzas" category.\n\n' +
+          '**Step 4** — Flat price: 15. (Normally pizzas range $18–$22; now all are $15.)\n\n' +
+          '**Step 5** — Dates: Every weekday from 4 PM to 6 PM (set start/end dates to cover the promotion window).\n\n' +
+          '**Step 6** — Save. During happy hour, any selected pizza rings up at $15 regardless of original price.\n\n' +
+          '**Example outcome**: Customer orders a $22 Deluxe Pizza at 5 PM. Register applies "Happy Hour Pizzas" and charges $15. Receipt: "Happy Hour Pizzas: final price $15.00 (saved $7.00)".',
+        tip: 'Flat-price promotions are powerful for evening or slow-hour traffic—guests perceive high value when premium items drop to one low price.',
+      },
+      {
+        heading: 'Advanced options: Min order, max discount, loyalty tiers',
+        body:
+          '**Min order amount** — Require a minimum basket total before the promotion applies. Example: "$10 off orders over $50" prevents tiny orders from getting disproportionate discounts.\n\n' +
+          '**Max discount amount** — Cap how much a percentage or flat discount can reduce the bill. Example: "20% off, max $20 discount" ensures very large orders don't get excessive reductions.\n\n' +
+          '**Min tier level (loyalty)** — Restrict the promotion to customers at or above a loyalty tier. Example: "Gold members only: 25% off" rewards your best guests and encourages tier advancement.\n\n' +
+          '**Store vs tenant scope** — Tenant-wide promotions apply at all locations; store-specific promotions target one site. Use store scope for local events or branch-specific inventory needs.\n\n' +
+          '**Active toggle** — Control whether the promotion is live without deleting it. Turn off after a campaign ends, then reactivate for the next cycle without rebuilding rules.',
       },
       {
         heading: 'Approve or reject (when required)',
         body:
-          'Merchant admins review submissions on POS → Approvals or the configured admin workflow. Approve only promotions that match marketing intent and margin targets.\n\n' +
-          'Reject with feedback so managers can fix dates or discount depth.',
+          'Merchant admins review submissions on Admin → Promotions (filter by pending). Check that discount depth, scope, and dates align with business goals and margin targets.\n\n' +
+          '**Approve** — Promotion goes live and cashiers can apply it at checkout immediately.\n\n' +
+          '**Reject** — Provide a reason ("Discount too high for margin" or "Dates conflict with existing sale") so the manager can revise and resubmit.\n\n' +
+          'Consistent approval discipline prevents margin erosion from overly generous or conflicting promotions.',
       },
       {
         heading: 'Apply at checkout',
         body:
-          'Cashiers attach eligible promotions during payment on the register. The discount breakdown prints on the receipt when configured.\n\n' +
-          'If a promotion does not appear, check dates, store scope, and whether the basket meets rules before overriding price manually.',
-        tip: 'Heavy discounting without a promotion record skews analytics—use defined promotions instead of ad hoc price edits when possible.',
+          'Cashiers attach eligible promotions during payment on the register. The promotion list shows only active deals valid for the current date, store, and (if applicable) customer tier.\n\n' +
+          'Select the promotion name, confirm the discount or bundle price appears, then complete payment. The discount breakdown prints on the receipt when configured.\n\n' +
+          'If a promotion does not appear in the list, verify: dates are current, store scope matches active store, min order threshold is met, applicable items are in the cart, and approval status is approved.',
+        tip: 'Train cashiers to recognize promotion names—"Happy Hour Pizzas" only works 4–6 PM; applying it at 8 PM will fail validation.',
+      },
+      {
+        heading: 'Monitor performance and adjust',
+        body:
+          'Use Admin → Analytics or POS → Dashboard to review promotion usage: how many times applied, total discount given, revenue impact, and which items sold under each deal.\n\n' +
+          'Compare sales during promotion periods versus baseline to measure lift. If a bundle isn't moving, adjust the price or swap an item; if a percentage discount costs too much margin, lower the percent or add a min order threshold.\n\n' +
+          'Turn off underperforming promotions and iterate—your menu and guest behavior will guide what deals resonate.',
       },
     ],
-    outcome: 'Active promotions are approved, visible at checkout, and recorded on receipts and reports.',
+    outcome: 'You can create and manage percentage, flat, bundle, Buy X Get Y, and flat-price promotions with approval controls, apply them accurately at checkout, and measure their impact on revenue and margin.',
   },
   {
     id: 'loyalty',
