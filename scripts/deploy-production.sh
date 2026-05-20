@@ -31,6 +31,8 @@ if [[ -f "$ROOT/deploy.env" ]]; then
   source "$ROOT/deploy.env"
   set +a
 fi
+echo "==> git stash"
+git stash
 
 echo "==> git pull"
 git pull --ff-only origin main
