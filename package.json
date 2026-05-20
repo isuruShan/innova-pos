@@ -14,7 +14,8 @@
     "admin": "pnpm --filter @admin-portal/server --filter @admin-portal/client --parallel dev",
     "dev": "pnpm --parallel --filter './apps/**' --filter './services/**' dev",
     "migrate:tenant": "node ./scripts/migrate-add-tenantid.js",
-    "verify:secrets": "node ./scripts/verify-keyvault-env.js"
+    "verify:secrets": "node ./scripts/verify-keyvault-env.js",
+    "verify:upload": "node ./scripts/verify-upload-chain.js"
   },
   "dependencies": {
     "@innovapos/runtime-env": "workspace:*",

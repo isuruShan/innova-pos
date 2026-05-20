@@ -78,6 +78,8 @@ function cloudBootstrapEnv() {
       AWS_REGION: process.env.AWS_REGION || 'us-east-1',
       AWS_DEFAULT_REGION: process.env.AWS_REGION || 'us-east-1',
       AWS_SECRETS_MANAGER_SECRET_ID: process.env.AWS_SECRETS_MANAGER_SECRET_ID || '',
+      UPLOAD_SERVICE_URL: process.env.UPLOAD_SERVICE_URL || 'http://127.0.0.1:3002',
+      AUDIT_SERVICE_URL: process.env.AUDIT_SERVICE_URL || 'http://127.0.0.1:3004',
     };
   }
   return {
@@ -85,6 +87,8 @@ function cloudBootstrapEnv() {
     STORAGE_PROVIDER: process.env.STORAGE_PROVIDER || 'azure',
     AZURE_KEY_VAULT_URL: process.env.AZURE_KEY_VAULT_URL || '',
     AZURE_KEY_VAULT_SECRET_NAME: process.env.AZURE_KEY_VAULT_SECRET_NAME || 'innovapos-production-env',
+    UPLOAD_SERVICE_URL: process.env.UPLOAD_SERVICE_URL || 'http://127.0.0.1:3002',
+    AUDIT_SERVICE_URL: process.env.AUDIT_SERVICE_URL || 'http://127.0.0.1:3004',
   };
 }
 

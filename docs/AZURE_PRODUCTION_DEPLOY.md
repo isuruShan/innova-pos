@@ -351,7 +351,7 @@ az keyvault secret show --vault-name cafinity-dev-key --name innovapos-productio
 | `Failed to load secrets` | VM identity has **Key Vault Secrets User**; vault URL and secret name match bootstrap |
 | Upload 500 / storage error | `AZURE_STORAGE_ACCOUNT_NAME` in vault JSON; **Storage Blob Data Contributor** on VM |
 | Images 403 / no presign URL | **Storage Blob Delegator** on VM |
-| `timeout of 30000ms exceeded` on image upload | VM still on **old code** (30s limit) or nginx/Azure gateway timeout. Run `git pull`, `pnpm install`, `pnpm --filter @pos/client run build`, `pm2 reload ecosystem.config.cjs --env production`. Ensure `upload-service` is up (`pm2 logs upload-service`). Optional Key Vault: `UPLOAD_PROXY_TIMEOUT_MS=300000`. If using nginx, set `proxy_read_timeout 300s;` on `/api/upload`. |
+| `timeout of 30000ms exceeded` on image upload | Usually **connectivity**, not file size. Run `pnpm run verify:upload` on the VM. Check: (1) `pm2 list` shows `upload-service` online, (2) `curl -s http://127.0.0.1:3002/health/storage`, (3) Key Vault has `STORAGE_PROVIDER=azure`, `AZURE_STORAGE_ACCOUNT_NAME`, `UPLOAD_SERVICE_URL=http://127.0.0.1:3002` (not public IP), (4) remove stale `AWS_S3_BUCKET` if migrated, (5) VM identity has **Storage Blob Data Contributor** + **Storage Blob Delegator**. Old `DefaultAzureCredential` probing CLI caused ~30s hangs — pull latest code. |
 | `DefaultAzureCredential` failed | System-assigned identity enabled; not running outside Azure without service principal |
 | Old AWS env still used | Remove `AWS_SECRETS_MANAGER_SECRET_ID` from bootstrap; set `CLOUD_PROVIDER=azure` |
 

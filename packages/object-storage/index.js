@@ -10,8 +10,14 @@ const azure = require('./providers/azure');
 function resolveStorageProvider() {
   const explicit = String(process.env.STORAGE_PROVIDER || '').trim().toLowerCase();
   if (explicit === 'azure' || explicit === 'aws') return explicit;
-  if (String(process.env.AZURE_STORAGE_ACCOUNT_NAME || '').trim()) return 'azure';
-  if (String(process.env.AWS_S3_BUCKET || '').trim()) return 'aws';
+  const cloud = String(
+    process.env.CLOUD_PROVIDER || process.env.SECRETS_PROVIDER || '',
+  ).toLowerCase();
+  const hasAzure = String(process.env.AZURE_STORAGE_ACCOUNT_NAME || '').trim();
+  const hasAws = String(process.env.AWS_S3_BUCKET || '').trim();
+  if (cloud === 'azure' && hasAzure) return 'azure';
+  if (hasAzure) return 'azure';
+  if (hasAws) return 'aws';
   return null;
 }
 

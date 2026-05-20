@@ -47,9 +47,7 @@ app.use(express.json({ limit: '1mb' }));
 
 app.use('/upload', require('./routes/upload'));
 
-app.get('/health', (_req, res) =>
-  res.json({ status: 'ok', service: 'upload-service', ts: new Date().toISOString() })
-);
+app.use('/health', require('./routes/health'));
 
 // Error handler
 // eslint-disable-next-line no-unused-vars

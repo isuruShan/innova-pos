@@ -7,7 +7,16 @@ const { resolveUploadProxyTimeoutMs } = require('@innovapos/shared-middleware');
 
 const router = express.Router();
 
-const UPLOAD_SERVICE_URL = process.env.UPLOAD_SERVICE_URL || 'http://localhost:3002';
+function resolveUploadServiceUrl() {
+  const raw = String(process.env.UPLOAD_SERVICE_URL || 'http://127.0.0.1:3002').trim();
+  try {
+    const u = new URL(raw);
+    if (u.hostname === 'localhost') u.hostname = '127.0.0.1';
+    return u.toString().replace(/\/$/, '');
+  } catch {
+    return 'http://127.0.0.1:3002';
+  }
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -50,6 +59,7 @@ router.post('/', protect, extendUploadTimeouts, uploadFields, async (req, res) =
   if (!file) return res.status(400).json({ message: 'No file uploaded' });
 
   const uploadTimeoutMs = resolveUploadProxyTimeoutMs();
+  const uploadServiceUrl = resolveUploadServiceUrl();
 
   try {
     const form = new FormData();
@@ -60,7 +70,7 @@ router.post('/', protect, extendUploadTimeouts, uploadFields, async (req, res) =
     form.append('type', req.body.type || 'menu');
 
     const token = req.headers.authorization;
-    const response = await axios.post(`${UPLOAD_SERVICE_URL}/upload`, form, {
+    const response = await axios.post(`${uploadServiceUrl}/upload`, form, {
       headers: {
         ...form.getHeaders(),
         Authorization: token,
@@ -75,7 +85,9 @@ router.post('/', protect, extendUploadTimeouts, uploadFields, async (req, res) =
     const status = err.response?.status || 500;
     let message = err.response?.data?.message || err.message;
     if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
-      message = `Upload service unreachable at ${UPLOAD_SERVICE_URL}. Is upload-service running?`;
+      message = `Upload service unreachable at ${uploadServiceUrl}. Run: pm2 logs upload-service — and curl http://127.0.0.1:3002/health`;
+    } else if (String(message).includes('timeout')) {
+      message = `${message} (POS→${uploadServiceUrl}). Often Azure credential/storage: run node scripts/verify-upload-chain.js on the VM.`;
     }
     res.status(status).json({ message });
   }
@@ -87,7 +99,7 @@ router.post('/', protect, extendUploadTimeouts, uploadFields, async (req, res) =
 router.post('/presign', protect, async (req, res) => {
   try {
     const token = req.headers.authorization;
-    const response = await axios.post(`${UPLOAD_SERVICE_URL}/upload/presign`, req.body, {
+    const response = await axios.post(`${resolveUploadServiceUrl()}/upload/presign`, req.body, {
       headers: { Authorization: token, 'Content-Type': 'application/json' },
       timeout: resolveUploadProxyTimeoutMs(),
     });

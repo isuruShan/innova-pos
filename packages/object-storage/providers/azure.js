@@ -6,7 +6,7 @@ const {
   generateBlobSASQueryParameters,
   SASProtocol,
 } = require('@azure/storage-blob');
-const { DefaultAzureCredential } = require('@azure/identity');
+const { createAzureCredential } = require('../azureCredential');
 
 let cachedBlobServiceClient = null;
 
@@ -25,7 +25,7 @@ function blobServiceClient() {
   const account = accountName();
   cachedBlobServiceClient = new BlobServiceClient(
     `https://${account}.blob.core.windows.net`,
-    new DefaultAzureCredential(),
+    createAzureCredential(),
   );
   return cachedBlobServiceClient;
 }

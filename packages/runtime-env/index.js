@@ -112,11 +112,11 @@ async function loadAzureKeyVaultEnv(options = {}) {
     return { loaded: false, provider: 'azure' };
   }
 
-  const { DefaultAzureCredential } = require('@azure/identity');
   const { SecretClient } = require('@azure/keyvault-secrets');
+  const { createAzureCredential } = require('./azureCredential');
 
   const override = resolveMergeMode(options) === 'override';
-  const client = new SecretClient(vaultUrl, new DefaultAzureCredential());
+  const client = new SecretClient(vaultUrl, createAzureCredential());
   let secret;
   try {
     secret = await client.getSecret(secretName);

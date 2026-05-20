@@ -132,7 +132,12 @@ router.post('/', serviceOrJwt, upload.single('file'), async (req, res) => {
       mimeType: uploadMime,
     });
   } catch (err) {
-    logger.error('Upload failed', { error: err.message });
+    const provider = require('@innovapos/object-storage').resolveStorageProvider();
+    logger.error('Upload failed', {
+      error: err.message,
+      storageProvider: provider,
+      azureAccount: process.env.AZURE_STORAGE_ACCOUNT_NAME || null,
+    });
     sendRouteError(res, err, { req });
   }
 });
