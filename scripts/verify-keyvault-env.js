@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 /**
  * Verify Key Vault bootstrap + secret load (run on the VM from repo root).
+ *
  *   pnpm install
  *   cp bootstrap.env.example bootstrap.env   # edit vault URL/name
  *   pnpm run verify:secrets
+ *
+ * Uses only Node built-ins for bootstrap.env (no dotenv). Azure SDK deps come from
+ * packages/runtime-env after `pnpm install`.
  */
 'use strict';
 
@@ -12,11 +16,45 @@ const fs = require('fs');
 
 const root = path.join(__dirname, '..');
 
+/** Minimal KEY=VALUE parser (comments and blank lines skipped). */
+function loadEnvFile(filePath) {
+  const text = fs.readFileSync(filePath, 'utf8');
+  let count = 0;
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq <= 0) continue;
+    const key = trimmed.slice(0, eq).trim();
+    let val = trimmed.slice(eq + 1).trim();
+    if (
+      (val.startsWith('"') && val.endsWith('"')) ||
+      (val.startsWith("'") && val.endsWith("'"))
+    ) {
+      val = val.slice(1, -1);
+    }
+    process.env[key] = val;
+    count += 1;
+  }
+  return count;
+}
+
 function loadRuntimeEnv() {
   try {
     return require('@innovapos/runtime-env');
-  } catch {
-    return require(path.join(root, 'packages', 'runtime-env'));
+  } catch (err) {
+    const runtimePath = path.join(root, 'packages', 'runtime-env');
+    try {
+      return require(runtimePath);
+    } catch (err2) {
+      console.error(
+        'Could not load @innovapos/runtime-env. From the repo root run:\n  pnpm install\n  pnpm run verify:secrets',
+      );
+      if (err2.code === 'MODULE_NOT_FOUND') {
+        console.error('Missing module:', err2.message.split('\n')[0]);
+      }
+      throw err2;
+    }
   }
 }
 
@@ -29,8 +67,8 @@ const bootstrapCandidates = [
 let bootstrapLoaded = false;
 for (const filePath of bootstrapCandidates) {
   if (fs.existsSync(filePath)) {
-    const result = require('dotenv').config({ path: filePath });
-    console.log('bootstrap:', filePath, `(${result.parsed ? Object.keys(result.parsed).length : 0} keys)`);
+    const keyCount = loadEnvFile(filePath);
+    console.log('bootstrap:', filePath, `(${keyCount} keys)`);
     bootstrapLoaded = true;
     break;
   }
