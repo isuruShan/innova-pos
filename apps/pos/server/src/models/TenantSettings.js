@@ -37,6 +37,8 @@ const tenantSettingsSchema = new mongoose.Schema(
       default: 'placement',
     },
     receiptPrintAtByOrderType: { type: mongoose.Schema.Types.Mixed, default: null },
+    returnsEnabled: { type: Boolean, default: false },
+    returnsRequireManagerApproval: { type: Boolean, default: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },

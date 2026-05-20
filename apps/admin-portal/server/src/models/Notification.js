@@ -5,7 +5,7 @@ const notificationSchema = new mongoose.Schema(
     tenantId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Tenant',
-      required: true,
+      default: null,
       index: true,
     },
     userId: {
@@ -38,6 +38,7 @@ const notificationSchema = new mongoose.Schema(
         'order_status_changed',
         'table_waiter_call',
         'qr_order_updated',
+        'merchant_application_submitted',
       ],
       required: true,
     },

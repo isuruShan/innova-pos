@@ -10,7 +10,7 @@ import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import { CASHIER_NAV_GROUPS } from '../../constants/cashierLinks';
 import CashierSessionGate from '../../components/cashier/CashierSessionGate';
-import { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/cashierSessionContext';
+import { CASHIER_SESSION_QUERY_KEY, useCashierSession } from '../../components/cashier/cashierSessionContext';
 import { mergeOrderLists } from '../../offline/mergeOrders.js';
 import { listPendingOrders } from '../../offline/idb.js';
 import { resolveLiveOrder, useSyncOfflineOrderSelection } from '../../offline/orderSelection.js';
@@ -254,10 +254,14 @@ export default function OrderBoard() {
     };
   }, [qc]);
 
+  const cashierSession = useCashierSession();
+  const sessionSince = cashierSession?.session?.openedAt;
+
   const { data: orders = [], isPending, refetch, isFetching } = useQuery({
-    queryKey: ['order-board', selectedStoreId],
+    queryKey: ['order-board', selectedStoreId, sessionSince],
     queryFn: async () => {
-      const remote = await api.get('/orders').then((r) => r.data);
+      const params = sessionSince ? { since: new Date(sessionSince).toISOString() } : {};
+      const remote = await api.get('/orders', { params }).then((r) => r.data);
       const pendingLocal = await listPendingOrders();
       return mergeOrderLists(remote, pendingLocal, selectedStoreId);
     },
@@ -338,12 +342,9 @@ export default function OrderBoard() {
   };
 
   const grouped = useMemo(() => {
-    const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const g = { pending: [], preparing: [], ready: [], completed: [], cancelled: [] };
-    [...orders].reverse().forEach(o => {
+    [...orders].reverse().forEach((o) => {
       if (!g[o.status]) return;
-      // show only last 24 hours for all statuses
-      if (new Date(o.createdAt) < cutoff24h) return;
       g[o.status].push(o);
     });
     return g;
@@ -370,7 +371,11 @@ export default function OrderBoard() {
               )}
             </h1>
             <p className="text-slate-500 text-sm mt-0.5">
-              Showing last 24 hours · Click <Eye size={12} className="inline" /> to view or edit
+              {sessionSince
+                ? 'Showing orders from your open cashier session'
+                : 'Open a cashier session to scope the board to this shift'}
+              {' '}
+              · Click <Eye size={12} className="inline" /> to view or edit
             </p>
           </div>
           <button

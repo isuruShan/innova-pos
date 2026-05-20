@@ -10,6 +10,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import NewOrder from './pages/cashier/NewOrder';
 import DayEndReport from './pages/cashier/DayEndReport';
+import CashierOrderHistory from './pages/cashier/CashierOrderHistory';
 import OrderBoard from './pages/cashier/OrderBoard';
 import KitchenDisplay from './pages/kitchen/KitchenDisplay';
 import Dashboard from './pages/manager/Dashboard';
@@ -77,6 +78,11 @@ export default function App() {
                 <Route path="/cashier/orders" element={
                   <RoleRoute roles={['cashier', 'manager', 'merchant_admin']}>
                     <OrderBoard />
+                  </RoleRoute>
+                } />
+                <Route path="/cashier/order-history" element={
+                  <RoleRoute roles={['cashier', 'manager', 'merchant_admin']}>
+                    <CashierOrderHistory />
                   </RoleRoute>
                 } />
                 <Route path="/cashier/report" element={

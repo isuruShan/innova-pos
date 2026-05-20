@@ -113,6 +113,8 @@ export default function BrandingPage() {
       printReceiptByDefault: form.printReceiptByDefault,
       receiptPrintAtStatus: form.receiptPrintAtStatus || 'placement',
       receiptPrintAtByOrderType: form.receiptPrintAtByOrderType || mergeReceiptPrintAtByOrderType(form),
+      returnsEnabled: Boolean(form.returnsEnabled),
+      returnsRequireManagerApproval: form.returnsRequireManagerApproval !== false,
     });
   };
 
@@ -328,6 +330,35 @@ export default function BrandingPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <h3 className="font-semibold text-gray-900">POS returns</h3>
+        <p className="text-sm text-gray-500">
+          Control whether cashiers can process returns and whether a manager must approve each return.
+        </p>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={Boolean(form.returnsEnabled)}
+            onChange={(e) => set('returnsEnabled')(e.target.checked)}
+            className="w-4 h-4 rounded accent-brand-orange"
+          />
+          <span className="text-sm text-gray-800">Allow returns at the POS</span>
+        </label>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.returnsRequireManagerApproval !== false}
+            onChange={(e) => set('returnsRequireManagerApproval')(e.target.checked)}
+            disabled={!form.returnsEnabled}
+            className="w-4 h-4 rounded accent-brand-orange disabled:opacity-40"
+          />
+          <span className="text-sm text-gray-800">Require manager approval for each return</span>
+        </label>
+        <p className="text-xs text-gray-500">
+          Managers can set a 4–8 digit approval passcode in their POS profile (otherwise their login password is used).
+        </p>
       </div>
 
       {/* Save */}

@@ -448,6 +448,9 @@ importers:
       libphonenumber-js:
         specifier: ^1.12.6
         version: 1.13.1
+      react:
+        specifier: '>=18'
+        version: 19.2.6
 
   packages/logger:
     dependencies:

@@ -1,5 +1,12 @@
 const { getMailTransporter } = require('@innovapos/mail-transport');
-const { getPlatformContact, wrapEmailHtml } = require('@innovapos/platform-contact');
+const {
+  getPlatformContact,
+  wrapEmailHtml,
+  emailHeading,
+  emailParagraph,
+  emailButton,
+  esc,
+} = require('@innovapos/platform-contact');
 
 const sendEmail = async ({ to, subject, html }) => {
   const contact = await getPlatformContact().catch(() => null);
@@ -18,10 +25,11 @@ const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
     to,
     subject: 'Cafinity password reset request',
     html: `
-        <h2 style="color:#1a1a2e">Reset your password</h2>
-        <p>Hi ${name || 'there'},</p>
-        <p>Use this link to reset your password. It expires in 30 minutes.</p>
-        <p><a href="${resetUrl}" style="display:inline-block;background:#e94560;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Reset Password</a></p>
+      ${emailHeading('Reset your password')}
+      ${emailParagraph(`Hi ${esc(name || 'there')},`)}
+      ${emailParagraph('Use the button below to reset your POS password. This link expires in <strong>30 minutes</strong>.')}
+      ${emailButton(resetUrl, 'Reset password')}
+      ${emailParagraph('<span style="color:#64748b;font-size:13px">If you did not request this, please ignore this email.</span>')}
     `,
   });
 };

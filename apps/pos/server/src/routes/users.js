@@ -39,11 +39,66 @@ router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), t
       filter.role = { $in: MANAGER_ROLES };
     }
     let users = await User.find(filter)
-      .select('-password -resetPasswordToken -resetPasswordExpires')
+      .select('-password -resetPasswordToken -resetPasswordExpires -managerApprovalPin')
       .sort({ role: 1, name: 1 })
       .lean();
     users = await attachFreshProfileImages(users);
     res.json(users);
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
+// GET active managers for return approval picker
+router.get(
+  '/approval-managers',
+  protect,
+  authorize('cashier', 'manager', 'merchant_admin'),
+  tenantScope,
+  resolveSelectedStore,
+  async (req, res) => {
+    try {
+      const managers = await User.find({
+        tenantId: req.tenantId,
+        role: 'manager',
+        isActive: true,
+        ...storeAccessFilter(req.storeId),
+      })
+        .select('name email managerApprovalPin')
+        .sort({ name: 1 })
+        .lean();
+      res.json(
+        managers.map((m) => ({
+          _id: m._id,
+          name: m.name,
+          email: m.email,
+          hasApprovalPin: Boolean(m.managerApprovalPin),
+        })),
+      );
+    } catch (err) {
+      sendRouteError(res, err, { req });
+    }
+  },
+);
+
+// PUT /users/me/approval-pin — manager sets return approval PIN
+router.put('/me/approval-pin', protect, authorize('manager'), tenantScope, async (req, res) => {
+  try {
+    const { pin, currentPassword } = req.body || {};
+    if (!currentPassword) return res.status(400).json({ message: 'Current password is required' });
+    const pinStr = String(pin || '').trim();
+    if (!/^\d{4,8}$/.test(pinStr)) {
+      return res.status(400).json({ message: 'Passcode must be 4–8 digits' });
+    }
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    const pwOk = await user.comparePassword(currentPassword);
+    if (!pwOk) return res.status(401).json({ message: 'Current password is incorrect' });
+
+    user.managerApprovalPin = pinStr;
+    user.updatedBy = req.user.id;
+    await user.save();
+    res.json({ message: 'Approval passcode updated', hasApprovalPin: true });
   } catch (err) {
     sendRouteError(res, err, { req });
   }

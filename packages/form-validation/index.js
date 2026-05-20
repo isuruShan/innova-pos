@@ -8,7 +8,12 @@ const LIMITS = {
   email: 254,
   passwordMin: 8,
   passwordMax: 128,
-  addressLine: 200,
+  addressLine: 120,
+  reference: 48,
+  tableLabel: 24,
+  searchQuery: 80,
+  description: 2000,
+  shortLabel: 64,
   city: 80,
   region: 80,
   postalCodeMin: 2,
@@ -313,6 +318,14 @@ function fieldAttrs(type, options = {}) {
       return { ...base, maxLength: LIMITS.postalCodeMax, placeholder: PLACEHOLDERS.postalCode, autoComplete: 'postal-code' };
     case 'registrationNumber':
       return { ...base, maxLength: LIMITS.registrationNumber, placeholder: PLACEHOLDERS.registrationNumber };
+    case 'reference':
+      return { ...base, maxLength: LIMITS.reference, placeholder: 'Order reference' };
+    case 'searchQuery':
+      return { ...base, maxLength: LIMITS.searchQuery, placeholder: PLACEHOLDERS.search };
+    case 'description':
+      return { ...base, maxLength: LIMITS.description, placeholder: PLACEHOLDERS.notes };
+    case 'receiptFooter':
+      return { ...base, maxLength: LIMITS.receiptLine, placeholder: PLACEHOLDERS.receiptFooter };
     case 'notes':
       return { ...base, maxLength: LIMITS.notes, placeholder: PLACEHOLDERS.notes };
     case 'reason':

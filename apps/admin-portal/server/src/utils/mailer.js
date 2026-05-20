@@ -1,5 +1,14 @@
 const { getMailTransporter, getMailConfigurationIssue } = require('@innovapos/mail-transport');
-const { getPlatformContact, wrapEmailHtml } = require('@innovapos/platform-contact');
+const {
+  getPlatformContact,
+  wrapEmailHtml,
+  emailHeading,
+  emailParagraph,
+  emailButton,
+  emailPanel,
+  emailAlert,
+  esc,
+} = require('@innovapos/platform-contact');
 
 const sendEmail = async ({ to, subject, html }) => {
   if (!to) return;
@@ -19,27 +28,18 @@ const sendWelcomeEmail = async ({ to, name, tempPassword, loginUrl }) => {
     to,
     subject: 'Welcome to Cafinity — Your account is ready',
     html: `
-        <div style="background:#1a1a2e;padding:32px;border-radius:12px 12px 0 0;text-align:center">
-          <h1 style="color:#ffffff;font-size:24px;margin:0">Welcome to Cafinity!</h1>
-        </div>
-        <div style="background:#ffffff;padding:32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">
-          <p>Hi <strong>${name}</strong>,</p>
-          <p>Your merchant account has been verified and is now active! Here are your login credentials:</p>
-
-          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:20px;margin:20px 0">
-            <p style="margin:0 0 8px 0;font-size:14px;color:#6b7280">Login URL</p>
-            <a href="${loginUrl}" style="color:#e94560;font-weight:bold">${loginUrl}</a>
-            <p style="margin:16px 0 8px 0;font-size:14px;color:#6b7280">Temporary password</p>
-            <p style="font-size:20px;font-weight:bold;letter-spacing:2px;color:#1a1a2e;margin:0">${tempPassword}</p>
-          </div>
-
-          <p style="color:#e94560;font-weight:bold">⚠ Please change your password immediately after logging in.</p>
-          <p>You have a <strong>30-day free trial</strong> starting today. Enjoy all features with no restrictions.</p>
-
-          <a href="${loginUrl}" style="display:inline-block;background:#e94560;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:12px">
-            Access your admin portal
-          </a>
-        </div>
+      ${emailHeading('Welcome aboard!', 'Your merchant account is active')}
+      ${emailParagraph(`Hi <strong>${esc(name)}</strong>,`)}
+      ${emailParagraph('Your merchant account has been verified. Use the credentials below to sign in, then change your password right away.')}
+      ${emailPanel(`
+        <p style="margin:0 0 10px;font-size:13px;color:#64748b;font-weight:600">Login URL</p>
+        <p style="margin:0 0 18px"><a href="${esc(loginUrl)}" style="color:#e94560;font-weight:600;text-decoration:none">${esc(loginUrl)}</a></p>
+        <p style="margin:0 0 8px;font-size:13px;color:#64748b;font-weight:600">Temporary password</p>
+        <p style="margin:0;font-size:22px;font-weight:700;letter-spacing:3px;color:#16213e;font-family:monospace">${esc(tempPassword)}</p>
+      `)}
+      ${emailAlert('<strong style="color:#e94560">Please change your password</strong> immediately after your first login.', 'warning')}
+      ${emailParagraph('You have a <strong>30-day free trial</strong> with full access to all features.')}
+      ${emailButton(loginUrl, 'Access admin portal')}
     `,
   });
 };
@@ -49,20 +49,14 @@ const sendRejectionEmail = async ({ to, name, reason }) => {
     to,
     subject: 'Update on your Cafinity application',
     html: `
-        <div style="background:#1a1a2e;padding:32px;border-radius:12px 12px 0 0;text-align:center">
-          <h1 style="color:#ffffff;font-size:24px;margin:0">Application Update</h1>
-        </div>
-        <div style="background:#ffffff;padding:32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">
-          <p>Hi <strong>${name}</strong>,</p>
-          <p>Thank you for your interest in Cafinity. After reviewing your application, we were unable to approve it at this time.</p>
-
-          <div style="background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;padding:16px;margin:20px 0">
-            <p style="margin:0 0 8px 0;font-size:14px;color:#991b1b;font-weight:bold">Reason</p>
-            <p style="margin:0;color:#1f2937">${reason}</p>
-          </div>
-
-          <p>If you believe this is an error or would like to re-apply with updated information, please contact us.</p>
-        </div>
+      ${emailHeading('Application update')}
+      ${emailParagraph(`Hi <strong>${esc(name)}</strong>,`)}
+      ${emailParagraph('Thank you for your interest in Cafinity. After reviewing your application, we were unable to approve it at this time.')}
+      ${emailAlert(`
+        <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#991b1b">Reason</p>
+        <p style="margin:0;color:#334155;line-height:1.55">${esc(reason)}</p>
+      `, 'error')}
+      ${emailParagraph('If you believe this is an error or would like to re-apply with updated information, please contact our support team using the details in the footer below.')}
     `,
   });
 };
@@ -72,10 +66,11 @@ const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
     to,
     subject: 'Cafinity password reset request',
     html: `
-        <h2 style="color:#1a1a2e">Reset your password</h2>
-        <p>Hi ${name || 'there'},</p>
-        <p>Use this link to reset your password. It expires in 30 minutes.</p>
-        <p><a href="${resetUrl}" style="display:inline-block;background:#e94560;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Reset Password</a></p>
+      ${emailHeading('Reset your password')}
+      ${emailParagraph(`Hi ${esc(name || 'there')},`)}
+      ${emailParagraph('We received a request to reset your password. This link expires in <strong>30 minutes</strong>.')}
+      ${emailButton(resetUrl, 'Reset password')}
+      ${emailParagraph('<span style="color:#64748b;font-size:13px">If you did not request this, you can safely ignore this email.</span>')}
     `,
   });
 };

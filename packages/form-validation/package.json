@@ -8,7 +8,11 @@
   "exports": {
     ".": "./index.js",
     "./browser": "./browser.js",
-    "./browser.js": "./browser.js"
+    "./browser.js": "./browser.js",
+    "./react": "./react.jsx"
+  },
+  "peerDependencies": {
+    "react": ">=18"
   },
   "type": "commonjs",
   "dependencies": {

@@ -27,11 +27,12 @@ export default function SignInPortalModal({ open, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] min-h-[100dvh] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="signin-portal-title"
       onClick={onClose}
+      onKeyDown={(e) => e.key === 'Escape' && onClose()}
     >
       <div
         className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-lg p-6 sm:p-8"

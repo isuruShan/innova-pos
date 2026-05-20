@@ -2,7 +2,8 @@
 
 const mongoose = require('mongoose');
 const { getCachedContact, setCachedContact, invalidateContactCache } = require('./cache');
-const { wrapEmailHtml, buildEmailFooterHtml } = require('./footer');
+const { wrapEmailHtml, buildEmailFooterHtml, buildEmailHeaderHtml } = require('./footer');
+const emailTheme = require('./emailTheme');
 const { getPlatformContactModel, SINGLETON_ID, DEFAULT_CONTACT } = require('./model');
 
 function toPlain(doc) {
@@ -100,8 +101,17 @@ module.exports = {
   invalidateContactCache,
   wrapEmailHtml,
   buildEmailFooterHtml,
+  buildEmailHeaderHtml,
   getPlatformContactModel,
   toPlain,
   SINGLETON_ID,
   DEFAULT_CONTACT,
+  BRAND: emailTheme.BRAND,
+  emailHeading: emailTheme.emailHeading,
+  emailParagraph: emailTheme.emailParagraph,
+  emailButton: emailTheme.emailButton,
+  emailPanel: emailTheme.emailPanel,
+  emailAlert: emailTheme.emailAlert,
+  emailLabelValue: emailTheme.emailLabelValue,
+  esc: emailTheme.esc,
 };

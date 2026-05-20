@@ -36,6 +36,8 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
       printReceiptByDefault: data.printReceiptByDefault,
       receiptPrintAtStatus: data.receiptPrintAtStatus || 'placement',
       receiptPrintAtByOrderType: data.receiptPrintAtByOrderType || null,
+      returnsEnabled: Boolean(data.returnsEnabled),
+      returnsRequireManagerApproval: data.returnsRequireManagerApproval !== false,
     };
 
     res.json(safe);

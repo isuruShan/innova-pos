@@ -27,6 +27,9 @@ const userSchema = new mongoose.Schema(
     resetPasswordToken: { type: String, default: null },
     resetPasswordExpires: { type: Date, default: null },
 
+    /** Optional 4–8 digit PIN for approving returns (hashed). Managers only. */
+    managerApprovalPin: { type: String, default: '' },
+
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
@@ -34,9 +37,24 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.pre('save', async function () {
-  if (!this.isModified('password')) return;
-  this.password = await bcrypt.hash(this.password, 10);
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
+  if (this.isModified('managerApprovalPin')) {
+    const pin = String(this.managerApprovalPin || '').trim();
+    if (!pin) {
+      this.managerApprovalPin = '';
+    } else {
+      this.managerApprovalPin = await bcrypt.hash(pin, 10);
+    }
+  }
 });
+
+userSchema.methods.compareApprovalPin = function (plain) {
+  const pin = String(this.managerApprovalPin || '');
+  if (!pin) return Promise.resolve(false);
+  return bcrypt.compare(String(plain || ''), pin);
+};
 
 userSchema.methods.comparePassword = function (plain) {
   return bcrypt.compare(plain, this.password);

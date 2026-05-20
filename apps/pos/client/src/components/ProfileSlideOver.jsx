@@ -61,6 +61,9 @@ export default function ProfileSlideOver({ open, onClose }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPwFields, setShowPwFields] = useState(false);
+  const [showPinFields, setShowPinFields] = useState(false);
+  const [pinCurrentPassword, setPinCurrentPassword] = useState('');
+  const [newPin, setNewPin] = useState('');
   const fileRef = useRef(null);
 
   useEffect(() => {
@@ -72,8 +75,23 @@ export default function ProfileSlideOver({ open, onClose }) {
       setNewPassword('');
       setConfirmPassword('');
       setShowPwFields(false);
+      setShowPinFields(false);
+      setPinCurrentPassword('');
+      setNewPin('');
     }
   }, [open, user?.name]);
+
+  const pinMutation = useMutation({
+    mutationFn: (body) => api.put('/users/me/approval-pin', body),
+    onSuccess: () => {
+      setPinCurrentPassword('');
+      setNewPin('');
+      setShowPinFields(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    },
+    onError: (e) => setError(e.response?.data?.message || 'Could not update passcode'),
+  });
 
   const saveMutation = useMutation({
     mutationFn: (data) => api.put('/auth/me', data),
@@ -222,6 +240,54 @@ export default function ProfileSlideOver({ open, onClose }) {
             </>
           )}
         </div>
+
+        {user?.role === 'manager' && (
+          <div className="rounded-xl border border-slate-700/60 p-4 space-y-3">
+            <p className="text-sm font-medium text-[var(--pos-text-primary)]">Return approval passcode</p>
+            <p className="text-xs text-slate-500">
+              Cashiers enter this code (or your password if unset) to approve returns.
+            </p>
+            {!showPinFields ? (
+              <button
+                type="button"
+                onClick={() => setShowPinFields(true)}
+                className="text-sm text-amber-400 hover:underline"
+              >
+                Set or change passcode
+              </button>
+            ) : (
+              <>
+                <input
+                  type="password"
+                  placeholder="Current password"
+                  value={pinCurrentPassword}
+                  onChange={(e) => setPinCurrentPassword(e.target.value)}
+                  maxLength={128}
+                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-4 py-2 text-sm text-[var(--pos-text-primary)]"
+                />
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  placeholder="New 4–8 digit passcode"
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  maxLength={8}
+                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-4 py-2 text-sm text-[var(--pos-text-primary)]"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    pinMutation.mutate({ currentPassword: pinCurrentPassword, pin: newPin })
+                  }
+                  disabled={pinMutation.isPending}
+                  className="w-full py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold disabled:opacity-50"
+                >
+                  {pinMutation.isPending ? 'Saving…' : 'Save passcode'}
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Editable name */}
         <div>

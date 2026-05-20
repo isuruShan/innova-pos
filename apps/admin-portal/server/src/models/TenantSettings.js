@@ -58,6 +58,10 @@ const tenantSettingsSchema = new mongoose.Schema(
       default: null,
     },
 
+    /** POS order returns */
+    returnsEnabled: { type: Boolean, default: false },
+    returnsRequireManagerApproval: { type: Boolean, default: true },
+
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },

@@ -21,6 +21,7 @@ const {
   mergeItemsForUpdate,
   recalculateOrderMoney,
 } = require('../utils/orderHelpers');
+const { applyOrderReturn } = require('../lib/orderReturns');
 
 const router = express.Router();
 
@@ -92,12 +93,29 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
       if (until) filter.createdAt.$lte = new Date(until);
     }
     if (search) {
-      const n = parseInt(search, 10);
-      if (!isNaN(n)) filter.orderNumber = n;
+      const term = String(search).trim();
+      const n = parseInt(term, 10);
+      if (!isNaN(n) && String(n) === term) {
+        filter.orderNumber = n;
+      } else if (term) {
+        const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const customerIds = await Customer.find({
+          tenantId: req.tenantId,
+          name: new RegExp(escaped, 'i'),
+        })
+          .select('_id')
+          .limit(40)
+          .lean();
+        const ids = customerIds.map((c) => c._id);
+        const or = [{ reference: new RegExp(escaped, 'i') }];
+        if (ids.length) or.push({ customerId: { $in: ids } });
+        filter.$or = or;
+      }
     }
 
     const orders = await Order.find(filter)
       .populate('createdBy', 'name')
+      .populate('customerId', 'name phone email')
       .sort({ createdAt: -1 });
     res.json(orders);
   } catch (err) {
@@ -665,5 +683,52 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
     sendRouteError(res, err, { req });
   }
 });
+
+// POST /orders/:id/returns — full or partial return on completed order
+router.post(
+  '/:id/returns',
+  protect,
+  authorize('cashier', 'manager', 'merchant_admin'),
+  tenantScope,
+  resolveSelectedStore,
+  async (req, res) => {
+    try {
+      const order = await Order.findOne({
+        _id: req.params.id,
+        tenantId: req.tenantId,
+        ...buildStoreFilter(req),
+      });
+      if (!order) return res.status(404).json({ message: 'Order not found' });
+
+      const { items, reason, managerId, approvalSecret } = req.body || {};
+      const result = await applyOrderReturn(
+        order,
+        { items, reason, managerId, approvalSecret },
+        { tenantId: req.tenantId, userId: req.user.id, storeId: req.storeId },
+      );
+
+      await emitAudit({
+        req,
+        action: 'ORDER_RETURN',
+        resource: 'Order',
+        resourceId: order._id,
+        changes: {
+          after: {
+            refundAmount: result.refundAmount,
+            isFullReturn: result.isFullReturn,
+            totalReturnedAmount: order.totalReturnedAmount,
+          },
+        },
+      });
+
+      const populated = await Order.findById(order._id)
+        .populate('createdBy', 'name')
+        .populate('customerId', 'name phone email');
+      res.json(populated);
+    } catch (err) {
+      sendRouteError(res, err, { req });
+    }
+  },
+);
 
 module.exports = router;

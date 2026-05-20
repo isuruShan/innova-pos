@@ -5,7 +5,8 @@ const axios = require('axios');
 const FormData = require('form-data');
 const MerchantApplication = require('../models/MerchantApplication');
 const PlatformUserLookup = require('../models/PlatformUser');
-const { sendApplicationReceivedEmail } = require('../utils/mailer');
+const { sendApplicationReceivedEmail, sendNewApplicationAdminEmail } = require('../utils/mailer');
+const Notification = require('../../../../admin-portal/server/src/models/Notification');
 const { childLogger } = require('@innovapos/logger');
 const { buildMobileE164 } = require('../utils/phone');
 const AdminPortalUser = require('../../../../admin-portal/server/src/models/User');
@@ -275,29 +276,54 @@ router.post('/', upload.single('brFile'), async (req, res) => {
     }).catch(() => {});
 
     try {
-      const supers = await AdminPortalUser.find({ role: 'superadmin', isActive: true }).select('email').lean();
-      const adminTo = (supers || []).map((s) => s.email).filter(Boolean);
-      if (adminTo.length) {
+      const supers = await AdminPortalUser.find({ role: 'superadmin', isActive: true })
+        .select('_id email')
+        .lean();
+      const adminBase = String(process.env.ADMIN_URL || 'http://localhost:5174').replace(/\/$/, '');
+      const reviewUrl = `${adminBase}/applications/${application._id}`;
+      const applicantName = `${firstName} ${lastName}`.trim();
+
+      if (supers.length) {
+        await Notification.insertMany(
+          supers.map((u) => ({
+            tenantId: null,
+            userId: u._id,
+            type: 'merchant_application_submitted',
+            title: 'New merchant application',
+            body: `${businessName} — ${applicantName}`,
+            meta: { resourceType: 'application', resourceId: String(application._id) },
+          })),
+        ).catch(() => {});
+
         await Promise.all(
-          adminTo.map((to) =>
-            sendApplicationReceivedEmail({
-              to,
-              name: `New application from ${firstName} ${lastName} (${businessName})`,
-            }).catch(() => {})
+          supers.map((u) =>
+            sendNewApplicationAdminEmail({
+              to: u.email,
+              applicantName,
+              businessName: businessName.trim(),
+              email: emailLower,
+              mobile,
+              applicationId: String(application._id),
+              reviewUrl,
+            }).catch(() => {}),
           ),
         );
       } else {
-        sendApplicationReceivedEmail({
-          to: process.env.ADMIN_NOTIFY_EMAIL || process.env.EMAIL_FROM,
-          name: `New application from ${firstName} ${lastName} (${businessName})`,
-        }).catch(() => {});
+        const fallback = process.env.ADMIN_NOTIFY_EMAIL || process.env.EMAIL_FROM;
+        if (fallback) {
+          sendNewApplicationAdminEmail({
+            to: fallback,
+            applicantName,
+            businessName: businessName.trim(),
+            email: emailLower,
+            mobile,
+            applicationId: String(application._id),
+            reviewUrl,
+          }).catch(() => {});
+        }
       }
     } catch {
-      // best-effort
-      sendApplicationReceivedEmail({
-        to: process.env.ADMIN_NOTIFY_EMAIL || process.env.EMAIL_FROM,
-        name: `New application from ${firstName} ${lastName} (${businessName})`,
-      }).catch(() => {});
+      // best-effort admin alerts
     }
 
     res.status(201).json({

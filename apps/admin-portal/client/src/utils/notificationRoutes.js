@@ -33,5 +33,8 @@ export function notificationPathForAdmin(n) {
   if (type === 'subscription_due_soon') {
     return resourceId ? `/merchants/${resourceId}` : '/merchants';
   }
+  if (type === 'merchant_application_submitted') {
+    return resourceId ? `/applications/${resourceId}` : '/applications';
+  }
   return '/notifications';
 }
