@@ -11,30 +11,33 @@ const { createOrder, createAddonOrder, captureOrder } = require('../lib/payments
 const { fulfillOnlinePayment } = require('./subscriptionWebhooks');
 const { getAddonPurchaseQuote } = require('../lib/addonPurchaseQuote');
 const { getStoreCreateQuote } = require('../lib/storeCreateQuote');
+const { computeSubscriptionRenewalExpected } = require('../lib/addonBilling');
 const PaidAddonDefinition = require('../models/PaidAddonDefinition');
 
 const router = express.Router();
 
-// Shared plan resolver extracted inline to avoid circular deps
+const { resolveNextBillingPlan } = require('../lib/resolveBillingPlan');
+const SubscriptionPlan = require('../models/SubscriptionPlan');
+
 async function resolvePlanForTenant(tenant, planId) {
   const audience = tenantPlanAudience(tenant.countryIso);
-  const SubscriptionPlan = require('../models/SubscriptionPlan');
 
   if (tenant.planLocked) {
     if (!tenant.assignedPlanId) return null;
     return SubscriptionPlan.findOne({ _id: tenant.assignedPlanId, isActive: true, planAudience: audience });
   }
+
+  const nextBilling = await resolveNextBillingPlan(tenant);
+  const nextId = nextBilling?._id ? String(nextBilling._id) : null;
+
   if (planId) {
     const selected = await SubscriptionPlan.findOne({ _id: planId, isActive: true, planAudience: audience });
-    if (selected) return selected;
+    if (!selected) return null;
+    if (nextId && String(selected._id) !== nextId) return null;
+    return selected;
   }
-  if (tenant.pendingPlanId) {
-    return SubscriptionPlan.findOne({ _id: tenant.pendingPlanId, isActive: true, planAudience: audience });
-  }
-  if (tenant.assignedPlanId) {
-    return SubscriptionPlan.findOne({ _id: tenant.assignedPlanId, isActive: true, planAudience: audience });
-  }
-  return SubscriptionPlan.findOne({ isActive: true, isDefault: true, planAudience: audience }).sort({ createdAt: 1 });
+
+  return nextBilling;
 }
 
 router.post('/stripe', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
@@ -45,26 +48,32 @@ router.post('/stripe', authenticateJWT, authorize('merchant_admin'), async (req,
       return res.status(400).json({ message: 'Stripe payments are not enabled' });
     }
 
-    const tenant = await Tenant.findById(req.tenantId);
+    const tenant = await Tenant.findById(req.tenantId)
+      .populate('assignedPlanId')
+      .populate('pendingPlanId');
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
 
     const plan = await resolvePlanForTenant(tenant, planId);
     if (!plan) return res.status(400).json({ message: 'No valid plan selected' });
 
+    const renewal = await computeSubscriptionRenewalExpected(tenant);
+    const expectedAmount = renewal.total > 0 ? renewal.total : Number(plan.amount) || 0;
+
     const session = await createCheckoutSession({
       tenant,
       plan,
       userId: req.user.id,
+      amount: expectedAmount,
     });
 
     await PaymentReceipt.create({
       tenantId: tenant._id,
       paymentMethod: 'stripe',
-      amount: plan.amount,
+      amount: expectedAmount,
       currency: plan.currency || 'LKR',
       requestedPlanId: plan._id,
       requestedPlanCode: plan.code,
-      expectedAmount: plan.amount,
+      expectedAmount,
       amountMatchesExpected: true,
       bankReference: session.id,
       bankName: 'Stripe',
@@ -88,22 +97,27 @@ router.post('/paypal/create-order', authenticateJWT, authorize('merchant_admin')
       return res.status(400).json({ message: 'PayPal is not enabled' });
     }
 
-    const tenant = await Tenant.findById(req.tenantId);
+    const tenant = await Tenant.findById(req.tenantId)
+      .populate('assignedPlanId')
+      .populate('pendingPlanId');
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
 
     const plan = await resolvePlanForTenant(tenant, planId);
     if (!plan) return res.status(400).json({ message: 'No valid plan selected' });
 
-    const { orderId } = await createOrder({ tenant, plan });
+    const renewal = await computeSubscriptionRenewalExpected(tenant);
+    const expectedAmount = renewal.total > 0 ? renewal.total : Number(plan.amount) || 0;
+
+    const { orderId } = await createOrder({ tenant, plan, amount: expectedAmount });
 
     await PaymentReceipt.create({
       tenantId: tenant._id,
       paymentMethod: 'paypal',
-      amount: plan.amount,
+      amount: expectedAmount,
       currency: plan.currency || 'LKR',
       requestedPlanId: plan._id,
       requestedPlanCode: plan.code,
-      expectedAmount: plan.amount,
+      expectedAmount,
       amountMatchesExpected: true,
       bankReference: orderId,
       bankName: 'PayPal',

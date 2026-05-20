@@ -165,17 +165,14 @@ async function previewAdditionalStoreCharge(tenantId, plan) {
  * Expected bank-transfer amount for subscription renewal (plan + active paid add-ons).
  */
 async function computeSubscriptionRenewalExpected(tenant) {
+  const { resolveNextBillingPlan } = require('./resolveBillingPlan');
   const t = await Tenant.findById(tenant._id || tenant)
     .populate('assignedPlanId')
+    .populate('pendingPlanId')
     .lean();
   if (!t) return { plan: null, addons: [], total: 0, currency: 'LKR' };
 
-  const planDoc = t.assignedPlanId;
-  const plan =
-    planDoc && typeof planDoc === 'object' && planDoc._id
-      ? planDoc
-      : await SubscriptionPlan.findOne({ _id: t.assignedPlanId, isActive: true }).lean();
-
+  const plan = await resolveNextBillingPlan(t);
   if (!plan) return { plan: null, addons: [], total: 0, currency: 'LKR' };
 
   const addons = [];
@@ -186,15 +183,17 @@ async function computeSubscriptionRenewalExpected(tenant) {
     { code: 'loyalty', label: 'Loyalty program', key: 'loyalty', check: isLoyaltyEffective },
   ];
   for (const row of renewalRows) {
-    const ent = t.paidAddons?.[row.key];
-    if (row.check(t.paidAddons) && ent?.amountPerCycle > 0) {
-      addons.push({
-        code: row.code,
-        label: row.label,
-        amount: Number(ent.amountPerCycle) || 0,
-      });
-      addonTotal += Number(ent.amountPerCycle) || 0;
-    }
+    if (!row.check(t.paidAddons)) continue;
+    const addonDef = await getAddonByCode(row.code);
+    const priced = addonDef && addonDef.isActive ? priceAddonForPlan(addonDef, plan) : { amount: 0 };
+    const amount = Number(priced.amount) || 0;
+    if (amount <= 0) continue;
+    addons.push({
+      code: row.code,
+      label: row.label,
+      amount,
+    });
+    addonTotal += amount;
   }
 
   const storeLine = await computeAdditionalStoresSubscriptionLine(t._id, plan);
@@ -211,7 +210,15 @@ async function computeSubscriptionRenewalExpected(tenant) {
   const base = Number(plan.amount) || 0;
   const currency = plan.currency || 'LKR';
   return {
-    plan: { _id: plan._id, name: plan.name, code: plan.code, amount: base, currency, billingCycle: plan.billingCycle },
+    plan: {
+      _id: plan._id,
+      name: plan.name,
+      code: plan.code,
+      amount: base,
+      currency,
+      billingCycle: plan.billingCycle,
+      isScheduledChange: Boolean(t.pendingPlanId),
+    },
     addons,
     total: base + addonTotal,
     currency,

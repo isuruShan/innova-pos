@@ -9,8 +9,7 @@ const Tenant = require('../models/Tenant');
 const { authenticateJWT, authorize, sendRouteError, resolveUploadProxyTimeoutMs } = require('@innovapos/shared-middleware');
 const { ensureDefaultPaidAddons, priceAddonForPlan, getAddonByCode } = require('../lib/addonBilling');
 const { getAddonPurchaseQuote } = require('../lib/addonPurchaseQuote');
-const SubscriptionPlan = require('../models/SubscriptionPlan');
-const { tenantPlanAudience } = require('../utils/planAudience');
+const { resolveNextBillingPlan, loadTenantForBilling } = require('../lib/resolveBillingPlan');
 const { applyPaidAddonExpiryIfNeeded, entitlementKeyForCode } = require('../lib/addonPeriod');
 const { getAddonMerchantState } = require('../lib/addonMerchantState');
 const { resolveMediaUrls } = require('../lib/resolveMediaUrls');
@@ -25,25 +24,6 @@ const screenshotUpload = multer({
     cb(ok ? null : new Error('Only JPEG, PNG, or WebP images allowed'), ok);
   },
 });
-
-/** Resolve plan document used to price add-ons for this tenant (same rules as GET /quote/:code). */
-async function resolvePlanForTenantAddons(tenant) {
-  const audience = tenantPlanAudience(tenant.countryIso);
-  let plan = tenant.assignedPlanId;
-  if (plan && typeof plan === 'object' && plan._id) {
-    return plan;
-  }
-  if (tenant.assignedPlanId) {
-    return SubscriptionPlan.findOne({
-      _id: tenant.assignedPlanId,
-      isActive: true,
-      planAudience: audience,
-    }).lean();
-  }
-  return SubscriptionPlan.findOne({ isActive: true, isDefault: true, planAudience: audience })
-    .sort({ createdAt: 1 })
-    .lean();
-}
 
 async function buildCatalogRow(tenant, addon, plan, billingLabel) {
   const priced = priceAddonForPlan(addon, plan);
@@ -66,11 +46,11 @@ async function buildCatalogRow(tenant, addon, plan, billingLabel) {
 router.get('/merchant-catalog', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
   try {
     await ensureDefaultPaidAddons();
-    let tenant = await Tenant.findById(req.tenantId);
+    let tenant = await loadTenantForBilling(req.tenantId);
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
     tenant = await applyPaidAddonExpiryIfNeeded(tenant);
 
-    const plan = await resolvePlanForTenantAddons(tenant);
+    const plan = await resolveNextBillingPlan(tenant);
     const defs = await PaidAddonDefinition.find({
       isActive: true,
       showInMerchantCatalog: { $ne: false },
@@ -78,7 +58,9 @@ router.get('/merchant-catalog', authenticateJWT, authorize('merchant_admin'), as
       .sort({ sortOrder: 1, name: 1 })
       .lean();
     const billingLabel =
-      plan?.billingCycle === 'yearly' ? 'per year (matches your yearly plan)' : 'per month (matches your monthly plan)';
+      plan?.billingCycle === 'yearly'
+        ? 'per year (your next billing cycle)'
+        : 'per month (your next billing cycle)';
 
     const list = await Promise.all(defs.map((addon) => buildCatalogRow(tenant, addon, plan, billingLabel)));
 

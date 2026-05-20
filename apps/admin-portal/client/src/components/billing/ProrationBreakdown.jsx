@@ -19,7 +19,8 @@ export default function ProrationBreakdown({ proration, fullCycle, currency }) {
       {proration.isProrated ? (
         <div className="flex justify-between text-blue-900/80">
           <span>
-            {proration.remainingDays} of {proration.cycleDays} days remaining
+            {proration.remainingDays} day{proration.remainingDays === 1 ? '' : 's'} left in current period
+            <span className="text-blue-800/70"> · {proration.cycleDays}-day billing rate</span>
           </span>
           <span className="tabular-nums text-xs">
             {proration.periodEndsAt

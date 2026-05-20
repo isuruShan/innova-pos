@@ -61,10 +61,10 @@ async function createAddonOrder({ tenant, addonCode, amount, currency, descripti
   return { orderId: data.id, mode };
 }
 
-async function createOrder({ tenant, plan }) {
+async function createOrder({ tenant, plan, amount }) {
   const { token, mode } = await getAccessToken();
   const currency = plan.currency || 'LKR';
-  const value = Number(plan.amount).toFixed(2);
+  const value = Number(amount != null ? amount : plan.amount).toFixed(2);
 
   const { data } = await axios.post(
     `${apiBase(mode)}/v2/checkout/orders`,

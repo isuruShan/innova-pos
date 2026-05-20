@@ -9,6 +9,9 @@ export default function BillingBreakdownPanel({ breakdown }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2 text-sm">
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Billing breakdown</p>
+      {plan.isScheduledChange ? (
+        <p className="text-xs text-blue-800">Upcoming plan change — totals use your next billing cycle.</p>
+      ) : null}
       <div className="flex justify-between gap-4 text-gray-800">
         <span>{plan.name}</span>
         <span className="tabular-nums shrink-0">

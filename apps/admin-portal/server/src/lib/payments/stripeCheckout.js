@@ -10,13 +10,14 @@ async function getStripe() {
   return new Stripe(key);
 }
 
-async function createCheckoutSession({ tenant, plan, userId }) {
+async function createCheckoutSession({ tenant, plan, userId, amount }) {
   const stripe = await getStripe();
   if (!stripe) throw new Error('Stripe is not configured');
 
   const base = adminPortalBaseUrl();
   const currency = (plan.currency || 'LKR').toLowerCase();
-  const unitAmount = Math.round(Number(plan.amount) * 100);
+  const charge = amount != null ? Number(amount) : Number(plan.amount);
+  const unitAmount = Math.round(charge * 100);
   if (!Number.isFinite(unitAmount) || unitAmount <= 0) {
     throw new Error('Invalid plan amount for Stripe');
   }

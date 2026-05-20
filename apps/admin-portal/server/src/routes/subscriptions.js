@@ -49,6 +49,7 @@ async function attachFreshReceiptUrls(receipts) {
 }
 
 async function resolveRequestedPlan({ tenant, planId }) {
+  const { resolveNextBillingPlan } = require('../lib/resolveBillingPlan');
   const audience = tenantPlanAudience(tenant.countryIso);
   const regionFilter = { planAudience: audience };
 
@@ -59,10 +60,20 @@ async function resolveRequestedPlan({ tenant, planId }) {
     return assigned || null;
   }
 
+  const nextBilling = await resolveNextBillingPlan(tenant);
+  const nextId = nextBilling?._id ? String(nextBilling._id) : null;
+
   if (planId) {
     const selected = await SubscriptionPlan.findOne({ _id: planId, isActive: true, ...regionFilter });
-    if (selected) return selected;
+    if (selected) {
+      if (nextId && String(selected._id) !== nextId) {
+        return null;
+      }
+      return selected;
+    }
   }
+
+  if (nextBilling) return nextBilling;
 
   const latestReceipt = await PaymentReceipt.findOne({
     tenantId: tenant._id,
@@ -337,7 +348,11 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
 
     const requestedPlan = await resolveRequestedPlan({ tenant, planId });
     if (!requestedPlan) {
-      return res.status(400).json({ message: 'No active plan is assigned. Please contact support.' });
+      return res.status(400).json({
+        message: planId
+          ? 'Selected plan does not match your next billing period. Refresh the page and use the plan shown for your upcoming renewal.'
+          : 'No active plan is assigned. Please contact support.',
+      });
     }
 
     const renewal = await computeSubscriptionRenewalExpected(tenant);

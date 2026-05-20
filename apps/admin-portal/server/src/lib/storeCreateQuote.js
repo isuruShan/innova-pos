@@ -1,31 +1,24 @@
 'use strict';
 
-const Tenant = require('../models/Tenant');
-const SubscriptionPlan = require('../models/SubscriptionPlan');
 const { getAddonByCode, ensureDefaultPaidAddons } = require('./addonBilling');
-const { computeProratedAddonCharge, resolveSubscriptionPeriodEnd } = require('./billingProration');
-const { tenantPlanAudience } = require('../utils/planAudience');
+const { computeProratedAddonCharge } = require('./billingProration');
+const {
+  loadTenantForBilling,
+  planBillingCycleDays,
+  resolveCurrentSubscriptionPeriod,
+  resolveNextBillingPlan,
+} = require('./resolveBillingPlan');
 const {
   countActiveStoresForTenant,
   requiresPaymentForNewStore,
   INCLUDED_STORES_PER_TENANT,
 } = require('./storePurchase');
 
-async function resolvePlanForTenantId(tenantId) {
-  const tenant = await Tenant.findById(tenantId).lean();
-  if (!tenant?.assignedPlanId) return { tenant, plan: null };
-  const audience = tenantPlanAudience(tenant.countryIso);
-  const plan = await SubscriptionPlan.findOne({
-    _id: tenant.assignedPlanId,
-    isActive: true,
-    planAudience: audience,
-  }).lean();
-  return { tenant, plan };
-}
-
 async function getStoreCreateQuote(tenantId) {
   await ensureDefaultPaidAddons();
-  const { tenant, plan } = await resolvePlanForTenantId(tenantId);
+  const tenant = await loadTenantForBilling(tenantId);
+  if (!tenant) return { requiresPayment: false, error: 'Tenant not found' };
+  const plan = await resolveNextBillingPlan(tenant);
   const activeCount = await countActiveStoresForTenant(tenantId);
   const requiresPayment = requiresPaymentForNewStore(activeCount);
 
@@ -54,8 +47,11 @@ async function getStoreCreateQuote(tenantId) {
     };
   }
 
-  const periodEnd = await resolveSubscriptionPeriodEnd(tenant);
-  const priced = computeProratedAddonCharge(addon, plan, periodEnd);
+  const { periodEnd, periodDays } = await resolveCurrentSubscriptionPeriod(tenant);
+  const priced = computeProratedAddonCharge(addon, plan, periodEnd, {
+    billingCycleDays: planBillingCycleDays(plan),
+    currentPeriodDays: periodDays,
+  });
 
   return {
     requiresPayment: true,
@@ -84,4 +80,4 @@ async function getStoreCreateQuote(tenantId) {
   };
 }
 
-module.exports = { getStoreCreateQuote, resolvePlanForTenantId };
+module.exports = { getStoreCreateQuote };

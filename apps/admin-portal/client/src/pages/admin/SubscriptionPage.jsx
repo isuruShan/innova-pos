@@ -137,35 +137,47 @@ export default function SubscriptionPage() {
 
   const subscriptionEnd = subscriptionEndDate ? new Date(subscriptionEndDate) : null;
 
+  /** Plan due at the next payment (scheduled change or current assigned plan). */
+  const nextBillingPlanId = useMemo(() => {
+    if (tenant?.planLocked && tenant.assignedPlanId?._id) return tenant.assignedPlanId._id;
+    return tenant?.pendingPlanId?._id || tenant?.assignedPlanId?._id || null;
+  }, [tenant?.planLocked, tenant?.pendingPlanId?._id, tenant?.assignedPlanId?._id]);
+
+  const payPlans = useMemo(() => {
+    if (!nextBillingPlanId) return plans;
+    const match = plans.filter((p) => p._id === nextBillingPlanId);
+    return match.length ? match : plans;
+  }, [plans, nextBillingPlanId]);
+
   const selectedPlan = useMemo(
-    () => plans.find((p) => p._id === form.planId) || null,
-    [plans, form.planId]
+    () => payPlans.find((p) => p._id === form.planId) || payPlans[0] || null,
+    [payPlans, form.planId]
   );
 
   const paypalCurrency = useMemo(() => selectedPlan?.currency || 'USD', [selectedPlan?.currency]);
 
   useEffect(() => {
-    if (!tenant || !plans.length) return;
+    if (!tenant || !payPlans.length) return;
     const defaultPlanId =
       (tenant.planLocked && tenant.assignedPlanId?._id) ||
+      nextBillingPlanId ||
       latestReceiptPlanId ||
-      tenant.assignedPlanId?._id ||
-      plans.find((p) => p.isDefault)?._id ||
-      plans[0]?._id ||
+      payPlans[0]?._id ||
       '';
     if (!defaultPlanId) return;
     setForm((f) => ({
       ...f,
       planId: defaultPlanId,
-      amount: String((plans.find((p) => p._id === defaultPlanId)?.amount ?? f.amount)),
     }));
-  }, [tenant, plans, latestReceiptPlanId]);
+  }, [tenant, payPlans, nextBillingPlanId, latestReceiptPlanId]);
 
   useEffect(() => {
-    if (!selectedPlan && !billingBreakdown?.total) return;
-    const total = billingBreakdown?.total > 0 ? billingBreakdown.total : selectedPlan?.amount;
+    const total =
+      billingBreakdown?.total > 0
+        ? billingBreakdown.total
+        : selectedPlan?.amount;
     if (total != null) setForm((f) => ({ ...f, amount: String(total) }));
-  }, [selectedPlan?._id, billingBreakdown?.total]);
+  }, [selectedPlan?._id, selectedPlan?.amount, billingBreakdown?.total]);
 
   useEffect(() => {
     const wantPaypal =
@@ -426,7 +438,7 @@ export default function SubscriptionPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Plan *</label>
                 <select
                   value={form.planId}
-                  disabled={tenant?.planLocked}
+                  disabled={tenant?.planLocked || payPlans.length <= 1}
                   onChange={(e) => {
                     setForm((f) => ({ ...f, planId: e.target.value }));
                     setErrors((e2) => ({ ...e2, planId: '' }));
@@ -435,13 +447,23 @@ export default function SubscriptionPage() {
                     errors.planId ? 'border-red-400' : 'border-gray-300'
                   }`}
                 >
-                  <option value="">Select plan</option>
-                  {plans.map((p) => (
+                  {payPlans.length === 0 && <option value="">Select plan</option>}
+                  {payPlans.map((p) => (
                     <option key={p._id} value={p._id}>
-                      {p.name} ({p.currency} {Number(p.amount).toLocaleString()})
+                      {p.name} ({p.currency} {Number(p.amount).toLocaleString()}
+                      {p.billingCycle ? ` / ${p.billingCycle}` : ''})
                     </option>
                   ))}
                 </select>
+                {tenant?.pendingPlanId && (
+                  <p className="text-xs text-blue-700 mt-1">
+                    Paying for your upcoming plan: <strong>{tenant.pendingPlanId.name}</strong>
+                    {tenant.pendingPlanEffectiveAt
+                      ? ` (effective ${new Date(tenant.pendingPlanEffectiveAt).toLocaleDateString()})`
+                      : ''}
+                    .
+                  </p>
+                )}
                 {tenant?.planLocked && (
                   <p className="text-xs text-amber-600 mt-1">This plan is locked by superadmin and cannot be changed.</p>
                 )}

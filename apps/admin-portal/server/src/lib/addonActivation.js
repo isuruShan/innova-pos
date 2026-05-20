@@ -5,7 +5,7 @@ const PaymentReceipt = require('../models/PaymentReceipt');
 const { computeAddonPeriodEnd } = require('./addonPeriod');
 const { entitlementKeyForCode, emptyEntitlement } = require('@innovapos/paid-addons');
 const { getAddonByCode, priceAddonForPlan } = require('./addonBilling');
-const { resolvePlanForTenantAddons } = require('./addonPurchaseQuote');
+const { resolveNextBillingPlan } = require('./resolveBillingPlan');
 
 /**
  * @param {string} tenantId
@@ -17,10 +17,12 @@ async function activatePaidAddonForTenant(tenantId, addonCode, opts) {
   const entitlementKey = entitlementKeyForCode(code);
   if (!entitlementKey) throw new Error(`Unknown add-on code: ${code}`);
 
-  const tenant = await Tenant.findById(tenantId);
+  const tenant = await Tenant.findById(tenantId)
+    .populate('assignedPlanId')
+    .populate('pendingPlanId');
   if (!tenant) throw new Error('Tenant not found');
 
-  const plan = await resolvePlanForTenantAddons(tenant);
+  const plan = await resolveNextBillingPlan(tenant);
   const addon = await getAddonByCode(code);
   const fullPriced = addon && plan ? priceAddonForPlan(addon, plan) : { amount: 0, currency: 'LKR' };
   const amountPerCycle =
