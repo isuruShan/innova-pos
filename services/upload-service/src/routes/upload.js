@@ -82,19 +82,26 @@ router.post('/', serviceOrJwt, upload.single('file'), async (req, res) => {
         return res.status(400).json({ message: 'PDF uploads are not allowed for this document type' });
       }
     } else if (isOptimizableImageMime(req.file.mimetype)) {
-      try {
-        const optimized = await optimizeImageToWebp(uploadBuffer);
-        uploadBuffer = optimized.buffer;
-        uploadMime = optimized.mimeType;
-        uploadSize = uploadBuffer.length;
-        if (uploadSize > config.maxSize) {
-          return res.status(400).json({
-            message: `After optimization the file still exceeds max ${config.maxSize / 1024 / 1024}MB — try a smaller image.`,
-          });
+      const skipReoptimize =
+        req.file.mimetype === 'image/webp' &&
+        req.file.size <= config.maxSize &&
+        process.env.UPLOAD_SKIP_REOPTIMIZE_WEBP !== 'false';
+
+      if (!skipReoptimize) {
+        try {
+          const optimized = await optimizeImageToWebp(uploadBuffer);
+          uploadBuffer = optimized.buffer;
+          uploadMime = optimized.mimeType;
+          uploadSize = uploadBuffer.length;
+          if (uploadSize > config.maxSize) {
+            return res.status(400).json({
+              message: `After optimization the file still exceeds max ${config.maxSize / 1024 / 1024}MB — try a smaller image.`,
+            });
+          }
+        } catch (optErr) {
+          logger.error('Image optimization failed', { error: optErr.message });
+          return res.status(400).json({ message: 'Could not process image. Use JPEG, PNG, or WebP.' });
         }
-      } catch (optErr) {
-        logger.error('Image optimization failed', { error: optErr.message });
-        return res.status(400).json({ message: 'Could not process image. Use JPEG, PNG, or WebP.' });
       }
     } else {
       return res.status(400).json({ message: `Unsupported file type: ${req.file.mimetype}` });
@@ -107,7 +114,13 @@ router.post('/', serviceOrJwt, upload.single('file'), async (req, res) => {
     const ext = extMap[uploadMime] || 'bin';
     const key = `tenants/${tenantId}/${config.folder}/${uuidv4()}.${ext}`;
 
-    await uploadToS3(uploadBuffer, key, uploadMime);
+    const provider = require('@innovapos/object-storage').resolveStorageProvider();
+    const azureWarm =
+      provider === 'azure'
+        ? require('@innovapos/object-storage/providers/azure').warmupAzureStorage()
+        : Promise.resolve();
+
+    await Promise.all([uploadToS3(uploadBuffer, key, uploadMime), azureWarm]);
     const url = await getPresignedUrl(key, 3600);
 
     logger.info('File uploaded', { key, size: uploadSize, type: uploadType, mimeType: uploadMime });

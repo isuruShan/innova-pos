@@ -5,13 +5,10 @@ const FormData = require('form-data');
 const { protect } = require('../middleware/auth');
 const { resolveUploadProxyTimeoutMs } = require('@innovapos/shared-middleware');
 
-const uploadTimeoutMs = resolveUploadProxyTimeoutMs();
-
 const router = express.Router();
 
 const UPLOAD_SERVICE_URL = process.env.UPLOAD_SERVICE_URL || 'http://localhost:3002';
 
-// Memory storage — buffer passed to upload service
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
@@ -25,19 +22,40 @@ const upload = multer({
   },
 });
 
+const uploadFields = upload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'file', maxCount: 1 },
+]);
+
+function pickUploadedFile(req) {
+  return req.files?.image?.[0] || req.files?.file?.[0] || req.file || null;
+}
+
+/** Long-running uploads (Azure blob + SAS can exceed 30s on small VMs). */
+function extendUploadTimeouts(req, res, next) {
+  const ms = resolveUploadProxyTimeoutMs();
+  req.setTimeout(ms);
+  res.setTimeout(ms);
+  if (req.socket) req.socket.setTimeout(ms);
+  next();
+}
+
 /**
  * POST /api/upload
  * Proxies the file to the upload-service.
  * Accepts: multipart/form-data with field `image` (legacy) or `file` + optional `type`
  */
-router.post('/', protect, upload.single('image'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+router.post('/', protect, extendUploadTimeouts, uploadFields, async (req, res) => {
+  const file = pickUploadedFile(req);
+  if (!file) return res.status(400).json({ message: 'No file uploaded' });
+
+  const uploadTimeoutMs = resolveUploadProxyTimeoutMs();
 
   try {
     const form = new FormData();
-    form.append('file', req.file.buffer, {
-      filename: req.file.originalname || 'upload.webp',
-      contentType: req.file.mimetype,
+    form.append('file', file.buffer, {
+      filename: file.originalname || 'upload.webp',
+      contentType: file.mimetype,
     });
     form.append('type', req.body.type || 'menu');
 
@@ -55,7 +73,10 @@ router.post('/', protect, upload.single('image'), async (req, res) => {
     res.status(response.status).json(response.data);
   } catch (err) {
     const status = err.response?.status || 500;
-    const message = err.response?.data?.message || err.message;
+    let message = err.response?.data?.message || err.message;
+    if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
+      message = `Upload service unreachable at ${UPLOAD_SERVICE_URL}. Is upload-service running?`;
+    }
     res.status(status).json({ message });
   }
 });
@@ -68,7 +89,7 @@ router.post('/presign', protect, async (req, res) => {
     const token = req.headers.authorization;
     const response = await axios.post(`${UPLOAD_SERVICE_URL}/upload/presign`, req.body, {
       headers: { Authorization: token, 'Content-Type': 'application/json' },
-      timeout: 10000,
+      timeout: resolveUploadProxyTimeoutMs(),
     });
     res.status(response.status).json(response.data);
   } catch (err) {

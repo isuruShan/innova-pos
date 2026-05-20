@@ -351,7 +351,7 @@ az keyvault secret show --vault-name cafinity-dev-key --name innovapos-productio
 | `Failed to load secrets` | VM identity has **Key Vault Secrets User**; vault URL and secret name match bootstrap |
 | Upload 500 / storage error | `AZURE_STORAGE_ACCOUNT_NAME` in vault JSON; **Storage Blob Data Contributor** on VM |
 | Images 403 / no presign URL | **Storage Blob Delegator** on VM |
-| `timeout of 30000ms exceeded` on image upload | Pull latest code (120s proxy timeout + Azure SAS key cache). Ensure `upload-service` is running. Optional: `UPLOAD_PROXY_TIMEOUT_MS=180000` in Key Vault JSON. Rebuild POS client if using old bundle. |
+| `timeout of 30000ms exceeded` on image upload | VM still on **old code** (30s limit) or nginx/Azure gateway timeout. Run `git pull`, `pnpm install`, `pnpm --filter @pos/client run build`, `pm2 reload ecosystem.config.cjs --env production`. Ensure `upload-service` is up (`pm2 logs upload-service`). Optional Key Vault: `UPLOAD_PROXY_TIMEOUT_MS=300000`. If using nginx, set `proxy_read_timeout 300s;` on `/api/upload`. |
 | `DefaultAzureCredential` failed | System-assigned identity enabled; not running outside Azure without service principal |
 | Old AWS env still used | Remove `AWS_SECRETS_MANAGER_SECRET_ID` from bootstrap; set `CLOUD_PROVIDER=azure` |
 

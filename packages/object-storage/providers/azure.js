@@ -8,6 +8,8 @@ const {
 } = require('@azure/storage-blob');
 const { DefaultAzureCredential } = require('@azure/identity');
 
+let cachedBlobServiceClient = null;
+
 function accountName() {
   const name = String(process.env.AZURE_STORAGE_ACCOUNT_NAME || '').trim();
   if (!name) throw new Error('AZURE_STORAGE_ACCOUNT_NAME is not configured');
@@ -19,14 +21,16 @@ function containerName() {
 }
 
 function blobServiceClient() {
+  if (cachedBlobServiceClient) return cachedBlobServiceClient;
   const account = accountName();
-  return new BlobServiceClient(
+  cachedBlobServiceClient = new BlobServiceClient(
     `https://${account}.blob.core.windows.net`,
     new DefaultAzureCredential(),
   );
+  return cachedBlobServiceClient;
 }
 
-/** Reuse user-delegation key across uploads (avoids slow Key Vault round-trip per file). */
+/** Reuse user-delegation key across uploads (avoids slow round-trip per file). */
 let delegationCache = null;
 
 async function getUserDelegationKeyCached(client) {
@@ -44,6 +48,12 @@ async function getUserDelegationKeyCached(client) {
   const key = await client.getUserDelegationKey(startsOn, expiresOn);
   delegationCache = { key, startsOn, expiresOn, validUntil: expiresOn.getTime() };
   return delegationCache;
+}
+
+/** Call at upload-service startup so first menu upload is not cold. */
+async function warmupAzureStorage() {
+  const client = blobServiceClient();
+  await getUserDelegationKeyCached(client);
 }
 
 async function uploadObject(buffer, key, mimeType) {
@@ -88,4 +98,9 @@ async function deleteObject(key) {
   await client.getContainerClient(containerName()).deleteBlob(key);
 }
 
-module.exports = { uploadObject, getPresignedUrl, deleteObject };
+module.exports = {
+  uploadObject,
+  getPresignedUrl,
+  deleteObject,
+  warmupAzureStorage,
+};

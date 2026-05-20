@@ -61,16 +61,27 @@ app.use((err, req, res, _next) => {
 });
 
   const PORT = parseInt(process.env.PORT, 10) || 3002;
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     const { resolveStorageProvider } = require('@innovapos/object-storage');
     const storage = resolveStorageProvider();
     logger.info(`Upload service running on :${PORT}`, { storage });
-  if (!String(process.env.INTERNAL_SERVICE_KEY || '').trim()) {
-    logger.warn(
-      'INTERNAL_SERVICE_KEY is unset — server-to-server uploads will get 401. Set it in services/upload-service/.env or repo-root .env (must match public-web-server).'
-    );
+    if (!String(process.env.INTERNAL_SERVICE_KEY || '').trim()) {
+      logger.warn(
+        'INTERNAL_SERVICE_KEY is unset — server-to-server uploads will get 401. Set it in services/upload-service/.env or repo-root .env (must match public-web-server).',
+      );
+    }
+  });
+
+  server.requestTimeout = parseInt(process.env.UPLOAD_HTTP_TIMEOUT_MS || '300000', 10) || 300000;
+  server.headersTimeout = server.requestTimeout + 60000;
+
+  const { resolveStorageProvider } = require('@innovapos/object-storage');
+  if (resolveStorageProvider() === 'azure') {
+    require('@innovapos/object-storage/providers/azure')
+      .warmupAzureStorage()
+      .then(() => logger.info('Azure storage warmup complete'))
+      .catch((e) => logger.warn('Azure storage warmup failed', { error: e.message }));
   }
-});
 }
 
 start().catch((err) => {

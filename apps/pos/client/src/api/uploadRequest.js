@@ -1,7 +1,7 @@
 import api from './axios.js';
 
 /** Browser timeout for /api/upload (must be ≥ server UPLOAD_PROXY_TIMEOUT_MS). */
-export const UPLOAD_CLIENT_TIMEOUT_MS = 120_000;
+export const UPLOAD_CLIENT_TIMEOUT_MS = 300_000;
 
 /**
  * POST multipart upload with extended timeout (menu images, profile photos).

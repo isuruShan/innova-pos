@@ -170,12 +170,14 @@ function MenuGalleryAppend({ onAppend }) {
       const optimized = await optimizeImage(file, 'menu');
       const fd = new FormData();
       fd.append('image', optimized);
+      fd.append('type', 'menu');
       const { postUpload } = await import('../../api/uploadRequest');
       const { data } = await postUpload(fd);
       onAppend({ url: data.url, key: data.key });
       setTab('file');
-    } catch {
-      alert('Upload failed. Please try again.');
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Upload failed';
+      alert(msg.includes('timeout') ? `${msg}\n\nIf this persists after deploy, check upload-service logs and Azure storage roles.` : msg);
     } finally {
       setUploading(false);
       e.target.value = '';

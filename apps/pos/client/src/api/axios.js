@@ -8,6 +8,12 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  const url = String(config.url || '');
+  if (url.includes('/upload') && config.timeout == null) {
+    config.timeout = 300_000;
+    config.maxContentLength = Infinity;
+    config.maxBodyLength = Infinity;
+  }
   const token = localStorage.getItem('pos_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   const selectedStore = localStorage.getItem('pos_selected_store');
