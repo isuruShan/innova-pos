@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Smartphone, X, Loader2 } from 'lucide-react';
 import api from '../api/axios';
@@ -89,17 +90,23 @@ function QrOrderUpdateDetailModal({ notification, order, orderLoading, orderErro
   );
 }
 
-/** Dedicated top strip for `qr_order_updated` — cashier role only (matches who receives these). */
+/** Dedicated top strip for `qr_order_updated` on cashier and manager register screens. */
 export default function QrOrderUpdateBar() {
   const qc = useQueryClient();
   const { user } = useAuth();
+  const { pathname } = useLocation();
   const { selectedStoreId, isStoreReady } = useStoreContext();
   const [active, setActive] = useState(null);
 
   const role = String(user?.role || '').toLowerCase();
+  const onFohrScreen =
+    pathname.startsWith('/cashier') ||
+    pathname.startsWith('/register') ||
+    pathname.startsWith('/kitchen');
   const enabled =
     !!user?.tenantId &&
-    role === 'cashier' &&
+    onFohrScreen &&
+    (role === 'cashier' || role === 'manager' || role === 'merchant_admin') &&
     isStoreReady &&
     !!selectedStoreId;
 

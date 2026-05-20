@@ -39,19 +39,22 @@ export function StoreProvider({ children }) {
 
   useEffect(() => {
     if (!stores.length) {
-      setSelectedStoreId('');
-      localStorage.setItem('pos_selected_store', '');
+      setSelectedStoreId((prev) => {
+        if (prev === '') return prev;
+        localStorage.setItem('pos_selected_store', '');
+        return '';
+      });
       return;
     }
     const ids = stores.map((s) => normalizeStoreId(s._id));
-    const current = normalizeStoreId(selectedStoreId);
-    const exists = current !== '' && ids.includes(current);
-    if (!exists) {
+    setSelectedStoreId((current) => {
+      const normalized = normalizeStoreId(current);
+      if (normalized !== '' && ids.includes(normalized)) return normalized;
       const fallback = normalizeStoreId(stores[0]._id);
-      setSelectedStoreId(fallback);
       localStorage.setItem('pos_selected_store', fallback);
-    }
-  }, [stores, selectedStoreId]);
+      return fallback;
+    });
+  }, [stores]);
 
   const value = useMemo(() => ({
     stores,

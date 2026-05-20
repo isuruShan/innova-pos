@@ -86,6 +86,7 @@ app.use('/api/tenant-settings',  require('./routes/tenantSettings'));
 app.use('/api/stores',           require('./routes/stores'));
 app.use('/api/cashier-sessions', require('./routes/cashier-sessions'));
 app.use('/api/customers', require('./routes/customers'));
+app.use('/api/tenant', require('./routes/tenantAddons'));
 app.use('/api/loyalty', require('./routes/loyalty'));
 app.use('/api/notifications', require('./routes/notifications'));
 

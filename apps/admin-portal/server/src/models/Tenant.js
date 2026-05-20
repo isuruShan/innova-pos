@@ -54,9 +54,15 @@ const tenantSchema = new mongoose.Schema(
         activatedAt: { type: Date, default: null },
         amountPerCycle: { type: Number, default: 0, min: 0 },
         currency: { type: String, default: '', trim: true, uppercase: true },
-        /** End of the current paid period for this add-on */
         periodEndsAt: { type: Date, default: null },
-        /** When true, service stays on until periodEndsAt then deactivates */
+        cancelAtPeriodEnd: { type: Boolean, default: false },
+      },
+      loyalty: {
+        active: { type: Boolean, default: false },
+        activatedAt: { type: Date, default: null },
+        amountPerCycle: { type: Number, default: 0, min: 0 },
+        currency: { type: String, default: '', trim: true, uppercase: true },
+        periodEndsAt: { type: Date, default: null },
         cancelAtPeriodEnd: { type: Boolean, default: false },
       },
     },

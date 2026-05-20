@@ -1,29 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, Loader, CheckCircle, AlertTriangle, ExternalLink, FileText } from 'lucide-react';
 import api from '../../api/axios';
-import AddonCatalogTiles from '../../components/addons/AddonCatalogTiles';
-import AdminDateField from '../../components/AdminDateField';
 import PlanChangeModal from '../../components/subscription/PlanChangeModal';
+import BillingBreakdownPanel from '../../components/billing/BillingBreakdownPanel';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
 import { useToast } from '../../context/ToastContext';
 
 export default function SubscriptionPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
-  const navigate = useNavigate();
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const fileRef = useRef(null);
-  const [form, setForm] = useState({ amount: '', bankReference: '', bankName: '', paymentDate: '', notes: '', planId: '' });
+  const [form, setForm] = useState({ amount: '', bankReference: '', notes: '', planId: '' });
   const [paymentMethod, setPaymentMethod] = useState('bank_transfer');
   const [file, setFile] = useState(null);
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [paypalReady, setPaypalReady] = useState(false);
-  const [unsubscribingCode, setUnsubscribingCode] = useState('');
-
   const { data } = useQuery({
     queryKey: ['my-subscription'],
     queryFn: async () => { const { data } = await api.get('/subscriptions/my'); return data; },
@@ -44,33 +40,6 @@ export default function SubscriptionPage() {
     },
   });
 
-  const { data: addonCatalog = [], isPending: addonCatalogPending } = useQuery({
-    queryKey: ['paid-addons-merchant-catalog'],
-    queryFn: () => api.get('/paid-addons/merchant-catalog').then((r) => r.data),
-  });
-
-  const unsubscribeMutation = useMutation({
-    mutationFn: (code) => api.post(`/paid-addons/${encodeURIComponent(code)}/unsubscribe`).then((r) => r.data),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
-      queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
-      toast.success(data?.message || 'Unsubscribe scheduled.');
-      setUnsubscribingCode('');
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || 'Could not unsubscribe');
-      setUnsubscribingCode('');
-    },
-  });
-
-  const handleAddonUnsubscribe = (row) => {
-    if (!window.confirm(
-      `Unsubscribe from ${row.name}? It will stay active until the end of your current paid period, then turn off.`,
-    )) return;
-    setUnsubscribingCode(row.code);
-    unsubscribeMutation.mutate(row.code);
-  };
-
   const schedulePlanMutation = useMutation({
     mutationFn: (planId) => api.post('/subscriptions/schedule-plan', { planId }),
     onSuccess: () => {
@@ -90,7 +59,7 @@ export default function SubscriptionPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
       setSubmitted(true);
-      setForm((f) => ({ ...f, bankReference: '', bankName: '', paymentDate: '', notes: '' }));
+      setForm((f) => ({ ...f, bankReference: '', notes: '' }));
       setFile(null);
     },
     onError: (err) => setErrors({ api: err.response?.data?.message || 'Upload failed' }),
@@ -137,7 +106,7 @@ export default function SubscriptionPage() {
     if (!form.amount || isNaN(form.amount) || parseFloat(form.amount) <= 0) e.amount = 'Valid amount required';
     if (!form.planId) e.planId = 'Plan selection is required';
     if (!form.bankReference.trim()) e.bankReference = 'Bank reference required';
-    if (!form.paymentDate) e.paymentDate = 'Payment date required';
+    if (!file) e.receipt = 'Receipt upload is required';
     return e;
   };
 
@@ -152,6 +121,7 @@ export default function SubscriptionPage() {
   };
 
   const tenant = data?.tenant;
+  const billingBreakdown = data?.billingBreakdown;
   const receipts = data?.receipts || [];
   const subscriptions = data?.subscriptions || [];
   const latestReceiptPlanId = receipts.find((r) => r.requestedPlanId?._id)?.requestedPlanId?._id;
@@ -192,9 +162,10 @@ export default function SubscriptionPage() {
   }, [tenant, plans, latestReceiptPlanId]);
 
   useEffect(() => {
-    if (!selectedPlan) return;
-    setForm((f) => ({ ...f, amount: String(selectedPlan.amount) }));
-  }, [selectedPlan?._id]);
+    if (!selectedPlan && !billingBreakdown?.total) return;
+    const total = billingBreakdown?.total > 0 ? billingBreakdown.total : selectedPlan?.amount;
+    if (total != null) setForm((f) => ({ ...f, amount: String(total) }));
+  }, [selectedPlan?._id, billingBreakdown?.total]);
 
   useEffect(() => {
     const wantPaypal =
@@ -244,31 +215,10 @@ export default function SubscriptionPage() {
         <p className="text-sm text-gray-500 mt-0.5">Account status, plan changes, and optional paid features.</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div>
-            <h3 className="font-semibold text-gray-900">Add-ons</h3>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Optional features such as QR Ordering. Subscribe or manage from a tile, or open the{' '}
-              <Link to="/addons" className="text-brand-orange font-semibold hover:underline">
-                full add-ons page
-              </Link>
-              .
-            </p>
-          </div>
-        </div>
-        <AddonCatalogTiles
-          catalog={addonCatalog}
-          isLoading={addonCatalogPending}
-          variant="tiles"
-          linkToAddonsPage={false}
-          onReview={(row) => navigate(`/addons?code=${encodeURIComponent(row.code)}`)}
-          onView={(row) => navigate(`/addons?code=${encodeURIComponent(row.code)}`)}
-          onUnsubscribe={handleAddonUnsubscribe}
-          unsubscribePending={unsubscribeMutation.isPending}
-          unsubscribingCode={unsubscribingCode}
-        />
-      </div>
+      <p className="text-sm text-gray-600">
+        Optional paid features (QR Ordering, loyalty, and more) are on the{' '}
+        <Link to="/addons" className="text-brand-orange font-semibold hover:underline">Add-ons</Link> page.
+      </p>
 
       {/* Current status */}
       {tenant && (
@@ -398,8 +348,14 @@ export default function SubscriptionPage() {
         <p className="text-sm text-gray-500 mb-4">
           {tenant.subscriptionStatus === 'trial'
             ? 'Pay by bank transfer and submit the details below — you can do this anytime during your trial so verification can finish before the trial ends.'
-            : 'Submit proof of payment for your selected plan. Amount must match the plan total exactly.'}
+            : 'Submit proof of payment. Amount must match the billing total below (plan plus any active add-ons and extra stores).'}
         </p>
+
+        {billingBreakdown?.plan && (
+          <div className="mb-4">
+            <BillingBreakdownPanel breakdown={billingBreakdown} />
+          </div>
+        )}
 
         {submitted ? (
           <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
@@ -491,27 +447,17 @@ export default function SubscriptionPage() {
                 )}
                 {errors.planId && <p className="text-xs text-red-500 mt-0.5">{errors.planId}</p>}
               </div>
-              <div>
+              <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Amount ({selectedPlan?.currency || plans.find((p) => p._id === form.planId)?.currency || 'LKR'}) *
+                  Amount ({billingBreakdown?.currency || selectedPlan?.currency || 'LKR'}) *
                 </label>
-                <input type="number" value={form.amount} readOnly
-                  placeholder="Auto from selected plan"
-                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${errors.amount ? 'border-red-400' : 'border-gray-300'}`} />
-                {errors.amount && <p className="text-xs text-red-500 mt-0.5">{errors.amount}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment date *</label>
-                <AdminDateField
-                  value={form.paymentDate ? String(form.paymentDate).slice(0, 10) : ''}
-                  onChange={(v) => {
-                    setForm((f) => ({ ...f, paymentDate: v }));
-                    setErrors((e2) => ({ ...e2, paymentDate: '' }));
-                  }}
-                  aria-invalid={errors.paymentDate ? 'true' : undefined}
-                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${errors.paymentDate ? 'border-red-400' : 'border-gray-300'}`}
+                <input
+                  type="number"
+                  value={form.amount}
+                  readOnly
+                  className={`w-full border rounded-lg px-3 py-2 text-sm bg-gray-50 ${errors.amount ? 'border-red-400' : 'border-gray-300'}`}
                 />
-                {errors.paymentDate && <p className="text-xs text-red-500 mt-0.5">{errors.paymentDate}</p>}
+                {errors.amount && <p className="text-xs text-red-500 mt-0.5">{errors.amount}</p>}
               </div>
             </div>
 
@@ -526,26 +472,14 @@ export default function SubscriptionPage() {
                 }}
                 placeholder="e.g. TXN-2026-001234"
                 maxLength={64}
-                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${errors.bankReference ? 'border-red-400' : 'border-gray-300'}`}
+                className={`w-full border rounded-lg px-3 py-2 text-sm ${errors.bankReference ? 'border-red-400' : 'border-gray-300'}`}
               />
               {errors.bankReference && <p className="text-xs text-red-500 mt-0.5">{errors.bankReference}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bank name</label>
-              <input
-                type="text"
-                value={form.bankName}
-                onChange={(e) => setForm((f) => ({ ...f, bankName: e.target.value }))}
-                placeholder="e.g. Commercial Bank"
-                maxLength={120}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Receipt photo (optional)</label>
-              <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={e => setFile(e.target.files[0])} className="hidden" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Receipt photo / PDF *</label>
+              <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => { setFile(e.target.files[0]); setErrors((e2) => ({ ...e2, receipt: '' })); }} className="hidden" />
               {file ? (
                 <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <FileText size={16} className="text-green-600 shrink-0" />
@@ -553,11 +487,15 @@ export default function SubscriptionPage() {
                   <button type="button" onClick={() => setFile(null)} className="text-gray-400 hover:text-gray-600 text-xs">Remove</button>
                 </div>
               ) : (
-                <button type="button" onClick={() => fileRef.current?.click()}
-                  className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-sm text-gray-500 hover:border-brand-orange hover:text-brand-orange transition-colors flex items-center justify-center gap-2">
-                  <Upload size={16} /> Click to upload receipt
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className={`w-full border-2 border-dashed rounded-lg p-4 text-sm flex items-center justify-center gap-2 ${errors.receipt ? 'border-red-400 text-red-600' : 'border-gray-300 text-gray-500 hover:border-brand-orange'}`}
+                >
+                  <Upload size={16} /> Upload receipt
                 </button>
               )}
+              {errors.receipt && <p className="text-xs text-red-500 mt-0.5">{errors.receipt}</p>}
             </div>
 
             <div>
@@ -567,11 +505,13 @@ export default function SubscriptionPage() {
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                 rows={2}
                 maxLength={2000}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 resize-none"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none"
               />
             </div>
 
-            <button type="submit" disabled={uploadMutation.isPending}
+            <button
+              type="submit"
+              disabled={uploadMutation.isPending}
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60"
             >
               {uploadMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Upload size={14} />}

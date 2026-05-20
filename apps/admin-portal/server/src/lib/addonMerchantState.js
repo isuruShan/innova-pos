@@ -1,7 +1,7 @@
 'use strict';
 
 const PaymentReceipt = require('../models/PaymentReceipt');
-const { isQrOrderingEffective } = require('./addonPeriod');
+const { isPaidAddonEffective, entitlementKeyForCode } = require('@innovapos/paid-addons');
 
 /**
  * @param {import('mongoose').LeanDocument<any>} tenant
@@ -9,6 +9,7 @@ const { isQrOrderingEffective } = require('./addonPeriod');
  */
 async function getAddonMerchantState(tenant, code) {
   const c = String(code || '').trim().toLowerCase();
+  const entitlementKey = entitlementKeyForCode(c);
 
   const pendingReceipt = await PaymentReceipt.findOne({
     tenantId: tenant._id,
@@ -19,27 +20,27 @@ async function getAddonMerchantState(tenant, code) {
     .sort({ createdAt: -1 })
     .lean();
 
-  if (c === 'qr_ordering') {
-    const qr = tenant.paidAddons?.qrOrdering || {};
-    const active = isQrOrderingEffective(tenant.paidAddons);
-    const cancelScheduled = Boolean(qr.cancelAtPeriodEnd && active);
+  if (!entitlementKey) {
     return {
       pendingVerification: Boolean(pendingReceipt),
-      alreadyActive: active,
-      cancelScheduled,
-      periodEndsAt: qr.periodEndsAt || null,
-      canSubscribe: !active && !pendingReceipt,
-      canUnsubscribe: active && !qr.cancelAtPeriodEnd,
+      alreadyActive: false,
+      cancelScheduled: false,
+      periodEndsAt: null,
+      canSubscribe: false,
+      canUnsubscribe: false,
     };
   }
 
+  const row = tenant.paidAddons?.[entitlementKey] || {};
+  const active = isPaidAddonEffective(tenant.paidAddons, entitlementKey);
+  const cancelScheduled = Boolean(row.cancelAtPeriodEnd && active);
   return {
     pendingVerification: Boolean(pendingReceipt),
-    alreadyActive: false,
-    cancelScheduled: false,
-    periodEndsAt: null,
-    canSubscribe: !pendingReceipt,
-    canUnsubscribe: false,
+    alreadyActive: active,
+    cancelScheduled,
+    periodEndsAt: row.periodEndsAt || null,
+    canSubscribe: !active && !pendingReceipt,
+    canUnsubscribe: active && !row.cancelAtPeriodEnd,
   };
 }
 

@@ -18,8 +18,11 @@ const { parsePageQuery, paginated } = require('../lib/listPagination');
 const {
   computeSubscriptionRenewalExpected,
   getAddonByCode,
-  priceAddonForPlan,
 } = require('../lib/addonBilling');
+const { getAddonPurchaseQuote } = require('../lib/addonPurchaseQuote');
+const { getStoreCreateQuote } = require('../lib/storeCreateQuote');
+const { createDefaultStoreForTenant } = require('../lib/storePurchase');
+const { notifyPaymentSubmitted, notifyPaymentVerified } = require('../lib/paymentNotify');
 
 const router = express.Router();
 
@@ -115,24 +118,75 @@ router.get('/receipts', authenticateJWT, async (req, res) => {
   }
 });
 
+// GET /subscriptions/receipts/:id — superadmin payment detail
+router.get('/receipts/:id', authenticateJWT, authorize('superadmin'), async (req, res) => {
+  try {
+    const PaidAddonDefinition = require('../models/PaidAddonDefinition');
+    let receipt = await PaymentReceipt.findById(req.params.id)
+      .populate('tenantId', 'businessName slug subscriptionStatus trialEndsAt countryIso')
+      .populate('requestedPlanId', 'name code amount currency billingCycle durationDays')
+      .populate('verifiedBy', 'name email')
+      .populate('createdBy', 'name email')
+      .lean();
+    if (!receipt) return res.status(404).json({ message: 'Receipt not found' });
+
+    [receipt] = await attachFreshReceiptUrls([receipt]);
+
+    const tenant = receipt.tenantId;
+    let billingBreakdown = null;
+    let addonMeta = null;
+    let storeMeta = null;
+
+    if (receipt.receiptKind === 'subscription' || (!receipt.receiptKind && !receipt.addonCode)) {
+      billingBreakdown = await computeSubscriptionRenewalExpected(tenant);
+    }
+    if (receipt.receiptKind === 'addon' || receipt.addonCode) {
+      const addon = await PaidAddonDefinition.findOne({ code: receipt.addonCode }).lean();
+      addonMeta = addon
+        ? { code: addon.code, name: addon.name, shortDescription: addon.shortDescription }
+        : { code: receipt.addonCode, name: receipt.addonCode };
+    }
+    if (receipt.receiptKind === 'store') {
+      storeMeta = { label: 'Additional store location', description: 'Creates one store with default settings after verification.' };
+    }
+
+    res.json({
+      receipt,
+      billingBreakdown,
+      addonMeta,
+      storeMeta,
+      receiptKindLabel:
+        receipt.receiptKind === 'store'
+          ? 'Additional store'
+          : receipt.receiptKind === 'addon' || receipt.addonCode
+            ? 'Paid add-on'
+            : 'Subscription renewal',
+    });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 // POST /subscriptions/receipts — merchant uploads a payment receipt
 router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.single('receipt'), async (req, res) => {
   try {
     const {
       amount,
       bankReference,
-      bankName,
-      paymentDate,
       notes,
       planId,
       addonCode,
+      purchaseKind,
       paymentMethod = 'bank_transfer',
     } = req.body;
     const method = ['bank_transfer', 'stripe', 'paypal'].includes(paymentMethod)
       ? paymentMethod
       : 'bank_transfer';
-    if (method === 'bank_transfer' && (!amount || !bankReference || !paymentDate)) {
-      return res.status(400).json({ message: 'amount, bankReference, and paymentDate are required for bank transfer' });
+    if (method === 'bank_transfer' && (!amount || !bankReference)) {
+      return res.status(400).json({ message: 'amount and bankReference are required for bank transfer' });
+    }
+    if (method === 'bank_transfer' && !req.file) {
+      return res.status(400).json({ message: 'Receipt file is required for bank transfer' });
     }
     if (method !== 'bank_transfer') {
       return res.status(400).json({
@@ -150,7 +204,75 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
     );
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
 
+    const purchaseKindNorm = String(purchaseKind || '').trim().toLowerCase();
     const addonCodeNorm = String(addonCode || '').trim().toLowerCase();
+
+    const uploadReceiptFile = async () => {
+      const form = new FormData();
+      form.append('file', req.file.buffer, {
+        filename: req.file.originalname || 'receipt',
+        contentType: req.file.mimetype,
+      });
+      form.append('type', 'receipt');
+      const token = req.headers.authorization;
+      const uploadRes = await axios.post(
+        `${process.env.UPLOAD_SERVICE_URL || 'http://localhost:3002'}/upload`,
+        form,
+        {
+          headers: { ...form.getHeaders(), Authorization: token },
+          timeout: require('@innovapos/shared-middleware').resolveUploadProxyTimeoutMs(),
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
+        },
+      );
+      return uploadRes.data.key || '';
+    };
+
+    if (purchaseKindNorm === 'store') {
+      const quote = await getStoreCreateQuote(req.tenantId);
+      if (quote.error) return res.status(400).json({ message: quote.error });
+      if (!quote.requiresPayment) {
+        return res.status(400).json({ message: 'No payment required. Create your first store without payment.' });
+      }
+      const expected = Number(quote.priced?.amount) || 0;
+      if (!amountsEqual(amountValue, expected)) {
+        return res.status(400).json({
+          message: `Amount must exactly match the store charge (${quote.priced.currency} ${Number(expected).toLocaleString()}).`,
+        });
+      }
+      let receiptFileKey = '';
+      try {
+        receiptFileKey = await uploadReceiptFile();
+      } catch (_) {
+        return res.status(500).json({ message: 'Failed to upload receipt file' });
+      }
+      if (!receiptFileKey) {
+        return res.status(500).json({ message: 'Failed to upload receipt file' });
+      }
+
+      const receipt = await PaymentReceipt.create({
+        tenantId: req.tenantId,
+        receiptKind: 'store',
+        paymentMethod: method,
+        amount: amountValue,
+        currency: quote.priced.currency || 'LKR',
+        requestedPlanId: null,
+        requestedPlanCode: '',
+        expectedAmount: expected,
+        amountMatchesExpected: true,
+        bankReference: bankReference.trim(),
+        bankName: '',
+        paymentDate: new Date(),
+        receiptFileUrl: '',
+        receiptFileKey,
+        notes: (notes || '').trim(),
+        createdBy: req.user.id,
+      });
+
+      await notifyPaymentSubmitted(receipt, tenant);
+
+      return res.status(201).json(receipt);
+    }
 
     if (addonCodeNorm) {
       const addon = await getAddonByCode(addonCodeNorm);
@@ -165,45 +287,28 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       if (addonState.pendingVerification) {
         return res.status(400).json({ message: 'A payment for this add-on is already pending verification' });
       }
-      const pricePlan = await resolveRequestedPlan({ tenant, planId });
-      if (!pricePlan) {
-        return res.status(400).json({ message: 'No active plan is assigned. Please contact support.' });
-      }
-      const priced = priceAddonForPlan(addon, pricePlan);
+      const quote = await getAddonPurchaseQuote(req.tenantId, addonCodeNorm);
+      const priced = quote.priced;
       if (!priced.amount || priced.amount <= 0) {
         return res.status(400).json({ message: 'Add-on price is not configured yet. Contact support.' });
       }
       if (!amountsEqual(amountValue, priced.amount)) {
         return res.status(400).json({
-          message: `Amount must exactly match the add-on price (${priced.currency} ${Number(priced.amount).toLocaleString()}).`,
+          message: `Amount must exactly match the add-on charge (${priced.currency} ${Number(priced.amount).toLocaleString()}).`,
         });
       }
 
       let receiptFileKey = '';
-      if (req.file) {
-        try {
-          const form = new FormData();
-          form.append('file', req.file.buffer, {
-            filename: req.file.originalname || 'receipt',
-            contentType: req.file.mimetype,
-          });
-          form.append('type', 'receipt');
-          const token = req.headers.authorization;
-          const uploadRes = await axios.post(
-            `${process.env.UPLOAD_SERVICE_URL || 'http://localhost:3002'}/upload`,
-            form,
-            {
-              headers: { ...form.getHeaders(), Authorization: token },
-              timeout: require('@innovapos/shared-middleware').resolveUploadProxyTimeoutMs(),
-              maxContentLength: Infinity,
-              maxBodyLength: Infinity,
-            },
-          );
-          receiptFileKey = uploadRes.data.key;
-        } catch (uploadErr) {
-          return res.status(500).json({ message: 'Failed to upload receipt file' });
-        }
+      try {
+        receiptFileKey = await uploadReceiptFile();
+      } catch (_) {
+        return res.status(500).json({ message: 'Failed to upload receipt file' });
       }
+      if (!receiptFileKey) {
+        return res.status(500).json({ message: 'Failed to upload receipt file' });
+      }
+
+      const pricePlan = quote.plan || (await resolveRequestedPlan({ tenant, planId }));
 
       const receipt = await PaymentReceipt.create({
         tenantId: req.tenantId,
@@ -212,30 +317,20 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
         paymentMethod: method,
         amount: amountValue,
         currency: priced.currency || 'LKR',
-        requestedPlanId: pricePlan._id,
-        requestedPlanCode: pricePlan.code,
+        requestedPlanId: pricePlan?._id || null,
+        requestedPlanCode: pricePlan?.code || '',
         expectedAmount: priced.amount,
         amountMatchesExpected: true,
         bankReference: bankReference.trim(),
-        bankName: (bankName || '').trim(),
-        paymentDate: new Date(paymentDate),
+        bankName: '',
+        paymentDate: new Date(),
         receiptFileUrl: '',
         receiptFileKey,
         notes: (notes || '').trim(),
         createdBy: req.user.id,
       });
 
-      try {
-        const supers = await User.find({ role: 'superadmin', isActive: true }).select('_id email').lean();
-        if (supers.length) {
-          await notifySuperAdmins(req.tenantId, {
-            type: 'payment_receipt_submitted',
-            title: 'Add-on payment receipt submitted',
-            body: `A merchant submitted a bank receipt for add-on "${addonCodeNorm}".`,
-            meta: { resourceType: 'tenant', resourceId: String(req.tenantId), receiptId: String(receipt._id) },
-          });
-        }
-      } catch (_) {}
+      await notifyPaymentSubmitted(receipt, tenant);
 
       return res.status(201).json(receipt);
     }
@@ -253,32 +348,14 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       });
     }
 
-    let receiptFileUrl = '';
     let receiptFileKey = '';
-
-    if (req.file) {
-      try {
-        const form = new FormData();
-        form.append('file', req.file.buffer, {
-          filename: req.file.originalname || 'receipt',
-          contentType: req.file.mimetype,
-        });
-        form.append('type', 'receipt');
-        const token = req.headers.authorization;
-        const uploadRes = await axios.post(
-          `${process.env.UPLOAD_SERVICE_URL || 'http://localhost:3002'}/upload`,
-          form,
-          {
-            headers: { ...form.getHeaders(), Authorization: token },
-            timeout: require('@innovapos/shared-middleware').resolveUploadProxyTimeoutMs(),
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity,
-          },
-        );
-        receiptFileKey = uploadRes.data.key;
-      } catch (uploadErr) {
-        return res.status(500).json({ message: 'Failed to upload receipt file' });
-      }
+    try {
+      receiptFileKey = await uploadReceiptFile();
+    } catch (_) {
+      return res.status(500).json({ message: 'Failed to upload receipt file' });
+    }
+    if (!receiptFileKey) {
+      return res.status(500).json({ message: 'Failed to upload receipt file' });
     }
 
     const receipt = await PaymentReceipt.create({
@@ -293,52 +370,15 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       expectedAmount: expectedTotal,
       amountMatchesExpected: true,
       bankReference: bankReference.trim(),
-      bankName: (bankName || '').trim(),
-      paymentDate: new Date(paymentDate),
+      bankName: '',
+      paymentDate: new Date(),
       receiptFileUrl: '',
       receiptFileKey,
       notes: (notes || '').trim(),
       createdBy: req.user.id,
     });
 
-    // Notify superadmins a payment receipt has been submitted (action is picked up by superadmin).
-    try {
-      const supers = await User.find({ role: 'superadmin', isActive: true }).select('_id email').lean();
-      if (supers.length) {
-        await notifySuperAdmins(req.tenantId, {
-          type: 'payment_receipt_submitted',
-          title: 'Payment receipt submitted',
-          body: `A merchant submitted a payment receipt for "${tenant.businessName}".`,
-          meta: { resourceType: 'tenant', resourceId: String(req.tenantId), receiptId: String(receipt._id) },
-        });
-
-        await notifyMerchantAdmins(req.tenantId, {
-          type: 'subscription_payment_completed',
-          title: 'Payment submitted',
-          body: 'Your payment receipt was submitted and is awaiting verification.',
-          meta: { resourceType: 'tenant', resourceId: String(req.tenantId), receiptId: String(receipt._id) },
-        }, { excludeUserId: req.user.id }).catch(() => {});
-
-        await Promise.all(
-          supers.map((sa) =>
-            sendEmail({
-              to: sa.email,
-              subject: 'New payment receipt submitted — Cafinity',
-              html: `<p>Hi Super Admin,</p>
-                <p>A payment receipt was submitted by a merchant.</p>
-                <ul>
-                  <li><strong>Merchant:</strong> ${tenant.businessName}</li>
-                  <li><strong>Amount:</strong> ${requestedPlan.currency || 'LKR'} ${Number(amountValue).toLocaleString()}</li>
-                  <li><strong>Payment ref:</strong> ${String(bankReference || '').trim()}</li>
-                </ul>
-                <p>Please check the <strong>Payments</strong> page in the admin portal for verification.</p>`,
-            }).catch(() => {})
-          ),
-        );
-      }
-    } catch (_) {
-      // Notifications + email are best-effort; never block receipt creation.
-    }
+    await notifyPaymentSubmitted(receipt, tenant);
 
     res.status(201).json(receipt);
   } catch (err) {
@@ -393,13 +433,50 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
       return res.status(400).json({ message: 'Receipt amount does not match expected amount' });
     }
 
+    if (receipt.receiptKind === 'store') {
+      const tenantId = receipt.tenantId?._id || receipt.tenantId;
+      const store = await createDefaultStoreForTenant(tenantId, req.user.id);
+      const now = new Date();
+      receipt.status = 'verified';
+      receipt.verifiedBy = req.user.id;
+      receipt.verifiedAt = now;
+      receipt.subscriptionExtended = false;
+      receipt.updatedBy = req.user.id;
+      await receipt.save();
+
+      await emitAudit({
+        req,
+        action: 'STORE_PAYMENT_VERIFIED',
+        resource: 'PaymentReceipt',
+        resourceId: receipt._id,
+        changes: { after: { storeId: store._id, storeCode: store.code } },
+      });
+
+      try {
+        await notifyMerchantAdmins(tenantId, {
+          type: 'subscription_approved',
+          title: 'Store created',
+          body: `Your additional store (${store.code}) is ready. Open Stores to edit name and settings.`,
+          meta: { resourceType: 'tenant', resourceId: String(tenantId), receiptId: String(receipt._id) },
+        }).catch(() => {});
+      } catch (_) {}
+
+      const tenantDoc = await Tenant.findById(tenantId).lean();
+      await notifyPaymentVerified(receipt.toObject ? receipt.toObject() : receipt, tenantDoc);
+
+      return res.json({ message: 'Store created', receipt, store });
+    }
+
     if (receipt.receiptKind === 'addon') {
       const { activatePaidAddonForTenant } = require('../lib/addonActivation');
+      const { getAddonPurchaseQuote } = require('../lib/addonPurchaseQuote');
       const tenantId = receipt.tenantId?._id || receipt.tenantId;
+      const quote = await getAddonPurchaseQuote(tenantId, receipt.addonCode);
       await activatePaidAddonForTenant(tenantId, receipt.addonCode, {
         amount: receipt.amount,
         currency: receipt.currency,
         paymentMethod: receipt.paymentMethod,
+        amountPerCycle: quote.fullCycle.amount,
       });
       const now = new Date();
       receipt.status = 'verified';
@@ -425,6 +502,9 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
           meta: { resourceType: 'tenant', resourceId: String(tenantId), receiptId: String(receipt._id) },
         }).catch(() => {});
       } catch (_) {}
+
+      const tenantDoc = await Tenant.findById(tenantId).lean();
+      await notifyPaymentVerified(receipt.toObject ? receipt.toObject() : receipt, tenantDoc);
 
       return res.json({ message: 'Add-on activated', receipt });
     }
@@ -508,61 +588,24 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
       changes: { after: { subscriptionExtendedTo: newEnd, extensionDays } },
     });
 
-    // Notify superadmins (so they can handle activation requests / monitor renewals).
     try {
-      const supers = await User.find({ role: 'superadmin', isActive: true }).select('_id email').lean();
-      if (supers.length) {
-        await notifySuperAdmins(tenant._id, {
-          type: 'payment_receipt_verified',
-          title: 'Payment verified — subscription extended',
-          body: `Subscription extended until ${newEnd.toDateString()} for "${tenant.businessName}".`,
-          meta: { resourceType: 'tenant', resourceId: String(tenant._id), subscriptionEndDate: newEnd.toISOString() },
-        });
+      await notifySuperAdmins(tenant._id, {
+        type: 'payment_receipt_verified',
+        title: 'Payment verified — subscription extended',
+        body: `Subscription extended until ${newEnd.toDateString()} for "${tenant.businessName}".`,
+        meta: { resourceType: 'tenant', resourceId: String(tenant._id), subscriptionEndDate: newEnd.toISOString() },
+      });
+      await notifyMerchantAdmins(tenant._id, {
+        type: 'subscription_approved',
+        title: 'Subscription activated',
+        body: `Your subscription is active until ${newEnd.toDateString()}.`,
+        meta: { resourceType: 'tenant', resourceId: String(tenant._id), subscriptionEndDate: newEnd.toISOString() },
+      }).catch(() => {});
+    } catch (_) {}
 
-        await notifyMerchantAdmins(tenant._id, {
-          type: 'subscription_approved',
-          title: 'Subscription activated',
-          body: `Your subscription is active until ${newEnd.toDateString()}.`,
-          meta: { resourceType: 'tenant', resourceId: String(tenant._id), subscriptionEndDate: newEnd.toISOString() },
-        }).catch(() => {});
-
-        await Promise.all(
-          supers.map((sa) =>
-            sendEmail({
-              to: sa.email,
-              subject: 'Payment verified — Subscription extended',
-              html: `<p>Hi Super Admin,</p>
-                <p>A payment receipt was verified.</p>
-                <ul>
-                  <li><strong>Merchant:</strong> ${tenant.businessName}</li>
-                  <li><strong>Extended until:</strong> ${newEnd.toDateString()}</li>
-                </ul>
-                <p>You may now activate the merchant if required for one-day overrides.</p>`,
-            }).catch(() => {}),
-          ),
-        );
-      }
-    } catch (_) {
-      /* best-effort */
-    }
-
-    // Also send merchant_admins a confirmation email.
-    try {
-      const merchantAdmins = await User.find({ tenantId: tenant._id, role: 'merchant_admin', isActive: true }).select('email').lean();
-      await Promise.all(
-        merchantAdmins.map((a) =>
-          sendEmail({
-            to: a.email,
-            subject: 'Subscription extended — Cafinity',
-            html: `<p>Hi,</p>
-              <p>Your subscription has been extended until <strong>${newEnd.toDateString()}</strong>.</p>
-              <p>Thank you.</p>`,
-          }).catch(() => {}),
-        ),
-      );
-    } catch (_) {
-      /* best-effort */
-    }
+    const receiptLean = receipt.toObject ? receipt.toObject() : receipt;
+    receiptLean.extensionDays = extensionDays;
+    await notifyPaymentVerified(receiptLean, tenant);
 
     res.json({
       message: `Subscription extended by ${extensionDays} days (until ${newEnd.toDateString()})`,

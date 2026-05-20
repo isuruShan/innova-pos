@@ -1,0 +1,7 @@
+{
+  "name": "@innovapos/paid-addons",
+  "version": "1.0.0",
+  "description": "Paid add-on entitlement helpers (QR ordering, loyalty, etc.)",
+  "main": "src/index.js",
+  "type": "commonjs"
+}

@@ -5,6 +5,7 @@ import { Award, Plus, Trash2, Gift } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import api from '../../api/axios';
 import LoyaltyRewardsAdminTab from './LoyaltyRewardsAdminTab';
+import LoyaltyAddonSubscribeBanner from '../../components/addons/LoyaltyAddonSubscribeBanner';
 import ListPagination from '../../components/common/ListPagination';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
 
@@ -16,14 +17,23 @@ export default function LoyaltyProgramPage() {
   const [mainTab, setMainTab] = useState('program');
   const [tierModal, setTierModal] = useState(null);
   const [tierForm, setTierForm] = useState(emptyTier);
+  const { data: addonCatalog = [] } = useQuery({
+    queryKey: ['merchant-addon-catalog'],
+    queryFn: () => api.get('/paid-addons/merchant-catalog').then((r) => r.data),
+    staleTime: 60_000,
+  });
+  const loyaltyAddonActive = addonCatalog.find((a) => a.code === 'loyalty')?.alreadyActive === true;
+
   const { data: cfg, isPending: cfgPending } = useQuery({
     queryKey: ['loyalty-config'],
     queryFn: () => api.get('/loyalty/config').then((r) => r.data),
+    enabled: loyaltyAddonActive,
   });
 
   const { data: tiersRaw = [], isPending: tiersPending } = useQuery({
     queryKey: ['loyalty-tiers'],
     queryFn: () => api.get('/loyalty/tiers').then((r) => r.data),
+    enabled: loyaltyAddonActive,
   });
   const tiers = Array.isArray(tiersRaw) ? tiersRaw : unwrapPagedList(tiersRaw).items;
 
@@ -80,7 +90,7 @@ export default function LoyaltyProgramPage() {
   };
 
 
-  if (mainTab === 'program' && (cfgPending || tiersPending)) {
+  if (mainTab === 'program' && loyaltyAddonActive && (cfgPending || tiersPending)) {
     return (
       <div className="flex items-center justify-center min-h-[40vh] text-gray-500 text-sm">Loading…</div>
     );
@@ -97,6 +107,14 @@ export default function LoyaltyProgramPage() {
           Program rules and rewards for your whole organization. Customers are managed under Customers in the sidebar.
         </p>
       </div>
+
+      <LoyaltyAddonSubscribeBanner />
+
+      {!loyaltyAddonActive ? (
+        <p className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+          Subscribe to the Loyalty program add-on above to configure tiers, earning rules, and rewards.
+        </p>
+      ) : null}
 
       <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-3">
         <button
@@ -126,8 +144,10 @@ export default function LoyaltyProgramPage() {
       </div>
 
       {mainTab === 'rewards' ? (
-        <LoyaltyRewardsAdminTab initialRewardId={rewardIdFromUrl} />
-      ) : (
+        loyaltyAddonActive ? (
+          <LoyaltyRewardsAdminTab initialRewardId={rewardIdFromUrl} />
+        ) : null
+      ) : loyaltyAddonActive ? (
         <>
       <section className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm space-y-4">
         <h2 className="text-sm font-semibold text-gray-900">Program settings</h2>
@@ -344,7 +364,7 @@ export default function LoyaltyProgramPage() {
       )}
 
         </>
-      )}
+      ) : null}
     </div>
   );
 }

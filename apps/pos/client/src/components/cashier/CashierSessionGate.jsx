@@ -141,13 +141,14 @@ function SessionBreakdownSummary({
   );
 }
 
-export default function CashierSessionGate({ children }) {
+export default function CashierSessionGate({ children, requireSession = false }) {
   const { user } = useAuth();
   const { selectedStoreId, isStoreReady } = useStoreContext();
   const qc = useQueryClient();
   const online = useOnlineStatus();
   const role = String(user?.role || '').toLowerCase();
   const isCashier = role === 'cashier';
+  const sessionRequired = isCashier || Boolean(requireSession);
 
   const [closeOpen, setCloseOpen] = useState(false);
   const [countInput, setCountInput] = useState('');
@@ -160,7 +161,7 @@ export default function CashierSessionGate({ children }) {
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: [CASHIER_SESSION_QUERY_KEY, selectedStoreId],
     queryFn: () => api.get('/cashier-sessions/current').then((r) => r.data),
-    enabled: Boolean(isCashier && isStoreReady && online),
+    enabled: Boolean(sessionRequired && isStoreReady && online),
     staleTime: 5_000,
     refetchInterval: 60_000,
   });
@@ -213,7 +214,7 @@ export default function CashierSessionGate({ children }) {
     setMovementNotes('');
   }, []);
 
-  const gateActive = isCashier && isStoreReady && online;
+  const gateActive = sessionRequired && isStoreReady && online;
   const needsSession = gateActive && !session && !isError;
   const showSessionLoading = gateActive && needsSession && isPending;
   const showOpenForm = gateActive && needsSession && !isPending;
@@ -259,7 +260,7 @@ export default function CashierSessionGate({ children }) {
     ],
   );
 
-  if (!isCashier || !isStoreReady) {
+  if (!sessionRequired || !isStoreReady) {
     return children;
   }
 
@@ -341,10 +342,14 @@ export default function CashierSessionGate({ children }) {
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/25">
                   <Wallet size={20} />
                 </span>
-                <h2 className="text-lg font-bold text-[var(--pos-text-primary)]">Start cashier session</h2>
+                <h2 className="text-lg font-bold text-[var(--pos-text-primary)]">
+                  {isCashier ? 'Start cashier session' : 'Start register session'}
+                </h2>
               </div>
               <p className="text-sm text-slate-400 mb-4">
-                Enter the opening cash in the drawer before taking orders at this store.
+                {isCashier
+                  ? 'Enter the opening cash in the drawer before taking orders at this store.'
+                  : 'Open your drawer session before using the register. Order board shows all active store orders; session totals track your drawer.'}
               </p>
               <label htmlFor="opening-cash" className="block text-sm text-slate-300 mb-2">
                 Opening cash balance

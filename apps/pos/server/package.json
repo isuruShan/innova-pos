@@ -17,6 +17,7 @@
     "@innovapos/runtime-env": "workspace:*",
     "@innovapos/logger": "workspace:*",
     "@innovapos/mail-transport": "workspace:*",
+    "@innovapos/paid-addons": "workspace:*",
     "@innovapos/platform-contact": "workspace:*",
     "@innovapos/shared-middleware": "workspace:*",
     "axios": "^1.16.0",

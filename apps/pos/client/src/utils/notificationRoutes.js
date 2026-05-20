@@ -9,7 +9,7 @@ export function notificationPathForPos(n, userRole) {
   if (resourceType === 'order' && resourceId) {
     if (role === 'kitchen') return `/kitchen?order=${encodeURIComponent(resourceId)}`;
     if (role === 'manager' || role === 'merchant_admin') {
-      return `/manager/orders?order=${encodeURIComponent(resourceId)}`;
+      return `/register/orders?order=${encodeURIComponent(resourceId)}`;
     }
     return `/cashier/orders?order=${encodeURIComponent(resourceId)}`;
   }
@@ -37,13 +37,13 @@ export function notificationPathForPos(n, userRole) {
   if (type === 'order_status_changed') {
     if (role === 'kitchen') return resourceId ? `/kitchen?order=${encodeURIComponent(resourceId)}` : '/kitchen';
     if (role === 'manager' || role === 'merchant_admin') {
-      return resourceId ? `/manager/orders?order=${encodeURIComponent(resourceId)}` : '/manager/orders';
+      return resourceId ? `/register/orders?order=${encodeURIComponent(resourceId)}` : '/register/orders';
     }
     return resourceId ? `/cashier/orders?order=${encodeURIComponent(resourceId)}` : '/cashier/orders';
   }
   if (type === 'table_waiter_call' || type === 'qr_order_updated') {
     if (role === 'manager' || role === 'merchant_admin') {
-      return resourceId ? `/manager/orders?order=${encodeURIComponent(resourceId)}` : '/manager/orders';
+      return resourceId ? `/register/orders?order=${encodeURIComponent(resourceId)}` : '/register/orders';
     }
     return resourceId ? `/cashier/orders?order=${encodeURIComponent(resourceId)}` : '/cashier/orders';
   }

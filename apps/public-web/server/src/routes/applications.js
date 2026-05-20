@@ -276,12 +276,18 @@ router.post('/', upload.single('brFile'), async (req, res) => {
     }).catch(() => {});
 
     try {
-      const supers = await AdminPortalUser.find({ role: 'superadmin', isActive: true })
-        .select('_id email')
-        .lean();
       const adminBase = String(process.env.ADMIN_URL || 'http://localhost:5174').replace(/\/$/, '');
       const reviewUrl = `${adminBase}/applications/${application._id}`;
       const applicantName = `${firstName} ${lastName}`.trim();
+
+      let supers = await AdminPortalUser.find({ role: 'superadmin', isActive: true })
+        .select('_id email')
+        .lean();
+      if (!supers.length) {
+        supers = await PlatformUserLookup.find({ role: 'superadmin', isActive: true })
+          .select('_id email')
+          .lean();
+      }
 
       if (supers.length) {
         await Notification.insertMany(
@@ -293,37 +299,39 @@ router.post('/', upload.single('brFile'), async (req, res) => {
             body: `${businessName} — ${applicantName}`,
             meta: { resourceType: 'application', resourceId: String(application._id) },
           })),
-        ).catch(() => {});
+        ).catch((notifyErr) => {
+          logger.warn('In-app notification for application failed', { error: notifyErr.message });
+        });
+      }
 
+      const emailRecipients = new Set();
+      for (const u of supers) {
+        if (u.email) emailRecipients.add(String(u.email).trim().toLowerCase());
+      }
+      const fallback = process.env.ADMIN_NOTIFY_EMAIL || process.env.EMAIL_FROM;
+      if (fallback) emailRecipients.add(String(fallback).trim().toLowerCase());
+
+      if (!emailRecipients.size) {
+        logger.warn('No superadmin emails for new application — set ADMIN_NOTIFY_EMAIL or create a superadmin user');
+      } else {
         await Promise.all(
-          supers.map((u) =>
+          [...emailRecipients].map((to) =>
             sendNewApplicationAdminEmail({
-              to: u.email,
+              to,
               applicantName,
               businessName: businessName.trim(),
               email: emailLower,
               mobile,
               applicationId: String(application._id),
               reviewUrl,
-            }).catch(() => {}),
+            }).catch((mailErr) => {
+              logger.error('Superadmin application email failed', { to, error: mailErr.message });
+            }),
           ),
         );
-      } else {
-        const fallback = process.env.ADMIN_NOTIFY_EMAIL || process.env.EMAIL_FROM;
-        if (fallback) {
-          sendNewApplicationAdminEmail({
-            to: fallback,
-            applicantName,
-            businessName: businessName.trim(),
-            email: emailLower,
-            mobile,
-            applicationId: String(application._id),
-            reviewUrl,
-          }).catch(() => {});
-        }
       }
-    } catch {
-      // best-effort admin alerts
+    } catch (adminAlertErr) {
+      logger.error('Admin alerts for application failed', { error: adminAlertErr.message });
     }
 
     res.status(201).json({

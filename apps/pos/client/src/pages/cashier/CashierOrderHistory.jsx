@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, RotateCcw, Loader, Eye } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
-import { CASHIER_NAV_GROUPS } from '../../constants/cashierLinks';
 import CashierSessionGate from '../../components/cashier/CashierSessionGate';
+import { useFohrMode } from '../../hooks/useFohrMode';
 import { useStoreContext } from '../../context/StoreContext';
 import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
 import ReturnApprovalModal from '../../components/cashier/ReturnApprovalModal';
@@ -22,6 +22,7 @@ function remainingQty(order, item) {
 }
 
 export default function CashierOrderHistory() {
+  const fohr = useFohrMode();
   const qc = useQueryClient();
   const [msg, setMsg] = useState('');
   const { isStoreReady } = useStoreContext();
@@ -125,9 +126,9 @@ export default function CashierOrderHistory() {
   const searchAttrs = limitedInputProps('searchQuery');
 
   return (
-    <CashierSessionGate>
+    <CashierSessionGate requireSession={fohr.requireCashierSession}>
       <div className="min-h-screen flex flex-col bg-[var(--pos-page-bg)]">
-        <Navbar groups={CASHIER_NAV_GROUPS} />
+        <Navbar groups={fohr.navGroups} />
 
         <div className="flex-1 p-4 sm:p-5 max-w-5xl mx-auto w-full space-y-4">
           <div>

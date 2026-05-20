@@ -8,9 +8,10 @@ const PaidAddonDefinition = require('../models/PaidAddonDefinition');
 const Tenant = require('../models/Tenant');
 const { authenticateJWT, authorize, sendRouteError, resolveUploadProxyTimeoutMs } = require('@innovapos/shared-middleware');
 const { ensureDefaultPaidAddons, priceAddonForPlan, getAddonByCode } = require('../lib/addonBilling');
+const { getAddonPurchaseQuote } = require('../lib/addonPurchaseQuote');
 const SubscriptionPlan = require('../models/SubscriptionPlan');
 const { tenantPlanAudience } = require('../utils/planAudience');
-const { applyQrOrderingExpiryIfNeeded } = require('../lib/addonPeriod');
+const { applyPaidAddonExpiryIfNeeded, entitlementKeyForCode } = require('../lib/addonPeriod');
 const { getAddonMerchantState } = require('../lib/addonMerchantState');
 const { resolveMediaUrls } = require('../lib/resolveMediaUrls');
 
@@ -67,10 +68,15 @@ router.get('/merchant-catalog', authenticateJWT, authorize('merchant_admin'), as
     await ensureDefaultPaidAddons();
     let tenant = await Tenant.findById(req.tenantId);
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
-    tenant = await applyQrOrderingExpiryIfNeeded(tenant);
+    tenant = await applyPaidAddonExpiryIfNeeded(tenant);
 
     const plan = await resolvePlanForTenantAddons(tenant);
-    const defs = await PaidAddonDefinition.find({ isActive: true }).sort({ sortOrder: 1, name: 1 }).lean();
+    const defs = await PaidAddonDefinition.find({
+      isActive: true,
+      showInMerchantCatalog: { $ne: false },
+    })
+      .sort({ sortOrder: 1, name: 1 })
+      .lean();
     const billingLabel =
       plan?.billingCycle === 'yearly' ? 'per year (matches your yearly plan)' : 'per month (matches your monthly plan)';
 
@@ -88,11 +94,15 @@ router.post('/:code/unsubscribe', authenticateJWT, authorize('merchant_admin'), 
     const code = String(req.params.code || '').trim().toLowerCase();
     let tenant = await Tenant.findById(req.tenantId);
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
-    tenant = await applyQrOrderingExpiryIfNeeded(tenant);
+    tenant = await applyPaidAddonExpiryIfNeeded(tenant);
 
-    if (code !== 'qr_ordering') {
+    const entitlementKey = entitlementKeyForCode(code);
+    if (!entitlementKey) {
       return res.status(400).json({ message: 'Unknown add-on' });
     }
+
+    const addon = await getAddonByCode(code);
+    const addonName = addon?.name || code;
 
     const state = await getAddonMerchantState(tenant, code);
     if (!state.alreadyActive) {
@@ -105,18 +115,18 @@ router.post('/:code/unsubscribe', authenticateJWT, authorize('merchant_admin'), 
       });
     }
 
-    const qr = tenant.paidAddons?.qrOrdering;
-    if (!qr?.periodEndsAt) {
+    const ent = tenant.paidAddons?.[entitlementKey];
+    if (!ent?.periodEndsAt) {
       return res.status(400).json({ message: 'Billing period end is not set. Contact support.' });
     }
 
-    tenant.paidAddons.qrOrdering.cancelAtPeriodEnd = true;
+    tenant.paidAddons[entitlementKey].cancelAtPeriodEnd = true;
     tenant.updatedBy = req.user.id;
     await tenant.save();
 
     res.json({
-      message: `QR Ordering will stay active until ${new Date(qr.periodEndsAt).toLocaleDateString()}, then turn off.`,
-      periodEndsAt: qr.periodEndsAt,
+      message: `${addonName} will stay active until ${new Date(ent.periodEndsAt).toLocaleDateString()}, then turn off.`,
+      periodEndsAt: ent.periodEndsAt,
       cancelAtPeriodEnd: true,
     });
   } catch (err) {
@@ -195,6 +205,7 @@ router.put('/:code', authenticateJWT, authorize('superadmin'), async (req, res) 
       yearlyAmount,
       currency,
       isActive,
+      showInMerchantCatalog,
       sortOrder,
       screenshotUrls,
     } = req.body;
@@ -210,6 +221,7 @@ router.put('/:code', authenticateJWT, authorize('superadmin'), async (req, res) 
     if (yearlyAmount != null) doc.yearlyAmount = Math.max(0, Number(yearlyAmount) || 0);
     if (currency != null) doc.currency = String(currency).trim().toUpperCase();
     if (isActive != null) doc.isActive = Boolean(isActive);
+    if (showInMerchantCatalog != null) doc.showInMerchantCatalog = Boolean(showInMerchantCatalog);
     if (sortOrder != null) doc.sortOrder = Number(sortOrder) || 0;
     if (screenshotUrls != null) {
       doc.screenshotUrls = Array.isArray(screenshotUrls)
@@ -236,12 +248,9 @@ router.get('/quote/:code', authenticateJWT, authorize('merchant_admin'), async (
 
     let tenant = await Tenant.findById(req.tenantId).populate('assignedPlanId');
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
-    tenant = await applyQrOrderingExpiryIfNeeded(tenant);
+    tenant = await applyPaidAddonExpiryIfNeeded(tenant);
 
-    const plan = await resolvePlanForTenantAddons(tenant);
-    const priced = priceAddonForPlan(addon, plan);
-    const billingLabel =
-      plan?.billingCycle === 'yearly' ? 'per year (matches your yearly plan)' : 'per month (matches your monthly plan)';
+    const quote = await getAddonPurchaseQuote(req.tenantId, code);
     const state = await getAddonMerchantState(tenant, code);
 
     res.json({
@@ -252,10 +261,12 @@ router.get('/quote/:code', authenticateJWT, authorize('merchant_admin'), async (
         longDescription: addon.longDescription,
         screenshotUrls: await resolveMediaUrls(addon.screenshotUrls || []),
       },
-      priced,
-      billingLabel,
-      plan: plan
-        ? { name: plan.name, billingCycle: plan.billingCycle, code: plan.code }
+      priced: quote.priced,
+      fullCycle: quote.fullCycle,
+      proration: quote.proration,
+      billingLabel: quote.billingLabel,
+      plan: quote.plan
+        ? { name: quote.plan.name, billingCycle: quote.plan.billingCycle, code: quote.plan.code }
         : null,
       ...state,
     });

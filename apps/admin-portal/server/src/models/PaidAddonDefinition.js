@@ -20,6 +20,8 @@ const paidAddonDefinitionSchema = new mongoose.Schema(
     yearlyAmount: { type: Number, default: 0, min: 0 },
     currency: { type: String, default: 'LKR', trim: true, uppercase: true },
     isActive: { type: Boolean, default: true },
+    /** When false, billed via subscription (e.g. per extra store) but hidden from merchant Add-ons catalog */
+    showInMerchantCatalog: { type: Boolean, default: true },
     sortOrder: { type: Number, default: 0 },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },

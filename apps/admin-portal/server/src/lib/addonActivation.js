@@ -2,9 +2,10 @@
 
 const Tenant = require('../models/Tenant');
 const PaymentReceipt = require('../models/PaymentReceipt');
-const SubscriptionPlan = require('../models/SubscriptionPlan');
-const { tenantPlanAudience } = require('../utils/planAudience');
 const { computeAddonPeriodEnd } = require('./addonPeriod');
+const { entitlementKeyForCode, emptyEntitlement } = require('@innovapos/paid-addons');
+const { getAddonByCode, priceAddonForPlan } = require('./addonBilling');
+const { resolvePlanForTenantAddons } = require('./addonPurchaseQuote');
 
 /**
  * @param {string} tenantId
@@ -13,36 +14,32 @@ const { computeAddonPeriodEnd } = require('./addonPeriod');
  */
 async function activatePaidAddonForTenant(tenantId, addonCode, opts) {
   const code = String(addonCode || '').trim().toLowerCase();
+  const entitlementKey = entitlementKeyForCode(code);
+  if (!entitlementKey) throw new Error(`Unknown add-on code: ${code}`);
+
   const tenant = await Tenant.findById(tenantId);
   if (!tenant) throw new Error('Tenant not found');
 
-  if (code === 'qr_ordering') {
-    const audience = tenantPlanAudience(tenant.countryIso);
-    let plan = null;
-    if (tenant.assignedPlanId) {
-      plan = await SubscriptionPlan.findOne({
-        _id: tenant.assignedPlanId,
-        isActive: true,
-        planAudience: audience,
-      }).lean();
-    }
-    const activatedAt = new Date();
-    const periodEndsAt = computeAddonPeriodEnd(activatedAt, plan?.billingCycle || 'monthly');
+  const plan = await resolvePlanForTenantAddons(tenant);
+  const addon = await getAddonByCode(code);
+  const fullPriced = addon && plan ? priceAddonForPlan(addon, plan) : { amount: 0, currency: 'LKR' };
+  const amountPerCycle =
+    opts.amountPerCycle != null ? Number(opts.amountPerCycle) : Number(fullPriced.amount) || 0;
 
-    tenant.paidAddons = tenant.paidAddons || {};
-    tenant.paidAddons.qrOrdering = {
-      active: true,
-      activatedAt,
-      amountPerCycle: Number(opts.amount) || 0,
-      currency: String(opts.currency || 'LKR').toUpperCase(),
-      periodEndsAt,
-      cancelAtPeriodEnd: false,
-    };
-    await tenant.save();
-    return tenant;
-  }
+  const activatedAt = new Date();
+  const periodEndsAt = computeAddonPeriodEnd(activatedAt, plan?.billingCycle || 'monthly');
 
-  throw new Error(`Unknown add-on code: ${code}`);
+  tenant.paidAddons = tenant.paidAddons || {};
+  tenant.paidAddons[entitlementKey] = {
+    active: true,
+    activatedAt,
+    amountPerCycle,
+    currency: String(opts.currency || 'LKR').toUpperCase(),
+    periodEndsAt,
+    cancelAtPeriodEnd: false,
+  };
+  await tenant.save();
+  return tenant;
 }
 
 /**
@@ -109,6 +106,9 @@ async function recordVerifiedAddonReceipt({
     await receipt.save();
   }
 
+  const { getAddonPurchaseQuote } = require('./addonPurchaseQuote');
+  const quote = await getAddonPurchaseQuote(tenantId, addonCode);
+
   await activatePaidAddonForTenant(tenantId, addonCode, {
     amount,
     currency,
@@ -117,9 +117,77 @@ async function recordVerifiedAddonReceipt({
     paypalOrderId,
     stripeSessionId,
     createdBy,
+    amountPerCycle: quote.fullCycle.amount,
   });
 
   return { receipt, duplicate: false };
 }
 
-module.exports = { activatePaidAddonForTenant, recordVerifiedAddonReceipt };
+/**
+ * Record verified PayPal payment and create default store.
+ */
+async function recordVerifiedStoreReceipt({
+  tenantId,
+  amount,
+  currency,
+  paymentMethod,
+  externalId,
+  paypalOrderId,
+  createdBy,
+}) {
+  const { createDefaultStoreForTenant } = require('./storePurchase');
+  const existing = await PaymentReceipt.findOne({
+    $or: [
+      ...(externalId ? [{ externalPaymentId: externalId }] : []),
+      ...(paypalOrderId ? [{ paypalOrderId }] : []),
+    ],
+    status: 'verified',
+    receiptKind: 'store',
+  });
+  if (existing) return { duplicate: true, receipt: existing, store: null };
+
+  let receipt = await PaymentReceipt.findOne({
+    tenantId,
+    receiptKind: 'store',
+    status: 'pending',
+    ...(paypalOrderId ? { paypalOrderId } : {}),
+  });
+
+  const now = new Date();
+  if (!receipt) {
+    receipt = await PaymentReceipt.create({
+      tenantId,
+      receiptKind: 'store',
+      paymentMethod,
+      amount,
+      currency: currency || 'LKR',
+      requestedPlanId: null,
+      requestedPlanCode: '',
+      expectedAmount: amount,
+      amountMatchesExpected: true,
+      bankReference: paypalOrderId || externalId || `store-${Date.now()}`,
+      bankName: paymentMethod === 'paypal' ? 'PayPal' : '',
+      paymentDate: now,
+      paypalOrderId: paypalOrderId || '',
+      externalPaymentId: externalId || paypalOrderId || '',
+      status: 'verified',
+      verifiedAt: now,
+      subscriptionExtended: false,
+      createdBy: createdBy || null,
+    });
+  } else {
+    receipt.status = 'verified';
+    receipt.verifiedAt = now;
+    await receipt.save();
+  }
+
+  const store = await createDefaultStoreForTenant(tenantId, createdBy);
+  return { receipt, store, duplicate: false };
+}
+
+module.exports = {
+  activatePaidAddonForTenant,
+  recordVerifiedAddonReceipt,
+  recordVerifiedStoreReceipt,
+  emptyEntitlement,
+};

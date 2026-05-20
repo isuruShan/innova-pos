@@ -11,6 +11,7 @@ const LoyaltyProgramConfig = require('../models/LoyaltyProgramConfig');
 const LoyaltyReward = require('../models/LoyaltyReward');
 const LoyaltyTier = require('../models/LoyaltyTier');
 const { computeLoyaltyRewardDiscount, getEffectiveTier } = require('../lib/loyaltyTier');
+const { isLoyaltyAddonActiveForTenant } = require('../lib/tenantLoyaltyAddon');
 const { applyPromotions } = require('../utils/applyPromotions');
 const { protect, authorize, tenantScope } = require('../middleware/auth');
 const { emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
@@ -223,7 +224,17 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       }
     } catch (_) { /* use defaults */ }
 
-    const tiersCache = await LoyaltyTier.find({ tenantId: req.tenantId }).lean();
+    const loyaltyAddonActive = await isLoyaltyAddonActiveForTenant(req.tenantId);
+    if (loyaltyRewardId && !loyaltyAddonActive) {
+      return res.status(402).json({
+        message:
+          'The Loyalty program add-on is not active. Subscribe in the admin portal under Add-ons to use rewards and points.',
+      });
+    }
+
+    const tiersCache = loyaltyAddonActive
+      ? await LoyaltyTier.find({ tenantId: req.tenantId }).lean()
+      : [];
 
     let customerLeanForOrder = null;
     if (customerId && mongoose.Types.ObjectId.isValid(String(customerId))) {
@@ -247,6 +258,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
     });
     const activePromos = activePromosRaw.filter((p) => {
       const min = p.minTierLevel;
+      if (min != null && Number(min) > 0 && !loyaltyAddonActive) return false;
       if (min == null || Number(min) <= 0) return true;
       if (promoTierLevel == null) return false;
       return promoTierLevel >= Number(min);
@@ -259,7 +271,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
 
     let remainingAfterPromos = Math.max(0, subtotal - promoDiscountTotal);
 
-    if (customerLeanForOrder) {
+    if (loyaltyAddonActive && customerLeanForOrder) {
       const tiers = tiersCache;
       const customerLean = customerLeanForOrder;
       const autoRewards = await LoyaltyReward.find({
@@ -289,7 +301,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       remainingAfterPromos = remaining;
     }
 
-    if (loyaltyRewardId && customerLeanForOrder) {
+    if (loyaltyAddonActive && loyaltyRewardId && customerLeanForOrder) {
       const reward = await LoyaltyReward.findOne({
         _id: loyaltyRewardId,
         tenantId: req.tenantId,
@@ -626,7 +638,12 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
     order.updatedBy = req.user.id;
     await order.save();
 
-    if (order.status === 'completed' && prevStatus !== 'completed' && order.customerId) {
+    if (
+      order.status === 'completed' &&
+      prevStatus !== 'completed' &&
+      order.customerId &&
+      (await isLoyaltyAddonActiveForTenant(req.tenantId))
+    ) {
       const cfg = await LoyaltyProgramConfig.findOne({ tenantId: req.tenantId }).lean();
       let earned = 0;
       if (!cfg || cfg.isEnabled !== false) {

@@ -9,7 +9,8 @@ const { loadPaymentSettings } = require('../lib/platformPaymentConfig');
 const { createCheckoutSession } = require('../lib/payments/stripeCheckout');
 const { createOrder, createAddonOrder, captureOrder } = require('../lib/payments/paypalCheckout');
 const { fulfillOnlinePayment } = require('./subscriptionWebhooks');
-const { priceAddonForPlan } = require('../lib/addonBilling');
+const { getAddonPurchaseQuote } = require('../lib/addonPurchaseQuote');
+const { getStoreCreateQuote } = require('../lib/storeCreateQuote');
 const PaidAddonDefinition = require('../models/PaidAddonDefinition');
 
 const router = express.Router();
@@ -144,10 +145,8 @@ router.post('/paypal/create-addon-order', authenticateJWT, authorize('merchant_a
       return res.status(400).json({ message: 'A payment for this add-on is already pending verification' });
     }
 
-    const plan = await resolvePlanForTenant(tenant, null);
-    if (!plan) return res.status(400).json({ message: 'No billing plan found for pricing' });
-
-    const { amount, currency, label } = priceAddonForPlan(addon.toObject ? addon.toObject() : addon, plan.toObject ? plan.toObject() : plan);
+    const quote = await getAddonPurchaseQuote(req.tenantId, code);
+    const { amount, currency, label } = quote.priced;
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: 'Add-on price is not configured yet. Contact support.' });
     }
@@ -157,7 +156,7 @@ router.post('/paypal/create-addon-order', authenticateJWT, authorize('merchant_a
       addonCode: code,
       amount,
       currency,
-      description: label || addon.name,
+      description: `${label || addon.name}${quote.proration?.isProrated ? ' (prorated)' : ''}`,
     });
 
     await PaymentReceipt.create({
@@ -179,7 +178,61 @@ router.post('/paypal/create-addon-order', authenticateJWT, authorize('merchant_a
       createdBy: req.user.id,
     });
 
-    res.json({ orderId });
+    res.json({ orderId, proration: quote.proration });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
+router.post('/paypal/create-store-order', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
+  try {
+    const settings = await loadPaymentSettings();
+    if (!settings.paypal?.enabled) {
+      return res.status(400).json({ message: 'PayPal is not enabled' });
+    }
+
+    const tenant = await Tenant.findById(req.tenantId);
+    if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+    const quote = await getStoreCreateQuote(req.tenantId);
+    if (quote.error) return res.status(400).json({ message: quote.error });
+    if (!quote.requiresPayment) {
+      return res.status(400).json({ message: 'No payment required for your first store. Use create included.' });
+    }
+
+    const amount = quote.priced?.amount;
+    const currency = quote.priced?.currency || 'LKR';
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: 'Store price is not configured yet. Contact support.' });
+    }
+
+    const { orderId } = await createAddonOrder({
+      tenant,
+      addonCode: 'additional_store',
+      amount,
+      currency,
+      description: quote.name || 'Additional store location',
+    });
+
+    await PaymentReceipt.create({
+      tenantId: tenant._id,
+      receiptKind: 'store',
+      paymentMethod: 'paypal',
+      amount,
+      currency,
+      requestedPlanId: null,
+      requestedPlanCode: '',
+      expectedAmount: amount,
+      amountMatchesExpected: true,
+      bankReference: orderId,
+      bankName: 'PayPal',
+      paymentDate: new Date(),
+      paypalOrderId: orderId,
+      status: 'pending',
+      createdBy: req.user.id,
+    });
+
+    res.json({ orderId, proration: quote.proration });
   } catch (err) {
     sendRouteError(res, err, { req });
   }
@@ -223,6 +276,35 @@ router.post('/paypal/capture', authenticateJWT, authorize('merchant_admin'), asy
         message: 'Add-on payment captured',
         addon: true,
         addonCode: receipt.addonCode,
+      });
+    }
+
+    if (receipt.receiptKind === 'store') {
+      const { recordVerifiedStoreReceipt } = require('../lib/addonActivation');
+      const capture = await captureOrder(orderId);
+      if (capture.status !== 'COMPLETED') {
+        return res.status(400).json({ message: 'PayPal payment was not completed' });
+      }
+      const unit = capture.purchase_units?.[0];
+      const custom = unit?.payments?.captures?.[0]?.id || orderId;
+
+      const r = await recordVerifiedStoreReceipt({
+        tenantId: req.tenantId,
+        amount: receipt.amount,
+        currency: receipt.currency,
+        paymentMethod: 'paypal',
+        externalId: custom,
+        paypalOrderId: orderId,
+        createdBy: req.user.id,
+      });
+      if (r.duplicate) {
+        return res.json({ message: 'Payment already applied', store: r.store });
+      }
+      return res.json({
+        message: 'Store created',
+        store: true,
+        storeId: r.store?._id,
+        storeCode: r.store?.code,
       });
     }
 

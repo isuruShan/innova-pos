@@ -1,14 +1,20 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader, X, ArrowLeft, Plus } from 'lucide-react';
 import api from '../../api/axios';
 import { fieldAttrs, PLACEHOLDERS } from '../../utils/formFields';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
 import ListPagination from '../../components/common/ListPagination';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
+import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
+import ProrationBreakdown from '../../components/billing/ProrationBreakdown';
+import BankReceiptFields from '../../components/billing/BankReceiptFields';
 
 export default function StoresPage() {
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, isMerchantAdmin } = useAuth();
+  const canCreateStore = isSuperAdmin || isMerchantAdmin;
   const queryClient = useQueryClient();
   const [form, setForm] = useState({ name: '', code: '', address: '', phone: '', paymentMethods: ['cash'] });
   const [editingStore, setEditingStore] = useState(null);
@@ -16,9 +22,20 @@ export default function StoresPage() {
     name: '', code: '', address: '', phone: '', paymentMethods: ['cash'], isActive: true,
   });
   const [editMeta, setEditMeta] = useState({ deactivatedBySuperadmin: false });
+  const toast = useToast();
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_admin_stores') || 'table');
   const [storePage, setStorePage] = useState(1);
+  const [purchaseOpen, setPurchaseOpen] = useState(false);
+  const [purchaseStep, setPurchaseStep] = useState('review');
+  const [chosenMethod, setChosenMethod] = useState(null);
+  const [purchaseQuote, setPurchaseQuote] = useState(null);
+  const [purchaseError, setPurchaseError] = useState('');
+  const [bankForm, setBankForm] = useState({ bankReference: '', notes: '' });
+  const [bankFile, setBankFile] = useState(null);
+  const bankFileRef = useRef(null);
+  const paypalContainerRef = useRef(null);
+  const [paypalReady, setPaypalReady] = useState(false);
 
   const { data: storeList = { items: [], page: 1, pages: 1, total: 0 }, isLoading, isFetching } = useQuery({
     queryKey: ['admin-stores', storePage],
@@ -29,6 +46,12 @@ export default function StoresPage() {
   });
   const stores = storeList.items || [];
 
+  const { data: paymentOptions } = useQuery({
+    queryKey: ['merchant-payment-options'],
+    queryFn: () => api.get('/platform-payments/merchant-options').then((r) => r.data),
+    enabled: isMerchantAdmin,
+  });
+
   const { data: users = [] } = useQuery({
     queryKey: ['users-for-store-access'],
     queryFn: async () => {
@@ -37,7 +60,7 @@ export default function StoresPage() {
     },
   });
 
-  const createStore = useMutation({
+  const createStoreSuper = useMutation({
     mutationFn: (payload) => api.post('/stores', payload),
     onSuccess: () => {
       setForm({ name: '', code: '', address: '', phone: '', paymentMethods: ['cash'] });
@@ -47,6 +70,146 @@ export default function StoresPage() {
     },
     onError: (err) => setError(err.response?.data?.message || 'Failed to create store'),
   });
+
+  const createIncludedStore = useMutation({
+    mutationFn: () => api.post('/stores/create-included'),
+    onSuccess: (res) => {
+      const created = res?.data;
+      toast.success(`Store ${created?.code || ''} created. Edit name and settings below.`);
+      queryClient.invalidateQueries({ queryKey: ['admin-stores'] });
+      queryClient.invalidateQueries({ queryKey: ['stores'] });
+      closePurchase();
+      if (created?._id) openEdit(created);
+    },
+    onError: (err) => setPurchaseError(err.response?.data?.message || 'Failed to create store'),
+  });
+
+  const bankReceiptMutation = useMutation({
+    mutationFn: (fd) => api.post('/subscriptions/receipts', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    onSuccess: () => {
+      toast.success('Receipt submitted. Your store will be created after verification.');
+      closePurchase();
+      queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+    },
+    onError: (err) => setPurchaseError(err.response?.data?.message || 'Upload failed'),
+  });
+
+  const paypalCaptureMutation = useMutation({
+    mutationFn: (orderId) => api.post('/subscriptions/checkout/paypal/capture', { orderId }).then((r) => r.data),
+    onSuccess: (data) => {
+      if (data?.store) {
+        toast.success(data.message || 'Store created.');
+        queryClient.invalidateQueries({ queryKey: ['admin-stores'] });
+        queryClient.invalidateQueries({ queryKey: ['stores'] });
+        closePurchase();
+        return;
+      }
+      setPurchaseError(data?.message || 'Payment did not create a store.');
+    },
+    onError: (err) => setPurchaseError(err.response?.data?.message || 'PayPal capture failed'),
+  });
+
+  const closePurchase = useCallback(() => {
+    setPurchaseOpen(false);
+    setPurchaseStep('review');
+    setChosenMethod(null);
+    setPurchaseQuote(null);
+    setPurchaseError('');
+    setBankForm({ bankReference: '', notes: '' });
+    setBankFile(null);
+  }, []);
+
+  const startCreateStore = async () => {
+    setPurchaseError('');
+    try {
+      const { data: quote } = await api.get('/stores/create-quote');
+      if (quote.error) {
+        setError(quote.error);
+        return;
+      }
+      if (!quote.requiresPayment) {
+        createIncludedStore.mutate();
+        return;
+      }
+      setPurchaseQuote(quote);
+      setPurchaseOpen(true);
+      setPurchaseStep('review');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not load store pricing');
+    }
+  };
+
+  const methodOptions = useMemo(() => {
+    const o = [];
+    if (paymentOptions?.paypal?.enabled) o.push({ id: 'paypal', label: 'PayPal' });
+    if (paymentOptions?.bankAccounts?.length) o.push({ id: 'bank_transfer', label: 'Bank transfer' });
+    return o;
+  }, [paymentOptions]);
+
+  const paypalCurrency = purchaseQuote?.priced?.currency || 'LKR';
+
+  useEffect(() => {
+    const needPaypal =
+      purchaseOpen &&
+      purchaseStep === 'pay' &&
+      chosenMethod === 'paypal' &&
+      paymentOptions?.paypal?.enabled &&
+      paymentOptions.paypal.clientId;
+    if (!needPaypal) {
+      setPaypalReady(false);
+      return undefined;
+    }
+    const script = document.createElement('script');
+    script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(paymentOptions.paypal.clientId)}&currency=${encodeURIComponent(paypalCurrency)}`;
+    script.async = true;
+    script.onload = () => setPaypalReady(true);
+    document.body.appendChild(script);
+    return () => {
+      script.remove();
+      setPaypalReady(false);
+    };
+  }, [purchaseOpen, purchaseStep, chosenMethod, paymentOptions, paypalCurrency]);
+
+  useEffect(() => {
+    if (!purchaseOpen || purchaseStep !== 'pay' || chosenMethod !== 'paypal' || !paypalReady || !window.paypal || !paypalContainerRef.current) {
+      return undefined;
+    }
+    const el = paypalContainerRef.current;
+    el.innerHTML = '';
+    const buttons = window.paypal.Buttons({
+      createOrder: async () => {
+        const { data } = await api.post('/subscriptions/checkout/paypal/create-store-order');
+        return data.orderId;
+      },
+      onApprove: async (data) => {
+        await paypalCaptureMutation.mutateAsync(data.orderID);
+      },
+      onError: () => setPurchaseError('PayPal payment failed'),
+    });
+    buttons.render(el);
+    return () => { el.innerHTML = ''; };
+  }, [purchaseOpen, purchaseStep, chosenMethod, paypalReady, paypalCaptureMutation]);
+
+  const handleStoreBankSubmit = (e) => {
+    e.preventDefault();
+    setPurchaseError('');
+    if (!purchaseQuote?.priced?.amount) return;
+    if (!bankForm.bankReference.trim()) {
+      setPurchaseError('Bank reference is required.');
+      return;
+    }
+    if (!bankFile) {
+      setPurchaseError('Receipt upload is required.');
+      return;
+    }
+    const fd = new FormData();
+    fd.append('purchaseKind', 'store');
+    fd.append('amount', String(purchaseQuote.priced.amount));
+    fd.append('bankReference', bankForm.bankReference.trim());
+    fd.append('notes', bankForm.notes.trim());
+    fd.append('receipt', bankFile);
+    bankReceiptMutation.mutate(fd);
+  };
 
   const updateStore = useMutation({
     mutationFn: ({ id, payload }) => api.put(`/stores/${id}`, payload),
@@ -77,7 +240,7 @@ export default function StoresPage() {
       setError('Store name and code are required');
       return;
     }
-    createStore.mutate(form);
+    createStoreSuper.mutate(form);
   };
 
   const openEdit = (store) => {
@@ -133,11 +296,24 @@ export default function StoresPage() {
         <p className="text-sm text-gray-500 mt-1">
           {isSuperAdmin
             ? 'Create and manage store branches for merchants.'
-            : 'Edit details for stores assigned to your admin account.'}
+            : isMerchantAdmin
+              ? 'Your first store is included in your plan. Additional locations require payment, then you can edit name and settings.'
+              : 'Edit details for stores assigned to your admin account.'}
         </p>
+        {isMerchantAdmin && (
+          <button
+            type="button"
+            onClick={startCreateStore}
+            disabled={createIncludedStore.isPending}
+            className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60"
+          >
+            {createIncludedStore.isPending ? <Loader size={14} className="animate-spin" /> : <Plus size={16} />}
+            Create store
+          </button>
+        )}
       </div>
 
-      {isSuperAdmin && (
+      {isSuperAdmin && canCreateStore && (
         <form onSubmit={onCreate} className="rounded-xl border border-gray-200 bg-white p-4 grid gap-3 md:grid-cols-2">
           <div><label className="block text-xs text-gray-500 mb-1">Store Name</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder={PLACEHOLDERS.storeName}
           maxLength={fieldAttrs('storeName').maxLength} value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} /></div>
@@ -168,8 +344,8 @@ export default function StoresPage() {
             </div>
           </div>
           <div className="md:col-span-2 flex items-center gap-3">
-            <button type="submit" className="px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold disabled:opacity-60" disabled={createStore.isPending}>
-              {createStore.isPending ? 'Creating...' : 'Create store'}
+            <button type="submit" className="px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold disabled:opacity-60" disabled={createStoreSuper.isPending}>
+              {createStoreSuper.isPending ? 'Creating...' : 'Create store'}
             </button>
             {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
@@ -270,14 +446,116 @@ export default function StoresPage() {
         />
       </div>
 
-      {editingStore && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-gray-900">Edit store</h3>
-              <button onClick={() => setEditingStore(null)} className="text-gray-400 hover:text-gray-600">x</button>
+      {purchaseOpen && purchaseQuote && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl border border-gray-200">
+            <div className="flex justify-between items-start gap-2 mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Additional store</h3>
+              <button type="button" onClick={closePurchase} className="p-1 rounded-lg hover:bg-gray-100" aria-label="Close">
+                <X size={22} />
+              </button>
             </div>
-            <form onSubmit={onEditSave} className="space-y-3">
+            {purchaseStep === 'review' && (
+              <div className="space-y-4">
+                <p className="text-sm text-gray-700">{purchaseQuote.shortDescription}</p>
+                <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
+                  <p className="text-xs text-gray-500 uppercase">Amount due now</p>
+                  <p className="text-2xl font-bold tabular-nums mt-1">
+                    {purchaseQuote.priced.currency} {Number(purchaseQuote.priced.amount).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">{purchaseQuote.priced.billingLabel}</p>
+                </div>
+                <ProrationBreakdown
+                  proration={purchaseQuote.proration}
+                  fullCycle={{ amount: purchaseQuote.proration?.fullAmount, label: purchaseQuote.priced?.label }}
+                  currency={purchaseQuote.priced?.currency}
+                />
+                {methodOptions.length === 0 ? (
+                  <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">No payment methods configured. Contact support.</p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { setPurchaseStep('method'); setPurchaseError(''); }}
+                    className="w-full py-3 rounded-xl bg-brand-orange text-white text-sm font-semibold"
+                  >
+                    Continue to payment
+                  </button>
+                )}
+              </div>
+            )}
+            {purchaseStep === 'method' && (
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600">Choose payment method.</p>
+                <div className="flex flex-wrap gap-2">
+                  {methodOptions.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => { setChosenMethod(m.id); setPurchaseStep('pay'); }}
+                      className="px-4 py-3 rounded-lg border border-gray-300 flex items-center gap-2 hover:border-brand-orange text-sm font-medium"
+                    >
+                      <PaymentMethodLogo method={m.id === 'bank_transfer' ? 'bank_transfer' : m.id} />
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" onClick={() => setPurchaseStep('review')} className="text-sm text-gray-600 flex items-center gap-1">
+                  <ArrowLeft size={14} /> Back
+                </button>
+              </div>
+            )}
+            {purchaseStep === 'pay' && chosenMethod === 'paypal' && (
+              <div className="space-y-3">
+                <ProrationBreakdown proration={purchaseQuote.proration} currency={purchaseQuote.priced?.currency} />
+                {!paypalReady ? <p className="text-xs text-gray-500">Loading PayPal…</p> : null}
+                <div ref={paypalContainerRef} className="min-h-[44px]" />
+                <button type="button" onClick={() => setPurchaseStep('method')} className="text-sm text-gray-600 flex items-center gap-1">
+                  <ArrowLeft size={14} /> Change method
+                </button>
+              </div>
+            )}
+            {purchaseStep === 'pay' && chosenMethod === 'bank_transfer' && paymentOptions?.bankAccounts?.length > 0 && (
+              <div className="space-y-4">
+                <ProrationBreakdown proration={purchaseQuote.proration} currency={purchaseQuote.priced?.currency} />
+                <div className="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <p className="font-medium">Transfer exactly {purchaseQuote.priced.currency} {Number(purchaseQuote.priced.amount).toLocaleString()} to:</p>
+                  {paymentOptions.bankAccounts.map((b) => (
+                    <div key={b._id} className="mt-2">
+                      <p className="font-medium">{b.label} — {b.bankName}</p>
+                      <p className="text-xs">{b.accountName} · {b.accountNumber}</p>
+                    </div>
+                  ))}
+                </div>
+                <BankReceiptFields
+                  bankReference={bankForm.bankReference}
+                  onBankReferenceChange={(v) => setBankForm((f) => ({ ...f, bankReference: v }))}
+                  notes={bankForm.notes}
+                  onNotesChange={(v) => setBankForm((f) => ({ ...f, notes: v }))}
+                  file={bankFile}
+                  onFileChange={setBankFile}
+                  fileInputRef={bankFileRef}
+                  error={purchaseError}
+                  isPending={bankReceiptMutation.isPending}
+                  onSubmit={handleStoreBankSubmit}
+                />
+              </div>
+            )}
+            {purchaseError && purchaseStep !== 'pay' ? <p className="text-sm text-red-600">{purchaseError}</p> : null}
+          </div>
+        </div>
+      )}
+
+      {editingStore && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setEditingStore(null)} aria-hidden="true" />
+          <aside className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl border-l border-gray-200 flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-900">Edit store</h3>
+              <button type="button" onClick={() => setEditingStore(null)} className="p-1 rounded-lg hover:bg-gray-100 text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={onEditSave} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
               <div><label className="block text-xs text-gray-500 mb-1">Store Name</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder={PLACEHOLDERS.storeName}
           maxLength={fieldAttrs('storeName').maxLength} value={editForm.name} onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))} /></div>
               <div><label className="block text-xs text-gray-500 mb-1">Store Code</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Code" value={editForm.code} onChange={(e) => setEditForm((p) => ({ ...p, code: e.target.value }))} /></div>
@@ -321,13 +599,13 @@ export default function StoresPage() {
               {error && <p className="text-sm text-red-600">{error}</p>}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setEditingStore(null)} className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
-                <button type="submit" disabled={updateStore.isPending} className="flex-1 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60">
+                <button type="submit" disabled={updateStore.isPending} className="flex-1 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold disabled:opacity-60">
                   {updateStore.isPending ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+          </aside>
+        </>
       )}
     </div>
   );

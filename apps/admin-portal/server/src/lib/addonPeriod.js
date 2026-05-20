@@ -1,5 +1,13 @@
 'use strict';
 
+const {
+  entitlementKeyForCode,
+  emptyEntitlement,
+  isPaidAddonEffective,
+  isQrOrderingEffective,
+  isLoyaltyEffective,
+} = require('@innovapos/paid-addons');
+
 /**
  * @param {Date|string} activatedAt
  * @param {'monthly'|'yearly'|string} billingCycle
@@ -14,38 +22,38 @@ function computeAddonPeriodEnd(activatedAt, billingCycle) {
   return d;
 }
 
-function isQrOrderingEffective(paidAddons) {
-  const qr = paidAddons?.qrOrdering;
-  if (!qr?.active) return false;
-  if (!qr.periodEndsAt) return true;
-  return new Date() < new Date(qr.periodEndsAt);
-}
-
-/**
- * Deactivate QR ordering when the paid period has ended (after unsubscribe or natural expiry).
- * @param {import('mongoose').Document} tenant — mongoose Tenant document
- */
-async function applyQrOrderingExpiryIfNeeded(tenant) {
-  const qr = tenant.paidAddons?.qrOrdering;
-  if (!qr?.active) return tenant;
-  if (!qr.periodEndsAt) return tenant;
-  if (new Date() < new Date(qr.periodEndsAt)) return tenant;
+async function applyAddonExpiryIfNeeded(tenant, entitlementKey) {
+  const row = tenant.paidAddons?.[entitlementKey];
+  if (!row?.active) return tenant;
+  if (!row.periodEndsAt) return tenant;
+  if (new Date() < new Date(row.periodEndsAt)) return tenant;
 
   tenant.paidAddons = tenant.paidAddons || {};
-  tenant.paidAddons.qrOrdering = {
-    active: false,
-    activatedAt: null,
-    amountPerCycle: 0,
-    currency: '',
-    periodEndsAt: null,
-    cancelAtPeriodEnd: false,
-  };
+  tenant.paidAddons[entitlementKey] = emptyEntitlement();
   await tenant.save();
   return tenant;
 }
 
+/** Expire QR ordering and loyalty when their paid periods have ended. */
+async function applyPaidAddonExpiryIfNeeded(tenant) {
+  let t = tenant;
+  t = await applyAddonExpiryIfNeeded(t, 'qrOrdering');
+  t = await applyAddonExpiryIfNeeded(t, 'loyalty');
+  return t;
+}
+
+/** @deprecated use applyPaidAddonExpiryIfNeeded */
+async function applyQrOrderingExpiryIfNeeded(tenant) {
+  return applyPaidAddonExpiryIfNeeded(tenant);
+}
+
 module.exports = {
   computeAddonPeriodEnd,
+  entitlementKeyForCode,
+  isPaidAddonEffective,
   isQrOrderingEffective,
+  isLoyaltyEffective,
+  applyAddonExpiryIfNeeded,
+  applyPaidAddonExpiryIfNeeded,
   applyQrOrderingExpiryIfNeeded,
 };

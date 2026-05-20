@@ -91,9 +91,17 @@ export default function PromotionsAdminPage() {
   });
   const pendingOnly = pendingList.items || [];
 
+  const { data: addonCatalog = [] } = useQuery({
+    queryKey: ['merchant-addon-catalog'],
+    queryFn: () => api.get('/paid-addons/merchant-catalog').then((r) => r.data),
+    staleTime: 60_000,
+  });
+  const loyaltyAddonActive = addonCatalog.find((a) => a.code === 'loyalty')?.alreadyActive === true;
+
   const { data: tiers = [] } = useQuery({
     queryKey: ['loyalty-tiers-promo'],
     queryFn: () => api.get('/loyalty/tiers').then((r) => r.data),
+    enabled: loyaltyAddonActive,
   });
 
   const { data: categories = [] } = useQuery({

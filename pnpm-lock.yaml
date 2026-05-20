@@ -91,6 +91,9 @@ importers:
       '@innovapos/mongo-connection':
         specifier: workspace:*
         version: link:../../../packages/mongo-connection
+      '@innovapos/paid-addons':
+        specifier: workspace:*
+        version: link:../../../packages/paid-addons
       '@innovapos/platform-contact':
         specifier: workspace:*
         version: link:../../../packages/platform-contact
@@ -225,6 +228,9 @@ importers:
       '@innovapos/mongo-connection':
         specifier: workspace:*
         version: link:../../../packages/mongo-connection
+      '@innovapos/paid-addons':
+        specifier: workspace:*
+        version: link:../../../packages/paid-addons
       '@innovapos/platform-contact':
         specifier: workspace:*
         version: link:../../../packages/platform-contact
@@ -483,6 +489,8 @@ importers:
       '@azure/storage-blob':
         specifier: ^12.27.0
         version: 12.31.0
+
+  packages/paid-addons: {}
 
   packages/platform-contact:
     dependencies:

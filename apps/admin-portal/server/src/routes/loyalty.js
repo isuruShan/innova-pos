@@ -9,10 +9,14 @@ const { protect, authorize, tenantScope, sendRouteError } = require('../middlewa
 const { resolveSelectedStore, resolveWriteStoreId } = require('../middleware/storeScope');
 const { createNotification, notifyMerchantAdmins } = require('../lib/notificationHelpers');
 const { parsePageQuery, paginated } = require('../lib/listPagination');
+const { requirePaidAddon } = require('../middleware/requirePaidAddon');
 
 const router = express.Router();
+const requireLoyalty = requirePaidAddon('loyalty');
 
-router.get('/config', protect, authorize('cashier', 'manager', 'merchant_admin'), tenantScope, async (req, res) => {
+router.use(protect, tenantScope, requireLoyalty);
+
+router.get('/config', authorize('cashier', 'manager', 'merchant_admin'), async (req, res) => {
   try {
     let cfg = await LoyaltyProgramConfig.findOne({ tenantId: req.tenantId }).lean();
     if (!cfg) {
@@ -30,7 +34,7 @@ router.get('/config', protect, authorize('cashier', 'manager', 'merchant_admin')
   }
 });
 
-router.put('/config', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.put('/config', authorize('merchant_admin'), async (req, res) => {
   try {
     const {
       spendPerEarnBlock,
@@ -75,7 +79,7 @@ router.put('/config', protect, authorize('merchant_admin'), tenantScope, async (
   }
 });
 
-router.post('/retention/sync', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.post('/retention/sync', authorize('merchant_admin'), async (req, res) => {
   try {
     const cfg = await LoyaltyProgramConfig.findOne({ tenantId: req.tenantId }).lean();
     const days = cfg?.pointsRetentionDays;
@@ -109,7 +113,7 @@ router.post('/retention/sync', protect, authorize('merchant_admin'), tenantScope
   }
 });
 
-router.get('/retention/pending', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.get('/retention/pending', authorize('merchant_admin'), async (req, res) => {
   try {
     const baseFilter = { tenantId: req.tenantId, retentionStatus: 'pending_review' };
     const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 100 });
@@ -129,7 +133,7 @@ router.get('/retention/pending', protect, authorize('merchant_admin'), tenantSco
   }
 });
 
-router.post('/retention/:customerId/resolve', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.post('/retention/:customerId/resolve', authorize('merchant_admin'), async (req, res) => {
   try {
     const { pointsAction, tierAction } = req.body || {};
     if (!['reset', 'keep'].includes(pointsAction) || !['computed', 'force_bottom'].includes(tierAction)) {
@@ -169,7 +173,7 @@ router.post('/retention/:customerId/resolve', protect, authorize('merchant_admin
   }
 });
 
-router.get('/tiers', protect, authorize('manager', 'merchant_admin'), tenantScope, async (req, res) => {
+router.get('/tiers', authorize('manager', 'merchant_admin'), async (req, res) => {
   try {
     const tiers = await LoyaltyTier.find({ tenantId: req.tenantId }).sort({ minLifetimePoints: 1, level: 1 });
     res.json(tiers);
@@ -178,7 +182,7 @@ router.get('/tiers', protect, authorize('manager', 'merchant_admin'), tenantScop
   }
 });
 
-router.post('/tiers', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.post('/tiers', authorize('merchant_admin'), async (req, res) => {
   try {
     const t = await LoyaltyTier.create({
       ...req.body,
@@ -191,7 +195,7 @@ router.post('/tiers', protect, authorize('merchant_admin'), tenantScope, async (
   }
 });
 
-router.put('/tiers/:id', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.put('/tiers/:id', authorize('merchant_admin'), async (req, res) => {
   try {
     const t = await LoyaltyTier.findOneAndUpdate(
       { _id: req.params.id, tenantId: req.tenantId },
@@ -205,7 +209,7 @@ router.put('/tiers/:id', protect, authorize('merchant_admin'), tenantScope, asyn
   }
 });
 
-router.delete('/tiers/:id', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.delete('/tiers/:id', authorize('merchant_admin'), async (req, res) => {
   try {
     const t = await LoyaltyTier.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId });
     if (!t) return res.status(404).json({ message: 'Tier not found' });
@@ -215,7 +219,7 @@ router.delete('/tiers/:id', protect, authorize('merchant_admin'), tenantScope, a
   }
 });
 
-router.get('/rewards', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.get('/rewards', authorize('merchant_admin'), async (req, res) => {
   try {
     const filter = { tenantId: req.tenantId };
     if (req.query.pending === 'true') {
@@ -241,7 +245,7 @@ router.get('/rewards', protect, authorize('merchant_admin'), tenantScope, async 
   }
 });
 
-router.post('/rewards', protect, authorize('merchant_admin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/rewards', authorize('merchant_admin'), resolveSelectedStore, async (req, res) => {
   try {
     const body = { ...req.body };
     const scope = body.scope === 'tenant' ? 'tenant' : 'store';
@@ -280,7 +284,7 @@ router.post('/rewards', protect, authorize('merchant_admin'), tenantScope, resol
   }
 });
 
-router.put('/rewards/:id', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.put('/rewards/:id', authorize('merchant_admin'), async (req, res) => {
   try {
     const existing = await LoyaltyReward.findOne({ _id: req.params.id, tenantId: req.tenantId });
     if (!existing) return res.status(404).json({ message: 'Reward not found' });
@@ -301,7 +305,7 @@ router.put('/rewards/:id', protect, authorize('merchant_admin'), tenantScope, as
   }
 });
 
-router.post('/rewards/:id/approve', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.post('/rewards/:id/approve', authorize('merchant_admin'), async (req, res) => {
   try {
     const doc = await LoyaltyReward.findOneAndUpdate(
       { _id: req.params.id, tenantId: req.tenantId },
@@ -332,7 +336,7 @@ router.post('/rewards/:id/approve', protect, authorize('merchant_admin'), tenant
   }
 });
 
-router.post('/rewards/:id/reject', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.post('/rewards/:id/reject', authorize('merchant_admin'), async (req, res) => {
   try {
     const reason = String(req.body.rejectionReason || '').trim() || 'No reason provided';
     const doc = await LoyaltyReward.findOneAndUpdate(
@@ -362,7 +366,7 @@ router.post('/rewards/:id/reject', protect, authorize('merchant_admin'), tenantS
   }
 });
 
-router.delete('/rewards/:id', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.delete('/rewards/:id', authorize('merchant_admin'), async (req, res) => {
   try {
     const doc = await LoyaltyReward.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId });
     if (!doc) return res.status(404).json({ message: 'Reward not found' });

@@ -4,9 +4,27 @@ const { authenticateJWT, tenantScope } = require('@innovapos/shared-middleware')
 
 const router = express.Router();
 
+const THEME_FIELDS = [
+  'themePresetId',
+  'themePresetName',
+  'themeBaseColor',
+  'bodyColor',
+  'headerBarColor',
+  'buttonColor',
+  'selectionHighlightColor',
+  'hoverColor',
+  'buttonTextColor',
+  'headerBarTextColor',
+  'bodyTextColor',
+  'primaryColor',
+  'accentColor',
+  'sidebarColor',
+  'textColor',
+  'selectionTextColor',
+];
+
 /**
  * GET /tenant-settings — proxy to admin-portal-server for tenant branding
- * Returns only public-safe fields (no internal admin data).
  */
 router.get('/', authenticateJWT, tenantScope, async (req, res) => {
   try {
@@ -16,16 +34,9 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
       timeout: 5000,
     });
 
-    // Expose only POS-relevant branding fields
     const safe = {
       businessName: data.businessName,
-      tagline: data.tagline,
       logoUrl: data.logoUrl,
-      primaryColor: data.primaryColor,
-      accentColor: data.accentColor,
-      sidebarColor: data.sidebarColor,
-      textColor: data.textColor,
-      selectionTextColor: data.selectionTextColor || '#ffffff',
       paymentMethods: data.paymentMethods,
       currency: data.currency,
       currencySymbol: data.currencySymbol,
@@ -40,16 +51,29 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
       returnsRequireManagerApproval: data.returnsRequireManagerApproval !== false,
     };
 
+    for (const key of THEME_FIELDS) {
+      if (data[key] != null && data[key] !== '') safe[key] = data[key];
+    }
+
     res.json(safe);
   } catch (err) {
-    // Return defaults if admin service is unreachable
     res.json({
       businessName: 'Cafinity',
       logoUrl: '',
-      primaryColor: '#1a1a2e',
+      themePresetId: 'default',
+      themeBaseColor: '#0B1220',
+      bodyColor: '#0B1220',
+      headerBarColor: '#151F2E',
+      buttonColor: '#E94560',
+      selectionHighlightColor: '#2A3548',
+      hoverColor: '#F06B82',
+      buttonTextColor: '#F8FAFC',
+      headerBarTextColor: '#F8FAFC',
+      bodyTextColor: '#E2E8F0',
+      primaryColor: '#0B1220',
       accentColor: '#e94560',
       sidebarColor: '#16213e',
-      textColor: '#ffffff',
+      textColor: '#E2E8F0',
       selectionTextColor: '#ffffff',
       paymentMethods: ['cash', 'card'],
       currency: 'LKR',

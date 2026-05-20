@@ -1,9 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Upload, Loader, CheckCircle, Save, Palette, X, Receipt, Printer } from 'lucide-react';
+import { Upload, Loader, CheckCircle, Save, Palette, X, Receipt, Printer, Sparkles } from 'lucide-react';
+import { PRESET_SWATCHES } from '../../utils/posThemePresets';
 import { useToast } from '../../context/ToastContext';
 import api from '../../api/axios';
-import { fieldAttrs, LIMITS } from '../../utils/formFields';
+import { fieldAttrs, LIMITS, validateEmail, validateBusinessName, validateAddressLine } from '../../utils/formFields';
+import MobilePhoneField, { validateMobileField, phoneValueFromField } from '../../components/MobilePhoneField';
+import { CURRENCY_OPTIONS } from '../../constants/currencies';
+import { parsePhoneForField } from '../../utils/phone';
+import { DEFAULT_COUNTRY_CODE } from '../../constants/countries';
 import imageCompression from 'browser-image-compression';
 import {
   RECEIPT_PRINT_AT_OPTIONS,
@@ -39,6 +44,10 @@ export default function BrandingPage() {
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [presetModalOpen, setPresetModalOpen] = useState(false);
+  const [phoneCountryIso, setPhoneCountryIso] = useState(DEFAULT_COUNTRY_CODE);
+  const [phoneNationalDigits, setPhoneNationalDigits] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['tenant-settings'],
@@ -47,6 +56,9 @@ export default function BrandingPage() {
 
   useEffect(() => {
     if (settings && !form) {
+      const parsed = parsePhoneForField(settings.phone, DEFAULT_COUNTRY_CODE);
+      setPhoneCountryIso(parsed.countryIso);
+      setPhoneNationalDigits(parsed.nationalDigits);
       setForm({
         ...settings,
         receiptPrintAtByOrderType: mergeReceiptPrintAtByOrderType(settings),
@@ -65,12 +77,26 @@ export default function BrandingPage() {
     onError: () => toast.error('Failed to save settings'),
   });
 
+  const applyPresetMutation = useMutation({
+    mutationFn: (presetId) => api.post('/tenant-settings/apply-theme-preset', { presetId }),
+    onSuccess: (res) => {
+      const data = res.data;
+      setForm((f) => ({ ...f, ...data }));
+      queryClient.invalidateQueries({ queryKey: ['tenant-settings'] });
+      setPresetModalOpen(false);
+      toast.success(`Theme "${data.themePresetName || 'updated'}" applied`);
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Could not apply theme'),
+  });
+
   const logoMutation = useMutation({
     mutationFn: (fd) => api.post('/tenant-settings/logo', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
-    onSuccess: (d) => {
+    onSuccess: () => {
       setLogoFile(null);
       queryClient.invalidateQueries({ queryKey: ['tenant-settings'] });
+      toast.success('Logo uploaded');
     },
+    onError: (err) => toast.error(err.response?.data?.message || 'Logo upload failed'),
   });
 
   const handleLogoChange = async (e) => {
@@ -91,19 +117,50 @@ export default function BrandingPage() {
 
   const set = (k) => (v) => setForm(f => ({ ...f, [k]: v }));
 
+  const validateBrandingForm = () => {
+    const e = {};
+    const nameRes = validateBusinessName(form.businessName);
+    if (!nameRes.ok) e.businessName = nameRes.error;
+    const addrRes = validateAddressLine(form.address, { required: true });
+    if (!addrRes.ok) e.address = addrRes.error;
+    const mobileErr = validateMobileField(phoneCountryIso, phoneNationalDigits);
+    if (mobileErr) e.phone = mobileErr;
+    const email = String(form.email || '').trim();
+    if (email && !validateEmail(email)) e.email = 'Enter a valid email address';
+    return e;
+  };
+
   const handleSave = () => {
     if (!form) return;
+    const errs = validateBrandingForm();
+    if (Object.keys(errs).length) {
+      setFieldErrors(errs);
+      toast.error('Please fix the highlighted fields');
+      return;
+    }
+    setFieldErrors({});
+    const phone = phoneValueFromField(phoneCountryIso, phoneNationalDigits);
     updateMutation.mutate({
-      businessName: form.businessName,
-      tagline: form.tagline,
-      primaryColor: form.primaryColor,
-      accentColor: form.accentColor,
-      sidebarColor: form.sidebarColor,
-      textColor: form.textColor,
+      businessName: form.businessName.trim(),
+      themePresetId: form.themePresetId,
+      themePresetName: form.themePresetName,
+      themeBaseColor: form.themeBaseColor,
+      bodyColor: form.bodyColor,
+      headerBarColor: form.headerBarColor,
+      buttonColor: form.buttonColor,
+      selectionHighlightColor: form.selectionHighlightColor,
+      hoverColor: form.hoverColor,
+      buttonTextColor: form.buttonTextColor,
+      headerBarTextColor: form.headerBarTextColor,
+      bodyTextColor: form.bodyTextColor,
       selectionTextColor: form.selectionTextColor,
-      address: form.address,
-      phone: form.phone,
-      email: form.email,
+      primaryColor: form.primaryColor || form.bodyColor,
+      accentColor: form.accentColor || form.buttonColor,
+      sidebarColor: form.sidebarColor || form.headerBarColor,
+      textColor: form.textColor || form.bodyTextColor,
+      address: form.address.trim(),
+      phone,
+      email: String(form.email || '').trim(),
       website: form.website,
       currency: form.currency,
       currencySymbol: form.currencySymbol,
@@ -172,28 +229,80 @@ export default function BrandingPage() {
       {/* Business info */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         <h3 className="font-semibold text-gray-900">Business Information</h3>
-        {[
-          { label: 'Business name', key: 'businessName', attrs: fieldAttrs('businessName') },
-          { label: 'Tagline', key: 'tagline', attrs: fieldAttrs('tagline') },
-          { label: 'Address', key: 'address', attrs: fieldAttrs('addressLine1') },
-          { label: 'Phone', key: 'phone', attrs: fieldAttrs('phoneDisplay') },
-          { label: 'Email', key: 'email', type: 'email', attrs: fieldAttrs('email') },
-          { label: 'Website', key: 'website', attrs: fieldAttrs('website') },
-        ].map((f) => (
-          <div key={f.key}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
-            <input
-              type={f.type || 'text'}
-              value={form[f.key] || ''}
-              onChange={(e) => set(f.key)(e.target.value)}
-              placeholder={f.attrs.placeholder}
-              maxLength={f.attrs.maxLength}
-              autoComplete={f.attrs.autoComplete}
-              inputMode={f.attrs.inputMode}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
-            />
-          </div>
-        ))}
+        <p className="text-sm text-gray-500">
+          Contact details from your signup application are filled in the first time you open this page.
+        </p>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Business name *</label>
+          <input
+            type="text"
+            value={form.businessName || ''}
+            onChange={(e) => {
+              set('businessName')(e.target.value);
+              if (fieldErrors.businessName) setFieldErrors((er) => ({ ...er, businessName: '' }));
+            }}
+            placeholder={fieldAttrs('businessName').placeholder}
+            maxLength={fieldAttrs('businessName').maxLength}
+            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${
+              fieldErrors.businessName ? 'border-red-400' : 'border-gray-300'
+            }`}
+          />
+          {fieldErrors.businessName && <p className="text-xs text-red-500 mt-1">{fieldErrors.businessName}</p>}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Address *</label>
+          <input
+            type="text"
+            value={form.address || ''}
+            onChange={(e) => {
+              set('address')(e.target.value);
+              if (fieldErrors.address) setFieldErrors((er) => ({ ...er, address: '' }));
+            }}
+            placeholder={fieldAttrs('addressLine1').placeholder}
+            maxLength={fieldAttrs('addressLine1').maxLength}
+            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${
+              fieldErrors.address ? 'border-red-400' : 'border-gray-300'
+            }`}
+          />
+          {fieldErrors.address && <p className="text-xs text-red-500 mt-1">{fieldErrors.address}</p>}
+        </div>
+        <MobilePhoneField
+          countryIso={phoneCountryIso}
+          nationalDigits={phoneNationalDigits}
+          onCountryIsoChange={setPhoneCountryIso}
+          onNationalDigitsChange={setPhoneNationalDigits}
+          error={fieldErrors.phone}
+          required
+        />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <input
+            type="email"
+            value={form.email || ''}
+            onChange={(e) => {
+              set('email')(e.target.value);
+              if (fieldErrors.email) setFieldErrors((er) => ({ ...er, email: '' }));
+            }}
+            placeholder={fieldAttrs('email').placeholder}
+            maxLength={fieldAttrs('email').maxLength}
+            autoComplete={fieldAttrs('email').autoComplete}
+            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${
+              fieldErrors.email ? 'border-red-400' : 'border-gray-300'
+            }`}
+          />
+          {fieldErrors.email && <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+          <input
+            type="text"
+            value={form.website || ''}
+            onChange={(e) => set('website')(e.target.value)}
+            placeholder={fieldAttrs('website').placeholder}
+            maxLength={fieldAttrs('website').maxLength}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+          />
+        </div>
       </div>
 
       {/* Currency — receipts & POS displays */}
@@ -204,55 +313,131 @@ export default function BrandingPage() {
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Currency code</label>
-            <input
-              value={form.currency || ''}
-              onChange={(e) => set('currency')(e.target.value.toUpperCase())}
-              placeholder="LKR"
-              maxLength={LIMITS.currencyCode}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+            <select
+              value={form.currency || 'LKR'}
+              onChange={(e) => {
+                const opt = CURRENCY_OPTIONS.find((c) => c.code === e.target.value);
+                setForm((f) => ({
+                  ...f,
+                  currency: e.target.value,
+                  currencySymbol: opt?.symbol || f.currencySymbol,
+                }));
+              }}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+            >
+              {CURRENCY_OPTIONS.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} — {c.symbol}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Symbol</label>
-            <input
-              value={form.currencySymbol || ''}
+            <label className="block text-sm font-medium text-gray-700 mb-1">Currency symbol</label>
+            <select
+              value={form.currencySymbol || 'Rs.'}
               onChange={(e) => set('currencySymbol')(e.target.value)}
-              placeholder="Rs."
-              maxLength={LIMITS.currencySymbol}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
-            />
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+            >
+              {[...new Set(CURRENCY_OPTIONS.map((c) => c.symbol))].map((sym) => (
+                <option key={sym} value={sym}>
+                  {sym}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
 
-      {/* Colors */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-900 mb-4">POS Colors</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* POS theme */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+              <Sparkles size={16} className="text-brand-orange" /> POS theme
+            </h3>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Choose a preset palette for header, buttons, highlights, and body colors in the POS.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPresetModalOpen(true)}
+            className="text-sm font-semibold text-brand-orange hover:underline shrink-0"
+          >
+            Choose theme preset
+          </button>
+        </div>
+
+        {form.themePresetName && (
+          <div className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50">
+            <div
+              className="w-14 h-14 rounded-xl border-2 border-white shadow-md shrink-0"
+              style={{ backgroundColor: form.themeBaseColor || '#0B1220' }}
+              title={form.themeBaseColor}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-gray-900">{form.themePresetName}</p>
+              <p className="text-xs text-gray-500 font-mono mt-0.5">Base {form.themeBaseColor || '—'}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           {[
-            { label: 'Primary color', key: 'primaryColor' },
-            { label: 'Accent color', key: 'accentColor' },
-            { label: 'Sidebar color', key: 'sidebarColor' },
-            { label: 'Text color', key: 'textColor' },
-            {
-              label: 'Selected tab & control text',
-              key: 'selectionTextColor',
-              hint: 'Labels on active tabs, nav links, filter chips, payment method, and highlighted menu rows.',
-            },
-          ].map(c => (
-            <div key={c.key} className="flex items-start gap-3">
-              <input type="color" value={form[c.key] || '#ffffff'} onChange={e => set(c.key)(e.target.value)}
-                className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer p-1 flex-shrink-0 mt-0.5" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-700">{c.label}</p>
-                <p className="text-xs text-gray-400 font-mono">{form[c.key] || '#ffffff'}</p>
-                {c.hint && <p className="text-xs text-gray-500 mt-1 leading-snug">{c.hint}</p>}
+            { label: 'Header bar', bg: 'headerBarColor', fg: 'headerBarTextColor' },
+            { label: 'Buttons', bg: 'buttonColor', fg: 'buttonTextColor' },
+            { label: 'Selection', bg: 'selectionHighlightColor', fg: 'selectionTextColor' },
+            { label: 'Body', bg: 'bodyColor', fg: 'bodyTextColor' },
+          ].map((row) => (
+            <div key={row.label} className="rounded-lg border border-gray-200 overflow-hidden">
+              <div className="h-8" style={{ backgroundColor: form[row.bg] || '#0B1220' }} />
+              <div className="px-2 py-1.5 bg-white">
+                <p className="font-medium text-gray-700">{row.label}</p>
+                <p className="font-mono text-gray-400 truncate">{form[row.bg]}</p>
               </div>
             </div>
           ))}
         </div>
+        <p className="text-xs text-gray-500">
+          Hover color: <span className="font-mono">{form.hoverColor || '—'}</span>
+        </p>
       </div>
+
+      {presetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 shadow-xl border border-gray-200">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Theme presets</h3>
+              <button type="button" onClick={() => setPresetModalOpen(false)} className="p-1 rounded-lg hover:bg-gray-100">
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">Each preset sets header, button, selection, hover, body, and text colors for your POS.</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {PRESET_SWATCHES.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  disabled={applyPresetMutation.isPending}
+                  onClick={() => applyPresetMutation.mutate(p.id)}
+                  className={`text-left rounded-xl border p-3 transition-colors hover:border-brand-orange ${
+                    form.themePresetId === p.id ? 'border-brand-orange ring-2 ring-brand-orange/30' : 'border-gray-200'
+                  }`}
+                >
+                  <div className="w-full h-10 rounded-lg mb-2 border border-gray-100" style={{ backgroundColor: p.base }} />
+                  <p className="text-sm font-semibold text-gray-900 leading-tight">{p.name}</p>
+                  <p className="text-[10px] font-mono text-gray-400 mt-0.5">{p.base}</p>
+                  {form.themePresetId === p.id && (
+                    <p className="text-[10px] text-brand-orange font-semibold mt-1">Current</p>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Receipt */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

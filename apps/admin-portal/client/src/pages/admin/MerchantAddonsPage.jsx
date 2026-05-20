@@ -11,9 +11,10 @@ import {
   Upload,
 } from 'lucide-react';
 import api from '../../api/axios';
-import AdminDateField from '../../components/AdminDateField';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
 import AddonCatalogTiles from '../../components/addons/AddonCatalogTiles';
+import ProrationBreakdown from '../../components/billing/ProrationBreakdown';
+import BankReceiptFields from '../../components/billing/BankReceiptFields';
 import { useToast } from '../../context/ToastContext';
 
 /**
@@ -33,7 +34,8 @@ export default function MerchantAddonsPage() {
   const [viewOnly, setViewOnly] = useState(false);
   const [chosenMethod, setChosenMethod] = useState(null);
 
-  const [addonForm, setAddonForm] = useState({ bankReference: '', bankName: '', paymentDate: '', notes: '' });
+  const [addonForm, setAddonForm] = useState({ bankReference: '', notes: '' });
+  const [quoteLoading, setQuoteLoading] = useState(false);
   const [addonFile, setAddonFile] = useState(null);
   const [addonApiError, setAddonApiError] = useState('');
   const addonFileRef = useRef(null);
@@ -115,7 +117,7 @@ export default function MerchantAddonsPage() {
     setFlowStep(null);
     setViewOnly(false);
     setChosenMethod(null);
-    setAddonForm({ bankReference: '', bankName: '', paymentDate: '', notes: '' });
+    setAddonForm({ bankReference: '', notes: '' });
     setAddonFile(null);
     setAddonApiError('');
     setSearchParams((prev) => {
@@ -125,12 +127,35 @@ export default function MerchantAddonsPage() {
     }, { replace: true });
   }, [setSearchParams]);
 
-  const openAddon = useCallback((row, { readOnly = false } = {}) => {
+  const openAddon = useCallback(async (row, { readOnly = false } = {}) => {
     setAddonApiError('');
-    setSelectedAddon(row);
-    setFlowStep('review');
     setViewOnly(readOnly);
     setChosenMethod(null);
+    if (!readOnly && row.canSubscribe) {
+      setQuoteLoading(true);
+      try {
+        const { data: quote } = await api.get(`/paid-addons/quote/${encodeURIComponent(row.code)}`);
+        setSelectedAddon({
+          ...row,
+          priced: quote.priced,
+          proration: quote.proration,
+          fullCycle: quote.fullCycle,
+          billingLabel: quote.billingLabel,
+          longDescription: quote.addon?.longDescription || row.longDescription,
+          screenshotUrls: quote.addon?.screenshotUrls?.length ? quote.addon.screenshotUrls : row.screenshotUrls,
+          alreadyActive: quote.alreadyActive,
+          pendingVerification: quote.pendingVerification,
+        });
+      } catch (err) {
+        setAddonApiError(err.response?.data?.message || 'Could not load pricing');
+        return;
+      } finally {
+        setQuoteLoading(false);
+      }
+    } else {
+      setSelectedAddon(row);
+    }
+    setFlowStep('review');
   }, []);
 
   const openViewAddon = useCallback((row) => openAddon(row, { readOnly: true }), [openAddon]);
@@ -217,8 +242,12 @@ export default function MerchantAddonsPage() {
       setAddonApiError('No plan on file. Contact support.');
       return;
     }
-    if (!addonForm.bankReference.trim() || !addonForm.paymentDate) {
-      setAddonApiError('Bank reference and payment date are required.');
+    if (!addonForm.bankReference.trim()) {
+      setAddonApiError('Bank reference is required.');
+      return;
+    }
+    if (!addonFile) {
+      setAddonApiError('Receipt upload is required.');
       return;
     }
     const fd = new FormData();
@@ -226,10 +255,8 @@ export default function MerchantAddonsPage() {
     fd.append('amount', String(selectedAddon.priced.amount));
     fd.append('planId', String(planId));
     fd.append('bankReference', addonForm.bankReference.trim());
-    fd.append('bankName', (addonForm.bankName || '').trim());
-    fd.append('paymentDate', addonForm.paymentDate);
     fd.append('notes', (addonForm.notes || '').trim());
-    if (addonFile) fd.append('receipt', addonFile);
+    fd.append('receipt', addonFile);
     addonUploadMutation.mutate(fd);
   };
 
@@ -303,13 +330,24 @@ export default function MerchantAddonsPage() {
                     </div>
                   </div>
                 ) : null}
-                <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Your price</p>
-                  <p className="text-2xl font-bold text-gray-900 tabular-nums mt-1">
-                    {selectedAddon.priced.currency} {Number(selectedAddon.priced.amount).toLocaleString()}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">{selectedAddon.billingLabel}</p>
-                </div>
+                {quoteLoading ? (
+                  <p className="text-sm text-gray-500 flex items-center gap-2"><Loader size={14} className="animate-spin" /> Loading pricing…</p>
+                ) : (
+                  <>
+                    <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">Amount due now</p>
+                      <p className="text-2xl font-bold text-gray-900 tabular-nums mt-1">
+                        {selectedAddon.priced.currency} {Number(selectedAddon.priced.amount).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">{selectedAddon.billingLabel}</p>
+                    </div>
+                    <ProrationBreakdown
+                      proration={selectedAddon.proration}
+                      fullCycle={selectedAddon.fullCycle}
+                      currency={selectedAddon.priced?.currency}
+                    />
+                  </>
+                )}
                 {viewOnly ? (
                   <button
                     type="button"
@@ -377,6 +415,11 @@ export default function MerchantAddonsPage() {
                   Pay <strong>{selectedAddon.priced.currency} {Number(selectedAddon.priced.amount).toLocaleString()}</strong> for{' '}
                   <strong>{selectedAddon.name}</strong>.
                 </p>
+                <ProrationBreakdown
+                  proration={selectedAddon.proration}
+                  fullCycle={selectedAddon.fullCycle}
+                  currency={selectedAddon.priced?.currency}
+                />
 
                 {chosenMethod === 'stripe' && (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-sm p-4">
@@ -406,75 +449,18 @@ export default function MerchantAddonsPage() {
                         </div>
                       ))}
                     </div>
-                    <form onSubmit={handleAddonBankSubmit} className="space-y-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Payment date *</label>
-                        <AdminDateField
-                          value={addonForm.paymentDate ? String(addonForm.paymentDate).slice(0, 10) : ''}
-                          onChange={(v) => setAddonForm((f) => ({ ...f, paymentDate: v }))}
-                          className="w-full border rounded-lg px-3 py-2 text-sm border-gray-300"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Bank reference / transaction ID *</label>
-                        <input
-                          type="text"
-                          value={addonForm.bankReference}
-                          onChange={(e) => setAddonForm((f) => ({ ...f, bankReference: e.target.value }))}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                          maxLength={64}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Bank name</label>
-                        <input
-                          type="text"
-                          value={addonForm.bankName}
-                          onChange={(e) => setAddonForm((f) => ({ ...f, bankName: e.target.value }))}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                          maxLength={120}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Receipt photo (optional)</label>
-                        <input
-                          ref={addonFileRef}
-                          type="file"
-                          accept=".pdf,.jpg,.jpeg,.png"
-                          className="hidden"
-                          onChange={(e) => setAddonFile(e.target.files?.[0] || null)}
-                        />
-                        {addonFile ? (
-                          <div className="flex items-center gap-2 text-sm text-gray-700">
-                            <FileText size={14} className="shrink-0" />
-                            <span className="truncate flex-1">{addonFile.name}</span>
-                            <button type="button" className="text-xs underline text-gray-500" onClick={() => setAddonFile(null)}>Remove</button>
-                          </div>
-                        ) : (
-                          <button type="button" onClick={() => addonFileRef.current?.click()} className="text-sm text-brand-orange font-medium">
-                            Attach file
-                          </button>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
-                        <textarea
-                          value={addonForm.notes}
-                          onChange={(e) => setAddonForm((f) => ({ ...f, notes: e.target.value }))}
-                          rows={2}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none"
-                          maxLength={2000}
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={addonUploadMutation.isPending}
-                        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-brand-orange text-white text-sm font-semibold disabled:opacity-60"
-                      >
-                        {addonUploadMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Upload size={14} />}
-                        Submit receipt
-                      </button>
-                    </form>
+                    <BankReceiptFields
+                      bankReference={addonForm.bankReference}
+                      onBankReferenceChange={(v) => setAddonForm((f) => ({ ...f, bankReference: v }))}
+                      notes={addonForm.notes}
+                      onNotesChange={(v) => setAddonForm((f) => ({ ...f, notes: v }))}
+                      file={addonFile}
+                      onFileChange={setAddonFile}
+                      fileInputRef={addonFileRef}
+                      error={addonApiError}
+                      isPending={addonUploadMutation.isPending}
+                      onSubmit={handleAddonBankSubmit}
+                    />
                   </div>
                 )}
 

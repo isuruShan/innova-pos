@@ -17,7 +17,7 @@ const paymentReceiptSchema = new mongoose.Schema(
     /** subscription renewal vs paid feature add-on */
     receiptKind: {
       type: String,
-      enum: ['subscription', 'addon'],
+      enum: ['subscription', 'addon', 'store'],
       default: 'subscription',
       index: true,
     },

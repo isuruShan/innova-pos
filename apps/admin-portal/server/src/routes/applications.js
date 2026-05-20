@@ -5,6 +5,8 @@ const MerchantApplication = require('../models/MerchantApplication');
 const Tenant = require('../models/Tenant');
 const User = require('../models/User');
 const Store = require('../models/Store');
+const TenantSettings = require('../models/TenantSettings');
+const { getPreset } = require('../../../../../packages/pos-theme-presets');
 const { authenticateJWT, authorize, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { sendWelcomeEmail, sendRejectionEmail } = require('../utils/mailer');
 const { childLogger } = require('@innovapos/logger');
@@ -195,6 +197,22 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
         phone: storePhone,
         isDefault: true,
         isActive: true,
+        createdBy: req.user.id,
+      });
+
+      const dc = tenant.countryIso === 'LK'
+        ? { currency: 'LKR', currencySymbol: 'Rs.' }
+        : { currency: 'USD', currencySymbol: '$' };
+      const themePreset = getPreset('default');
+      await TenantSettings.create({
+        tenantId: tenant._id,
+        businessName: application.business.name,
+        address: storeAddress,
+        phone: storePhone,
+        email: String(application.personal.email || '').trim().toLowerCase(),
+        ...themePreset,
+        currency: dc.currency,
+        currencySymbol: dc.currencySymbol,
         createdBy: req.user.id,
       });
 

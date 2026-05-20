@@ -71,23 +71,39 @@ export default function App() {
                 <Route path="/" element={<RootRedirect />} />
 
                 <Route path="/cashier/order" element={
-                  <RoleRoute roles={['cashier', 'manager', 'merchant_admin']}>
+                  <RoleRoute roles={['cashier']}>
                     <NewOrder />
                   </RoleRoute>
                 } />
                 <Route path="/cashier/orders" element={
-                  <RoleRoute roles={['cashier', 'manager', 'merchant_admin']}>
+                  <RoleRoute roles={['cashier']}>
                     <OrderBoard />
                   </RoleRoute>
                 } />
                 <Route path="/cashier/order-history" element={
-                  <RoleRoute roles={['cashier', 'manager', 'merchant_admin']}>
+                  <RoleRoute roles={['cashier']}>
                     <CashierOrderHistory />
                   </RoleRoute>
                 } />
                 <Route path="/cashier/report" element={
-                  <RoleRoute roles={['cashier', 'manager', 'merchant_admin']}>
+                  <RoleRoute roles={['cashier']}>
                     <DayEndReport />
+                  </RoleRoute>
+                } />
+
+                <Route path="/register/order" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <NewOrder />
+                  </RoleRoute>
+                } />
+                <Route path="/register/orders" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <OrderBoard />
+                  </RoleRoute>
+                } />
+                <Route path="/register/order-history" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <CashierOrderHistory />
                   </RoleRoute>
                 } />
 

@@ -8,8 +8,8 @@ import {
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
-import { CASHIER_NAV_GROUPS } from '../../constants/cashierLinks';
 import CashierSessionGate from '../../components/cashier/CashierSessionGate';
+import { useFohrMode } from '../../hooks/useFohrMode';
 import { CASHIER_SESSION_QUERY_KEY, useCashierSession } from '../../components/cashier/cashierSessionContext';
 import { mergeOrderLists } from '../../offline/mergeOrders.js';
 import { listPendingOrders } from '../../offline/idb.js';
@@ -218,6 +218,7 @@ function Column({ status, orders, onAdvanceStatus, onViewEdit, busyId }) {
 }
 
 export default function OrderBoard() {
+  const fohr = useFohrMode();
   const qc = useQueryClient();
   const branding = useBranding();
   const { user } = useAuth();
@@ -255,7 +256,7 @@ export default function OrderBoard() {
   }, [qc]);
 
   const cashierSession = useCashierSession();
-  const sessionSince = cashierSession?.session?.openedAt;
+  const sessionSince = fohr.orderBoardScopeSession ? cashierSession?.session?.openedAt : undefined;
 
   const { data: orders = [], isPending, refetch, isFetching } = useQuery({
     queryKey: ['order-board', selectedStoreId, sessionSince],
@@ -355,9 +356,9 @@ export default function OrderBoard() {
   const liveSelectedOrder = resolveLiveOrder(orders, selectedOrder);
 
   return (
-    <CashierSessionGate>
+    <CashierSessionGate requireSession={fohr.requireCashierSession}>
     <div className="min-h-screen flex flex-col bg-[var(--pos-page-bg)]">
-      <Navbar groups={CASHIER_NAV_GROUPS} />
+      <Navbar groups={fohr.navGroups} />
 
       <div className="flex-1 flex flex-col p-4 sm:p-5 overflow-hidden">
         <div className="flex items-center justify-between mb-4 flex-shrink-0">
@@ -371,9 +372,11 @@ export default function OrderBoard() {
               )}
             </h1>
             <p className="text-slate-500 text-sm mt-0.5">
-              {sessionSince
-                ? 'Showing orders from your open cashier session'
-                : 'Open a cashier session to scope the board to this shift'}
+              {fohr.isRegister
+                ? 'All active orders for this store (not limited to your drawer session)'
+                : sessionSince
+                  ? 'Showing orders from your open cashier session'
+                  : 'Open a cashier session to scope the board to this shift'}
               {' '}
               · Click <Eye size={12} className="inline" /> to view or edit
             </p>

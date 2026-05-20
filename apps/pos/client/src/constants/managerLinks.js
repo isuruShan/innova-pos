@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, UtensilsCrossed, Package, Truck, ClipboardList, Tag, Wallet,
-  Users, Gift, Inbox, Table, Bell,
+  Users, Gift, Inbox, Table, Bell, ShoppingCart,
 } from 'lucide-react';
 
 /** Grouped nav for the top bar (dropdowns). `roles` on an item = restrict to those roles. */
@@ -24,7 +24,9 @@ export const MANAGER_NAV_GROUPS = [
   {
     title: 'Sales',
     items: [
-      { to: '/manager/orders', label: 'Orders', icon: ClipboardList },
+      { to: '/register/order', label: 'Register (new order)', icon: ShoppingCart },
+      { to: '/register/orders', label: 'Register (order board)', icon: ClipboardList },
+      { to: '/manager/orders', label: 'Orders (admin)', icon: ClipboardList },
       { to: '/manager/cashier-sessions', label: 'Cash sessions', icon: Wallet },
     ],
   },

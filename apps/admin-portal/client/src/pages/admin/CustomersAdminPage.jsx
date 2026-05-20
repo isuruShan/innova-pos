@@ -5,6 +5,7 @@ import api from '../../api/axios';
 import AdminDateField from '../../components/AdminDateField';
 import ListPagination from '../../components/common/ListPagination';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
+import LoyaltyAddonSubscribeBanner from '../../components/addons/LoyaltyAddonSubscribeBanner';
 
 const emptyForm = {
   name: '', mobile: '', email: '', birthday: '', notes: '',
@@ -37,6 +38,13 @@ export default function CustomersAdminPage() {
   });
   const rows = list.items || [];
 
+  const { data: addonCatalog = [] } = useQuery({
+    queryKey: ['merchant-addon-catalog'],
+    queryFn: () => api.get('/paid-addons/merchant-catalog').then((r) => r.data),
+    staleTime: 60_000,
+  });
+  const loyaltyAddonActive = addonCatalog.find((a) => a.code === 'loyalty')?.alreadyActive === true;
+
   const saveCustomer = useMutation({
     mutationFn: async () => {
       if (!editor) throw new Error('No editor');
@@ -50,7 +58,7 @@ export default function CustomersAdminPage() {
       if (editor._id) {
         await api.put(`/customers/${editor._id}`, payload);
         const n = Number(form.lifetimePoints);
-        if (!Number.isNaN(n) && n >= 0) {
+        if (loyaltyAddonActive && !Number.isNaN(n) && n >= 0) {
           await api.post(`/customers/${editor._id}/points`, {
             lifetimePoints: n,
             note: form.pointsNote?.trim() || '',
@@ -112,6 +120,8 @@ export default function CustomersAdminPage() {
           points from the edit screen.
         </p>
       </div>
+
+      <LoyaltyAddonSubscribeBanner />
 
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <div className="relative flex-1 max-w-md">
@@ -241,7 +251,7 @@ export default function CustomersAdminPage() {
                 />
               </label>
 
-              {editor._id && (
+              {editor._id && loyaltyAddonActive && (
                 <>
                   <div className="pt-2 border-t border-gray-100">
                     <p className="text-xs font-medium text-gray-700 mb-2">Loyalty points</p>

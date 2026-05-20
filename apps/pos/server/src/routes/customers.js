@@ -3,6 +3,8 @@ const Customer = require('../models/Customer');
 const LoyaltyTier = require('../models/LoyaltyTier');
 const { getEffectiveTier, tierFromPoints } = require('../lib/loyaltyTier');
 const { protect, authorize, tenantScope } = require('../middleware/auth');
+const { requirePaidAddon } = require('../middleware/requirePaidAddon');
+const requireLoyalty = requirePaidAddon('loyalty');
 const { notifyMerchantAdmins } = require('../lib/notificationHelpers');
 const { emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 
@@ -66,7 +68,7 @@ router.get('/', protect, authorize('cashier', 'manager', 'merchant_admin'), tena
   }
 });
 
-router.post('/:id/points', protect, authorize('manager', 'merchant_admin'), tenantScope, async (req, res) => {
+router.post('/:id/points', protect, authorize('manager', 'merchant_admin'), tenantScope, requireLoyalty, async (req, res) => {
   try {
     const { lifetimePoints, note } = req.body || {};
     const nextPts = Math.max(0, Number(lifetimePoints));
@@ -121,7 +123,13 @@ router.post('/:id/points', protect, authorize('manager', 'merchant_admin'), tena
   }
 });
 
-router.get('/:id', protect, authorize('cashier', 'manager', 'merchant_admin'), tenantScope, async (req, res) => {
+router.get(
+  '/:id',
+  protect,
+  authorize('cashier', 'manager', 'merchant_admin'),
+  tenantScope,
+  (req, res, next) => (req.query.loyalty === '1' ? requireLoyalty(req, res, next) : next()),
+  async (req, res) => {
   try {
     const c = await Customer.findOne({ _id: req.params.id, tenantId: req.tenantId });
     if (!c) return res.status(404).json({ message: 'Customer not found' });

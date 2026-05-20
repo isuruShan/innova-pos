@@ -2,6 +2,8 @@
 
 const LoyaltyProgramConfig = require('../models/LoyaltyProgramConfig');
 const Customer = require('../models/Customer');
+const Tenant = require('../models/Tenant');
+const { isLoyaltyEffective } = require('@innovapos/paid-addons');
 const { getRetentionPeriodEnd } = require('./loyaltyRetentionPeriod');
 const { lowestTier } = require('./loyaltyTier');
 
@@ -14,6 +16,8 @@ async function processLoyaltyRetentionPeriods(logger) {
 
   const now = new Date();
   for (const cfg of configs) {
+    const tenant = await Tenant.findById(cfg.tenantId).select('paidAddons').lean();
+    if (!isLoyaltyEffective(tenant?.paidAddons)) continue;
     const end = getRetentionPeriodEnd(cfg.pointsRetentionStartDate, cfg.pointsRetentionMode);
     if (!end || now < end) continue;
 

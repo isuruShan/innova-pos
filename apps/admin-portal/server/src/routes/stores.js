@@ -3,6 +3,8 @@ const Store = require('../models/Store');
 const User = require('../models/User');
 const { authenticateJWT, authorize, tenantScope, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { parsePageQuery, paginated } = require('../lib/listPagination');
+const { getStoreCreateQuote } = require('../lib/storeCreateQuote');
+const { createDefaultStoreForTenant } = require('../lib/storePurchase');
 
 const router = express.Router();
 
@@ -48,6 +50,45 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
   }
 });
 
+/** Quote for creating another store (prorated); first store is free. */
+router.get(
+  '/create-quote',
+  authenticateJWT,
+  authorize('merchant_admin'),
+  tenantScope,
+  async (req, res) => {
+    try {
+      const quote = await getStoreCreateQuote(req.tenantId);
+      if (quote.error) return res.status(400).json({ message: quote.error });
+      res.json(quote);
+    } catch (err) {
+      sendRouteError(res, err, { req });
+    }
+  },
+);
+
+/** First included store — no payment. */
+router.post(
+  '/create-included',
+  authenticateJWT,
+  authorize('merchant_admin'),
+  tenantScope,
+  async (req, res) => {
+    try {
+      const quote = await getStoreCreateQuote(req.tenantId);
+      if (quote.requiresPayment) {
+        return res.status(400).json({ message: 'Payment is required for this store. Use the purchase flow.' });
+      }
+      const store = await createDefaultStoreForTenant(req.tenantId, req.user.id);
+      await emitAudit({ req, action: 'STORE_CREATED', resource: 'Store', resourceId: store._id });
+      res.status(201).json(store);
+    } catch (err) {
+      res.status(400).json({ message: err.message });
+    }
+  },
+);
+
+/** Super admin only — direct create with custom fields. */
 router.post('/', authenticateJWT, authorize('superadmin'), tenantScope, async (req, res) => {
   try {
     const { name, code, address, phone, paymentMethods, tenantId: tenantIdFromBody } = req.body;
@@ -72,8 +113,9 @@ router.post('/', authenticateJWT, authorize('superadmin'), tenantScope, async (r
       createdBy: req.user.id,
     });
 
-    // Auto-assign new stores only to merchant admins.
-    const merchantAdmins = await User.find({ tenantId, role: 'merchant_admin', isActive: true }).select('_id storeIds defaultStoreId');
+    const merchantAdmins = await User.find({ tenantId, role: 'merchant_admin', isActive: true }).select(
+      '_id storeIds defaultStoreId',
+    );
     for (const tenantUser of merchantAdmins) {
       const nextStoreIds = new Set((tenantUser.storeIds || []).map((sid) => String(sid)));
       nextStoreIds.add(String(store._id));

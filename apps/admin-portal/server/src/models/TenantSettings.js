@@ -17,12 +17,23 @@ const tenantSettingsSchema = new mongoose.Schema(
     logoKey: { type: String, default: '' },
     faviconUrl: { type: String, default: '' },
 
-    // Colors (hex)
-    primaryColor: { type: String, default: '#1a1a2e' },
+    /** POS theme preset id (see @innovapos/pos-theme-presets) */
+    themePresetId: { type: String, default: 'default', trim: true },
+    themePresetName: { type: String, default: 'Default / Base', trim: true },
+    themeBaseColor: { type: String, default: '#0B1220' },
+    bodyColor: { type: String, default: '#0B1220' },
+    headerBarColor: { type: String, default: '#151F2E' },
+    buttonColor: { type: String, default: '#E94560' },
+    selectionHighlightColor: { type: String, default: '#2A3548' },
+    hoverColor: { type: String, default: '#F06B82' },
+    buttonTextColor: { type: String, default: '#F8FAFC' },
+    headerBarTextColor: { type: String, default: '#F8FAFC' },
+    bodyTextColor: { type: String, default: '#E2E8F0' },
+    // Legacy aliases (kept in sync when applying a preset)
+    primaryColor: { type: String, default: '#0B1220' },
     accentColor: { type: String, default: '#e94560' },
     sidebarColor: { type: String, default: '#16213e' },
-    textColor: { type: String, default: '#ffffff' },
-    /** Text on selected tabs, nav links, pills, and highlighted dropdown rows (POS) */
+    textColor: { type: String, default: '#E2E8F0' },
     selectionTextColor: { type: String, default: '#ffffff' },
 
     // Contact

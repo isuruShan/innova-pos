@@ -6,6 +6,8 @@ import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
 import RewardScopeCombobox from '../../components/RewardScopeCombobox';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
+import LoyaltyAddonBanner from '../../components/LoyaltyAddonBanner';
+import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 import { useAuth } from '../../context/AuthContext';
 import { useStoreContext } from '../../context/StoreContext';
 
@@ -32,9 +34,13 @@ export default function LoyaltyRewardsPage() {
   const [form, setForm] = useState(empty);
   const [formError, setFormError] = useState('');
 
+  const { data: paidAddons } = useTenantPaidAddons();
+  const loyaltyAddonActive = paidAddons?.loyalty === true;
+
   const { data: rows = [], isPending } = useQuery({
     queryKey: ['loyalty-rewards'],
     queryFn: () => api.get('/loyalty/rewards').then((r) => r.data),
+    enabled: loyaltyAddonActive,
   });
 
   const { data: menuItems = [] } = useQuery({
@@ -85,6 +91,7 @@ export default function LoyaltyRewardsPage() {
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
       <Navbar groups={MANAGER_NAV_GROUPS} />
       <div className="max-w-5xl mx-auto p-4 sm:p-6">
+        <LoyaltyAddonBanner className="mb-6" />
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <Gift className="text-amber-400" />
@@ -92,13 +99,14 @@ export default function LoyaltyRewardsPage() {
           </div>
           <button
             type="button"
+            disabled={!loyaltyAddonActive}
             onClick={() => {
               setSlide({});
               setForm(empty);
               setFormError('');
               setScopeSearch('');
             }}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-semibold text-sm"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-semibold text-sm disabled:opacity-50"
           >
             <Plus size={16} /> New reward
           </button>

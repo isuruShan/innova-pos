@@ -357,7 +357,7 @@ export default function Navbar({ links = [], groups: groupsProp }) {
       className="border-b px-4 py-2.5 flex items-center justify-between sticky top-0 z-50"
       style={{
         backgroundColor: 'var(--color-sidebar)',
-        borderColor: 'color-mix(in srgb, var(--color-text) 14%, transparent)',
+        borderColor: 'color-mix(in srgb, var(--color-header-text, var(--color-text)) 14%, transparent)',
       }}
     >
       <div className="flex items-center gap-1">
@@ -365,7 +365,7 @@ export default function Navbar({ links = [], groups: groupsProp }) {
           <NavLogo branding={branding} />
           <span
             className="font-bold text-sm hidden sm:block tracking-wide"
-            style={{ color: 'var(--color-text)' }}
+            style={{ color: 'var(--color-header-text, var(--color-text))' }}
           >
             {branding.businessName || 'POS'}
           </span>
@@ -384,14 +384,16 @@ export default function Navbar({ links = [], groups: groupsProp }) {
                   <Link
                     key={link.to}
                     to={link.to}
-                    className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition ${active ? '' : 'hover:bg-white/10'}`}
+                    className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition"
                     style={
                       active
                         ? {
-                            backgroundColor: 'color-mix(in srgb, var(--color-accent) 22%, transparent)',
-                            color: navTabActiveFg,
+                            backgroundColor: 'color-mix(in srgb, var(--color-selection) 35%, transparent)',
+                            color: 'var(--pos-selection-text)',
                           }
-                        : { color: 'color-mix(in srgb, var(--color-text) 55%, transparent)' }
+                        : {
+                            color: 'color-mix(in srgb, var(--color-header-text, var(--color-text)) 55%, transparent)',
+                          }
                     }
                   >
                     {link.icon && <link.icon size={14} className="shrink-0" />}

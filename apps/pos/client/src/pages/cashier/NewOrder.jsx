@@ -7,8 +7,8 @@ import {
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
-import { CASHIER_NAV_GROUPS } from '../../constants/cashierLinks';
 import CashierSessionGate from '../../components/cashier/CashierSessionGate';
+import { useFohrMode } from '../../hooks/useFohrMode';
 import { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/cashierSessionContext';
 import OrderTypeBadge, { ORDER_TYPES, ORDER_TYPE_MAP } from '../../components/OrderTypeBadge';
 import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
@@ -313,6 +313,7 @@ function CartItem({ item, onChangeQty }) {
 }
 
 export default function NewOrder() {
+  const fohr = useFohrMode();
   const [activeCategory, setActiveCategory] = useState('All');
   const [cart, setCart] = useState([]);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
@@ -460,17 +461,25 @@ export default function NewOrder() {
     };
   }, [qc]);
 
+  const { data: paidAddons } = useQuery({
+    queryKey: ['tenant-paid-addons'],
+    queryFn: () => api.get('/tenant/paid-addons').then((r) => r.data),
+    enabled: isStoreReady,
+    staleTime: 60_000,
+  });
+  const loyaltyAddonActive = paidAddons?.loyalty === true;
+
   const { data: loyaltyConfig } = useQuery({
     queryKey: ['loyalty-config'],
     queryFn: () => api.get('/loyalty/config').then((r) => r.data),
-    enabled: isStoreReady,
+    enabled: isStoreReady && loyaltyAddonActive,
     staleTime: 60_000,
   });
 
   const { data: loyaltyRewardsRaw = [] } = useQuery({
     queryKey: ['loyalty-rewards-co', selectedStoreId],
     queryFn: () => api.get('/loyalty/rewards').then((r) => r.data),
-    enabled: isStoreReady,
+    enabled: isStoreReady && loyaltyAddonActive,
     staleTime: 30_000,
   });
 
@@ -500,7 +509,7 @@ export default function NewOrder() {
     queryKey: ['customer-loyalty', selectedCustomer?._id],
     queryFn: () =>
       api.get(`/customers/${selectedCustomer._id}`, { params: { loyalty: '1' } }).then((r) => r.data),
-    enabled: isStoreReady && !!selectedCustomer?._id,
+    enabled: isStoreReady && loyaltyAddonActive && !!selectedCustomer?._id,
   });
 
   const promoTierLevel =
@@ -509,11 +518,12 @@ export default function NewOrder() {
   const activePromosForCart = useMemo(() => {
     return activePromos.filter((p) => {
       const min = p.minTierLevel;
+      if (min != null && Number(min) > 0 && !loyaltyAddonActive) return false;
       if (min == null || Number(min) <= 0) return true;
       if (promoTierLevel == null) return false;
       return Number(promoTierLevel) >= Number(min);
     });
-  }, [activePromos, promoTierLevel]);
+  }, [activePromos, promoTierLevel, loyaltyAddonActive]);
 
   const menuLoading = !isStoreReady || menuPending || settingsPending;
 
@@ -681,7 +691,7 @@ export default function NewOrder() {
   const promoDiscountOnly = appliedPromos.reduce((s, p) => s + p.discountAmount, 0);
 
   const automaticLoyaltyDiscount = useMemo(() => {
-    if (!selectedCustomer || loyaltyConfig?.isEnabled === false || !automaticLoyaltyRewards.length) return 0;
+    if (!loyaltyAddonActive || !selectedCustomer || loyaltyConfig?.isEnabled === false || !automaticLoyaltyRewards.length) return 0;
     let remaining = Math.max(0, subtotal - promoDiscountOnly);
     let total = 0;
     const sorted = [...automaticLoyaltyRewards].sort((a, b) =>
@@ -698,6 +708,7 @@ export default function NewOrder() {
     return Math.round(total * 100) / 100;
   }, [
     selectedCustomer,
+    loyaltyAddonActive,
     loyaltyConfig?.isEnabled,
     automaticLoyaltyRewards,
     customerLoyalty,
@@ -707,7 +718,7 @@ export default function NewOrder() {
   ]);
 
   const loyaltyDiscountPoints = useMemo(() => {
-    if (!selectedLoyaltyRewardId || !selectedCustomer || loyaltyConfig?.isEnabled === false) return 0;
+    if (!loyaltyAddonActive || !selectedLoyaltyRewardId || !selectedCustomer || loyaltyConfig?.isEnabled === false) return 0;
     const reward = redeemableLoyaltyRewards.find((r) => sid(r._id) === sid(selectedLoyaltyRewardId));
     if (!reward) return 0;
     const tierLv = Number(customerLoyalty?.loyalty?.effectiveTier?.level ?? 1);
@@ -717,6 +728,7 @@ export default function NewOrder() {
     const afterPromoAndAuto = Math.max(0, subtotal - promoDiscountOnly - automaticLoyaltyDiscount);
     return computeLoyaltyRewardDiscount(reward, cart, afterPromoAndAuto);
   }, [
+    loyaltyAddonActive,
     selectedLoyaltyRewardId,
     selectedCustomer,
     loyaltyConfig?.isEnabled,
@@ -798,9 +810,9 @@ export default function NewOrder() {
     paymentType === 'cash' && receivingAmount < total ? total - receivingAmount : null;
 
   return (
-    <CashierSessionGate>
+    <CashierSessionGate requireSession={fohr.requireCashierSession}>
     <div className="h-screen flex flex-col bg-[var(--pos-surface-inset)]">
-      <Navbar groups={CASHIER_NAV_GROUPS} />
+      <Navbar groups={fohr.navGroups} />
       <div className="shrink-0 border-b border-slate-700/50 bg-[var(--pos-panel)]/90 px-3 py-2 flex items-center gap-2">
         <span className="text-[10px] font-bold uppercase tracking-wider text-green-400 shrink-0">Ready</span>
         <div className="flex-1 min-w-0 overflow-x-auto flex items-center gap-2">
@@ -830,7 +842,7 @@ export default function NewOrder() {
           )}
         </div>
         <Link
-          to="/cashier/orders"
+          to={fohr.ordersPath}
           className="text-xs font-semibold text-amber-400 shrink-0 whitespace-nowrap hover:text-amber-300"
         >
           Order board →
@@ -1169,7 +1181,7 @@ export default function NewOrder() {
               </div>
             )}
 
-            {loyaltyConfig?.isEnabled !== false && selectedCustomer && cart.length > 0 && (
+            {loyaltyAddonActive && loyaltyConfig?.isEnabled !== false && selectedCustomer && cart.length > 0 && (
               <div>
                 <label className="flex items-center gap-1.5 text-xs font-medium text-slate-400 mb-1.5">
                   <Gift size={12} className="text-amber-400" />
