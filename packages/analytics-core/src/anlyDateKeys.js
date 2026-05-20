@@ -1,6 +1,5 @@
 'use strict';
 
-/** Calendar date in the server's local timezone (matches cashier "today"). */
 function localDateKey(d) {
   const x = new Date(d);
   const y = x.getFullYear();
@@ -9,7 +8,6 @@ function localDateKey(d) {
   return `${y}-${m}-${day}`;
 }
 
-/** Parse YYYY-MM-DD as local midnight. */
 function parseLocalDateOnly(str) {
   if (!str || typeof str !== 'string') return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str.trim());
@@ -34,7 +32,6 @@ function endOfLocalDay(d) {
   return x;
 }
 
-/** Inclusive calendar days between two local dates. */
 function daysInclusive(fromDay, toDay) {
   const a = startOfLocalDay(fromDay);
   const b = startOfLocalDay(toDay);

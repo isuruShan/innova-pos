@@ -26,7 +26,7 @@ const screenshotUpload = multer({
 });
 
 async function buildCatalogRow(tenant, addon, plan, billingLabel) {
-  const priced = priceAddonForPlan(addon, plan);
+  const priced = priceAddonForPlan(addon, plan, tenant.countryIso);
   const state = await getAddonMerchantState(tenant, addon.code);
   const screenshotUrls = await resolveMediaUrls(addon.screenshotUrls || []);
   return {
@@ -186,6 +186,9 @@ router.put('/:code', authenticateJWT, authorize('superadmin'), async (req, res) 
       monthlyAmount,
       yearlyAmount,
       currency,
+      internationalMonthlyAmount,
+      internationalYearlyAmount,
+      internationalCurrency,
       isActive,
       showInMerchantCatalog,
       sortOrder,
@@ -202,6 +205,15 @@ router.put('/:code', authenticateJWT, authorize('superadmin'), async (req, res) 
     if (monthlyAmount != null) doc.monthlyAmount = Math.max(0, Number(monthlyAmount) || 0);
     if (yearlyAmount != null) doc.yearlyAmount = Math.max(0, Number(yearlyAmount) || 0);
     if (currency != null) doc.currency = String(currency).trim().toUpperCase();
+    if (internationalMonthlyAmount != null) {
+      doc.internationalMonthlyAmount = Math.max(0, Number(internationalMonthlyAmount) || 0);
+    }
+    if (internationalYearlyAmount != null) {
+      doc.internationalYearlyAmount = Math.max(0, Number(internationalYearlyAmount) || 0);
+    }
+    if (internationalCurrency != null) {
+      doc.internationalCurrency = String(internationalCurrency).trim().toUpperCase();
+    }
     if (isActive != null) doc.isActive = Boolean(isActive);
     if (showInMerchantCatalog != null) doc.showInMerchantCatalog = Boolean(showInMerchantCatalog);
     if (sortOrder != null) doc.sortOrder = Number(sortOrder) || 0;

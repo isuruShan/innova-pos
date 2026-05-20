@@ -14,6 +14,7 @@ import StatCard from '../../components/StatCard';
 import Badge from '../../components/Badge';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { formatCurrency, formatDate, formatTime } from '../../utils/format';
+import { useBranding } from '../../context/BrandingContext';
 import { useStoreContext } from '../../context/StoreContext';
 import { DashboardSkeleton } from '../../components/StoreSkeletons';
 import PosDateField from '../../components/PosDateField';
@@ -100,23 +101,40 @@ export default function Dashboard() {
     refetchOnWindowFocus: true,
   });
 
-  const { data: recentOrders = [], isPending: recentPending } = useQuery({
-    queryKey: ['recent-orders', selectedStoreId, dateFrom, dateTo],
+  const { data: orderVolume, isPending: volumePending } = useQuery({
+    queryKey: ['analytics-order-volume', selectedStoreId, dateFrom, dateTo],
     queryFn: () =>
       api
-        .get('/orders', {
-          params: {
-            since: `${dateFrom}T00:00:00.000`,
-            until: `${dateTo}T23:59:59.999`,
-          },
-        })
-        .then((r) => r.data.slice(0, 10)),
+        .get('/analytics/order-volume', { params: { from: dateFrom, to: dateTo } })
+        .then((r) => r.data),
     enabled: isStoreReady && Boolean(dateFrom && dateTo && !rangeInvalid),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: topItemsData, isPending: topItemsPending } = useQuery({
+    queryKey: ['analytics-top-items', selectedStoreId, dateFrom, dateTo],
+    queryFn: () =>
+      api
+        .get('/analytics/top-items', { params: { from: dateFrom, to: dateTo, limit: 10 } })
+        .then((r) => r.data),
+    enabled: isStoreReady && Boolean(dateFrom && dateTo && !rangeInvalid),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: recentOrders = [], isPending: recentPending } = useQuery({
+    queryKey: ['recent-orders', selectedStoreId],
+    queryFn: () =>
+      api
+        .get('/orders', { params: { limit: 10 } })
+        .then((r) => (Array.isArray(r.data) ? r.data : []).slice(0, 10)),
+    enabled: isStoreReady,
     refetchInterval: 12_000,
     refetchOnWindowFocus: true,
   });
 
-  const showSkeleton = !isStoreReady || (!rangeInvalid && (salesPending || recentPending));
+  const showSkeleton = !isStoreReady || (!rangeInvalid && (salesPending || volumePending || topItemsPending || recentPending));
 
   const periodOrders = data?.orderCount ?? 0;
   const rangeLabel =
@@ -130,6 +148,13 @@ export default function Dashboard() {
     revenue: Math.round(d.revenue * 100) / 100,
     orders: d.orders ?? 0,
   })) || [];
+
+  const volumeDaily = orderVolume?.daily?.map((d) => ({
+    ...d,
+    label: formatDate(d.date + 'T00:00:00'),
+  })) || [];
+
+  const topItems = topItemsData?.topItems || [];
 
   const peakDay = useMemo(() => {
     if (!dailyData.length) return null;
@@ -301,7 +326,7 @@ export default function Dashboard() {
                   <BarChart data={dailyData} margin={{ top: 0, right: 10, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                     <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
+                    <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => formatCurrency(v)} />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(245,158,11,0.05)' }} />
                     <Bar dataKey="revenue" fill="#f59e0b" radius={[6, 6, 0, 0]} maxBarSize={40} />
                   </BarChart>
@@ -350,7 +375,7 @@ export default function Dashboard() {
                 <h2 className="font-semibold text-[var(--pos-text-primary)] mb-1">Daily order volume</h2>
                 <p className="text-slate-500 text-xs mb-4">Completed orders per day in this range</p>
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={dailyData} margin={{ top: 0, right: 10, left: -10, bottom: 0 }}>
+                  <BarChart data={volumeDaily} margin={{ top: 0, right: 10, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                     <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis
@@ -397,10 +422,10 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
               <div className="bg-[var(--pos-panel)] rounded-2xl p-5 border border-slate-700/50">
                 <h2 className="font-semibold text-[var(--pos-text-primary)] mb-4">Top Selling Items</h2>
-                {data?.topItems?.length > 0 ? (
+                {topItems.length > 0 ? (
                   <div className="space-y-3">
-                    {data.topItems.slice(0, 6).map((item, i) => (
-                      <div key={item.name} className="flex items-center gap-3">
+                    {topItems.slice(0, 6).map((item, i) => (
+                      <div key={item.menuItemId || item.name} className="flex items-center gap-3">
                         <span className="text-xs font-bold text-slate-600 w-4">{i + 1}</span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
@@ -410,7 +435,7 @@ export default function Dashboard() {
                           <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-amber-500 rounded-full"
-                              style={{ width: `${Math.min(100, (item.qty / data.topItems[0].qty) * 100)}%` }}
+                              style={{ width: `${Math.min(100, (item.qty / topItems[0].qty) * 100)}%` }}
                             />
                           </div>
                         </div>

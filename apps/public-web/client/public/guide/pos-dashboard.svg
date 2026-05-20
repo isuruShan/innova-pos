@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#0f172a"/>
+  <rect x="0" y="0" width="800" height="56" fill="#151f2e"/>
+  <text x="24" y="36" fill="#f59e0b" font-family="system-ui,sans-serif" font-size="14" font-weight="700">Sales Dashboard</text>
+  <rect x="24" y="80" width="180" height="72" fill="#1e293b" stroke="#334155" rx="10"/>
+  <rect x="220" y="80" width="180" height="72" fill="#1e293b" stroke="#334155" rx="10"/>
+  <rect x="416" y="80" width="180" height="72" fill="#1e293b" stroke="#334155" rx="10"/>
+  <rect x="24" y="170" width="750" height="160" fill="#1e293b" stroke="#334155" rx="12"/>
+  <text x="44" y="200" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="14" font-weight="600">Daily order volume</text>
+  <rect x="60" y="240" width="36" height="70" fill="#38bdf8" rx="4"/>
+  <rect x="110" y="260" width="36" height="50" fill="#38bdf8" rx="4"/>
+  <rect x="160" y="230" width="36" height="80" fill="#38bdf8" rx="4"/>
+  <rect x="24" y="350" width="360" height="120" fill="#1e293b" stroke="#334155" rx="12"/>
+  <text x="44" y="380" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="14">Top selling items</text>
+</svg>

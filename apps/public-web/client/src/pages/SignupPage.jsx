@@ -9,6 +9,7 @@ import {
   nationalMobileMaxDigits,
 } from '../utils/phone';
 import api from '../api';
+import SignupShell from '../components/SignupShell';
 import { fieldAttrs, validateSignupPersonal } from '../utils/formFields';
 
 export default function SignupPage() {
@@ -132,14 +133,8 @@ export default function SignupPage() {
   const mobileAttrs = fieldAttrs('mobile', { countryIso });
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="px-4 py-5 border-b bg-white">
-        <Link to="/" className="flex items-center w-fit">
-          <img src="/logo-1.png" alt="Cafinity" className="h-10 w-auto rounded-lg shadow-sm" />
-        </Link>
-      </div>
-
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
+    <SignupShell>
+      <div className="flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-lg">
           <div className="flex items-center gap-3 mb-8">
             {[
@@ -276,6 +271,6 @@ export default function SignupPage() {
           </div>
         </div>
       </div>
-    </div>
+    </SignupShell>
   );
 }

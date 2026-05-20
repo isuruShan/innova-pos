@@ -1,16 +1,11 @@
 import { Link } from 'react-router-dom';
 import { CheckCircle, Clock, Mail, Zap } from 'lucide-react';
+import SignupShell from '../components/SignupShell';
 
 export default function SignupCompletePage() {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="px-4 py-5 border-b bg-white">
-        <Link to="/" className="flex items-center w-fit">
-          <img src="/logo-1.png" alt="Cafinity" className="h-10 w-auto rounded-lg shadow-sm" />
-        </Link>
-      </div>
-
-      <div className="flex-1 flex items-center justify-center px-4">
+    <SignupShell>
+      <div className="flex items-center justify-center px-4 py-12">
         <div className="max-w-md w-full text-center">
           <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 bg-green-100">
             <CheckCircle size={40} className="text-green-500" />
@@ -47,6 +42,6 @@ export default function SignupCompletePage() {
           </Link>
         </div>
       </div>
-    </div>
+    </SignupShell>
   );
 }

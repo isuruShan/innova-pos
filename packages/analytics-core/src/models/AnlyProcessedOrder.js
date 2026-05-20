@@ -10,4 +10,5 @@ const schema = new mongoose.Schema(
   { timestamps: true },
 );
 
-module.exports = mongoose.model('AnlyProcessedOrder', schema, 'anly_processed_orders');
+module.exports = mongoose.models.AnlyProcessedOrder
+  || mongoose.model('AnlyProcessedOrder', schema, 'anly_processed_orders');

@@ -229,8 +229,12 @@ router.post(
 
 router.get('/merchant-options', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
   try {
+    const Tenant = require('../models/Tenant');
+    const { filterPaymentOptionsForMerchant } = require('../utils/merchantRegion');
     const doc = await getOrCreateSettings();
-    res.json(await sanitizeForMerchant(doc));
+    const raw = await sanitizeForMerchant(doc);
+    const tenant = await Tenant.findById(req.tenantId).select('countryIso').lean();
+    res.json(filterPaymentOptionsForMerchant(raw, tenant?.countryIso));
   } catch (err) {
     sendRouteError(res, err, { req });
   }

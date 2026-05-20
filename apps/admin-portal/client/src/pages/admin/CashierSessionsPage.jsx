@@ -6,6 +6,9 @@ import AdminDateField from '../../components/AdminDateField';
 import ListPagination from '../../components/common/ListPagination';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
 import { useStoreContext } from '../../context/StoreContext';
+import { formatCurrency } from '../../utils/format';
+
+const money = formatCurrency;
 
 function todayStr() {
   const x = new Date();
@@ -16,10 +19,6 @@ function sevenDaysAgo() {
   const d = new Date();
   d.setDate(d.getDate() - 6);
   return d.toISOString().split('T')[0];
-}
-
-function money(n) {
-  return `Rs ${Number(n ?? 0).toFixed(2)}`;
 }
 
 function formatDt(iso) {

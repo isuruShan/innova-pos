@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#0f172a"/>
+  <rect x="0" y="0" width="220" height="500" fill="#151f2e"/>
+  <text x="20" y="40" fill="#f59e0b" font-family="system-ui,sans-serif" font-size="13" font-weight="700">Register</text>
+  <rect x="240" y="24" width="520" height="452" fill="#1e293b" stroke="#334155" rx="12"/>
+  <rect x="260" y="48" width="100" height="80" fill="#334155" rx="8"/>
+  <rect x="380" y="48" width="100" height="80" fill="#334155" rx="8"/>
+  <rect x="500" y="48" width="100" height="80" fill="#334155" rx="8"/>
+  <rect x="620" y="48" width="120" height="80" fill="#334155" rx="8"/>
+  <rect x="260" y="360" width="480" height="48" fill="#38bdf8" rx="8"/>
+  <text x="420" y="390" fill="#0f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="700" text-anchor="middle">Pay</text>
+</svg>

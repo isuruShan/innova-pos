@@ -51,7 +51,7 @@ const PROMO_TYPES = [
     color: 'text-cyan-400',
     bg: 'bg-cyan-500/10',
     border: 'border-cyan-500/25',
-    desc: 'Fixed Rs amount off the order total',
+    desc: 'Fixed amount off the order total',
   },
   {
     id: 'percentageDiscount',

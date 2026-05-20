@@ -23,10 +23,11 @@ async function getAddonPurchaseQuote(tenantId, code) {
 
   const plan = await resolveNextBillingPlan(tenant);
   const { periodEnd, periodDays } = await resolveCurrentSubscriptionPeriod(tenant);
-  const full = priceAddonForPlan(addon, plan);
+  const full = priceAddonForPlan(addon, plan, tenant.countryIso);
   const prorated = computeProratedAddonCharge(addon, plan, periodEnd, {
     billingCycleDays: planBillingCycleDays(plan),
     currentPeriodDays: periodDays,
+    countryIso: tenant.countryIso,
   });
   const billingLabel =
     plan?.billingCycle === 'yearly'

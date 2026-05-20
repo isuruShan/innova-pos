@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Building2, MapPin, FileText, Upload, X, ArrowLeft, ArrowRight, Loader } from 'lucide-react';
 import { COUNTRIES } from '../constants/countries';
 import api from '../api';
+import SignupShell from '../components/SignupShell';
 import { fieldAttrs, validateEmail, validateSignupBusiness } from '../utils/formFields';
 
 export default function SignupBusinessPage() {
@@ -117,6 +118,7 @@ export default function SignupBusinessPage() {
       fd.append('lastName', personal.lastName);
       fd.append('email', personal.email);
       fd.append('countryDialCode', personal.countryDialCode);
+      if (personal.countryIso) fd.append('countryIso', personal.countryIso);
       fd.append('mobileNational', personal.mobileNational);
       fd.append('mobileDisplay', personal.mobileDisplay || '');
 
@@ -163,14 +165,8 @@ export default function SignupBusinessPage() {
   const regAttrs = fieldAttrs('registrationNumber');
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="px-4 py-5 border-b bg-white">
-        <Link to="/" className="flex items-center w-fit">
-          <img src="/logo-1.png" alt="Cafinity" className="h-10 w-auto rounded-lg shadow-sm" />
-        </Link>
-      </div>
-
-      <div className="flex-1 flex items-start justify-center px-4 py-12">
+    <SignupShell>
+      <div className="flex items-start justify-center px-4 py-12">
         <div className="w-full max-w-2xl">
           <div className="flex items-center gap-3 mb-8">
             {[
@@ -436,6 +432,6 @@ export default function SignupBusinessPage() {
           </div>
         </div>
       </div>
-    </div>
+    </SignupShell>
   );
 }

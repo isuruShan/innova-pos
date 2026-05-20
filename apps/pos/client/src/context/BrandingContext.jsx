@@ -3,6 +3,7 @@ import api from '../api/axios';
 import { useAuth } from './AuthContext';
 import { useTheme } from './ThemeContext';
 import { applyBrandingThemeToDocument } from '../lib/applyBrandingTheme';
+import { setMerchantCurrencyFormat } from '../utils/format';
 import { DEFAULT_RECEIPT_PRINT_AT_BY_ORDER_TYPE } from '../utils/receiptPolicy';
 
 /** Fixed chrome in light mode — readability does not follow tenant palette. */
@@ -52,9 +53,15 @@ export const BrandingProvider = ({ children }) => {
     }
     try {
       const { data } = await api.get('/tenant-settings');
-      setBranding({ ...DEFAULT_BRANDING, ...data });
+      const merged = { ...DEFAULT_BRANDING, ...data };
+      setBranding(merged);
+      setMerchantCurrencyFormat({
+        currencySymbol: merged.currencySymbol,
+        currency: merged.currency,
+      });
     } catch {
       setBranding(DEFAULT_BRANDING);
+      setMerchantCurrencyFormat(DEFAULT_BRANDING);
     }
   }, [user?.tenantId]);
 

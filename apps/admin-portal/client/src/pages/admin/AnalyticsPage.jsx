@@ -152,9 +152,10 @@ export default function AnalyticsPage() {
         <p className="text-sm text-gray-500 mt-0.5">Sales performance for the selected store and date range.</p>
         {anlyStatus?.enabled && anlyStatus?.intervalMs ? (
           <p className="text-xs text-gray-400 mt-1">
-            Order volume and top sellers refresh every {Math.round(anlyStatus.intervalMs / 60000)} min
+            Order volume matches completed orders in real time. Top sellers refresh every{' '}
+            {Math.round(anlyStatus.intervalMs / 60000)} min
             {anlyStatus.lastRunAt ? ` (last sync ${formatTime(anlyStatus.lastRunAt)})` : ''}.
-            Today&apos;s figures are live; earlier days use pre-aggregated data.
+            Recent orders are always live.
           </p>
         ) : null}
       </div>
@@ -259,7 +260,7 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
               <h3 className="font-semibold text-gray-900 mb-1">Daily order volume</h3>
-              <p className="text-xs text-gray-500 mb-4">Completed orders per day (pre-aggregated; today is live)</p>
+              <p className="text-xs text-gray-500 mb-4">Completed orders per day in this range</p>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={volumeDaily}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />

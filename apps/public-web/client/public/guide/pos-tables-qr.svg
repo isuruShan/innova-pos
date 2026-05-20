@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#0f172a"/>
+  <text x="24" y="40" fill="#f59e0b" font-family="system-ui,sans-serif" font-size="18" font-weight="700">Café tables &amp; QR</text>
+  <rect x="24" y="60" width="120" height="100" fill="#1e293b" stroke="#38bdf8" rx="10"/>
+  <rect x="160" y="60" width="120" height="100" fill="#1e293b" stroke="#334155" rx="10"/>
+  <rect x="296" y="60" width="120" height="100" fill="#1e293b" stroke="#334155" rx="10"/>
+  <rect x="24" y="200" width="200" height="200" fill="#fff" rx="8"/>
+  <text x="124" y="310" fill="#111" font-family="system-ui,sans-serif" font-size="11" text-anchor="middle">QR code</text>
+</svg>

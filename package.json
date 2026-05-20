@@ -12,7 +12,9 @@
     "qr-order": "pnpm --filter @qr-order/server --filter @qr-order/client --parallel dev",
     "build:qr-order-client": "pnpm --filter @qr-order/client run build",
     "admin": "pnpm --filter @admin-portal/server --filter @admin-portal/client --parallel dev",
-    "dev": "pnpm --parallel --filter './apps/**' --filter './services/**' dev",
+    "dev": "pnpm run dev:stack",
+    "dev:stack": "pnpm --parallel --filter @admin-portal/server --filter @admin-portal/client --filter @pos/server --filter @pos/client --filter @public-web/server --filter @public-web/client --filter @qr-order/server --filter @qr-order/client run dev",
+    "dev:all": "pnpm --parallel --filter './apps/**' --filter './services/**' run dev",
     "migrate:tenant": "node ./scripts/migrate-add-tenantid.js",
     "verify:secrets": "node ./scripts/verify-keyvault-env.js",
     "verify:upload": "node ./scripts/verify-upload-chain.js"

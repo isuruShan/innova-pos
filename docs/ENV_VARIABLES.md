@@ -199,7 +199,16 @@ Set in `deploy.env` or `apps/pos/client/.env.production` before `pnpm --filter @
 
 **Example:** `apps/admin-portal/server/.env.example`
 
-**Analytics collections (Mongo, same DB as `MONGO_URI`):** `anly_sync_state`, `anly_daily_store_metrics`, `anly_item_sales_daily`, `anly_processed_orders`. Populated by admin-server ETL; read via `GET /api/analytics/order-volume` and `GET /api/analytics/top-items`. Recent orders stay on transactional `orders`.
+**Analytics (`@innovapos/analytics-core`):** ETL runs on **admin-server only** (`ANLY_SYNC_LEADER=true`). **POS server** exposes the same read APIs at `/api/analytics/*` but does not run the sync job.
+
+| API | Data source |
+|-----|-------------|
+| `GET /analytics/order-volume` | Completed **orders** (transactional, matches `/reports/sales` daily counts) |
+| `GET /analytics/top-items` | **`anly_item_sales_daily`** + live today from orders |
+| `GET /analytics/status` | Sync metadata |
+| `GET /orders?limit=10` | Recent orders (transactional) |
+
+**Mongo collections:** `anly_sync_state`, `anly_daily_store_metrics`, `anly_item_sales_daily`, `anly_processed_orders`.
 
 ---
 

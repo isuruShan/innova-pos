@@ -233,7 +233,10 @@ export default function MerchantWorkspacePage() {
                   const cashierName = typeof cashier === 'object' && cashier?.name ? cashier.name : '—';
                   const storeName = typeof store === 'object' && store?.name ? store.name : '—';
                   const fmt = (iso) => (iso ? new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
-                  const money = (n) => `Rs ${Number(n ?? 0).toFixed(2)}`;
+                  const money = (n) => {
+                    const sym = 'Rs.';
+                    return `${sym} ${Number(n ?? 0).toFixed(2)}`;
+                  };
                   return (
                     <tr key={row._id}>
                       <td className="px-4 py-2 text-gray-900 whitespace-nowrap">{storeName}</td>

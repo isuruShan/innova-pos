@@ -11,6 +11,7 @@ import { unwrapPagedList } from '../../utils/unwrapPagedList';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
 import ProrationBreakdown from '../../components/billing/ProrationBreakdown';
 import BankReceiptFields from '../../components/billing/BankReceiptFields';
+import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
 
 export default function StoresPage() {
   const { isSuperAdmin, isMerchantAdmin } = useAuth();
@@ -23,6 +24,7 @@ export default function StoresPage() {
   });
   const [editMeta, setEditMeta] = useState({ deactivatedBySuperadmin: false });
   const toast = useToast();
+  const { isInternational } = useMerchantBillingRegion();
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_admin_stores') || 'table');
   const [storePage, setStorePage] = useState(1);
@@ -142,9 +144,17 @@ export default function StoresPage() {
   const methodOptions = useMemo(() => {
     const o = [];
     if (paymentOptions?.paypal?.enabled) o.push({ id: 'paypal', label: 'PayPal' });
-    if (paymentOptions?.bankAccounts?.length) o.push({ id: 'bank_transfer', label: 'Bank transfer' });
+    if (!isInternational && paymentOptions?.bankAccounts?.length) {
+      o.push({ id: 'bank_transfer', label: 'Bank transfer' });
+    }
     return o;
-  }, [paymentOptions]);
+  }, [paymentOptions, isInternational]);
+
+  useEffect(() => {
+    if (isInternational && methodOptions.some((m) => m.id === 'paypal')) {
+      setChosenMethod('paypal');
+    }
+  }, [isInternational, methodOptions]);
 
   const paypalCurrency = purchaseQuote?.priced?.currency || 'LKR';
 

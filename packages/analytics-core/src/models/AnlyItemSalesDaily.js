@@ -19,4 +19,5 @@ const schema = new mongoose.Schema(
 schema.index({ tenantId: 1, storeId: 1, dateKey: 1, menuItemId: 1 }, { unique: true });
 schema.index({ tenantId: 1, storeId: 1, dateKey: 1 });
 
-module.exports = mongoose.model('AnlyItemSalesDaily', schema, 'anly_item_sales_daily');
+module.exports = mongoose.models.AnlyItemSalesDaily
+  || mongoose.model('AnlyItemSalesDaily', schema, 'anly_item_sales_daily');

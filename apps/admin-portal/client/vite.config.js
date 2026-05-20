@@ -71,7 +71,24 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
-      '/api': 'http://localhost:5001',
+      '/api': {
+        target: 'http://127.0.0.1:5001',
+        changeOrigin: true,
+        configure(proxy) {
+          proxy.on('error', (err, _req, res) => {
+            if (res && !res.headersSent) {
+              res.writeHead(502, { 'Content-Type': 'application/json' });
+              res.end(
+                JSON.stringify({
+                  message:
+                    'Admin API is not running. Start it with: pnpm admin (or pnpm --filter @admin-portal/server dev) on port 5001.',
+                }),
+              );
+            }
+            console.warn('[vite proxy] admin API unavailable (127.0.0.1:5001):', err.message);
+          });
+        },
+      },
     },
   },
 });

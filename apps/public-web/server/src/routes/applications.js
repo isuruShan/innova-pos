@@ -104,7 +104,7 @@ router.post('/', upload.single('brFile'), async (req, res) => {
     const body = req.body;
     const {
       firstName, lastName, email,
-      countryDialCode, mobileNational, mobileDisplay,
+      countryDialCode, countryIso, mobileNational, mobileDisplay,
       businessName, ownerName,
       street1, street2, zipCode, city, state, businessCountry,
       isRegistered, registrationNumber,
@@ -247,6 +247,7 @@ router.post('/', upload.single('brFile'), async (req, res) => {
         lastName: lastName.trim(),
         email: emailLower,
         countryDialCode: String(countryDialCode).replace(/\D/g, ''),
+        countryIso: String(countryIso || '').trim().toUpperCase().slice(0, 2),
         mobileNational: String(mobileNational).replace(/\D/g, ''),
         mobile,
         mobileE164,

@@ -9,6 +9,7 @@
     "dev": "nodemon src/index.js"
   },
   "dependencies": {
+    "@innovapos/analytics-core": "workspace:*",
     "@innovapos/form-validation": "workspace:*",
     "@innovapos/mongo-connection": "workspace:*",
     "@innovapos/pos-theme-presets": "workspace:*",

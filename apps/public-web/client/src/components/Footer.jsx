@@ -61,9 +61,18 @@ export default function Footer() {
           <div>
             <p className="text-sm font-semibold mb-4 text-gray-300">Platform</p>
             <ul className="space-y-2">
-              {['Features', 'Pricing', 'Documentation', 'Status'].map(l => (
-                <li key={l}><a href="#" className="text-sm text-gray-400 hover:text-white transition-colors">{l}</a></li>
-              ))}
+              <li>
+                <a href="/#features" className="text-sm text-gray-400 hover:text-white transition-colors">Features</a>
+              </li>
+              <li>
+                <a href="/#pricing" className="text-sm text-gray-400 hover:text-white transition-colors">Pricing</a>
+              </li>
+              <li>
+                <a href="/merchant-guide" className="text-sm text-gray-400 hover:text-white transition-colors">Merchant guide</a>
+              </li>
+              <li>
+                <a href="/#contact" className="text-sm text-gray-400 hover:text-white transition-colors">Contact</a>
+              </li>
             </ul>
           </div>
 

@@ -7,6 +7,7 @@ import PlanChangeModal from '../../components/subscription/PlanChangeModal';
 import BillingBreakdownPanel from '../../components/billing/BillingBreakdownPanel';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
 import { useToast } from '../../context/ToastContext';
+import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
 
 export default function SubscriptionPage() {
   const queryClient = useQueryClient();
@@ -14,6 +15,7 @@ export default function SubscriptionPage() {
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const fileRef = useRef(null);
   const [form, setForm] = useState({ amount: '', bankReference: '', notes: '', planId: '' });
+  const { isInternational, billingNote } = useMerchantBillingRegion();
   const [paymentMethod, setPaymentMethod] = useState('bank_transfer');
   const [file, setFile] = useState(null);
   const [errors, setErrors] = useState({});
@@ -155,6 +157,12 @@ export default function SubscriptionPage() {
   );
 
   const paypalCurrency = useMemo(() => selectedPlan?.currency || 'USD', [selectedPlan?.currency]);
+
+  useEffect(() => {
+    if (isInternational && paymentOptions?.paypal?.enabled) {
+      setPaymentMethod('paypal');
+    }
+  }, [isInternational, paymentOptions?.paypal?.enabled]);
 
   useEffect(() => {
     if (!tenant || !payPlans.length) return;
@@ -358,9 +366,11 @@ export default function SubscriptionPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h3 className="font-semibold text-gray-900 mb-1">Pay for subscription</h3>
         <p className="text-sm text-gray-500 mb-4">
-          {tenant.subscriptionStatus === 'trial'
-            ? 'Pay by bank transfer and submit the details below — you can do this anytime during your trial so verification can finish before the trial ends.'
-            : 'Submit proof of payment. Amount must match the billing total below (plan plus any active add-ons and extra stores).'}
+          {isInternational
+            ? billingNote
+            : tenant.subscriptionStatus === 'trial'
+              ? 'Pay by bank transfer and submit the details below — you can do this anytime during your trial so verification can finish before the trial ends.'
+              : 'Submit proof of payment. Amount must match the billing total below (plan plus any active add-ons and extra stores).'}
         </p>
 
         {billingBreakdown?.plan && (
@@ -381,7 +391,7 @@ export default function SubscriptionPage() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex flex-wrap gap-2">
-              {paymentOptions?.stripe?.enabled && (
+              {!isInternational && paymentOptions?.stripe?.enabled && (
                 <button type="button" title="Pay with card (Stripe)" onClick={() => setPaymentMethod('stripe')} className={`px-4 py-2 rounded-lg border flex items-center gap-2 ${paymentMethod === 'stripe' ? 'border-brand-orange bg-brand-orange/10' : 'border-gray-300'}`}>
                   <PaymentMethodLogo method="stripe" imageUrl={paymentOptions?.stripe?.imageUrl} />
                 </button>
@@ -391,7 +401,7 @@ export default function SubscriptionPage() {
                   <PaymentMethodLogo method="paypal" imageUrl={paymentOptions?.paypal?.imageUrl} />
                 </button>
               )}
-              {(paymentOptions?.bankAccounts?.length || true) && (
+              {!isInternational && paymentOptions?.bankAccounts?.length > 0 && (
                 <button type="button" title="Bank transfer" onClick={() => setPaymentMethod('bank_transfer')} className={`px-4 py-2 rounded-lg border flex items-center gap-2 ${paymentMethod === 'bank_transfer' ? 'border-brand-orange bg-brand-orange/10' : 'border-gray-300'}`}>
                   <PaymentMethodLogo method="bank_transfer" />
                   <span className="text-sm text-gray-700">Bank</span>
@@ -431,7 +441,7 @@ export default function SubscriptionPage() {
                 ))}
               </div>
             )}
-            {paymentMethod === 'bank_transfer' && (
+            {!isInternational && paymentMethod === 'bank_transfer' && (
             <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>

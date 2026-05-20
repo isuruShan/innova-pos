@@ -14,11 +14,14 @@ const paidAddonDefinitionSchema = new mongoose.Schema(
     longDescription: { type: String, default: '', trim: true },
     /** Public URLs for preview screenshots (merchant purchase modal) */
     screenshotUrls: { type: [String], default: [] },
-    /** Added when merchant is on a monthly-billed plan */
+    /** Sri Lanka merchants (local catalogue, LKR) */
     monthlyAmount: { type: Number, required: true, min: 0 },
-    /** Added when merchant is on a yearly-billed plan (falls back to monthly×12 if 0) */
     yearlyAmount: { type: Number, default: 0, min: 0 },
     currency: { type: String, default: 'LKR', trim: true, uppercase: true },
+    /** Merchants outside Sri Lanka (international catalogue, typically USD) */
+    internationalMonthlyAmount: { type: Number, default: 0, min: 0 },
+    internationalYearlyAmount: { type: Number, default: 0, min: 0 },
+    internationalCurrency: { type: String, default: 'USD', trim: true, uppercase: true },
     isActive: { type: Boolean, default: true },
     /** When false, billed via subscription (e.g. per extra store) but hidden from merchant Add-ons catalog */
     showInMerchantCatalog: { type: Boolean, default: true },

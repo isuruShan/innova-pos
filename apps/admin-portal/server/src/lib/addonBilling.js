@@ -4,6 +4,7 @@ const PaidAddonDefinition = require('../models/PaidAddonDefinition');
 const SubscriptionPlan = require('../models/SubscriptionPlan');
 const Tenant = require('../models/Tenant');
 const Store = require('../models/Store');
+const { isLocalMerchant } = require('../utils/merchantRegion');
 
 /** First active store per tenant is included in the base plan. */
 const INCLUDED_STORES_PER_TENANT = 1;
@@ -11,14 +12,25 @@ const INCLUDED_STORES_PER_TENANT = 1;
 /**
  * @param {import('mongoose').LeanDocument<any>} addon
  * @param {import('mongoose').LeanDocument<any>|null} plan
+ * @param {string} [countryIso] Tenant country — LK uses local LKR prices; others use international USD prices.
  */
-function priceAddonForPlan(addon, plan) {
-  if (!addon || !addon.isActive) return { amount: 0, currency: addon?.currency || 'LKR', label: '' };
-  const currency = addon.currency || 'LKR';
+function priceAddonForPlan(addon, plan, countryIso = 'LK') {
+  if (!addon || !addon.isActive) {
+    const fallbackCur = isLocalMerchant(countryIso) ? 'LKR' : 'USD';
+    return { amount: 0, currency: fallbackCur, label: '' };
+  }
+  const local = isLocalMerchant(countryIso);
+  const currency = local
+    ? (addon.currency || 'LKR')
+    : (addon.internationalCurrency || 'USD');
   const cycle = plan?.billingCycle || 'monthly';
-  let amount = Number(addon.monthlyAmount) || 0;
+  let amount = local
+    ? Number(addon.monthlyAmount) || 0
+    : Number(addon.internationalMonthlyAmount) || 0;
   if (cycle === 'yearly') {
-    const y = Number(addon.yearlyAmount) || 0;
+    const y = local
+      ? Number(addon.yearlyAmount) || 0
+      : Number(addon.internationalYearlyAmount) || 0;
     amount = y > 0 ? y : amount * 12;
   }
   return { amount, currency, label: addon.name };
@@ -123,7 +135,8 @@ async function computeAdditionalStoresSubscriptionLine(tenantId, plan) {
   const extra = Math.max(0, activeCount - INCLUDED_STORES_PER_TENANT);
   if (extra <= 0) return null;
 
-  const priced = priceAddonForPlan(addon, plan);
+  const tenant = await Tenant.findById(tenantId).select('countryIso').lean();
+  const priced = priceAddonForPlan(addon, plan, tenant?.countryIso);
   const unit = Number(priced.amount) || 0;
   if (unit <= 0) return null;
 
@@ -141,8 +154,12 @@ async function computeAdditionalStoresSubscriptionLine(tenantId, plan) {
  * Preview charge when merchant adds another store (before or after create).
  */
 async function previewAdditionalStoreCharge(tenantId, plan) {
+  const tenant = await Tenant.findById(tenantId).select('countryIso').lean();
   const addon = await getAddonByCode('additional_store');
-  const priced = addon && addon.isActive ? priceAddonForPlan(addon, plan) : { amount: 0, currency: 'LKR' };
+  const priced =
+    addon && addon.isActive
+      ? priceAddonForPlan(addon, plan, tenant?.countryIso)
+      : { amount: 0, currency: isLocalMerchant(tenant?.countryIso) ? 'LKR' : 'USD' };
   const activeCount = await countActiveStoresForTenant(tenantId);
   const extraAfterOneMore = Math.max(0, activeCount + 1 - INCLUDED_STORES_PER_TENANT);
   const extraNow = Math.max(0, activeCount - INCLUDED_STORES_PER_TENANT);
@@ -185,7 +202,8 @@ async function computeSubscriptionRenewalExpected(tenant) {
   for (const row of renewalRows) {
     if (!row.check(t.paidAddons)) continue;
     const addonDef = await getAddonByCode(row.code);
-    const priced = addonDef && addonDef.isActive ? priceAddonForPlan(addonDef, plan) : { amount: 0 };
+    const priced =
+      addonDef && addonDef.isActive ? priceAddonForPlan(addonDef, plan, t.countryIso) : { amount: 0 };
     const amount = Number(priced.amount) || 0;
     if (amount <= 0) continue;
     addons.push({

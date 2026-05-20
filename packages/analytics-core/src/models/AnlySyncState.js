@@ -14,4 +14,5 @@ const schema = new mongoose.Schema(
   { timestamps: true },
 );
 
-module.exports = mongoose.model('AnlySyncState', schema, 'anly_sync_state');
+module.exports = mongoose.models.AnlySyncState
+  || mongoose.model('AnlySyncState', schema, 'anly_sync_state');

@@ -215,6 +215,14 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
     );
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
 
+    const { isLocalMerchant } = require('../utils/merchantRegion');
+    if (!isLocalMerchant(tenant.countryIso)) {
+      return res.status(400).json({
+        message: 'International merchants must pay with PayPal. Bank transfer is not available for your region.',
+        code: 'INTERNATIONAL_PAYPAL_ONLY',
+      });
+    }
+
     const purchaseKindNorm = String(purchaseKind || '').trim().toLowerCase();
     const addonCodeNorm = String(addonCode || '').trim().toLowerCase();
 

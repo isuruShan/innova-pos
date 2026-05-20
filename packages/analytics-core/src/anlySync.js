@@ -1,14 +1,13 @@
 'use strict';
 
-const mongoose = require('mongoose');
-const Order = require('../models/Order');
-const MenuItem = require('../models/MenuItem');
-const Tenant = require('../models/Tenant');
-const AnlySyncState = require('../models/AnlySyncState');
-const AnlyDailyStoreMetrics = require('../models/AnlyDailyStoreMetrics');
-const AnlyItemSalesDaily = require('../models/AnlyItemSalesDaily');
-const AnlyProcessedOrder = require('../models/AnlyProcessedOrder');
-const { localDateKey, startOfLocalDay } = require('../lib/anlyDateKeys');
+const Order = () => require('mongoose').model('Order');
+const MenuItem = () => require('mongoose').model('MenuItem');
+const Tenant = () => require('mongoose').model('Tenant');
+const AnlySyncState = require('./models/AnlySyncState');
+const AnlyDailyStoreMetrics = require('./models/AnlyDailyStoreMetrics');
+const AnlyItemSalesDaily = require('./models/AnlyItemSalesDaily');
+const AnlyProcessedOrder = require('./models/AnlyProcessedOrder');
+const { localDateKey, startOfLocalDay } = require('./anlyDateKeys');
 
 function envBool(name, defaultVal) {
   const v = process.env[name];
@@ -31,15 +30,11 @@ function getAnlyConfig() {
   };
 }
 
-function storeKey(storeId) {
-  return storeId ? String(storeId) : 'null';
-}
-
 async function loadCategoryMap(tenantId, storeId, menuIds) {
   if (!menuIds.length) return {};
   const filter = { _id: { $in: menuIds }, tenantId };
   if (storeId) filter.storeId = storeId;
-  const docs = await MenuItem.find(filter).select('category').lean();
+  const docs = await MenuItem().find(filter).select('category').lean();
   return Object.fromEntries(docs.map((m) => [String(m._id), (m.category || '').trim() || 'Other']));
 }
 
@@ -59,7 +54,7 @@ async function applyOrderToAnalytics(order, categoryByMenuId) {
         itemQty: lineQty,
       },
     },
-    { upsert: true, new: true },
+    { upsert: true },
   );
 
   for (const line of order.items || []) {
@@ -76,7 +71,6 @@ async function applyOrderToAnalytics(order, categoryByMenuId) {
       { tenantId, storeId, dateKey, menuItemId },
       {
         $inc: { qty, revenue },
-        $setOnInsert: { itemName: line.name || '', category },
         $set: { itemName: line.name || '', category },
       },
       { upsert: true },
@@ -127,10 +121,7 @@ async function syncTenantIncremental(tenantId, batchSize, logger) {
   }
 
   const filter = { tenantId, ...buildIncrementalFilter(state) };
-  const orders = await Order.find(filter)
-    .sort({ updatedAt: 1, _id: 1 })
-    .limit(batchSize)
-    .lean();
+  const orders = await Order().find(filter).sort({ updatedAt: 1, _id: 1 }).limit(batchSize).lean();
 
   let processed = 0;
   let lastSyncedAt = state.lastSyncedAt;
@@ -149,10 +140,6 @@ async function syncTenantIncremental(tenantId, batchSize, logger) {
   state.lastError = '';
   await state.save();
 
-  if (orders.length >= batchSize) {
-    logger?.info?.('anly sync batch full; more orders on next tick', { tenantId: String(tenantId), processed });
-  }
-
   return processed;
 }
 
@@ -164,7 +151,7 @@ async function backfillTenant(tenantId, backfillDays, logger) {
   const start = new Date(end);
   start.setDate(start.getDate() - Math.max(0, backfillDays - 1));
 
-  const orders = await Order.find({
+  const orders = await Order().find({
     tenantId,
     status: 'completed',
     createdAt: { $gte: start, $lte: new Date() },
@@ -199,7 +186,7 @@ async function runAnlySync(logger) {
   const cfg = getAnlyConfig();
   if (!cfg.enabled || !cfg.leader) return { skipped: true };
 
-  const tenants = await Tenant.find({}).select('_id').lean();
+  const tenants = await Tenant().find({}).select('_id').lean();
   let total = 0;
 
   for (const t of tenants) {

@@ -33,7 +33,7 @@ async function resolveSubscriptionPeriodEnd(tenant) {
  * @param {{ billingCycleDays?: number, currentPeriodDays?: number }} [opts]
  */
 function computeProratedAddonCharge(addon, plan, periodEnd, opts = {}) {
-  const full = priceAddonForPlan(addon, plan);
+  const full = priceAddonForPlan(addon, plan, opts.countryIso);
   const currency = full.currency || 'LKR';
   const fullAmount = Number(full.amount) || 0;
   const billingCycleDays = Math.max(

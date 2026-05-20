@@ -24,7 +24,10 @@ async function activatePaidAddonForTenant(tenantId, addonCode, opts) {
 
   const plan = await resolveNextBillingPlan(tenant);
   const addon = await getAddonByCode(code);
-  const fullPriced = addon && plan ? priceAddonForPlan(addon, plan) : { amount: 0, currency: 'LKR' };
+  const fullPriced =
+    addon && plan
+      ? priceAddonForPlan(addon, plan, tenant.countryIso)
+      : { amount: 0, currency: tenant.countryIso === 'LK' ? 'LKR' : 'USD' };
   const amountPerCycle =
     opts.amountPerCycle != null ? Number(opts.amountPerCycle) : Number(fullPriced.amount) || 0;
 

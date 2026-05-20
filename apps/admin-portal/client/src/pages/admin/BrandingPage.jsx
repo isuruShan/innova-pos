@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, Loader, CheckCircle, Save, Palette, X, Receipt, Printer, Sparkles } from 'lucide-react';
 import { PRESET_SWATCHES } from '../../utils/posThemePresets';
 import { useToast } from '../../context/ToastContext';
+import { useTenantCurrency } from '../../context/TenantCurrencyContext';
 import api from '../../api/axios';
 import { fieldAttrs, LIMITS, validateEmail, validateBusinessName, validateAddressLine } from '../../utils/formFields';
 import MobilePhoneField, { validateMobileField, phoneValueFromField } from '../../components/MobilePhoneField';
@@ -37,6 +38,7 @@ async function optimizeToWebP(file) {
 
 export default function BrandingPage() {
   const toast = useToast();
+  const { reload: reloadCurrency } = useTenantCurrency();
   const queryClient = useQueryClient();
   const fileRef = useRef(null);
   const [logoPreview, setLogoPreview] = useState(null);
@@ -56,7 +58,7 @@ export default function BrandingPage() {
 
   useEffect(() => {
     if (settings && !form) {
-      const parsed = parsePhoneForField(settings.phone, DEFAULT_COUNTRY_CODE);
+      const parsed = parsePhoneForField(settings.phone, settings.countryIso || DEFAULT_COUNTRY_CODE);
       setPhoneCountryIso(parsed.countryIso);
       setPhoneNationalDigits(parsed.nationalDigits);
       setForm({
@@ -70,6 +72,7 @@ export default function BrandingPage() {
     mutationFn: (payload) => api.put('/tenant-settings', payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant-settings'] });
+      reloadCurrency();
       setSaved(true);
       toast.success('Settings saved');
       setTimeout(() => setSaved(false), 3000);

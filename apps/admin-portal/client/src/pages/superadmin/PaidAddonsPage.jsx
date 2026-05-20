@@ -165,12 +165,53 @@ function AddonEditDrawer({ row, onClose, onSaved }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Currency (Sri Lanka)</label>
             <input
               className="w-full border rounded-lg px-3 py-2 text-sm uppercase"
               value={edit.currency}
               onChange={(e) => setEdit({ ...edit, currency: e.target.value.toUpperCase() })}
             />
+          </div>
+
+          <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-3 space-y-3">
+            <p className="text-sm font-semibold text-blue-900">International pricing (merchants outside Sri Lanka)</p>
+            <p className="text-xs text-blue-800">Shown in USD. International merchants pay add-ons via PayPal only.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Monthly (USD)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                  value={edit.internationalMonthlyAmount ?? 0}
+                  onChange={(e) =>
+                    setEdit({ ...edit, internationalMonthlyAmount: parseFloat(e.target.value) || 0 })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Yearly (USD)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                  value={edit.internationalYearlyAmount ?? 0}
+                  onChange={(e) =>
+                    setEdit({ ...edit, internationalYearlyAmount: parseFloat(e.target.value) || 0 })
+                  }
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">International currency</label>
+              <input
+                className="w-full border rounded-lg px-3 py-2 text-sm uppercase"
+                value={edit.internationalCurrency || 'USD'}
+                onChange={(e) => setEdit({ ...edit, internationalCurrency: e.target.value.toUpperCase() })}
+              />
+            </div>
           </div>
 
           <label className="flex items-center gap-2 text-sm">
@@ -246,8 +287,12 @@ export default function PaidAddonsPage() {
               <span className={row.isActive ? 'text-green-700 font-medium' : 'text-gray-400'}>
                 {row.isActive ? 'Active' : 'Inactive'}
               </span>
-              <span className="font-semibold text-gray-900 tabular-nums">
-                {row.currency} {Number(row.monthlyAmount || 0).toLocaleString()}/mo
+              <span className="font-semibold text-gray-900 tabular-nums text-right">
+                <span className="block">{row.currency} {Number(row.monthlyAmount || 0).toLocaleString()}/mo</span>
+                <span className="block text-blue-700 font-normal">
+                  {row.internationalCurrency || 'USD'}{' '}
+                  {Number(row.internationalMonthlyAmount || 0).toLocaleString()}/mo intl.
+                </span>
               </span>
             </div>
           </button>

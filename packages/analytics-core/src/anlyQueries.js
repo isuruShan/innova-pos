@@ -1,101 +1,25 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const Order = require('../models/Order');
-const AnlyDailyStoreMetrics = require('../models/AnlyDailyStoreMetrics');
-const AnlyItemSalesDaily = require('../models/AnlyItemSalesDaily');
-const AnlySyncState = require('../models/AnlySyncState');
+const AnlyItemSalesDaily = require('./models/AnlyItemSalesDaily');
+const AnlySyncState = require('./models/AnlySyncState');
+const { buildAnalyticsStoreMatch } = require('./anlyStoreMatch');
+const { buildDailyOrderVolumeTransactional } = require('./orderVolumeTransactional');
 const {
   localDateKey,
   parseDateRange,
-  buildEmptyDailyMap,
   startOfLocalDay,
   endOfLocalDay,
 } = require('./anlyDateKeys');
-const { getAnlyConfig } = require('../jobs/anlySync');
+const { getAnlyConfig } = require('./anlySync');
 
-function storeFilter(storeId) {
-  return storeId ? { storeId: new mongoose.Types.ObjectId(storeId) } : { storeId: null };
-}
-
-async function fetchDailyFromAnly(tenantId, storeId, rangeFrom, rangeTo) {
-  const rows = await AnlyDailyStoreMetrics.find({
-    tenantId,
-    ...storeFilter(storeId),
-    dateKey: { $gte: rangeFrom, $lte: rangeTo },
-  })
-    .select('dateKey orderCount revenue')
-    .lean();
-
-  const byDate = Object.fromEntries(rows.map((r) => [r.dateKey, r]));
-  return byDate;
-}
-
-async function fetchTodayTransactional(tenantId, storeId) {
-  const today = localDateKey(new Date());
-  const start = startOfLocalDay(new Date());
-  const end = endOfLocalDay(new Date());
-  const filter = {
-    tenantId,
-    status: 'completed',
-    createdAt: { $gte: start, $lte: end },
-  };
-  if (storeId) filter.storeId = storeId;
-  else filter.storeId = null;
-
-  const orderDocs = await Order.find(filter).select('totalAmount').lean();
-  let revenue = 0;
-  let orderCount = 0;
-  for (const o of orderDocs) {
-    orderCount += 1;
-    revenue += Number(o.totalAmount) || 0;
-  }
-  return { dateKey: today, orderCount, revenue: Math.round(revenue * 100) / 100 };
-}
-
-async function getOrderVolumeAnalytics(tenantId, storeId, fromQ, toQ) {
-  const range = parseDateRange(fromQ, toQ);
-  if (range.error) return { error: range.error };
-
-  const dailyMap = buildEmptyDailyMap(range.startDate, range.dayCount);
-  const anlyByDate = await fetchDailyFromAnly(tenantId, storeId, range.rangeFrom, range.rangeTo);
-
-  const todayKey = localDateKey(new Date());
-  const todayInRange = todayKey >= range.rangeFrom && todayKey <= range.rangeTo;
-
-  for (const key of Object.keys(dailyMap)) {
-    if (todayInRange && key === todayKey) continue;
-    const row = anlyByDate[key];
-    if (row) {
-      dailyMap[key].orders = row.orderCount || 0;
-      dailyMap[key].revenue = Math.round((row.revenue || 0) * 100) / 100;
-    }
-  }
-
-  if (todayInRange) {
-    const live = await fetchTodayTransactional(tenantId, storeId);
-    dailyMap[todayKey].orders = live.orderCount;
-    dailyMap[todayKey].revenue = live.revenue;
-  }
-
-  const daily = Object.values(dailyMap);
-  const orderCount = daily.reduce((s, d) => s + (d.orders || 0), 0);
-  const totalRevenue = Math.round(daily.reduce((s, d) => s + (d.revenue || 0), 0) * 100) / 100;
-
-  return {
-    daily,
-    orderCount,
-    totalRevenue,
-    rangeFrom: range.rangeFrom,
-    rangeTo: range.rangeTo,
-    source: { historical: 'anly', today: todayInRange ? 'transactional' : null },
-  };
+function getOrderModel() {
+  return mongoose.model('Order');
 }
 
 async function fetchTopItemsFromAnly(tenantId, storeId, rangeFrom, rangeTo, todayKey, todayInRange) {
   const match = {
-    tenantId: new mongoose.Types.ObjectId(tenantId),
-    ...storeFilter(storeId),
+    ...buildAnalyticsStoreMatch(tenantId, storeId),
     dateKey: todayInRange
       ? { $gte: rangeFrom, $lte: rangeTo, $ne: todayKey }
       : { $gte: rangeFrom, $lte: rangeTo },
@@ -122,17 +46,17 @@ async function fetchTopItemsFromAnly(tenantId, storeId, rangeFrom, rangeTo, toda
 }
 
 async function fetchTodayItemsTransactional(tenantId, storeId) {
+  const Order = getOrderModel();
   const start = startOfLocalDay(new Date());
   const end = endOfLocalDay(new Date());
-  const filter = {
-    tenantId,
+  const orders = await Order.find({
+    ...buildAnalyticsStoreMatch(tenantId, storeId),
     status: 'completed',
     createdAt: { $gte: start, $lte: end },
-  };
-  if (storeId) filter.storeId = storeId;
-  else filter.storeId = null;
+  })
+    .select('items')
+    .lean();
 
-  const orders = await Order.find(filter).select('items').lean();
   const map = {};
   for (const o of orders) {
     for (const line of o.items || []) {
@@ -151,6 +75,26 @@ async function fetchTodayItemsTransactional(tenantId, storeId) {
     }
   }
   return map;
+}
+
+async function getOrderVolumeAnalytics(tenantId, storeId, fromQ, toQ) {
+  const range = parseDateRange(fromQ, toQ);
+  if (range.error) return { error: range.error };
+
+  const Order = getOrderModel();
+  const dailyMap = await buildDailyOrderVolumeTransactional(Order, tenantId, storeId, range);
+  const daily = Object.values(dailyMap);
+  const orderCount = daily.reduce((s, d) => s + (d.orders || 0), 0);
+  const totalRevenue = Math.round(daily.reduce((s, d) => s + (d.revenue || 0), 0) * 100) / 100;
+
+  return {
+    daily,
+    orderCount,
+    totalRevenue,
+    rangeFrom: range.rangeFrom,
+    rangeTo: range.rangeTo,
+    source: { orders: 'transactional' },
+  };
 }
 
 async function getTopItemsAnalytics(tenantId, storeId, fromQ, toQ, limit = 10, sort = 'qty') {

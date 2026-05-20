@@ -5,6 +5,7 @@ const Tenant = require('../models/Tenant');
 const PaymentReceipt = require('../models/PaymentReceipt');
 const { authenticateJWT, authorize, sendRouteError } = require('@innovapos/shared-middleware');
 const { tenantPlanAudience } = require('../utils/planAudience');
+const { isLocalMerchant } = require('../utils/merchantRegion');
 const { loadPaymentSettings } = require('../lib/platformPaymentConfig');
 const { createCheckoutSession } = require('../lib/payments/stripeCheckout');
 const { createOrder, createAddonOrder, captureOrder } = require('../lib/payments/paypalCheckout');
@@ -52,6 +53,12 @@ router.post('/stripe', authenticateJWT, authorize('merchant_admin'), async (req,
       .populate('assignedPlanId')
       .populate('pendingPlanId');
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+    if (!isLocalMerchant(tenant.countryIso)) {
+      return res.status(400).json({
+        message: 'Card payments are not available for international merchants. Please use PayPal.',
+        code: 'INTERNATIONAL_PAYPAL_ONLY',
+      });
+    }
 
     const plan = await resolvePlanForTenant(tenant, planId);
     if (!plan) return res.status(400).json({ message: 'No valid plan selected' });

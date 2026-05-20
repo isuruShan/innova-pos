@@ -16,6 +16,7 @@ import AddonCatalogTiles from '../../components/addons/AddonCatalogTiles';
 import ProrationBreakdown from '../../components/billing/ProrationBreakdown';
 import BankReceiptFields from '../../components/billing/BankReceiptFields';
 import { useToast } from '../../context/ToastContext';
+import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
 
 /**
  * Paid add-ons (e.g. QR Ordering): review first, then choose an admin-configured
@@ -24,6 +25,7 @@ import { useToast } from '../../context/ToastContext';
 export default function MerchantAddonsPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { isInternational } = useMerchantBillingRegion();
   const [searchParams, setSearchParams] = useSearchParams();
   const [paypalReady, setPaypalReady] = useState(false);
 
@@ -225,10 +227,18 @@ export default function MerchantAddonsPage() {
   const methodOptions = useMemo(() => {
     const o = [];
     if (paymentOptions?.paypal?.enabled) o.push({ id: 'paypal', label: 'PayPal' });
-    if (paymentOptions?.bankAccounts?.length) o.push({ id: 'bank_transfer', label: 'Bank transfer' });
-    if (paymentOptions?.stripe?.enabled) o.push({ id: 'stripe', label: 'Card (Stripe)' });
+    if (!isInternational) {
+      if (paymentOptions?.bankAccounts?.length) o.push({ id: 'bank_transfer', label: 'Bank transfer' });
+      if (paymentOptions?.stripe?.enabled) o.push({ id: 'stripe', label: 'Card (Stripe)' });
+    }
     return o;
-  }, [paymentOptions]);
+  }, [paymentOptions, isInternational]);
+
+  useEffect(() => {
+    if (isInternational && methodOptions.some((m) => m.id === 'paypal')) {
+      setChosenMethod('paypal');
+    }
+  }, [isInternational, methodOptions]);
 
   const handleAddonBankSubmit = (e) => {
     e.preventDefault();

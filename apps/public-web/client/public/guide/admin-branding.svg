@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <rect width="800" height="500" fill="#f8fafc"/>
+  <rect x="200" y="0" width="600" height="500" fill="#fff"/>
+  <text x="220" y="48" fill="#111827" font-family="system-ui,sans-serif" font-size="22" font-weight="700">Branding &amp; Settings</text>
+  <rect x="220" y="80" width="160" height="160" fill="#f3f4f6" stroke="#d1d5db" rx="8"/>
+  <text x="248" y="165" fill="#9ca3af" font-family="system-ui,sans-serif" font-size="12">Logo</text>
+  <rect x="400" y="80" width="340" height="36" fill="#fff" stroke="#d1d5db" rx="8"/>
+  <rect x="400" y="130" width="340" height="36" fill="#fff" stroke="#d1d5db" rx="8"/>
+  <rect x="400" y="200" width="80" height="32" fill="#fa7237" rx="6"/>
+  <rect x="490" y="200" width="80" height="32" fill="#233d4d" rx="6"/>
+  <rect x="580" y="200" width="80" height="32" fill="#059669" rx="6"/>
+</svg>

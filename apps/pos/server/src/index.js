@@ -28,6 +28,7 @@ const { initNotificationBus } = require('./lib/notificationBus');
 await initNotificationBus(logger);
 
 connectDB(logger);
+require('@innovapos/analytics-core');
 
 app.set('trust proxy', 1);
 
@@ -79,6 +80,7 @@ app.use('/api/inventory',  require('./routes/inventory'));
 app.use('/api/suppliers',  require('./routes/suppliers'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/reports',    require('./routes/reports'));
+app.use('/api/analytics',  require('./routes/analytics'));
 app.use('/api/promotions', require('./routes/promotions'));
 app.use('/api/upload',           require('./routes/upload'));
 app.use('/api/settings',         require('./routes/settings'));

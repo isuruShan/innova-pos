@@ -82,6 +82,9 @@ importers:
 
   apps/admin-portal/server:
     dependencies:
+      '@innovapos/analytics-core':
+        specifier: workspace:*
+        version: link:../../../packages/analytics-core
       '@innovapos/form-validation':
         specifier: workspace:*
         version: link:../../../packages/form-validation
@@ -225,6 +228,9 @@ importers:
 
   apps/pos/server:
     dependencies:
+      '@innovapos/analytics-core':
+        specifier: workspace:*
+        version: link:../../../packages/analytics-core
       '@innovapos/logger':
         specifier: workspace:*
         version: link:../../../packages/logger
@@ -452,6 +458,12 @@ importers:
       nodemon:
         specifier: ^3.1.14
         version: 3.1.14
+
+  packages/analytics-core:
+    dependencies:
+      mongoose:
+        specifier: ^9.6.1
+        version: 9.6.1
 
   packages/app-urls: {}
 

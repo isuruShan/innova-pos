@@ -16,11 +16,13 @@ const router = express.Router();
 
 /** Maps approved applications to tenant.countryIso (LK vs international catalogue). */
 function deriveCountryIsoFromApplication(application) {
+  const fromPersonal = String(application.personal?.countryIso || '').trim().toUpperCase();
+  if (fromPersonal.length === 2) return fromPersonal;
   const dial = String(application.personal?.countryDialCode || '').replace(/\D/g, '');
   if (dial === '94') return 'LK';
   const bc = String(application.business?.country || '').toLowerCase();
   if (bc.includes('sri lanka')) return 'LK';
-  return 'XX';
+  return 'US';
 }
 
 const generateTempPassword = () => crypto.randomBytes(6).toString('hex');

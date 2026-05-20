@@ -7,8 +7,9 @@ const {
   getOrderVolumeAnalytics,
   getTopItemsAnalytics,
   getAnlyStatus,
-} = require('../lib/anlyQueries');
-const { runAnlySync, getAnlyConfig } = require('../jobs/anlySync');
+  runAnlySync,
+  getAnlyConfig,
+} = require('@innovapos/analytics-core');
 
 const router = express.Router();
 

@@ -20,6 +20,7 @@ const {
   requireTenantServiceWhenInactive,
 } = require('@innovapos/shared-middleware');
 const connectDB = require('./config/db');
+require('@innovapos/analytics-core');
 const { getMailConfigurationIssue } = require('@innovapos/mail-transport');
 const Tenant = require('./models/Tenant');
 const Subscription = require('./models/Subscription');
@@ -28,7 +29,7 @@ const { sendEmail } = require('./utils/mailer');
 const { notifySuperAdmins, notifyMerchantAdmins } = require('./lib/notificationHelpers');
 const { applyDuePendingPlanSwitches } = require('./lib/subscriptionActivation');
 const { processLoyaltyRetentionPeriods } = require('./lib/processLoyaltyRetention');
-const { startAnlySyncScheduler } = require('./jobs/anlySync');
+const { startAnlySyncScheduler } = require('@innovapos/analytics-core');
 
 const app = express();
 const logger = createLogger('admin-portal-server');

@@ -18,6 +18,7 @@ import OrderTypeBadge from '../../components/OrderTypeBadge';
 import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
 import { useStoreContext } from '../../context/StoreContext';
 import { useBranding } from '../../context/BrandingContext';
+import { formatCurrency } from '../../utils/format';
 import { KanbanSkeleton } from '../../components/StoreSkeletons';
 import { printReceipt } from '../../utils/receiptPrint';
 import { shouldPrintReceiptForUpdatedOrder } from '../../utils/receiptPolicy';
@@ -143,7 +144,7 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId }) {
       {/* Footer total */}
       <div className="px-3 pb-2 flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <span className="font-semibold text-[var(--pos-text-primary)] text-sm">${order.totalAmount.toFixed(2)}</span>
+          <span className="font-semibold text-[var(--pos-text-primary)] text-sm">{formatCurrency(order.totalAmount)}</span>
           {order.paymentCollected === false && (
             <span className="block text-[10px] text-amber-400 font-medium">Payment pending</span>
           )}
@@ -430,7 +431,7 @@ export default function OrderBoard() {
             <p className="text-sm text-slate-400 mt-1">
               Order #{String(completePaymentOrder.orderNumber).padStart(3, '0')} · Total{' '}
               <span className="text-amber-400 font-semibold tabular-nums">
-                ${Number(completePaymentOrder.totalAmount || 0).toFixed(2)}
+                {formatCurrency(completePaymentOrder.totalAmount || 0)}
               </span>
             </p>
             <p className="text-xs text-slate-500 mt-2">
