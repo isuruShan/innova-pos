@@ -82,6 +82,9 @@ importers:
 
   apps/admin-portal/server:
     dependencies:
+      '@innovapos/form-validation':
+        specifier: workspace:*
+        version: link:../../../packages/form-validation
       '@innovapos/logger':
         specifier: workspace:*
         version: link:../../../packages/logger
@@ -97,6 +100,9 @@ importers:
       '@innovapos/platform-contact':
         specifier: workspace:*
         version: link:../../../packages/platform-contact
+      '@innovapos/pos-theme-presets':
+        specifier: workspace:*
+        version: link:../../../packages/pos-theme-presets
       '@innovapos/runtime-env':
         specifier: workspace:*
         version: link:../../../packages/runtime-env
@@ -497,6 +503,8 @@ importers:
       ioredis:
         specifier: ^5.6.1
         version: 5.10.1
+
+  packages/pos-theme-presets: {}
 
   packages/runtime-env:
     dependencies:

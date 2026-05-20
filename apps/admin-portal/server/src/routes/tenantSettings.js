@@ -7,7 +7,7 @@ const axios = require('axios');
 const FormData = require('form-data');
 const { presignObjectKey } = require('../utils/s3Runtime');
 const { proxyUploadToService } = require('../lib/uploadProxy');
-const { getPreset, listPresets } = require('../../../../../packages/pos-theme-presets');
+const { getPreset, listPresets } = require('@innovapos/pos-theme-presets');
 const { validateEmail } = require('@innovapos/form-validation');
 
 function validateBrandingPayload(body) {
