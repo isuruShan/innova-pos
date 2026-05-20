@@ -13,6 +13,7 @@ import {
   ChevronRight,
   X,
   Eye,
+  Trash2,
 } from 'lucide-react';
 
 function apiBase() {
@@ -128,7 +129,7 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
           )}
 
           <div className="px-4 py-4 space-y-3">
-            <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--qr-accent, #0d9488)' }}>
+            <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
               {currencySymbol}
               {Number(item.price || 0).toFixed(2)}
             </p>
@@ -151,7 +152,7 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
             }}
             className="w-full py-3.5 rounded-xl font-bold text-base disabled:opacity-45 disabled:cursor-not-allowed shadow-lg"
             style={{
-              backgroundColor: 'var(--qr-accent, #0d9488)',
+              backgroundColor: 'var(--qr-accent, #f59e0b)',
               color: 'var(--qr-on-accent, #ffffff)',
             }}
           >
@@ -221,17 +222,25 @@ export default function TableOrderApp() {
   const rootStyle = useMemo(() => {
     if (!branding) {
       return {
-        '--qr-primary': '#0f172a',
-        '--qr-accent': '#0d9488',
-        '--qr-text': '#ffffff',
+        '--qr-primary': '#151f2e',
+        '--qr-accent': '#f59e0b',
+        '--qr-text': '#f8fafc',
         '--qr-on-accent': '#ffffff',
+        '--qr-page-bg': '#0b1220',
+        '--qr-panel': '#151f2e',
+        '--qr-body': '#e2e8f0',
+        '--qr-muted': '#94a3b8',
       };
     }
     return {
-      '--qr-primary': branding.primaryColor || '#0f172a',
-      '--qr-accent': branding.accentColor || '#0d9488',
-      '--qr-text': branding.textColor || '#ffffff',
+      '--qr-primary': branding.primaryColor || '#151f2e',
+      '--qr-accent': branding.accentColor || '#f59e0b',
+      '--qr-text': branding.textColor || '#f8fafc',
       '--qr-on-accent': branding.selectionTextColor || '#ffffff',
+      '--qr-page-bg': '#0b1220',
+      '--qr-panel': '#151f2e',
+      '--qr-body': '#e2e8f0',
+      '--qr-muted': '#94a3b8',
     };
   }, [branding]);
 
@@ -315,6 +324,11 @@ export default function TableOrderApp() {
     );
   };
 
+  const removeLine = (menuItemId) => {
+    if (order) return;
+    setCart((prev) => prev.filter((x) => x.menuItem !== menuItemId));
+  };
+
   const cartTotal = cart.reduce((s, i) => s + Number(i.price || 0) * i.qty, 0);
   const cartCount = useMemo(() => cart.reduce((s, i) => s + i.qty, 0), [cart]);
 
@@ -392,8 +406,12 @@ export default function TableOrderApp() {
 
   return (
     <div
-      className="h-[100dvh] flex flex-col bg-slate-50 text-slate-900 overflow-hidden"
-      style={rootStyle}
+      className="h-[100dvh] flex flex-col overflow-hidden"
+      style={{
+        ...rootStyle,
+        backgroundColor: 'var(--qr-page-bg, #0b1220)',
+        color: 'var(--qr-body, #e2e8f0)',
+      }}
     >
       <header
         className="shrink-0 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 shadow-md z-20"
@@ -415,7 +433,7 @@ export default function TableOrderApp() {
       </header>
 
       {msg && (
-        <div className="shrink-0 mx-3 mt-3 rounded-xl border border-teal-200 bg-teal-50 text-teal-950 text-sm px-4 py-3">
+        <div className="shrink-0 mx-3 mt-3 rounded-xl border border-teal-700/50 bg-teal-950/40 text-teal-100 text-sm px-4 py-3">
           {msg}
         </div>
       )}
@@ -424,37 +442,37 @@ export default function TableOrderApp() {
         {tab === 'order' && (
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-3 py-4 pb-[calc(8rem+env(safe-area-inset-bottom))] space-y-4 max-w-lg mx-auto w-full">
             {order ? (
-              <section className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
+              <section className="rounded-2xl bg-[var(--qr-panel)] border border-slate-600/60 p-4 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-slate-400">Your order</p>
-                    <p className="font-mono font-bold text-slate-900">#{String(order.orderNumber).padStart(3, '0')}</p>
+                    <p className="font-mono font-bold text-slate-100">#{String(order.orderNumber).padStart(3, '0')}</p>
                   </div>
-                  <span className="text-sm font-semibold px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-100">
+                  <span className="text-sm font-semibold px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
                     {STATUS_LABEL[order.status] || order.status}
                   </span>
                 </div>
-                <ul className="mt-3 divide-y divide-slate-100 text-sm">
+                <ul className="mt-3 divide-y divide-slate-600/50 text-sm">
                   {(order.items || []).map((line, idx) => (
                     <li key={idx} className="py-2 flex justify-between gap-2">
-                      <span className="text-slate-800">
+                      <span className="text-slate-200">
                         {line.name} × {line.qty}
                       </span>
-                      <span className="text-slate-500 tabular-nums">{fmtMoney(line.price * line.qty)}</span>
+                      <span className="text-slate-400 tabular-nums">{fmtMoney(line.price * line.qty)}</span>
                     </li>
                   ))}
                 </ul>
-                <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between font-semibold text-slate-900">
+                <div className="mt-3 pt-3 border-t border-slate-600/50 flex justify-between font-semibold text-slate-100">
                   <span>Total</span>
                   <span className="tabular-nums">{fmtMoney(order.totalAmount)}</span>
                 </div>
-                <p className="text-xs text-slate-500 mt-2">
+                <p className="text-xs text-slate-400 mt-2">
                   Pay with staff when you finish. You can add more from the <strong>Menu</strong> tab; you cannot reduce
                   confirmed quantities here.
                 </p>
               </section>
             ) : (
-              <section className="rounded-2xl bg-white border border-slate-200 p-6 text-center text-slate-600 text-sm">
+              <section className="rounded-2xl bg-[var(--qr-panel)] border border-slate-600/60 p-6 text-center text-slate-400 text-sm">
                 No open order yet. Use <strong>Menu</strong> to choose items and send them to the kitchen.
               </section>
             )}
@@ -463,7 +481,7 @@ export default function TableOrderApp() {
 
         {tab === 'menu' && (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <div className="shrink-0 px-3 pt-3 pb-2 bg-slate-50 border-b border-slate-200/80">
+            <div className="shrink-0 px-3 pt-3 pb-2 bg-[var(--qr-panel)] border-b border-slate-700/80">
               <div className="flex gap-2 overflow-x-auto pb-1 touch-pan-x max-w-lg mx-auto w-full">
                 {categories.map((c) => (
                   <button
@@ -473,11 +491,11 @@ export default function TableOrderApp() {
                     className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap border shrink-0 transition ${
                       activeCat === c
                         ? 'text-white shadow-md border-transparent'
-                        : 'bg-white text-slate-600 border-slate-200'
+                        : 'bg-slate-800/80 text-slate-300 border-slate-600'
                     }`}
                     style={
                       activeCat === c
-                        ? { backgroundColor: 'var(--qr-accent, #0d9488)', color: 'var(--qr-on-accent, #fff)' }
+                        ? { backgroundColor: 'var(--qr-accent, #f59e0b)', color: 'var(--qr-on-accent, #fff)' }
                         : {}
                     }
                   >
@@ -495,23 +513,23 @@ export default function TableOrderApp() {
                   return (
                     <div
                       key={item._id}
-                      className={`rounded-2xl border bg-white shadow-sm overflow-hidden flex gap-0 ${
-                        item.available ? 'border-slate-200' : 'opacity-55 border-slate-100'
+                      className={`rounded-2xl border shadow-sm overflow-hidden flex gap-0 ${
+                        item.available ? 'bg-[var(--qr-panel)] border-slate-600/60' : 'opacity-55 border-slate-700 bg-slate-900/50'
                       }`}
                     >
-                      <div className="w-28 sm:w-32 shrink-0 bg-slate-100 self-stretch min-h-[7rem]">
+                      <div className="w-28 sm:w-32 shrink-0 bg-slate-800 self-stretch min-h-[7rem]">
                         {thumb ? (
                           <img src={thumb} alt="" className="w-full h-full min-h-[7rem] object-cover" loading="lazy" />
                         ) : (
-                          <div className="w-full h-full min-h-[7rem] flex items-center justify-center text-3xl bg-slate-100">
-                            🍽️
-                          </div>
+                        <div className="w-full h-full min-h-[7rem] flex items-center justify-center text-3xl bg-slate-800">
+                          🍽️
+                        </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0 p-3 flex flex-col">
-                        <p className="font-semibold text-slate-900 leading-snug">{item.name}</p>
-                        {item.category && <p className="text-xs text-slate-400 mt-0.5">{item.category}</p>}
-                        <p className="text-base font-bold tabular-nums mt-1" style={{ color: 'var(--qr-accent, #0d9488)' }}>
+                        <p className="font-semibold text-slate-100 leading-snug">{item.name}</p>
+                        {item.category && <p className="text-xs text-slate-500 mt-0.5">{item.category}</p>}
+                        <p className="text-base font-bold tabular-nums mt-1" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
                           {fmtMoney(item.price)}
                         </p>
                         {photos.length > 1 && (
@@ -521,7 +539,7 @@ export default function TableOrderApp() {
                           <button
                             type="button"
                             onClick={() => setDetailItem(item)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 text-xs font-semibold bg-slate-50 hover:bg-slate-100"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-600 text-slate-200 text-xs font-semibold bg-slate-800/80 hover:bg-slate-700"
                           >
                             <Eye size={14} /> View
                           </button>
@@ -530,7 +548,7 @@ export default function TableOrderApp() {
                             disabled={!item.available}
                             onClick={() => addOne(item)}
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-40"
-                            style={{ backgroundColor: 'var(--qr-accent, #0d9488)' }}
+                            style={{ backgroundColor: 'var(--qr-accent, #f59e0b)' }}
                           >
                             <Plus size={14} /> Add
                           </button>
@@ -548,14 +566,14 @@ export default function TableOrderApp() {
                         setMenuLoadingMore(true);
                         fetchSession(true);
                       }}
-                      className="px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700 bg-white shadow-sm disabled:opacity-50"
+                      className="px-4 py-2.5 rounded-xl border border-slate-600 text-sm font-semibold text-slate-200 bg-slate-800/80 shadow-sm disabled:opacity-50"
                     >
                       {menuLoadingMore ? 'Loading…' : 'Load more items'}
                     </button>
                   </div>
                 )}
                 {filteredMenu.length === 0 && (
-                  <p className="text-center text-slate-500 py-12 text-sm">No items in this category.</p>
+                  <p className="text-center text-slate-500 text-sm py-16">No items in this category.</p>
                 )}
               </div>
             </div>
@@ -563,43 +581,62 @@ export default function TableOrderApp() {
         )}
 
         {tab === 'cart' && (
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-4 py-4 pb-[calc(8rem+env(safe-area-inset-bottom))] max-w-lg mx-auto w-full">
-            {cart.length === 0 ? (
-              <p className="text-center text-slate-500 text-sm py-16">Your cart is empty. Add items from the Menu tab.</p>
-            ) : (
-              <div className="space-y-4">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Your selection</p>
-                {cart.map((c) => (
-                  <div key={c.menuItem} className="flex items-center justify-between gap-2 text-sm bg-white border border-slate-200 rounded-xl px-3 py-2">
-                    <span className="text-slate-800 truncate">{c.name}</span>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        disabled={!!order}
-                        title={
-                          order
-                            ? 'Confirmed orders cannot be reduced from this page. Ask staff if you need a change.'
-                            : undefined
-                        }
-                        className="p-1.5 rounded-lg border border-slate-200 disabled:opacity-35 disabled:cursor-not-allowed"
-                        onClick={() => changeQty(c.menuItem, -1)}
-                      >
-                        <Minus size={16} />
-                      </button>
-                      <span className="w-8 text-center font-semibold">{c.qty}</span>
-                      <button
-                        type="button"
-                        className="p-1.5 rounded-lg border border-slate-200"
-                        onClick={() => changeQty(c.menuItem, 1)}
-                      >
-                        <Plus size={16} />
-                      </button>
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden max-w-lg mx-auto w-full">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-4 py-4">
+              {cart.length === 0 ? (
+                <p className="text-center text-slate-500 text-sm py-16">Your cart is empty. Add items from the Menu tab.</p>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Your selection</p>
+                  {cart.map((c) => (
+                    <div
+                      key={c.menuItem}
+                      className="flex items-center justify-between gap-2 text-sm bg-[var(--qr-panel)] border border-slate-600/60 rounded-xl px-3 py-2"
+                    >
+                      <span className="text-slate-200 truncate min-w-0 flex-1">{c.name}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          disabled={!!order}
+                          title={
+                            order
+                              ? 'Confirmed orders cannot be changed from this page. Ask staff if you need a change.'
+                              : undefined
+                          }
+                          className="p-1.5 rounded-lg border border-slate-600 text-slate-200 disabled:opacity-35 disabled:cursor-not-allowed"
+                          onClick={() => changeQty(c.menuItem, -1)}
+                        >
+                          <Minus size={16} />
+                        </button>
+                        <span className="w-8 text-center font-semibold text-slate-100">{c.qty}</span>
+                        <button
+                          type="button"
+                          className="p-1.5 rounded-lg border border-slate-600 text-slate-200"
+                          onClick={() => changeQty(c.menuItem, 1)}
+                        >
+                          <Plus size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!!order}
+                          title={order ? 'Cannot remove lines after order is placed.' : 'Remove from cart'}
+                          className="p-1.5 rounded-lg border border-red-500/50 text-red-400 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                          onClick={() => removeLine(c.menuItem)}
+                          aria-label="Remove line"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                  <span className="font-semibold text-slate-900">Subtotal</span>
-                  <span className="font-bold tabular-nums" style={{ color: 'var(--qr-accent, #0d9488)' }}>
+                  ))}
+                </div>
+              )}
+            </div>
+            {cart.length > 0 && (
+              <div className="shrink-0 border-t border-slate-700/80 bg-[var(--qr-panel)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] space-y-3 z-20">
+                <div className="flex items-center justify-between pt-1 border-t border-slate-600/50">
+                  <span className="font-semibold text-slate-100">Subtotal</span>
+                  <span className="font-bold tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
                     {fmtMoney(cartTotal)}
                   </span>
                 </div>
@@ -609,7 +646,7 @@ export default function TableOrderApp() {
                   onClick={onConfirm}
                   className="w-full py-3.5 rounded-xl disabled:opacity-60 font-bold text-base shadow-lg flex items-center justify-center gap-2"
                   style={{
-                    backgroundColor: 'var(--qr-accent, #0d9488)',
+                    backgroundColor: 'var(--qr-accent, #f59e0b)',
                     color: 'var(--qr-on-accent, #ffffff)',
                   }}
                 >
@@ -631,10 +668,10 @@ export default function TableOrderApp() {
 
       <button
         type="button"
-        className="fixed left-1/2 z-40 -translate-x-1/2 flex items-center gap-2 px-5 py-3 rounded-full shadow-lg text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+        className="fixed z-40 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed right-3 max-w-[min(100vw-1.5rem,20rem)]"
         style={{
           bottom: 'calc(4.25rem + env(safe-area-inset-bottom, 0px))',
-          backgroundColor: 'var(--qr-accent, #d97706)',
+          backgroundColor: 'var(--qr-accent, #f59e0b)',
         }}
         disabled={callingWaiter || waiterSecondsLeft > 0}
         onClick={onCallWaiter}
@@ -655,12 +692,12 @@ export default function TableOrderApp() {
         )}
       </button>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-slate-200 bg-white pt-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+      <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-slate-700 bg-[#151f2e] pt-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.35)]">
         <button
           type="button"
           onClick={() => setTab('menu')}
           className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-semibold ${
-            tab === 'menu' ? 'text-[var(--qr-accent,#0d9488)]' : 'text-slate-500'
+            tab === 'menu' ? 'text-[var(--qr-accent,#f59e0b)]' : 'text-slate-400'
           }`}
         >
           <ShoppingBag size={20} />
@@ -670,7 +707,7 @@ export default function TableOrderApp() {
           type="button"
           onClick={() => setTab('cart')}
           className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-semibold ${
-            tab === 'cart' ? 'text-[var(--qr-accent,#0d9488)]' : 'text-slate-500'
+            tab === 'cart' ? 'text-[var(--qr-accent,#f59e0b)]' : 'text-slate-400'
           }`}
         >
           <span className="relative inline-flex">
@@ -687,7 +724,7 @@ export default function TableOrderApp() {
           type="button"
           onClick={() => setTab('order')}
           className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-semibold ${
-            tab === 'order' ? 'text-[var(--qr-accent,#0d9488)]' : 'text-slate-500'
+            tab === 'order' ? 'text-[var(--qr-accent,#f59e0b)]' : 'text-slate-400'
           }`}
         >
           <ClipboardList size={20} />

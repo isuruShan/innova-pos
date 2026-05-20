@@ -10,6 +10,63 @@ const { tenantPlanAudience } = require('../utils/planAudience');
 
 const router = express.Router();
 
+/** Resolve plan document used to price add-ons for this tenant (same rules as GET /quote/:code). */
+async function resolvePlanForTenantAddons(tenant) {
+  const audience = tenantPlanAudience(tenant.countryIso);
+  let plan = tenant.assignedPlanId;
+  if (plan && typeof plan === 'object' && plan._id) {
+    return plan;
+  }
+  if (tenant.assignedPlanId) {
+    return SubscriptionPlan.findOne({
+      _id: tenant.assignedPlanId,
+      isActive: true,
+      planAudience: audience,
+    }).lean();
+  }
+  return SubscriptionPlan.findOne({ isActive: true, isDefault: true, planAudience: audience })
+    .sort({ createdAt: 1 })
+    .lean();
+}
+
+function addonAlreadyActive(tenant, code) {
+  const c = String(code || '').trim().toLowerCase();
+  if (c === 'qr_ordering') return Boolean(tenant.paidAddons?.qrOrdering?.active);
+  return false;
+}
+
+/** Merchant: purchasable add-ons with prices for the current billing period. */
+router.get('/merchant-catalog', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
+  try {
+    await ensureDefaultPaidAddons();
+    const tenant = await Tenant.findById(req.tenantId).lean();
+    if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+    const plan = await resolvePlanForTenantAddons(tenant);
+    const defs = await PaidAddonDefinition.find({ isActive: true }).sort({ sortOrder: 1, name: 1 }).lean();
+    const billingLabel =
+      plan?.billingCycle === 'yearly' ? 'per year (matches your yearly plan)' : 'per month (matches your monthly plan)';
+
+    const list = defs.map((addon) => {
+      const priced = priceAddonForPlan(addon, plan);
+      return {
+        code: addon.code,
+        name: addon.name,
+        shortDescription: addon.shortDescription,
+        longDescription: addon.longDescription,
+        priced,
+        billingLabel,
+        plan: plan ? { name: plan.name, billingCycle: plan.billingCycle, code: plan.code } : null,
+        alreadyActive: addonAlreadyActive(tenant, addon.code),
+      };
+    });
+
+    res.json(list);
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {
     await ensureDefaultPaidAddons();
@@ -67,21 +124,7 @@ router.get('/quote/:code', authenticateJWT, authorize('merchant_admin'), async (
     const tenant = await Tenant.findById(req.tenantId).populate('assignedPlanId').lean();
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
 
-    const audience = tenantPlanAudience(tenant.countryIso);
-    let plan = tenant.assignedPlanId;
-    if (plan && typeof plan === 'object' && plan._id) {
-      /* populated */
-    } else if (tenant.assignedPlanId) {
-      plan = await SubscriptionPlan.findOne({
-        _id: tenant.assignedPlanId,
-        isActive: true,
-        planAudience: audience,
-      }).lean();
-    } else {
-      plan = await SubscriptionPlan.findOne({ isActive: true, isDefault: true, planAudience: audience })
-        .sort({ createdAt: 1 })
-        .lean();
-    }
+    const plan = await resolvePlanForTenantAddons(tenant);
 
     const priced = priceAddonForPlan(addon, plan);
     const billingLabel =
@@ -99,7 +142,7 @@ router.get('/quote/:code', authenticateJWT, authorize('merchant_admin'), async (
       plan: plan
         ? { name: plan.name, billingCycle: plan.billingCycle, code: plan.code }
         : null,
-      alreadyActive: Boolean(tenant.paidAddons?.qrOrdering?.active && code === 'qr_ordering'),
+      alreadyActive: addonAlreadyActive(tenant, code),
     });
   } catch (err) {
     sendRouteError(res, err, { req });

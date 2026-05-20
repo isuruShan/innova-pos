@@ -123,7 +123,7 @@ export default function CafeTablesPage() {
 
   const adminSubscriptionUrl = useMemo(() => {
     const base = (import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174').replace(/\/$/, '');
-    return `${base}/subscription?addon=qr_ordering`;
+    return `${base}/addons?code=qr_ordering`;
   }, []);
 
   const heading = useMemo(
@@ -320,7 +320,7 @@ export default function CafeTablesPage() {
               or bank transfer in the admin portal, then super admin verifies bank receipts.
             </p>
             <p className="text-xs text-amber-200/90">
-              Opens the subscription page in a new tab so you can stay on the POS while you pay.
+              Opens the <strong>Add-ons</strong> page in the admin portal in a new tab so you can stay on the POS while you subscribe.
             </p>
             <div className="flex flex-col-reverse sm:flex-row gap-2 pt-1">
               <button

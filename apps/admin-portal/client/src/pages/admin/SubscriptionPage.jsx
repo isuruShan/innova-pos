@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Upload, Loader, CheckCircle, AlertTriangle, ExternalLink, FileText, X, Receipt } from 'lucide-react';
+import { Upload, Loader, CheckCircle, AlertTriangle, ExternalLink, FileText } from 'lucide-react';
 import api from '../../api/axios';
 import AdminDateField from '../../components/AdminDateField';
 import PlanChangeModal from '../../components/subscription/PlanChangeModal';
@@ -20,13 +20,6 @@ export default function SubscriptionPage() {
   const [submitted, setSubmitted] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [paypalReady, setPaypalReady] = useState(false);
-  const [billingDrawerOpen, setBillingDrawerOpen] = useState(false);
-  const [addonModalOpen, setAddonModalOpen] = useState(false);
-  const [addonForm, setAddonForm] = useState({ bankReference: '', bankName: '', paymentDate: '', notes: '' });
-  const [addonFile, setAddonFile] = useState(null);
-  const [addonApiError, setAddonApiError] = useState('');
-  const addonFileRef = useRef(null);
-  const addonPaypalContainerRef = useRef(null);
 
   const { data } = useQuery({
     queryKey: ['my-subscription'],
@@ -73,28 +66,6 @@ export default function SubscriptionPage() {
     onError: (err) => setErrors({ api: err.response?.data?.message || 'Upload failed' }),
   });
 
-  const closeAddonModal = useCallback(() => {
-    setAddonModalOpen(false);
-    setAddonApiError('');
-    setSearchParams((prev) => {
-      const n = new URLSearchParams(prev);
-      n.delete('addon');
-      return n;
-    }, { replace: true });
-  }, [setSearchParams]);
-
-  const addonUploadMutation = useMutation({
-    mutationFn: (fd) => api.post('/subscriptions/receipts', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
-      toast.success('Add-on payment receipt submitted. We will verify it shortly.');
-      setAddonForm({ bankReference: '', bankName: '', paymentDate: '', notes: '' });
-      setAddonFile(null);
-      closeAddonModal();
-    },
-    onError: (err) => setAddonApiError(err.response?.data?.message || 'Upload failed'),
-  });
-
   const stripeCheckoutMutation = useMutation({
     mutationFn: () => api.post('/subscriptions/checkout/stripe', { planId: form.planId }),
     onSuccess: ({ data }) => {
@@ -106,18 +77,8 @@ export default function SubscriptionPage() {
   const paypalCaptureMutation = useMutation({
     mutationFn: (orderId) =>
       api.post('/subscriptions/checkout/paypal/capture', { orderId }).then((r) => r.data),
-    onSuccess: (capData) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
-      if (capData?.addon) {
-        toast.success(capData.message || 'Guest QR ordering is now active.');
-        setAddonModalOpen(false);
-        setSearchParams((prev) => {
-          const n = new URLSearchParams(prev);
-          n.delete('addon');
-          return n;
-        }, { replace: true });
-        return;
-      }
       setSubmitted(true);
       setErrors({});
     },
@@ -134,12 +95,6 @@ export default function SubscriptionPage() {
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams, queryClient]);
-
-  useEffect(() => {
-    if (searchParams.get('addon') === 'qr_ordering') {
-      setAddonModalOpen(true);
-    }
-  }, [searchParams]);
 
   const requestActivationMutation = useMutation({
     mutationFn: () => api.post(`/tenants/${data?.tenant?._id}/temporary-activation/request`),
@@ -187,19 +142,7 @@ export default function SubscriptionPage() {
     [plans, form.planId]
   );
 
-  const { data: addonQuote, isPending: addonQuotePending, error: addonQuoteError } = useQuery({
-    queryKey: ['paid-addon-quote', 'qr_ordering', tenant?._id],
-    queryFn: async () => {
-      const { data } = await api.get('/paid-addons/quote/qr_ordering');
-      return data;
-    },
-    enabled: Boolean(addonModalOpen && tenant?._id),
-  });
-
-  const paypalCurrency = useMemo(() => {
-    if (addonModalOpen && addonQuote?.priced?.currency) return addonQuote.priced.currency;
-    return selectedPlan?.currency || 'USD';
-  }, [addonModalOpen, addonQuote?.priced?.currency, selectedPlan?.currency]);
+  const paypalCurrency = useMemo(() => selectedPlan?.currency || 'USD', [selectedPlan?.currency]);
 
   useEffect(() => {
     if (!tenant || !plans.length) return;
@@ -227,7 +170,7 @@ export default function SubscriptionPage() {
     const wantPaypal =
       paymentOptions?.paypal?.enabled &&
       paymentOptions.paypal.clientId &&
-      (paymentMethod === 'paypal' || addonModalOpen);
+      paymentMethod === 'paypal';
     if (!wantPaypal) {
       setPaypalReady(false);
       return undefined;
@@ -242,7 +185,7 @@ export default function SubscriptionPage() {
       script.remove();
       setPaypalReady(false);
     };
-  }, [paymentMethod, addonModalOpen, paymentOptions, paypalCurrency]);
+  }, [paymentMethod, paymentOptions, paypalCurrency]);
 
   const paypalContainerRef = useRef(null);
   useEffect(() => {
@@ -260,88 +203,21 @@ export default function SubscriptionPage() {
     }).render(paypalContainerRef.current);
   }, [paypalReady, paymentMethod, form.planId]);
 
-  useEffect(() => {
-    if (!addonModalOpen || !paypalReady || !window.paypal || !addonPaypalContainerRef.current) return undefined;
-    if (addonQuote?.alreadyActive || !addonQuote?.priced?.amount) return undefined;
-    const el = addonPaypalContainerRef.current;
-    el.innerHTML = '';
-    const buttons = window.paypal.Buttons({
-      createOrder: async () => {
-        const { data } = await api.post('/subscriptions/checkout/paypal/create-addon-order', { addonCode: 'qr_ordering' });
-        return data.orderId;
-      },
-      onApprove: async (data) => {
-        await paypalCaptureMutation.mutateAsync(data.orderID);
-      },
-      onError: () => setAddonApiError('PayPal payment failed'),
-    });
-    buttons.render(el);
-    return () => {
-      el.innerHTML = '';
-    };
-  }, [addonModalOpen, paypalReady, addonQuote?.alreadyActive, addonQuote?.priced?.amount]);
-
-  const handleAddonBankSubmit = (e) => {
-    e.preventDefault();
-    setAddonApiError('');
-    if (!addonQuote?.priced?.amount) {
-      setAddonApiError('Pricing is still loading.');
-      return;
-    }
-    const planId = tenant?.assignedPlanId?._id || tenant?.assignedPlanId || form.planId;
-    if (!planId) {
-      setAddonApiError('No plan on file. Contact support.');
-      return;
-    }
-    if (!addonForm.bankReference.trim() || !addonForm.paymentDate) {
-      setAddonApiError('Bank reference and payment date are required.');
-      return;
-    }
-    const fd = new FormData();
-    fd.append('addonCode', 'qr_ordering');
-    fd.append('amount', String(addonQuote.priced.amount));
-    fd.append('planId', String(planId));
-    fd.append('bankReference', addonForm.bankReference.trim());
-    fd.append('bankName', (addonForm.bankName || '').trim());
-    fd.append('paymentDate', addonForm.paymentDate);
-    fd.append('notes', (addonForm.notes || '').trim());
-    if (addonFile) fd.append('receipt', addonFile);
-    addonUploadMutation.mutate(fd);
-  };
-
   const trialDaysLeft = tenant?.trialEndsAt
     ? Math.max(0, Math.ceil((new Date(tenant.trialEndsAt) - Date.now()) / (1000 * 60 * 60 * 24)))
     : null;
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">Subscription & Billing</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Manage your subscription and upload payment receipts</p>
-        </div>
-        <div className="flex flex-wrap gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setBillingDrawerOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-800 hover:bg-gray-50"
-          >
-            <Receipt size={15} />
-            Billing breakdown
-          </button>
-          {tenant && !tenant?.paidAddons?.qrOrdering?.active ? (
-            <button
-              type="button"
-              onClick={() => {
-                setAddonApiError('');
-                setAddonModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover"
-            >
-              Guest QR ordering
-            </button>
-          ) : null}
-        </div>
+      <div>
+        <h2 className="text-xl font-bold text-gray-900">Subscription</h2>
+        <p className="text-sm text-gray-500 mt-0.5">
+          Account status and plan changes. Optional features and their payments are on the{' '}
+          <Link to="/addons" className="text-brand-orange font-semibold hover:underline">
+            Add-ons
+          </Link>{' '}
+          page.
+        </p>
       </div>
 
       {/* Current status */}
@@ -364,18 +240,10 @@ export default function SubscriptionPage() {
               </div>
             )}
             {tenant.assignedPlanId && (
-              <>
-                <div>
-                  <p className="text-xs text-gray-400">Assigned plan</p>
-                  <p className="font-semibold text-gray-900 mt-0.5">{tenant.assignedPlanId.name}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400">Payment amount</p>
-                  <p className="font-semibold text-gray-900 mt-0.5">
-                    {tenant.assignedPlanId.currency || 'LKR'} {Number(tenant.assignedPlanId.amount).toLocaleString()}
-                  </p>
-                </div>
-              </>
+              <div>
+                <p className="text-xs text-gray-400">Assigned plan</p>
+                <p className="font-semibold text-gray-900 mt-0.5">{tenant.assignedPlanId.name}</p>
+              </div>
             )}
           </div>
 
@@ -700,200 +568,6 @@ export default function SubscriptionPage() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-      {billingDrawerOpen && (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-40 bg-black/30 cursor-default border-0 p-0 m-0 w-full h-full"
-            aria-label="Close billing panel"
-            onClick={() => setBillingDrawerOpen(false)}
-          />
-          <aside className="fixed top-0 right-0 z-50 h-full w-full max-w-md bg-white shadow-xl border-l border-gray-200 flex flex-col">
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-2">
-              <h3 className="font-semibold text-gray-900">Current billing period</h3>
-              <button
-                type="button"
-                onClick={() => setBillingDrawerOpen(false)}
-                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-                aria-label="Close"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-4 space-y-4 text-sm overflow-y-auto flex-1">
-              {!data?.billingBreakdown ? (
-                <p className="text-gray-500">Loading…</p>
-              ) : (
-                <>
-                  <div>
-                    <p className="text-xs text-gray-400 uppercase tracking-wide">Plan</p>
-                    <p className="font-medium text-gray-900 mt-1">{data.billingBreakdown.plan?.name || '—'}</p>
-                    <p className="text-gray-700 mt-0.5 tabular-nums">
-                      {data.billingBreakdown.currency}{' '}
-                      {Number(data.billingBreakdown.plan?.amount || 0).toLocaleString()}
-                    </p>
-                  </div>
-                  {data.billingBreakdown.addons?.length > 0 ? (
-                    <div>
-                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Paid add-ons</p>
-                      <ul className="space-y-2">
-                        {data.billingBreakdown.addons.map((a) => (
-                          <li key={a.code} className="flex justify-between gap-2 text-gray-800">
-                            <span>{a.label}</span>
-                            <span className="tabular-nums shrink-0">
-                              {data.billingBreakdown.currency} {Number(a.amount).toLocaleString()}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                  <div className="pt-4 border-t border-gray-100 flex justify-between font-semibold text-gray-900">
-                    <span>Expected renewal total</span>
-                    <span className="tabular-nums">
-                      {data.billingBreakdown.currency} {Number(data.billingBreakdown.total || 0).toLocaleString()}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    This is the amount to transfer for your next subscription renewal when paying by bank, including active
-                    add-ons. PayPal charges the same add-on price when you purchase online.
-                  </p>
-                </>
-              )}
-            </div>
-          </aside>
-        </>
-      )}
-
-      {addonModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
-          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl border border-gray-200">
-            <div className="flex justify-between items-start gap-2 mb-4">
-              <h3 className="text-lg font-bold text-gray-900 pr-4">Guest QR table ordering</h3>
-              <button type="button" onClick={closeAddonModal} className="p-1 rounded-lg hover:bg-gray-100 text-gray-600 shrink-0" aria-label="Close">
-                <X size={22} />
-              </button>
-            </div>
-            {addonQuotePending && <p className="text-sm text-gray-500">Loading quote…</p>}
-            {addonQuoteError && (
-              <p className="text-sm text-red-600">
-                {addonQuoteError?.response?.data?.message || addonQuoteError?.message || 'Could not load add-on pricing.'}
-              </p>
-            )}
-            {addonQuote?.alreadyActive && (
-              <p className="text-green-700 text-sm font-medium">This add-on is already active on your account.</p>
-            )}
-            {!addonQuotePending && addonQuote && !addonQuote.alreadyActive && (
-              <>
-                <p className="text-sm text-gray-600 mb-4 leading-relaxed">
-                  {addonQuote.addon?.longDescription || addonQuote.addon?.shortDescription}
-                </p>
-                <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 mb-6">
-                  <p className="text-sm font-semibold text-gray-900">{addonQuote.addon?.name}</p>
-                  <p className="text-2xl font-bold mt-1 tabular-nums">
-                    {addonQuote.priced.currency} {Number(addonQuote.priced.amount).toLocaleString()}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">{addonQuote.billingLabel}</p>
-                  {addonQuote.plan?.name ? (
-                    <p className="text-xs text-gray-500 mt-2">Based on plan: {addonQuote.plan.name}</p>
-                  ) : null}
-                </div>
-
-                {paymentOptions?.paypal?.enabled && (
-                  <div className="mb-6 space-y-2">
-                    <p className="text-sm font-medium text-gray-900">Pay with PayPal</p>
-                    {!paypalReady ? <p className="text-xs text-gray-500">Loading PayPal…</p> : null}
-                    <div ref={addonPaypalContainerRef} className="min-h-[44px]" />
-                    {paypalCaptureMutation.isPending && <p className="text-xs text-gray-500">Confirming payment…</p>}
-                  </div>
-                )}
-
-                {paymentOptions?.bankAccounts?.length > 0 ? (
-                  <div className="space-y-4">
-                    <p className="text-sm font-medium text-gray-900">Bank transfer</p>
-                    <div className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
-                      <p className="font-medium text-gray-900">Transfer exactly {addonQuote.priced.currency} {Number(addonQuote.priced.amount).toLocaleString()} to:</p>
-                      {paymentOptions.bankAccounts.map((b) => (
-                        <div key={b._id}>
-                          <p className="font-medium">{b.label} — {b.bankName}</p>
-                          <p>{b.accountName} · {b.accountNumber}{b.branch ? ` · ${b.branch}` : ''}</p>
-                          {b.instructions ? <p className="text-xs text-gray-500 mt-0.5">{b.instructions}</p> : null}
-                        </div>
-                      ))}
-                    </div>
-                    <form onSubmit={handleAddonBankSubmit} className="space-y-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Payment date *</label>
-                        <AdminDateField
-                          value={addonForm.paymentDate ? String(addonForm.paymentDate).slice(0, 10) : ''}
-                          onChange={(v) => setAddonForm((f) => ({ ...f, paymentDate: v }))}
-                          className="w-full border rounded-lg px-3 py-2 text-sm border-gray-300"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Bank reference / transaction ID *</label>
-                        <input
-                          type="text"
-                          value={addonForm.bankReference}
-                          onChange={(e) => setAddonForm((f) => ({ ...f, bankReference: e.target.value }))}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                          maxLength={64}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Bank name</label>
-                        <input
-                          type="text"
-                          value={addonForm.bankName}
-                          onChange={(e) => setAddonForm((f) => ({ ...f, bankName: e.target.value }))}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                          maxLength={120}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Receipt photo (optional)</label>
-                        <input ref={addonFileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={(e) => setAddonFile(e.target.files?.[0] || null)} />
-                        {addonFile ? (
-                          <div className="flex items-center gap-2 text-sm text-gray-700">
-                            <span className="truncate flex-1">{addonFile.name}</span>
-                            <button type="button" className="text-xs text-gray-500 underline" onClick={() => setAddonFile(null)}>Remove</button>
-                          </div>
-                        ) : (
-                          <button type="button" onClick={() => addonFileRef.current?.click()} className="text-sm text-brand-orange font-medium">
-                            Attach file
-                          </button>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
-                        <textarea
-                          value={addonForm.notes}
-                          onChange={(e) => setAddonForm((f) => ({ ...f, notes: e.target.value }))}
-                          rows={2}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none"
-                          maxLength={2000}
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={addonUploadMutation.isPending}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold disabled:opacity-60"
-                      >
-                        {addonUploadMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Upload size={14} />}
-                        Submit add-on receipt
-                      </button>
-                    </form>
-                  </div>
-                ) : (
-                  <p className="text-sm text-amber-700">Bank transfer is not configured. Use PayPal if available, or contact support.</p>
-                )}
-
-                {addonApiError ? <p className="text-sm text-red-600 mt-3">{addonApiError}</p> : null}
-              </>
-            )}
           </div>
         </div>
       )}

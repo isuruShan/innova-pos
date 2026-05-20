@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Palette, CreditCard, Building2,
-  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3,
+  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3, Sparkles,
 } from 'lucide-react';
 import NotificationBell from '../NotificationBell';
 import SubscriptionDueBanner from '../SubscriptionDueBanner';
@@ -51,6 +51,7 @@ const ADMIN_NAV_GROUPS = [
     title: 'Operations & billing',
     items: [
       { label: 'Cashier sessions', icon: Wallet, to: '/cashier-sessions' },
+      { label: 'Add-ons', icon: Sparkles, to: '/addons' },
       { label: 'Subscription', icon: CreditCard, to: '/subscription' },
     ],
   },

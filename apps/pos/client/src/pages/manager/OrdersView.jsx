@@ -77,6 +77,13 @@ export default function OrdersView() {
     return p;
   }, [fromDate, toDate, statusFilter, orderTypeFilter, paymentTypeFilter, search]);
 
+  const { data: orders = [], isPending, refetch, isFetching } = useQuery({
+    queryKey: ['manager-orders', selectedStoreId, params],
+    queryFn: () => api.get('/orders', { params }).then(r => r.data),
+    enabled: isStoreReady,
+    staleTime: 30_000,
+  });
+
   useEffect(() => {
     if (!orderFromUrl) setSelectedOrder(null);
   }, [selectedStoreId, orderFromUrl]);
@@ -90,13 +97,6 @@ export default function OrdersView() {
     }
     api.get(`/orders/${orderFromUrl}`).then((r) => setSelectedOrder(r.data)).catch(() => {});
   }, [orderFromUrl, orders, isStoreReady]);
-
-  const { data: orders = [], isPending, refetch, isFetching } = useQuery({
-    queryKey: ['manager-orders', selectedStoreId, params],
-    queryFn: () => api.get('/orders', { params }).then(r => r.data),
-    enabled: isStoreReady,
-    staleTime: 30_000,
-  });
 
   const showSkeleton = !isStoreReady || isPending;
 

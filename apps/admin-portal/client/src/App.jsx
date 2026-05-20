@@ -24,6 +24,7 @@ import AnalyticsPage from './pages/admin/AnalyticsPage';
 import BrandingPage from './pages/admin/BrandingPage';
 import UsersPage from './pages/admin/UsersPage';
 import SubscriptionPage from './pages/admin/SubscriptionPage';
+import MerchantAddonsPage from './pages/admin/MerchantAddonsPage';
 import ProfilePage from './pages/admin/ProfilePage';
 import StoresPage from './pages/admin/StoresPage';
 import CashierSessionsPage from './pages/admin/CashierSessionsPage';
@@ -127,6 +128,11 @@ export default function App() {
           <Route path="/subscription" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><SubscriptionPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/addons" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><MerchantAddonsPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/stores" element={
