@@ -1,4 +1,6 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { getPosUrl } from '@innovapos/app-urls';
 import { useAuth } from '../../context/AuthContext';
 import { Building2, Users, CreditCard, Clock, CheckCircle, AlertTriangle, ExternalLink } from 'lucide-react';
 import api from '../../api/axios';
@@ -27,6 +29,16 @@ export default function DashboardPage() {
 
   const isExpired = tenant?.subscriptionStatus === 'expired'
     || (tenant?.subscriptionStatus === 'trial' && trialDaysLeft === 0);
+
+  const quickActions = useMemo(
+    () => [
+      { label: 'Customize branding', href: '/branding', desc: 'Update logo, colors, business name' },
+      { label: 'Manage users', href: '/users', desc: 'Add staff and admin accounts' },
+      { label: 'Subscription & billing', href: '/subscription', desc: 'Upload payment receipts' },
+      { label: 'Open POS', href: getPosUrl(), external: true, desc: 'Launch the point of sale' },
+    ],
+    [],
+  );
 
   return (
     <div className="space-y-6">
@@ -118,12 +130,7 @@ export default function DashboardPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h3 className="font-semibold text-gray-900 mb-4">Quick actions</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {[
-            { label: 'Customize branding', href: '/branding', desc: 'Update logo, colors, business name' },
-            { label: 'Manage users', href: '/users', desc: 'Add staff and admin accounts' },
-            { label: 'Subscription & billing', href: '/subscription', desc: 'Upload payment receipts' },
-            { label: 'Open POS', href: 'http://localhost:5173', external: true, desc: 'Launch the point of sale' },
-          ].map(action => (
+          {quickActions.map((action) => (
             <a key={action.label}
               href={action.href}
               target={action.external ? '_blank' : '_self'}

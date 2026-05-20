@@ -6,15 +6,10 @@ import { useStoreContext } from '../../context/StoreContext';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
-
-/** Guest order SPA origin only — never use the POS host (would encode wrong URLs in QR). */
-const DEFAULT_QR_WEB_ORIGIN =
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_QR_ORDER_WEB_ORIGIN) ||
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PUBLIC_ORDER_PAGE_ORIGIN) ||
-  '';
+import { adminPath, getQrOrderWebOrigin } from '@innovapos/app-urls';
 
 function orderPageUrlForTable(tenantId, storeId, tableId) {
-  const base = String(DEFAULT_QR_WEB_ORIGIN || '').replace(/\/$/, '');
+  const base = getQrOrderWebOrigin();
   if (!base || !tenantId || !storeId || !tableId) return '';
   return `${base}/${encodeURIComponent(tenantId)}/${encodeURIComponent(storeId)}/${encodeURIComponent(tableId)}`;
 }
@@ -121,10 +116,10 @@ export default function CafeTablesPage() {
 
   const [qrAddonModal, setQrAddonModal] = useState(false);
 
-  const adminSubscriptionUrl = useMemo(() => {
-    const base = (import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174').replace(/\/$/, '');
-    return `${base}/addons?code=qr_ordering`;
-  }, []);
+  const adminSubscriptionUrl = useMemo(
+    () => adminPath('/addons?code=qr_ordering'),
+    [],
+  );
 
   const heading = useMemo(
     () => (

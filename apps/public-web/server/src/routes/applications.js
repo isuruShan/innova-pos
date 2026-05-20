@@ -33,6 +33,13 @@ function firstValidationError(errors) {
   return key ? errors[key] : null;
 }
 
+/** Rejected applications stay in DB for audit but do not block email/mobile reuse. */
+const HOLDING_APPLICATION_STATUSES = ['pending', 'under_review', 'approved'];
+
+function holdingApplicationQuery(filter) {
+  return { ...filter, status: { $in: HOLDING_APPLICATION_STATUSES } };
+}
+
 /**
  * GET /applications/availability?email=&mobileE164=
  * Returns whether email / mobile are free (no application + no user account for email).
@@ -54,7 +61,7 @@ router.get('/availability', async (req, res) => {
         return res.status(400).json({ message: emailCheck.error });
       }
       const [appDup, userDup] = await Promise.all([
-        MerchantApplication.findOne({ 'personal.email': email }).select('status'),
+        MerchantApplication.findOne(holdingApplicationQuery({ 'personal.email': email })).select('status'),
         PlatformUserLookup.findOne({ email }).select('_id'),
       ]);
       if (appDup) {
@@ -71,7 +78,9 @@ router.get('/availability', async (req, res) => {
       if (!mobileE164.startsWith('+') || mobileE164.length < 10) {
         return res.status(400).json({ message: 'Invalid mobileE164' });
       }
-      const appMob = await MerchantApplication.findOne({ 'personal.mobileE164': mobileE164 }).select('status');
+      const appMob = await MerchantApplication.findOne(
+        holdingApplicationQuery({ 'personal.mobileE164': mobileE164 }),
+      ).select('status');
       if (appMob) {
         out.mobileAvailable = false;
         out.reasons.push({ field: 'mobile', code: 'application', status: appMob.status });
@@ -144,7 +153,9 @@ router.post('/', upload.single('brFile'), async (req, res) => {
 
     const emailLower = email.toLowerCase().trim();
 
-    const existingEmail = await MerchantApplication.findOne({ 'personal.email': emailLower });
+    const existingEmail = await MerchantApplication.findOne(
+      holdingApplicationQuery({ 'personal.email': emailLower }),
+    );
     if (existingEmail) {
       return res.status(409).json({
         message: 'An application with this email already exists.',
@@ -152,7 +163,9 @@ router.post('/', upload.single('brFile'), async (req, res) => {
       });
     }
 
-    const existingMobile = await MerchantApplication.findOne({ 'personal.mobileE164': mobileE164 });
+    const existingMobile = await MerchantApplication.findOne(
+      holdingApplicationQuery({ 'personal.mobileE164': mobileE164 }),
+    );
     if (existingMobile) {
       return res.status(409).json({
         message: 'An application with this mobile number already exists.',

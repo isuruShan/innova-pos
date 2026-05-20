@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, LogIn } from 'lucide-react';
+import SignInPortalModal from './SignInPortalModal';
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
 
   return (
     <nav className="fixed top-0 inset-x-0 z-50 bg-[#233d4d]/98 backdrop-blur-sm border-b border-white/10">
@@ -27,7 +29,16 @@ export default function Navbar() {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            <Link to="/signup"
+            <button
+              type="button"
+              onClick={() => setSignInOpen(true)}
+              className="text-sm font-semibold text-teal-100/90 px-4 py-2 rounded-lg border border-white/25 hover:bg-white/10 hover:text-white transition-colors inline-flex items-center gap-1.5"
+            >
+              <LogIn size={16} />
+              Sign in
+            </button>
+            <Link
+              to="/signup"
               className="text-sm font-semibold text-white px-4 py-2 rounded-lg transition-colors bg-brand-orange hover:bg-brand-orange-hover"
             >
               Get Started Free
@@ -48,13 +59,27 @@ export default function Navbar() {
               {['Features', 'Pricing', 'Contact'][i]}
             </a>
           ))}
-          <Link to="/signup" onClick={() => setOpen(false)}
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              setSignInOpen(true);
+            }}
+            className="block w-full text-center text-sm font-semibold text-teal-100/90 px-4 py-2 rounded-lg border border-white/25 hover:bg-white/10"
+          >
+            Sign in
+          </button>
+          <Link
+            to="/signup"
+            onClick={() => setOpen(false)}
             className="block text-center text-sm font-semibold text-white px-4 py-2 rounded-lg mt-2 bg-brand-orange hover:bg-brand-orange-hover"
           >
             Get Started Free
           </Link>
         </div>
       )}
+
+      <SignInPortalModal open={signInOpen} onClose={() => setSignInOpen(false)} />
     </nav>
   );
 }

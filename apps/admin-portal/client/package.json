@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@innovapos/app-urls": "workspace:*",
     "@innovapos/form-validation": "workspace:*",
     "@innovapos/ui-datepicker": "workspace:*",
     "@tanstack/react-query": "^5.100.9",

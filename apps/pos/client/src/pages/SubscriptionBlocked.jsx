@@ -1,7 +1,6 @@
 import { LogOut, CreditCard } from 'lucide-react';
+import { adminPath } from '@innovapos/app-urls';
 import { useAuth } from '../context/AuthContext';
-
-const ADMIN_PORTAL_URL = import.meta.env.VITE_ADMIN_PORTAL_URL || 'http://localhost:5174';
 
 export default function SubscriptionBlocked() {
   const { user, logout } = useAuth();
@@ -20,7 +19,7 @@ export default function SubscriptionBlocked() {
         </p>
         {user?.role === 'merchant_admin' && (
           <a
-            href={`${ADMIN_PORTAL_URL}/subscription`}
+            href={adminPath('/subscription')}
             className="inline-flex items-center justify-center w-full py-2.5 rounded-lg bg-brand-orange text-white text-sm font-semibold"
             target="_blank"
             rel="noreferrer"

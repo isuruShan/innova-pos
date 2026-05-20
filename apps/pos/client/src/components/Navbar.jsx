@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { getAdminUrl } from '@innovapos/app-urls';
 import { useAuth } from '../context/AuthContext';
 import { LogOut, UserCircle, Settings, Store, ChevronDown, Check } from 'lucide-react';
 import ProfileSlideOver, { AvatarDisplay } from './ProfileSlideOver';
@@ -83,7 +84,7 @@ export function AvatarMenu({ user, onLogout }) {
               )}
               {user.role === 'merchant_admin' && (
                 <a
-                  href={import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'}
+                  href={getAdminUrl()}
                   target="_blank"
                   rel="noreferrer"
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition"

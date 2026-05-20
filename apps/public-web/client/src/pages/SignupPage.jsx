@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Mail, Phone, Loader } from 'lucide-react';
 import { COUNTRIES, DEFAULT_COUNTRY_CODE } from '../constants/countries';
