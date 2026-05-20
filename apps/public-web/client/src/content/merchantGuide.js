@@ -442,7 +442,7 @@ export const GUIDE_SECTIONS = [
           '**Step 2** — Type: Bundle deal.\n\n' +
           '**Step 3** — Add bundle items:\n  • Burger (quantity 1)\n  • Fries (quantity 1)\n  • Soda (quantity 1)\n\n' +
           '**Step 4** — Bundle price: 12. (Assume individual prices total $17—customer saves $5.)\n\n' +
-          '**Step 5** — Dates: Choose weekdays for lunch rush or all week if it's a permanent combo.\n\n' +
+          '**Step 5** — Dates: Choose weekdays for lunch rush or all week if it\'s a permanent combo.\n\n' +
           '**Step 6** — Save. Cashiers apply "Lunch Combo" at checkout when a customer orders those exact items.\n\n' +
           '**Example outcome**: Order shows Burger ($8), Fries ($4), Soda ($5). Promotion "Lunch Combo" reduces total to $12. Receipt: "Lunch Combo bundle: $12.00 (saved $5.00)".',
         tip: 'Bundles work best when the items are frequently ordered together—avoid obscure combos guests rarely want.',
@@ -476,7 +476,7 @@ export const GUIDE_SECTIONS = [
         heading: 'Advanced options: Min order, max discount, loyalty tiers',
         body:
           '**Min order amount** — Require a minimum basket total before the promotion applies. Example: "$10 off orders over $50" prevents tiny orders from getting disproportionate discounts.\n\n' +
-          '**Max discount amount** — Cap how much a percentage or flat discount can reduce the bill. Example: "20% off, max $20 discount" ensures very large orders don't get excessive reductions.\n\n' +
+          '**Max discount amount** — Cap how much a percentage or flat discount can reduce the bill. Example: "20% off, max $20 discount" ensures very large orders don\'t get excessive reductions.\n\n' +
           '**Min tier level (loyalty)** — Restrict the promotion to customers at or above a loyalty tier. Example: "Gold members only: 25% off" rewards your best guests and encourages tier advancement.\n\n' +
           '**Store vs tenant scope** — Tenant-wide promotions apply at all locations; store-specific promotions target one site. Use store scope for local events or branch-specific inventory needs.\n\n' +
           '**Active toggle** — Control whether the promotion is live without deleting it. Turn off after a campaign ends, then reactivate for the next cycle without rebuilding rules.',
@@ -501,7 +501,7 @@ export const GUIDE_SECTIONS = [
         heading: 'Monitor performance and adjust',
         body:
           'Use Admin → Analytics or POS → Dashboard to review promotion usage: how many times applied, total discount given, revenue impact, and which items sold under each deal.\n\n' +
-          'Compare sales during promotion periods versus baseline to measure lift. If a bundle isn't moving, adjust the price or swap an item; if a percentage discount costs too much margin, lower the percent or add a min order threshold.\n\n' +
+          'Compare sales during promotion periods versus baseline to measure lift. If a bundle isn\'t moving, adjust the price or swap an item; if a percentage discount costs too much margin, lower the percent or add a min order threshold.\n\n' +
           'Turn off underperforming promotions and iterate—your menu and guest behavior will guide what deals resonate.',
       },
     ],
