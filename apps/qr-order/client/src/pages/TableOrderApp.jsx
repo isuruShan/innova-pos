@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import {
   ShoppingBag,
+  ShoppingCart,
   Plus,
   Minus,
   Loader2,
@@ -164,7 +165,7 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
 
 export default function TableOrderApp() {
   const { tenantId, storeId, tableId } = useParams();
-  const [tab, setTab] = useState('new');
+  const [tab, setTab] = useState('menu');
   const [cart, setCart] = useState([]);
   const [activeCat, setActiveCat] = useState('All');
   const [msg, setMsg] = useState('');
@@ -173,12 +174,49 @@ export default function TableOrderApp() {
   const [payload, setPayload] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [callingWaiter, setCallingWaiter] = useState(false);
+  const [waiterBlockedUntil, setWaiterBlockedUntil] = useState(null);
+  const [waiterTick, setWaiterTick] = useState(0);
   const [detailItem, setDetailItem] = useState(null);
   const [menuLoadingMore, setMenuLoadingMore] = useState(false);
   const menuLenRef = useRef(0);
 
   const branding = payload?.branding;
   const currencySymbol = branding?.currencySymbol || '$';
+
+  useEffect(() => {
+    const fav = branding?.faviconUrl || branding?.logoUrl;
+    if (!fav) return;
+    let link = document.querySelector("link[rel='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = fav;
+  }, [branding?.faviconUrl, branding?.logoUrl]);
+
+  useEffect(() => {
+    const id = setInterval(() => setWaiterTick((x) => x + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const iso = payload?.nextWaiterCallAt;
+    if (!iso) return;
+    const t = new Date(iso).getTime();
+    if (t > Date.now()) setWaiterBlockedUntil(t);
+    else setWaiterBlockedUntil(null);
+  }, [payload?.nextWaiterCallAt]);
+
+  const waiterSecondsLeft = useMemo(() => {
+    void waiterTick;
+    if (!waiterBlockedUntil) return 0;
+    return Math.max(0, Math.ceil((waiterBlockedUntil - Date.now()) / 1000));
+  }, [waiterBlockedUntil, waiterTick]);
+
+  useEffect(() => {
+    if (waiterBlockedUntil && waiterSecondsLeft === 0) setWaiterBlockedUntil(null);
+  }, [waiterBlockedUntil, waiterSecondsLeft]);
 
   const rootStyle = useMemo(() => {
     if (!branding) {
@@ -278,6 +316,7 @@ export default function TableOrderApp() {
   };
 
   const cartTotal = cart.reduce((s, i) => s + Number(i.price || 0) * i.qty, 0);
+  const cartCount = useMemo(() => cart.reduce((s, i) => s + i.qty, 0), [cart]);
 
   const onCallWaiter = async () => {
     if (!tenantId || !storeId || !tableId) return;
@@ -287,11 +326,18 @@ export default function TableOrderApp() {
       await axios.post(`${sessionPath(tenantId, storeId, tableId)}/call-waiter`, {});
       setMsg('A team member has been notified. Someone will come to your table shortly.');
       setTimeout(() => setMsg(''), 5000);
+      const coolSec = payload?.guestWaiterCallCooldownSeconds || 300;
+      setWaiterBlockedUntil(Date.now() + coolSec * 1000);
+      fetchSession(false);
     } catch (e) {
       const code = e.response?.status;
+      if (code === 429) {
+        const retry = e.response?.data?.retryAt;
+        if (retry) setWaiterBlockedUntil(new Date(retry).getTime());
+      }
       setMsg(
         code === 429
-          ? (e.response?.data?.message || 'Please wait a moment before calling again.')
+          ? e.response?.data?.message || 'Please wait a moment before calling again.'
           : e.response?.data?.message || 'Could not send request',
       );
     } finally {
@@ -368,211 +414,163 @@ export default function TableOrderApp() {
         </div>
       </header>
 
-      <nav className="shrink-0 flex border-b border-slate-200 bg-white z-10">
-        <button
-          type="button"
-          onClick={() => setTab('new')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-semibold transition border-b-2 ${
-            tab === 'new' ? 'border-current' : 'border-transparent text-slate-500'
-          }`}
-          style={tab === 'new' ? { color: 'var(--qr-accent, #0d9488)', borderBottomColor: 'var(--qr-accent, #0d9488)' } : {}}
-        >
-          <ShoppingBag size={18} />
-          New order
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('order')}
-          className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-semibold transition border-b-2 ${
-            tab === 'order' ? 'border-current' : 'border-transparent text-slate-500'
-          }`}
-          style={tab === 'order' ? { color: 'var(--qr-accent, #0d9488)', borderBottomColor: 'var(--qr-accent, #0d9488)' } : {}}
-        >
-          <ClipboardList size={18} />
-          Your table
-        </button>
-      </nav>
-
       {msg && (
         <div className="shrink-0 mx-3 mt-3 rounded-xl border border-teal-200 bg-teal-50 text-teal-950 text-sm px-4 py-3">
           {msg}
         </div>
       )}
 
-      {tab === 'order' && (
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-4 max-w-lg mx-auto w-full">
-          {order ? (
-            <section className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-slate-400">Your order</p>
-                  <p className="font-mono font-bold text-slate-900">#{String(order.orderNumber).padStart(3, '0')}</p>
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
+        {tab === 'order' && (
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-3 py-4 pb-[calc(8rem+env(safe-area-inset-bottom))] space-y-4 max-w-lg mx-auto w-full">
+            {order ? (
+              <section className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-400">Your order</p>
+                    <p className="font-mono font-bold text-slate-900">#{String(order.orderNumber).padStart(3, '0')}</p>
+                  </div>
+                  <span className="text-sm font-semibold px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-100">
+                    {STATUS_LABEL[order.status] || order.status}
+                  </span>
                 </div>
-                <span className="text-sm font-semibold px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-100">
-                  {STATUS_LABEL[order.status] || order.status}
-                </span>
-              </div>
-              <ul className="mt-3 divide-y divide-slate-100 text-sm">
-                {(order.items || []).map((line, idx) => (
-                  <li key={idx} className="py-2 flex justify-between gap-2">
-                    <span className="text-slate-800">
-                      {line.name} × {line.qty}
-                    </span>
-                    <span className="text-slate-500 tabular-nums">{fmtMoney(line.price * line.qty)}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between font-semibold text-slate-900">
-                <span>Total</span>
-                <span className="tabular-nums">{fmtMoney(order.totalAmount)}</span>
-              </div>
-              <p className="text-xs text-slate-500 mt-2">
-                Pay with staff when you finish. You can add more from the <strong>New order</strong> tab; you cannot
-                reduce confirmed quantities here.
-              </p>
-            </section>
-          ) : (
-            <section className="rounded-2xl bg-white border border-slate-200 p-6 text-center text-slate-600 text-sm">
-              No open order yet. Use <strong>New order</strong> to choose items and send them to the kitchen.
-            </section>
-          )}
-
-          <section className="rounded-2xl border border-amber-100 bg-amber-50/80 p-4 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                  <BellRing size={18} className="text-amber-600 shrink-0" />
-                  Need help at the table?
+                <ul className="mt-3 divide-y divide-slate-100 text-sm">
+                  {(order.items || []).map((line, idx) => (
+                    <li key={idx} className="py-2 flex justify-between gap-2">
+                      <span className="text-slate-800">
+                        {line.name} × {line.qty}
+                      </span>
+                      <span className="text-slate-500 tabular-nums">{fmtMoney(line.price * line.qty)}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between font-semibold text-slate-900">
+                  <span>Total</span>
+                  <span className="tabular-nums">{fmtMoney(order.totalAmount)}</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  Pay with staff when you finish. You can add more from the <strong>Menu</strong> tab; you cannot reduce
+                  confirmed quantities here.
                 </p>
-                <p className="text-xs text-slate-600 mt-1">Notify staff — they will see your table number.</p>
-              </div>
-              <button
-                type="button"
-                disabled={callingWaiter}
-                onClick={onCallWaiter}
-                className="shrink-0 px-4 py-2.5 rounded-xl disabled:opacity-60 text-white text-sm font-bold shadow flex items-center justify-center gap-2"
-                style={{ backgroundColor: 'var(--qr-accent, #d97706)' }}
-              >
-                {callingWaiter ? (
-                  <>
-                    <Loader2 className="animate-spin w-4 h-4" /> Sending…
-                  </>
-                ) : (
-                  <>
-                    <BellRing size={16} /> Call waiter
-                  </>
-                )}
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
-
-      {tab === 'new' && (
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="shrink-0 px-3 pt-3 pb-2 bg-slate-50 border-b border-slate-200/80">
-            <div className="flex gap-2 overflow-x-auto pb-1 touch-pan-x max-w-lg mx-auto w-full">
-              {categories.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setActiveCat(c)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap border shrink-0 transition ${
-                    activeCat === c
-                      ? 'text-white shadow-md border-transparent'
-                      : 'bg-white text-slate-600 border-slate-200'
-                  }`}
-                  style={
-                    activeCat === c
-                      ? { backgroundColor: 'var(--qr-accent, #0d9488)', color: 'var(--qr-on-accent, #fff)' }
-                      : {}
-                  }
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
+              </section>
+            ) : (
+              <section className="rounded-2xl bg-white border border-slate-200 p-6 text-center text-slate-600 text-sm">
+                No open order yet. Use <strong>Menu</strong> to choose items and send them to the kitchen.
+              </section>
+            )}
           </div>
+        )}
 
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-3 py-3 pb-2">
-            <div className="max-w-lg mx-auto w-full space-y-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-              {filteredMenu.map((item) => {
-                const photos = itemPhotoUrls(item);
-                const thumb = photos[0];
-                return (
-                  <div
-                    key={item._id}
-                    className={`rounded-2xl border bg-white shadow-sm overflow-hidden flex gap-0 ${
-                      item.available ? 'border-slate-200' : 'opacity-55 border-slate-100'
+        {tab === 'menu' && (
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="shrink-0 px-3 pt-3 pb-2 bg-slate-50 border-b border-slate-200/80">
+              <div className="flex gap-2 overflow-x-auto pb-1 touch-pan-x max-w-lg mx-auto w-full">
+                {categories.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setActiveCat(c)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap border shrink-0 transition ${
+                      activeCat === c
+                        ? 'text-white shadow-md border-transparent'
+                        : 'bg-white text-slate-600 border-slate-200'
                     }`}
+                    style={
+                      activeCat === c
+                        ? { backgroundColor: 'var(--qr-accent, #0d9488)', color: 'var(--qr-on-accent, #fff)' }
+                        : {}
+                    }
                   >
-                    <div className="w-28 sm:w-32 shrink-0 bg-slate-100 self-stretch min-h-[7rem]">
-                      {thumb ? (
-                        <img src={thumb} alt="" className="w-full h-full min-h-[7rem] object-cover" loading="lazy" />
-                      ) : (
-                        <div className="w-full h-full min-h-[7rem] flex items-center justify-center text-3xl bg-slate-100">
-                          🍽️
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-3 py-3">
+              <div className="max-w-lg mx-auto w-full space-y-3 pb-[calc(8rem+env(safe-area-inset-bottom))]">
+                {filteredMenu.map((item) => {
+                  const photos = itemPhotoUrls(item);
+                  const thumb = photos[0];
+                  return (
+                    <div
+                      key={item._id}
+                      className={`rounded-2xl border bg-white shadow-sm overflow-hidden flex gap-0 ${
+                        item.available ? 'border-slate-200' : 'opacity-55 border-slate-100'
+                      }`}
+                    >
+                      <div className="w-28 sm:w-32 shrink-0 bg-slate-100 self-stretch min-h-[7rem]">
+                        {thumb ? (
+                          <img src={thumb} alt="" className="w-full h-full min-h-[7rem] object-cover" loading="lazy" />
+                        ) : (
+                          <div className="w-full h-full min-h-[7rem] flex items-center justify-center text-3xl bg-slate-100">
+                            🍽️
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0 p-3 flex flex-col">
+                        <p className="font-semibold text-slate-900 leading-snug">{item.name}</p>
+                        {item.category && <p className="text-xs text-slate-400 mt-0.5">{item.category}</p>}
+                        <p className="text-base font-bold tabular-nums mt-1" style={{ color: 'var(--qr-accent, #0d9488)' }}>
+                          {fmtMoney(item.price)}
+                        </p>
+                        {photos.length > 1 && (
+                          <p className="text-[10px] text-slate-400 mt-0.5">{photos.length} photos</p>
+                        )}
+                        <div className="mt-auto pt-2 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setDetailItem(item)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 text-xs font-semibold bg-slate-50 hover:bg-slate-100"
+                          >
+                            <Eye size={14} /> View
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!item.available}
+                            onClick={() => addOne(item)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-40"
+                            style={{ backgroundColor: 'var(--qr-accent, #0d9488)' }}
+                          >
+                            <Plus size={14} /> Add
+                          </button>
                         </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0 p-3 flex flex-col">
-                      <p className="font-semibold text-slate-900 leading-snug">{item.name}</p>
-                      {item.category && <p className="text-xs text-slate-400 mt-0.5">{item.category}</p>}
-                      <p className="text-base font-bold tabular-nums mt-1" style={{ color: 'var(--qr-accent, #0d9488)' }}>
-                        {fmtMoney(item.price)}
-                      </p>
-                      {photos.length > 1 && (
-                        <p className="text-[10px] text-slate-400 mt-0.5">{photos.length} photos</p>
-                      )}
-                      <div className="mt-auto pt-2 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setDetailItem(item)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 text-xs font-semibold bg-slate-50 hover:bg-slate-100"
-                        >
-                          <Eye size={14} /> View
-                        </button>
-                        <button
-                          type="button"
-                          disabled={!item.available}
-                          onClick={() => addOne(item)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-40"
-                          style={{ backgroundColor: 'var(--qr-accent, #0d9488)' }}
-                        >
-                          <Plus size={14} /> Add
-                        </button>
                       </div>
                     </div>
+                  );
+                })}
+                {filteredMenu.length > 0 && menuItems.length < menuTotal && (
+                  <div className="flex justify-center pt-2">
+                    <button
+                      type="button"
+                      disabled={menuLoadingMore}
+                      onClick={() => {
+                        setMenuLoadingMore(true);
+                        fetchSession(true);
+                      }}
+                      className="px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700 bg-white shadow-sm disabled:opacity-50"
+                    >
+                      {menuLoadingMore ? 'Loading…' : 'Load more items'}
+                    </button>
                   </div>
-                );
-              })}
-              {filteredMenu.length > 0 && menuItems.length < menuTotal && (
-                <div className="flex justify-center pt-2">
-                  <button
-                    type="button"
-                    disabled={menuLoadingMore}
-                    onClick={() => {
-                      setMenuLoadingMore(true);
-                      fetchSession(true);
-                    }}
-                    className="px-4 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-700 bg-white shadow-sm disabled:opacity-50"
-                  >
-                    {menuLoadingMore ? 'Loading…' : 'Load more items'}
-                  </button>
-                </div>
-              )}
-              {filteredMenu.length === 0 && (
-                <p className="text-center text-slate-500 py-12 text-sm">No items in this category.</p>
-              )}
+                )}
+                {filteredMenu.length === 0 && (
+                  <p className="text-center text-slate-500 py-12 text-sm">No items in this category.</p>
+                )}
+              </div>
             </div>
           </div>
+        )}
 
-          {cart.length > 0 && (
-            <div className="shrink-0 border-t border-slate-200 bg-white shadow-[0_-6px_24px_rgba(0,0,0,0.08)] px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-              <div className="max-w-lg mx-auto space-y-3">
+        {tab === 'cart' && (
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-4 py-4 pb-[calc(8rem+env(safe-area-inset-bottom))] max-w-lg mx-auto w-full">
+            {cart.length === 0 ? (
+              <p className="text-center text-slate-500 text-sm py-16">Your cart is empty. Add items from the Menu tab.</p>
+            ) : (
+              <div className="space-y-4">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Your selection</p>
                 {cart.map((c) => (
-                  <div key={c.menuItem} className="flex items-center justify-between gap-2 text-sm">
+                  <div key={c.menuItem} className="flex items-center justify-between gap-2 text-sm bg-white border border-slate-200 rounded-xl px-3 py-2">
                     <span className="text-slate-800 truncate">{c.name}</span>
                     <div className="flex items-center gap-2 shrink-0">
                       <button
@@ -599,7 +597,7 @@ export default function TableOrderApp() {
                     </div>
                   </div>
                 ))}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200">
                   <span className="font-semibold text-slate-900">Subtotal</span>
                   <span className="font-bold tabular-nums" style={{ color: 'var(--qr-accent, #0d9488)' }}>
                     {fmtMoney(cartTotal)}
@@ -626,10 +624,76 @@ export default function TableOrderApp() {
                   )}
                 </button>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </div>
+
+      <button
+        type="button"
+        className="fixed left-1/2 z-40 -translate-x-1/2 flex items-center gap-2 px-5 py-3 rounded-full shadow-lg text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+        style={{
+          bottom: 'calc(4.25rem + env(safe-area-inset-bottom, 0px))',
+          backgroundColor: 'var(--qr-accent, #d97706)',
+        }}
+        disabled={callingWaiter || waiterSecondsLeft > 0}
+        onClick={onCallWaiter}
+        aria-label="Call waiter"
+      >
+        {callingWaiter ? (
+          <>
+            <Loader2 className="animate-spin w-4 h-4" /> Sending…
+          </>
+        ) : waiterSecondsLeft > 0 ? (
+          <>
+            <BellRing size={16} /> Wait {waiterSecondsLeft}s
+          </>
+        ) : (
+          <>
+            <BellRing size={16} /> Call waiter
+          </>
+        )}
+      </button>
+
+      <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-slate-200 bg-white pt-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <button
+          type="button"
+          onClick={() => setTab('menu')}
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-semibold ${
+            tab === 'menu' ? 'text-[var(--qr-accent,#0d9488)]' : 'text-slate-500'
+          }`}
+        >
+          <ShoppingBag size={20} />
+          Menu
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('cart')}
+          className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-semibold ${
+            tab === 'cart' ? 'text-[var(--qr-accent,#0d9488)]' : 'text-slate-500'
+          }`}
+        >
+          <span className="relative inline-flex">
+            <ShoppingCart size={20} />
+            {cartCount > 0 ? (
+              <span className="absolute -top-1.5 -right-2 min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                {cartCount > 99 ? '99+' : cartCount}
+              </span>
+            ) : null}
+          </span>
+          Cart
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('order')}
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-semibold ${
+            tab === 'order' ? 'text-[var(--qr-accent,#0d9488)]' : 'text-slate-500'
+          }`}
+        >
+          <ClipboardList size={20} />
+          Order
+        </button>
+      </nav>
 
       {detailItem && (
         <ItemDetailModal

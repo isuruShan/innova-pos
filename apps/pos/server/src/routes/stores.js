@@ -41,7 +41,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
     if (!store) return res.status(404).json({ message: 'Store not found' });
     if (!userStoreIds.includes(String(store._id))) return res.status(403).json({ message: 'Access denied for selected store' });
 
-    const { name, code, address, phone, paymentMethods, isActive, tableManagementEnabled } = req.body;
+    const { name, code, address, phone, paymentMethods, isActive, tableManagementEnabled, guestWaiterCallCooldownSeconds } = req.body;
     if (name !== undefined) store.name = String(name).trim();
     if (code !== undefined) store.code = String(code).trim().toUpperCase();
     if (address !== undefined) store.address = String(address).trim();
@@ -49,6 +49,10 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
     if (paymentMethods !== undefined) store.paymentMethods = normalizePaymentMethods(paymentMethods);
     if (tableManagementEnabled !== undefined && req.user.role !== 'cashier') {
       store.tableManagementEnabled = Boolean(tableManagementEnabled);
+    }
+    if (guestWaiterCallCooldownSeconds !== undefined && req.user.role !== 'cashier') {
+      const n = parseInt(guestWaiterCallCooldownSeconds, 10);
+      if (Number.isFinite(n)) store.guestWaiterCallCooldownSeconds = Math.min(3600, Math.max(30, n));
     }
     if (isActive !== undefined && req.user.role !== 'manager') {
       const nextActive = Boolean(isActive);

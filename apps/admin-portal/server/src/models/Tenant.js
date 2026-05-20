@@ -44,6 +44,19 @@ const tenantSchema = new mongoose.Schema(
     /** Prevent duplicate deactivation emails/notifications for the same expiry end date. */
     subscriptionDeactivationNotifiedForEndDate: { type: Date, default: null },
 
+    /**
+     * Paid feature add-ons (e.g. guest QR ordering). Activated after successful payment + verification.
+     * `amountPerCycle` is snapshot at activation for billing transparency.
+     */
+    paidAddons: {
+      qrOrdering: {
+        active: { type: Boolean, default: false },
+        activatedAt: { type: Date, default: null },
+        amountPerCycle: { type: Number, default: 0, min: 0 },
+        currency: { type: String, default: '', trim: true, uppercase: true },
+      },
+    },
+
     // Branding — managed via admin portal
     settings: {
       primaryColor: { type: String, default: '#1a1a2e' },

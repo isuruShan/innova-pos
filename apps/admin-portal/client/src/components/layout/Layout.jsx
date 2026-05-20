@@ -21,6 +21,7 @@ const SUPERADMIN_NAV_GROUPS = [
     items: [
       { label: 'Payments', icon: Receipt, to: '/payments' },
       { label: 'Plans', icon: CreditCard, to: '/plans' },
+      { label: 'Paid add-ons', icon: Tag, to: '/paid-addons' },
       { label: 'Payment setup', icon: Wallet, to: '/payment-setup' },
     ],
   },

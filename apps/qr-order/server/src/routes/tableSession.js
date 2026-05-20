@@ -14,7 +14,6 @@ const { enrichItems, recalculateOrderMoney, appendItemsToOrder } = require(paths
 const { notifyCashiersTableWaiterCall, notifyCashiersQrOrderChange } = require(paths.notificationHelpers);
 
 const router = express.Router();
-const WAITER_CALL_COOLDOWN_MS = 60_000;
 
 function parseObjectIds(tenantId, storeId, tableId) {
   if (
@@ -44,11 +43,26 @@ async function loadTableSession(tenantId, storeId, tableId) {
   if (!tbl) return { error: { status: 404, message: 'Table not found or inactive.' } };
 
   const store = await Store.findOne({ _id: ids.storeId, tenantId: ids.tenantId })
-    .select('name tableManagementEnabled')
+    .select('name tableManagementEnabled guestWaiterCallCooldownSeconds')
     .lean();
   if (!store) return { error: { status: 404, message: 'Store not found.' } };
   if (!store.tableManagementEnabled) {
     return { error: { status: 403, message: 'Table ordering is not available for this venue right now.' } };
+  }
+
+  const tenantRow = await mongoose.connection.collection('tenants').findOne(
+    { _id: ids.tenantId },
+    { projection: { paidAddons: 1 } },
+  );
+  const qrAddonActive = Boolean(tenantRow?.paidAddons?.qrOrdering?.active);
+  if (!qrAddonActive) {
+    return {
+      error: {
+        status: 402,
+        message:
+          'Guest QR ordering is not activated for this business yet. Please ask the venue to enable the QR ordering add-on in their subscription.',
+      },
+    };
   }
 
   return { ids, tbl, store };
@@ -80,7 +94,7 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
 
     const brandingDoc = await TenantSettings.findOne({ tenantId: ctx.ids.tenantId })
       .select(
-        'businessName tagline logoUrl primaryColor accentColor sidebarColor textColor selectionTextColor currency currencySymbol',
+        'businessName tagline logoUrl faviconUrl primaryColor accentColor sidebarColor textColor selectionTextColor currency currencySymbol',
       )
       .lean();
 
@@ -89,6 +103,7 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
           businessName: brandingDoc.businessName || '',
           tagline: brandingDoc.tagline || '',
           logoUrl: brandingDoc.logoUrl || '',
+          faviconUrl: brandingDoc.faviconUrl || '',
           primaryColor: brandingDoc.primaryColor || '#1a1a2e',
           accentColor: brandingDoc.accentColor || '#e94560',
           sidebarColor: brandingDoc.sidebarColor || '#16213e',
@@ -106,12 +121,21 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
       status: { $nin: ['completed', 'cancelled'] },
     }).lean();
 
+    const cooldownMs = Math.max(30_000, (ctx.store.guestWaiterCallCooldownSeconds || 300) * 1000);
+    let nextWaiterCallAt = null;
+    if (ctx.tbl.lastWaiterCallAt) {
+      const next = new Date(new Date(ctx.tbl.lastWaiterCallAt).getTime() + cooldownMs);
+      if (next.getTime() > Date.now()) nextWaiterCallAt = next.toISOString();
+    }
+
     res.json({
       tenantId: String(ctx.ids.tenantId),
       storeId: String(ctx.ids.storeId),
       tableId: String(ctx.ids.tableId),
       tableLabel: ctx.tbl.label,
       storeName: ctx.store.name,
+      guestWaiterCallCooldownSeconds: ctx.store.guestWaiterCallCooldownSeconds || 300,
+      nextWaiterCallAt,
       branding,
       menuItems,
       menuTotal,
@@ -221,9 +245,15 @@ router.post('/:tenantId/:storeId/:tableId/call-waiter', async (req, res) => {
       return res.status(403).json({ message: 'Table ordering is not available for this venue right now.' });
     }
 
+    const cooldownMs = Math.max(30_000, (store.guestWaiterCallCooldownSeconds || 300) * 1000);
     const now = Date.now();
-    if (tbl.lastWaiterCallAt && now - new Date(tbl.lastWaiterCallAt).getTime() < WAITER_CALL_COOLDOWN_MS) {
-      return res.status(429).json({ message: 'Please wait about a minute before calling again.' });
+    if (tbl.lastWaiterCallAt && now - new Date(tbl.lastWaiterCallAt).getTime() < cooldownMs) {
+      const retryAt = new Date(new Date(tbl.lastWaiterCallAt).getTime() + cooldownMs).toISOString();
+      return res.status(429).json({
+        message: 'Please wait before calling again.',
+        retryAt,
+        cooldownSeconds: Math.ceil(cooldownMs / 1000),
+      });
     }
 
     const order = await Order.findOne({

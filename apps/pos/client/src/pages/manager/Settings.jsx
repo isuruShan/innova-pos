@@ -400,10 +400,67 @@ function UsersTab() {
   );
 }
 
+// ─── Guest QR tab (waiter call cooldown for public ordering app) ─────────────
+
+function GuestQrTab() {
+  const qc = useQueryClient();
+  const { selectedStoreId, isStoreReady, stores } = useStoreContext();
+  const store = stores.find((s) => String(s._id) === String(selectedStoreId));
+  const [sec, setSec] = useState('300');
+
+  useEffect(() => {
+    if (store?.guestWaiterCallCooldownSeconds != null) {
+      setSec(String(store.guestWaiterCallCooldownSeconds));
+    }
+  }, [store?._id, store?.guestWaiterCallCooldownSeconds]);
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      api.put(`/stores/${selectedStoreId}`, {
+        guestWaiterCallCooldownSeconds: Math.min(3600, Math.max(30, parseInt(sec, 10) || 300)),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pos-stores'] });
+    },
+  });
+
+  if (!isStoreReady) {
+    return <p className="text-sm text-amber-300">Select a store in the header first.</p>;
+  }
+
+  return (
+    <div className="space-y-4 max-w-lg">
+      <p className="text-sm text-slate-400">
+        Controls how long guests must wait between &quot;Call waiter&quot; taps in the public QR ordering app (default 5 minutes).
+      </p>
+      <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-4 space-y-3">
+        <label className="block text-xs text-slate-400">Cooldown (seconds)</label>
+        <input
+          type="number"
+          min={30}
+          max={3600}
+          className="w-full border border-slate-600 rounded-lg px-3 py-2 text-sm bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)]"
+          value={sec}
+          onChange={(e) => setSec(e.target.value)}
+        />
+        <button
+          type="button"
+          onClick={() => saveMutation.mutate()}
+          disabled={saveMutation.isPending}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-[var(--pos-selection-text)] text-sm font-semibold disabled:opacity-50"
+        >
+          <Save size={14} /> Save
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Settings shell with tabs ─────────────────────────────────────────────────
 
 const TABS = [
   { id: 'charges', label: 'Order Charges', icon: SettingsIcon },
+  { id: 'guestqr', label: 'Guest QR', icon: ShoppingCart },
   { id: 'users',   label: 'Staff Users',   icon: Users },
   { id: 'payments', label: 'Store Payments', icon: Hash },
 ];
@@ -439,7 +496,7 @@ export default function SettingsPage() {
           })}
         </div>
 
-        {tab === 'charges' ? <ChargesTab /> : tab === 'users' ? <UsersTab /> : <PaymentMethodsTab />}
+        {tab === 'charges' ? <ChargesTab /> : tab === 'guestqr' ? <GuestQrTab /> : tab === 'users' ? <UsersTab /> : <PaymentMethodsTab />}
       </div>
     </div>
   );

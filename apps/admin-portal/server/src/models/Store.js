@@ -19,6 +19,8 @@ const storeSchema = new mongoose.Schema(
     isDefault: { type: Boolean, default: false },
     /** When true, dine-in orders pick configured tables; tables are locked while an order is active */
     tableManagementEnabled: { type: Boolean, default: false },
+    /** Minimum seconds between “call waiter” taps from guest QR app (default 5 minutes). */
+    guestWaiterCallCooldownSeconds: { type: Number, default: 300, min: 30, max: 3600 },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },

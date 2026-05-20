@@ -14,6 +14,16 @@ const paymentReceiptSchema = new mongoose.Schema(
     requestedPlanCode: { type: String, default: '', trim: true },
     expectedAmount: { type: Number, default: 0, min: 0 },
     amountMatchesExpected: { type: Boolean, default: false },
+    /** subscription renewal vs paid feature add-on */
+    receiptKind: {
+      type: String,
+      enum: ['subscription', 'addon'],
+      default: 'subscription',
+      index: true,
+    },
+    /** When receiptKind is addon — e.g. qr_ordering */
+    addonCode: { type: String, default: '', trim: true, lowercase: true },
+
     paymentMethod: {
       type: String,
       enum: ['bank_transfer', 'stripe', 'paypal'],

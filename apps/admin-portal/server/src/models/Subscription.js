@@ -16,6 +16,8 @@ const subscriptionSchema = new mongoose.Schema(
     planId: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', default: null, index: true },
     planCode: { type: String, default: '', trim: true },
     amount: { type: Number, default: 0, min: 0 },
+    /** Portion of `amount` from active paid add-ons at time of renewal (for billing UI). */
+    addonAmount: { type: Number, default: 0, min: 0 },
     currency: { type: String, default: 'LKR', trim: true, uppercase: true },
     durationDays: { type: Number, default: 0, min: 0 },
     startDate: { type: Date, required: true },

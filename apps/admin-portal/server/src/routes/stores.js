@@ -103,13 +103,17 @@ router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), t
     });
     if (!store) return res.status(404).json({ message: 'Store not found' });
 
-    const { name, code, address, phone, paymentMethods, isActive, tableManagementEnabled } = body;
+    const { name, code, address, phone, paymentMethods, isActive, tableManagementEnabled, guestWaiterCallCooldownSeconds } = body;
     if (name !== undefined) store.name = name.trim();
     if (code !== undefined) store.code = code.trim().toUpperCase();
     if (address !== undefined) store.address = address.trim();
     if (phone !== undefined) store.phone = phone.trim();
     if (paymentMethods !== undefined) store.paymentMethods = normalizePaymentMethods(paymentMethods);
     if (tableManagementEnabled !== undefined) store.tableManagementEnabled = Boolean(tableManagementEnabled);
+    if (guestWaiterCallCooldownSeconds !== undefined) {
+      const n = parseInt(guestWaiterCallCooldownSeconds, 10);
+      if (Number.isFinite(n)) store.guestWaiterCallCooldownSeconds = Math.min(3600, Math.max(30, n));
+    }
     if (isActive !== undefined) {
       const nextActive = Boolean(isActive);
       if (req.user.role === 'superadmin') {

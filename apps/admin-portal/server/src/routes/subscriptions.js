@@ -15,6 +15,11 @@ const { notifySuperAdmins, notifyMerchantAdmins } = require('../lib/notification
 const { notifySubscriptionEvent } = require('../lib/subscriptionNotify');
 const { resolveTenantPeriodEnd } = require('../lib/subscriptionDates');
 const { parsePageQuery, paginated } = require('../lib/listPagination');
+const {
+  computeSubscriptionRenewalExpected,
+  getAddonByCode,
+  priceAddonForPlan,
+} = require('../lib/addonBilling');
 
 const router = express.Router();
 
@@ -120,6 +125,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       paymentDate,
       notes,
       planId,
+      addonCode,
       paymentMethod = 'bank_transfer',
     } = req.body;
     const method = ['bank_transfer', 'stripe', 'paypal'].includes(paymentMethod)
@@ -139,15 +145,106 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       return res.status(400).json({ message: 'amount must be a positive number' });
     }
 
-    const tenant = await Tenant.findById(req.tenantId).select('businessName assignedPlanId planLocked countryIso');
+    const tenant = await Tenant.findById(req.tenantId).select(
+      'businessName assignedPlanId planLocked countryIso paidAddons',
+    );
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+    const addonCodeNorm = String(addonCode || '').trim().toLowerCase();
+
+    if (addonCodeNorm) {
+      const addon = await getAddonByCode(addonCodeNorm);
+      if (!addon || !addon.isActive) {
+        return res.status(400).json({ message: 'Unknown or inactive add-on' });
+      }
+      if (addonCodeNorm === 'qr_ordering' && tenant.paidAddons?.qrOrdering?.active) {
+        return res.status(400).json({ message: 'Guest QR ordering is already active for your account' });
+      }
+      const pricePlan = await resolveRequestedPlan({ tenant, planId });
+      if (!pricePlan) {
+        return res.status(400).json({ message: 'No active plan is assigned. Please contact support.' });
+      }
+      const priced = priceAddonForPlan(addon, pricePlan);
+      if (!priced.amount || priced.amount <= 0) {
+        return res.status(400).json({ message: 'Add-on price is not configured yet. Contact support.' });
+      }
+      if (!amountsEqual(amountValue, priced.amount)) {
+        return res.status(400).json({
+          message: `Amount must exactly match the add-on price (${priced.currency} ${Number(priced.amount).toLocaleString()}).`,
+        });
+      }
+
+      let receiptFileKey = '';
+      if (req.file) {
+        try {
+          const form = new FormData();
+          form.append('file', req.file.buffer, {
+            filename: req.file.originalname || 'receipt',
+            contentType: req.file.mimetype,
+          });
+          form.append('type', 'receipt');
+          const token = req.headers.authorization;
+          const uploadRes = await axios.post(
+            `${process.env.UPLOAD_SERVICE_URL || 'http://localhost:3002'}/upload`,
+            form,
+            {
+              headers: { ...form.getHeaders(), Authorization: token },
+              timeout: require('@innovapos/shared-middleware').resolveUploadProxyTimeoutMs(),
+              maxContentLength: Infinity,
+              maxBodyLength: Infinity,
+            },
+          );
+          receiptFileKey = uploadRes.data.key;
+        } catch (uploadErr) {
+          return res.status(500).json({ message: 'Failed to upload receipt file' });
+        }
+      }
+
+      const receipt = await PaymentReceipt.create({
+        tenantId: req.tenantId,
+        receiptKind: 'addon',
+        addonCode: addonCodeNorm,
+        paymentMethod: method,
+        amount: amountValue,
+        currency: priced.currency || 'LKR',
+        requestedPlanId: pricePlan._id,
+        requestedPlanCode: pricePlan.code,
+        expectedAmount: priced.amount,
+        amountMatchesExpected: true,
+        bankReference: bankReference.trim(),
+        bankName: (bankName || '').trim(),
+        paymentDate: new Date(paymentDate),
+        receiptFileUrl: '',
+        receiptFileKey,
+        notes: (notes || '').trim(),
+        createdBy: req.user.id,
+      });
+
+      try {
+        const supers = await User.find({ role: 'superadmin', isActive: true }).select('_id email').lean();
+        if (supers.length) {
+          await notifySuperAdmins(req.tenantId, {
+            type: 'payment_receipt_submitted',
+            title: 'Add-on payment receipt submitted',
+            body: `A merchant submitted a bank receipt for add-on "${addonCodeNorm}".`,
+            meta: { resourceType: 'tenant', resourceId: String(req.tenantId), receiptId: String(receipt._id) },
+          });
+        }
+      } catch (_) {}
+
+      return res.status(201).json(receipt);
+    }
+
     const requestedPlan = await resolveRequestedPlan({ tenant, planId });
     if (!requestedPlan) {
       return res.status(400).json({ message: 'No active plan is assigned. Please contact support.' });
     }
-    if (!amountsEqual(amountValue, requestedPlan.amount)) {
+
+    const renewal = await computeSubscriptionRenewalExpected(tenant);
+    const expectedTotal = renewal.total > 0 ? renewal.total : Number(requestedPlan.amount) || 0;
+    if (!amountsEqual(amountValue, expectedTotal)) {
       return res.status(400).json({
-        message: `Amount must exactly match the plan amount (${requestedPlan.currency} ${Number(requestedPlan.amount).toLocaleString()}).`,
+        message: `Amount must exactly match the expected renewal total (${requestedPlan.currency} ${Number(expectedTotal).toLocaleString()}) including any active paid add-ons.`,
       });
     }
 
@@ -181,12 +278,14 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
 
     const receipt = await PaymentReceipt.create({
       tenantId: req.tenantId,
+      receiptKind: 'subscription',
+      addonCode: '',
       paymentMethod: method,
       amount: amountValue,
       currency: requestedPlan.currency || 'LKR',
       requestedPlanId: requestedPlan._id,
       requestedPlanCode: requestedPlan.code,
-      expectedAmount: requestedPlan.amount,
+      expectedAmount: expectedTotal,
       amountMatchesExpected: true,
       bankReference: bankReference.trim(),
       bankName: (bankName || '').trim(),
@@ -286,7 +385,43 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
     }
 
     if (!receipt.amountMatchesExpected) {
-      return res.status(400).json({ message: 'Receipt amount does not match expected plan amount' });
+      return res.status(400).json({ message: 'Receipt amount does not match expected amount' });
+    }
+
+    if (receipt.receiptKind === 'addon') {
+      const { activatePaidAddonForTenant } = require('../lib/addonActivation');
+      const tenantId = receipt.tenantId?._id || receipt.tenantId;
+      await activatePaidAddonForTenant(tenantId, receipt.addonCode, {
+        amount: receipt.amount,
+        currency: receipt.currency,
+        paymentMethod: receipt.paymentMethod,
+      });
+      const now = new Date();
+      receipt.status = 'verified';
+      receipt.verifiedBy = req.user.id;
+      receipt.verifiedAt = now;
+      receipt.subscriptionExtended = false;
+      receipt.updatedBy = req.user.id;
+      await receipt.save();
+
+      await emitAudit({
+        req,
+        action: 'ADDON_PAYMENT_VERIFIED',
+        resource: 'PaymentReceipt',
+        resourceId: receipt._id,
+        changes: { after: { addonCode: receipt.addonCode } },
+      });
+
+      try {
+        await notifyMerchantAdmins(tenantId, {
+          type: 'subscription_approved',
+          title: 'Add-on activated',
+          body: `Your paid add-on "${receipt.addonCode}" is now active.`,
+          meta: { resourceType: 'tenant', resourceId: String(tenantId), receiptId: String(receipt._id) },
+        }).catch(() => {});
+      } catch (_) {}
+
+      return res.json({ message: 'Add-on activated', receipt });
     }
 
     const plan = receipt.requestedPlanId
@@ -309,12 +444,16 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
     const newEnd = new Date(Math.max(currentEnd.getTime(), now.getTime()));
     newEnd.setDate(newEnd.getDate() + extensionDays);
 
+    const planAmount = Number(plan.amount) || 0;
+    const addonPortion = Math.max(0, Number(receipt.amount) - planAmount);
+
     const subscription = await Subscription.create({
       tenantId: tenant._id,
       plan: plan.billingCycle || 'custom',
       planId: plan._id,
       planCode: plan.code,
-      amount: plan.amount,
+      amount: Number(receipt.amount) || planAmount,
+      addonAmount: addonPortion,
       currency: plan.currency || 'LKR',
       durationDays: extensionDays,
       startDate: now,
@@ -351,7 +490,7 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
     receipt.verifiedAt = now;
     receipt.subscriptionExtended = true;
     receipt.extensionDays = extensionDays;
-    receipt.amountMatchesExpected = amountsEqual(receipt.amount, plan.amount);
+    receipt.amountMatchesExpected = amountsEqual(receipt.amount, receipt.expectedAmount);
     receipt.subscriptionId = subscription._id;
     receipt.updatedBy = req.user.id;
     await receipt.save();
@@ -491,7 +630,8 @@ router.get('/my', authenticateJWT, authorize('merchant_admin'), async (req, res)
       .lean();
     receipts = await attachFreshReceiptUrls(receipts);
 
-    res.json({ tenant, subscriptions, receipts });
+    const renewal = await computeSubscriptionRenewalExpected(tenant);
+    res.json({ tenant, subscriptions, receipts, billingBreakdown: renewal });
   } catch (err) {
     sendRouteError(res, err, { req });
   }

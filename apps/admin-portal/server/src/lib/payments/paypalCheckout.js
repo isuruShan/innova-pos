@@ -27,6 +27,40 @@ async function getAccessToken() {
   return { token: data.access_token, mode };
 }
 
+async function createAddonOrder({ tenant, addonCode, amount, currency, description }) {
+  const { token, mode } = await getAccessToken();
+  const cur = currency || 'LKR';
+  const value = Number(amount).toFixed(2);
+  const code = String(addonCode || '').trim().toLowerCase();
+
+  const { data } = await axios.post(
+    `${apiBase(mode)}/v2/checkout/orders`,
+    {
+      intent: 'CAPTURE',
+      purchase_units: [
+        {
+          reference_id: String(tenant._id),
+          custom_id: `${tenant._id}:addon:${code}`,
+          amount: {
+            currency_code: cur,
+            value,
+          },
+          description: description || `Cafinity add-on: ${code}`,
+        },
+      ],
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      timeout: 20000,
+    },
+  );
+
+  return { orderId: data.id, mode };
+}
+
 async function createOrder({ tenant, plan }) {
   const { token, mode } = await getAccessToken();
   const currency = plan.currency || 'LKR';
@@ -76,4 +110,4 @@ async function captureOrder(orderId) {
   return data;
 }
 
-module.exports = { createOrder, captureOrder, getAccessToken };
+module.exports = { createOrder, createAddonOrder, captureOrder, getAccessToken };

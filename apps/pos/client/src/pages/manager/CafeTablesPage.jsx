@@ -119,6 +119,13 @@ export default function CafeTablesPage() {
 
   const tmEnabled = selectedStore?.tableManagementEnabled === true;
 
+  const [qrAddonModal, setQrAddonModal] = useState(false);
+
+  const adminSubscriptionUrl = useMemo(() => {
+    const base = (import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174').replace(/\/$/, '');
+    return `${base}/subscription?addon=qr_ordering`;
+  }, []);
+
   const heading = useMemo(
     () => (
       <div>
@@ -194,6 +201,23 @@ export default function CafeTablesPage() {
                 <Plus size={16} /> Add table
               </button>
             </form>
+
+            <div className="rounded-xl border border-teal-700/40 bg-teal-950/25 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-teal-100">Guest QR ordering is a paid add-on</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Merchants activate it in the admin portal (subscription). Until it is active, guests opening your table
+                  QR link will see an error.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQrAddonModal(true)}
+                className="text-sm font-semibold px-4 py-2 rounded-lg bg-teal-600 text-white hover:bg-teal-500 shrink-0"
+              >
+                What is this? & subscribe
+              </button>
+            </div>
 
             <div className="rounded-xl border border-slate-700/60 bg-[var(--pos-panel)] overflow-hidden">
               {isPending ? (
@@ -278,6 +302,47 @@ export default function CafeTablesPage() {
           </p>
         ) : null}
       </div>
+
+      {qrAddonModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="qr-addon-title"
+        >
+          <div className="bg-[var(--pos-panel)] rounded-2xl w-full max-w-md p-6 shadow-xl border border-slate-700 space-y-4">
+            <h3 id="qr-addon-title" className="font-bold text-[var(--pos-text-primary)] text-lg">
+              Guest QR table ordering
+            </h3>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              Guests scan a QR code at the table to browse your menu, build a cart, and send orders to the kitchen. This is
+              billed as an add-on to your subscription (price follows your monthly or yearly billing period). Pay by PayPal
+              or bank transfer in the admin portal, then super admin verifies bank receipts.
+            </p>
+            <p className="text-xs text-amber-200/90">
+              Opens the subscription page in a new tab so you can stay on the POS while you pay.
+            </p>
+            <div className="flex flex-col-reverse sm:flex-row gap-2 pt-1">
+              <button
+                type="button"
+                className="flex-1 py-2.5 border border-slate-600 rounded-xl text-sm text-slate-300"
+                onClick={() => setQrAddonModal(false)}
+              >
+                Close
+              </button>
+              <a
+                href={adminSubscriptionUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-2.5 rounded-xl bg-amber-500 text-[var(--pos-selection-text)] text-sm font-semibold text-center"
+                onClick={() => setQrAddonModal(false)}
+              >
+                Open subscription & pay
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">

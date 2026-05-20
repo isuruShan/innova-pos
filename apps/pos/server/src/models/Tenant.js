@@ -27,6 +27,16 @@ const tenantSchema = new mongoose.Schema(
     subscriptionExpiryReminderSentForEndDate: { type: Date, default: null },
     /** Prevent duplicate deactivation emails/notifications for the same expiry end date. */
     subscriptionDeactivationNotifiedForEndDate: { type: Date, default: null },
+
+    paidAddons: {
+      qrOrdering: {
+        active: { type: Boolean, default: false },
+        activatedAt: { type: Date, default: null },
+        amountPerCycle: { type: Number, default: 0, min: 0 },
+        currency: { type: String, default: '', trim: true, uppercase: true },
+      },
+    },
+
     adminCount: { type: Number, default: 0, min: 0, max: 2 },
 
     // Branding — managed via admin portal
