@@ -26,24 +26,45 @@ async function getAddonByCode(code) {
   return PaidAddonDefinition.findOne({ code: c }).lean();
 }
 
+const DEFAULT_QR_SCREENSHOTS = [
+  '/addons/qr-ordering-menu.svg',
+  '/addons/qr-ordering-cart.svg',
+  '/addons/qr-ordering-order.svg',
+];
+
 async function ensureDefaultPaidAddons() {
-  const exists = await PaidAddonDefinition.exists({ code: 'qr_ordering' });
-  if (!exists) {
+  const defaults = {
+    name: 'QR Ordering',
+    shortDescription: 'Guests scan a QR at the table to browse your menu and send orders to the kitchen.',
+    longDescription:
+      'When enabled, each table has a QR code that opens a mobile-friendly ordering page. ' +
+      'Guests add items to a cart and confirm; your POS staff see updates in real time. ' +
+      'Pricing follows your subscription billing period (monthly or yearly).',
+    screenshotUrls: DEFAULT_QR_SCREENSHOTS,
+    isActive: true,
+    sortOrder: 0,
+  };
+  const existing = await PaidAddonDefinition.findOne({ code: 'qr_ordering' });
+  if (!existing) {
     await PaidAddonDefinition.create({
       code: 'qr_ordering',
-      name: 'Guest QR table ordering',
-      shortDescription: 'Guests scan a QR at the table to browse your menu and send orders to the kitchen.',
-      longDescription:
-        'When enabled, each table has a QR code that opens a mobile-friendly ordering page. ' +
-        'Guests add items to a cart and confirm; your POS staff see updates in real time. ' +
-        'Pricing follows your subscription billing period (monthly or yearly).',
       monthlyAmount: 0,
       yearlyAmount: 0,
       currency: 'LKR',
-      isActive: true,
-      sortOrder: 0,
+      ...defaults,
     });
+    return;
   }
+  let changed = false;
+  if (existing.name !== defaults.name) {
+    existing.name = defaults.name;
+    changed = true;
+  }
+  if (!existing.screenshotUrls?.length) {
+    existing.screenshotUrls = defaults.screenshotUrls;
+    changed = true;
+  }
+  if (changed) await existing.save();
 }
 
 /**
@@ -65,11 +86,12 @@ async function computeSubscriptionRenewalExpected(tenant) {
 
   const addons = [];
   let addonTotal = 0;
+  const { isQrOrderingEffective } = require('./addonPeriod');
   const qr = t.paidAddons?.qrOrdering;
-  if (qr?.active && qr.amountPerCycle > 0) {
+  if (isQrOrderingEffective(t.paidAddons) && qr.amountPerCycle > 0) {
     addons.push({
       code: 'qr_ordering',
-      label: 'Guest QR ordering',
+      label: 'QR Ordering',
       amount: Number(qr.amountPerCycle) || 0,
     });
     addonTotal += Number(qr.amountPerCycle) || 0;

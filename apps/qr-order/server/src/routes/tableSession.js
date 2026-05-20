@@ -54,13 +54,16 @@ async function loadTableSession(tenantId, storeId, tableId) {
     { _id: ids.tenantId },
     { projection: { paidAddons: 1 } },
   );
-  const qrAddonActive = Boolean(tenantRow?.paidAddons?.qrOrdering?.active);
+  const qr = tenantRow?.paidAddons?.qrOrdering;
+  const qrAddonActive =
+    Boolean(qr?.active) &&
+    (!qr?.periodEndsAt || new Date() < new Date(qr.periodEndsAt));
   if (!qrAddonActive) {
     return {
       error: {
         status: 402,
         message:
-          'Guest QR ordering is not activated for this business yet. Please ask the venue to enable the QR ordering add-on in their subscription.',
+          'QR Ordering is not active for this business yet. Please ask the venue to enable it from their admin add-ons page.',
       },
     };
   }

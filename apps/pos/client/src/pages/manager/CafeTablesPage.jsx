@@ -204,7 +204,7 @@ export default function CafeTablesPage() {
 
             <div className="rounded-xl border border-teal-700/40 bg-teal-950/25 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-teal-100">Guest QR ordering is a paid add-on</p>
+                <p className="text-sm font-semibold text-teal-100">QR Ordering is a paid add-on</p>
                 <p className="text-xs text-slate-400 mt-1">
                   Merchants activate it in the admin portal (subscription). Until it is active, guests opening your table
                   QR link will see an error.
@@ -312,7 +312,7 @@ export default function CafeTablesPage() {
         >
           <div className="bg-[var(--pos-panel)] rounded-2xl w-full max-w-md p-6 shadow-xl border border-slate-700 space-y-4">
             <h3 id="qr-addon-title" className="font-bold text-[var(--pos-text-primary)] text-lg">
-              Guest QR table ordering
+              QR Ordering
             </h3>
             <p className="text-sm text-slate-400 leading-relaxed">
               Guests scan a QR code at the table to browse your menu, build a cart, and send orders to the kitchen. This is

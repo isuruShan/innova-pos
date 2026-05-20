@@ -3,22 +3,21 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Loader,
-  CheckCircle,
   AlertTriangle,
   ExternalLink,
   FileText,
   X,
-  Sparkles,
   ArrowLeft,
   Upload,
 } from 'lucide-react';
 import api from '../../api/axios';
 import AdminDateField from '../../components/AdminDateField';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
+import AddonCatalogTiles from '../../components/addons/AddonCatalogTiles';
 import { useToast } from '../../context/ToastContext';
 
 /**
- * Paid add-ons (e.g. Guest QR ordering): review first, then choose an admin-configured
+ * Paid add-ons (e.g. QR Ordering): review first, then choose an admin-configured
  * payment method, then complete PayPal or bank transfer in a dedicated step.
  */
 export default function MerchantAddonsPage() {
@@ -80,11 +79,35 @@ export default function MerchantAddonsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
       queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
-      toast.success('Receipt submitted. We will verify it shortly.');
+      toast.success('Receipt submitted. Pending super admin approval.');
       closeFlow();
     },
     onError: (err) => setAddonApiError(err.response?.data?.message || 'Upload failed'),
   });
+
+  const [unsubscribingCode, setUnsubscribingCode] = useState('');
+
+  const unsubscribeMutation = useMutation({
+    mutationFn: (code) => api.post(`/paid-addons/${encodeURIComponent(code)}/unsubscribe`).then((r) => r.data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      toast.success(data?.message || 'Unsubscribe scheduled.');
+      setUnsubscribingCode('');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Could not unsubscribe');
+      setUnsubscribingCode('');
+    },
+  });
+
+  const handleUnsubscribe = (row) => {
+    if (!window.confirm(
+      `Unsubscribe from ${row.name}? It will stay active until the end of your current paid period, then turn off.`,
+    )) return;
+    setUnsubscribingCode(row.code);
+    unsubscribeMutation.mutate(row.code);
+  };
 
   const closeFlow = useCallback(() => {
     setSelectedAddon(null);
@@ -111,7 +134,7 @@ export default function MerchantAddonsPage() {
     const code = String(searchParams.get('code') || '').trim().toLowerCase();
     if (!code || !catalog.length) return;
     const row = catalog.find((a) => a.code === code);
-    if (row && !row.alreadyActive) openAddon(row);
+    if (row && row.canSubscribe) openAddon(row);
   }, [searchParams, catalog, openAddon]);
 
   const paypalCurrency = useMemo(
@@ -144,7 +167,9 @@ export default function MerchantAddonsPage() {
     if (flowStep !== 'pay' || chosenMethod !== 'paypal' || !paypalReady || !window.paypal || !addonPaypalContainerRef.current) {
       return undefined;
     }
-    if (!selectedAddon?.priced?.amount || selectedAddon.alreadyActive) return undefined;
+    if (!selectedAddon?.priced?.amount || selectedAddon.alreadyActive || selectedAddon.pendingVerification) {
+      return undefined;
+    }
     const el = addonPaypalContainerRef.current;
     el.innerHTML = '';
     const buttons = window.paypal.Buttons({
@@ -224,60 +249,15 @@ export default function MerchantAddonsPage() {
         </div>
       )}
 
-      {catalogPending ? (
-        <div className="flex items-center gap-2 text-gray-500 text-sm py-12 justify-center">
-          <Loader className="animate-spin" size={18} /> Loading add-ons…
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {catalog.length === 0 ? (
-            <p className="text-sm text-gray-500">No add-ons are available right now.</p>
-          ) : (
-            catalog.map((row) => (
-              <div
-                key={row.code}
-                className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-              >
-                <div className="flex gap-3 min-w-0">
-                  <div className="shrink-0 w-10 h-10 rounded-lg bg-brand-orange/10 flex items-center justify-center text-brand-orange">
-                    <Sparkles size={20} />
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-semibold text-gray-900">{row.name}</h3>
-                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">{row.shortDescription}</p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      {row.plan?.name ? `Priced with plan: ${row.plan.name} · ` : null}
-                      {row.billingLabel}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-stretch sm:items-end gap-2 shrink-0">
-                  {row.alreadyActive ? (
-                    <span className="inline-flex items-center gap-1 text-sm font-medium text-green-700">
-                      <CheckCircle size={16} /> Active
-                    </span>
-                  ) : !row.priced?.amount ? (
-                    <p className="text-xs text-amber-700 text-right">Pricing not set — contact support.</p>
-                  ) : (
-                    <>
-                      <p className="text-lg font-bold text-gray-900 tabular-nums">
-                        {row.priced.currency} {Number(row.priced.amount).toLocaleString()}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => openAddon(row)}
-                        className="px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover"
-                      >
-                        Review & subscribe
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
+      <AddonCatalogTiles
+        catalog={catalog}
+        isLoading={catalogPending}
+        variant="list"
+        onReview={openAddon}
+        onUnsubscribe={handleUnsubscribe}
+        unsubscribePending={unsubscribeMutation.isPending}
+        unsubscribingCode={unsubscribingCode}
+      />
 
       {selectedAddon && flowStep && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
@@ -299,6 +279,22 @@ export default function MerchantAddonsPage() {
                 <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                   {selectedAddon.longDescription || selectedAddon.shortDescription}
                 </p>
+                {(selectedAddon.screenshotUrls || []).length > 0 ? (
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">App preview</p>
+                    <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+                      {selectedAddon.screenshotUrls.map((url, i) => (
+                        <img
+                          key={`${url}-${i}`}
+                          src={url}
+                          alt={`${selectedAddon.name} preview ${i + 1}`}
+                          className="snap-center shrink-0 w-[140px] sm:w-[160px] rounded-xl border border-gray-200 shadow-sm bg-gray-900 object-cover object-top"
+                          style={{ aspectRatio: '9/16' }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Your price</p>
                   <p className="text-2xl font-bold text-gray-900 tabular-nums mt-1">

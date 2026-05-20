@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, Loader, CheckCircle, AlertTriangle, ExternalLink, FileText } from 'lucide-react';
 import api from '../../api/axios';
+import AddonCatalogTiles from '../../components/addons/AddonCatalogTiles';
 import AdminDateField from '../../components/AdminDateField';
 import PlanChangeModal from '../../components/subscription/PlanChangeModal';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
@@ -11,6 +12,7 @@ import { useToast } from '../../context/ToastContext';
 export default function SubscriptionPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const navigate = useNavigate();
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const fileRef = useRef(null);
   const [form, setForm] = useState({ amount: '', bankReference: '', bankName: '', paymentDate: '', notes: '', planId: '' });
@@ -20,6 +22,7 @@ export default function SubscriptionPage() {
   const [submitted, setSubmitted] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [paypalReady, setPaypalReady] = useState(false);
+  const [unsubscribingCode, setUnsubscribingCode] = useState('');
 
   const { data } = useQuery({
     queryKey: ['my-subscription'],
@@ -40,6 +43,33 @@ export default function SubscriptionPage() {
       return data;
     },
   });
+
+  const { data: addonCatalog = [], isPending: addonCatalogPending } = useQuery({
+    queryKey: ['paid-addons-merchant-catalog'],
+    queryFn: () => api.get('/paid-addons/merchant-catalog').then((r) => r.data),
+  });
+
+  const unsubscribeMutation = useMutation({
+    mutationFn: (code) => api.post(`/paid-addons/${encodeURIComponent(code)}/unsubscribe`).then((r) => r.data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      toast.success(data?.message || 'Unsubscribe scheduled.');
+      setUnsubscribingCode('');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Could not unsubscribe');
+      setUnsubscribingCode('');
+    },
+  });
+
+  const handleAddonUnsubscribe = (row) => {
+    if (!window.confirm(
+      `Unsubscribe from ${row.name}? It will stay active until the end of your current paid period, then turn off.`,
+    )) return;
+    setUnsubscribingCode(row.code);
+    unsubscribeMutation.mutate(row.code);
+  };
 
   const schedulePlanMutation = useMutation({
     mutationFn: (planId) => api.post('/subscriptions/schedule-plan', { planId }),
@@ -211,13 +241,32 @@ export default function SubscriptionPage() {
     <div className="max-w-3xl space-y-6">
       <div>
         <h2 className="text-xl font-bold text-gray-900">Subscription</h2>
-        <p className="text-sm text-gray-500 mt-0.5">
-          Account status and plan changes. Optional features and their payments are on the{' '}
-          <Link to="/addons" className="text-brand-orange font-semibold hover:underline">
-            Add-ons
-          </Link>{' '}
-          page.
-        </p>
+        <p className="text-sm text-gray-500 mt-0.5">Account status, plan changes, and optional paid features.</p>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <h3 className="font-semibold text-gray-900">Add-ons</h3>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Optional features such as QR Ordering. Subscribe or manage from a tile, or open the{' '}
+              <Link to="/addons" className="text-brand-orange font-semibold hover:underline">
+                full add-ons page
+              </Link>
+              .
+            </p>
+          </div>
+        </div>
+        <AddonCatalogTiles
+          catalog={addonCatalog}
+          isLoading={addonCatalogPending}
+          variant="tiles"
+          linkToAddonsPage={false}
+          onReview={(row) => navigate(`/addons?code=${encodeURIComponent(row.code)}`)}
+          onUnsubscribe={handleAddonUnsubscribe}
+          unsubscribePending={unsubscribeMutation.isPending}
+          unsubscribingCode={unsubscribingCode}
+        />
       </div>
 
       {/* Current status */}

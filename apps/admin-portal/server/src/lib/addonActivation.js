@@ -2,6 +2,9 @@
 
 const Tenant = require('../models/Tenant');
 const PaymentReceipt = require('../models/PaymentReceipt');
+const SubscriptionPlan = require('../models/SubscriptionPlan');
+const { tenantPlanAudience } = require('../utils/planAudience');
+const { computeAddonPeriodEnd } = require('./addonPeriod');
 
 /**
  * @param {string} tenantId
@@ -14,12 +17,26 @@ async function activatePaidAddonForTenant(tenantId, addonCode, opts) {
   if (!tenant) throw new Error('Tenant not found');
 
   if (code === 'qr_ordering') {
+    const audience = tenantPlanAudience(tenant.countryIso);
+    let plan = null;
+    if (tenant.assignedPlanId) {
+      plan = await SubscriptionPlan.findOne({
+        _id: tenant.assignedPlanId,
+        isActive: true,
+        planAudience: audience,
+      }).lean();
+    }
+    const activatedAt = new Date();
+    const periodEndsAt = computeAddonPeriodEnd(activatedAt, plan?.billingCycle || 'monthly');
+
     tenant.paidAddons = tenant.paidAddons || {};
     tenant.paidAddons.qrOrdering = {
       active: true,
-      activatedAt: new Date(),
+      activatedAt,
       amountPerCycle: Number(opts.amount) || 0,
       currency: String(opts.currency || 'LKR').toUpperCase(),
+      periodEndsAt,
+      cancelAtPeriodEnd: false,
     };
     await tenant.save();
     return tenant;

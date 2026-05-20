@@ -460,7 +460,7 @@ function GuestQrTab() {
 
 const TABS = [
   { id: 'charges', label: 'Order Charges', icon: SettingsIcon },
-  { id: 'guestqr', label: 'Guest QR', icon: ShoppingCart },
+  { id: 'guestqr', label: 'QR Ordering', icon: ShoppingCart },
   { id: 'users',   label: 'Staff Users',   icon: Users },
   { id: 'payments', label: 'Store Payments', icon: Hash },
 ];

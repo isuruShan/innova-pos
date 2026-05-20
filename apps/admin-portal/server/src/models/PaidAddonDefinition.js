@@ -12,6 +12,8 @@ const paidAddonDefinitionSchema = new mongoose.Schema(
     shortDescription: { type: String, default: '', trim: true },
     /** Longer HTML-safe text (line breaks preserved) */
     longDescription: { type: String, default: '', trim: true },
+    /** Public URLs for preview screenshots (merchant purchase modal) */
+    screenshotUrls: { type: [String], default: [] },
     /** Added when merchant is on a monthly-billed plan */
     monthlyAmount: { type: Number, required: true, min: 0 },
     /** Added when merchant is on a yearly-billed plan (falls back to monthly×12 if 0) */

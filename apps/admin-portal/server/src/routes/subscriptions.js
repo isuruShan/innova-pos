@@ -157,8 +157,13 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       if (!addon || !addon.isActive) {
         return res.status(400).json({ message: 'Unknown or inactive add-on' });
       }
-      if (addonCodeNorm === 'qr_ordering' && tenant.paidAddons?.qrOrdering?.active) {
-        return res.status(400).json({ message: 'Guest QR ordering is already active for your account' });
+      const { getAddonMerchantState } = require('../lib/addonMerchantState');
+      const addonState = await getAddonMerchantState(tenant, addonCodeNorm);
+      if (addonState.alreadyActive) {
+        return res.status(400).json({ message: 'This add-on is already active for your account' });
+      }
+      if (addonState.pendingVerification) {
+        return res.status(400).json({ message: 'A payment for this add-on is already pending verification' });
       }
       const pricePlan = await resolveRequestedPlan({ tenant, planId });
       if (!pricePlan) {

@@ -40,6 +40,15 @@ function itemPhotoUrls(item) {
   return [];
 }
 
+function formatWaiterCooldown(totalSeconds) {
+  if (totalSeconds >= 60) {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+  return `${totalSeconds}s`;
+}
+
 const STATUS_LABEL = {
   pending: 'Received',
   preparing: 'Preparing',
@@ -633,7 +642,7 @@ export default function TableOrderApp() {
               )}
             </div>
             {cart.length > 0 && (
-              <div className="shrink-0 border-t border-slate-700/80 bg-[var(--qr-panel)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] space-y-3 z-20">
+              <div className="shrink-0 border-t border-slate-700/80 bg-[var(--qr-panel)] px-4 py-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] space-y-3 z-20 shadow-[0_-8px_24px_rgba(0,0,0,0.35)]">
                 <div className="flex items-center justify-between pt-1 border-t border-slate-600/50">
                   <span className="font-semibold text-slate-100">Subtotal</span>
                   <span className="font-bold tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
@@ -666,31 +675,33 @@ export default function TableOrderApp() {
         )}
       </div>
 
-      <button
-        type="button"
-        className="fixed z-40 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed right-3 max-w-[min(100vw-1.5rem,20rem)]"
-        style={{
-          bottom: 'calc(4.25rem + env(safe-area-inset-bottom, 0px))',
-          backgroundColor: 'var(--qr-accent, #f59e0b)',
-        }}
-        disabled={callingWaiter || waiterSecondsLeft > 0}
-        onClick={onCallWaiter}
-        aria-label="Call waiter"
-      >
-        {callingWaiter ? (
-          <>
-            <Loader2 className="animate-spin w-4 h-4" /> Sending…
-          </>
-        ) : waiterSecondsLeft > 0 ? (
-          <>
-            <BellRing size={16} /> Wait {waiterSecondsLeft}s
-          </>
-        ) : (
-          <>
-            <BellRing size={16} /> Call waiter
-          </>
-        )}
-      </button>
+      {tab !== 'cart' && (
+        <button
+          type="button"
+          className="fixed z-40 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed right-3 max-w-[min(100vw-1.5rem,20rem)]"
+          style={{
+            bottom: 'calc(4.25rem + env(safe-area-inset-bottom, 0px))',
+            backgroundColor: 'var(--qr-accent, #f59e0b)',
+          }}
+          disabled={callingWaiter || waiterSecondsLeft > 0}
+          onClick={onCallWaiter}
+          aria-label="Call waiter"
+        >
+          {callingWaiter ? (
+            <>
+              <Loader2 className="animate-spin w-4 h-4" /> Sending…
+            </>
+          ) : waiterSecondsLeft > 0 ? (
+            <>
+              <BellRing size={16} /> Wait {formatWaiterCooldown(waiterSecondsLeft)}
+            </>
+          ) : (
+            <>
+              <BellRing size={16} /> Call waiter
+            </>
+          )}
+        </button>
+      )}
 
       <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-slate-700 bg-[#151f2e] pt-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.35)]">
         <button

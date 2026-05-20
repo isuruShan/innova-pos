@@ -74,6 +74,20 @@ export default function PaidAddonsPage() {
           onChange={(e) => setEdit({ ...edit, longDescription: e.target.value })}
         />
 
+        <label className="block text-sm font-medium text-gray-700">Screenshot URLs (one per line, merchant preview)</label>
+        <textarea
+          className="w-full border rounded-lg px-3 py-2 text-sm font-mono"
+          rows={3}
+          value={(edit.screenshotUrls || []).join('\n')}
+          onChange={(e) =>
+            setEdit({
+              ...edit,
+              screenshotUrls: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean),
+            })
+          }
+          placeholder="/addons/qr-ordering-menu.svg"
+        />
+
         <div className="grid sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Monthly plan add-on</label>
