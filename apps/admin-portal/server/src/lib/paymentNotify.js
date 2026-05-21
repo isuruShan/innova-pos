@@ -89,18 +89,24 @@ function buildPaymentReceiptEmailHtml(receipt, tenant, ctx) {
   }
 
   const titles = {
-    submitted: ['New payment submitted', 'Awaiting verification'],
-    verified: ['Payment verified', 'Processed successfully'],
-    rejected: ['Payment rejected', 'Action recorded'],
+    submitted: ['💳 New Payment Submitted', 'Awaiting verification'],
+    verified: ['✅ Payment Verified', 'Processed successfully'],
+    rejected: ['❌ Payment Rejected', 'Action recorded'],
   };
   const [title, subtitle] = titles[ctx.event] || titles.submitted;
 
   let extra = '';
   if (ctx.event === 'rejected' && ctx.rejectionReason) {
-    extra = emailParagraph(`<strong>Reason:</strong> ${esc(ctx.rejectionReason)}`);
+    extra = emailPanel(`
+      <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#ef4444">❌ Rejection Reason</p>
+      <p style="margin:0;color:#1e293b;line-height:1.7;font-size:15px">${esc(ctx.rejectionReason)}</p>
+    `);
   }
   if (ctx.event === 'verified' && receipt.extensionDays) {
-    extra += emailParagraph(`Subscription extended by <strong>${receipt.extensionDays} days</strong>.`);
+    extra += emailPanel(`
+      <p style="margin:0;font-size:15px;color:#10b981;font-weight:700">🎉 Success!</p>
+      <p style="margin:8px 0 0;color:#1e293b;font-size:15px">Your subscription has been extended by <strong style="color:#ff6b35">${receipt.extensionDays} days</strong>.</p>
+    `);
   }
 
   const adminBase = String(process.env.ADMIN_URL || 'http://localhost:5174').replace(/\/$/, '');
@@ -108,11 +114,11 @@ function buildPaymentReceiptEmailHtml(receipt, tenant, ctx) {
 
   return `
     ${emailHeading(title, subtitle)}
-    ${emailParagraph(`Payment details for <strong>${esc(merchant)}</strong>.`)}
-    ${lines.join('')}
+    ${emailParagraph(`Payment details for <strong style="color:#ff6b35">${esc(merchant)}</strong>.`)}
+    ${emailPanel(lines.join(''))}
     ${extra}
-    ${emailButton(reviewUrl, 'View payment in admin')}
-    <p style="margin:16px 0 0;font-size:12px;color:#94a3b8">Receipt ID: ${esc(String(receipt._id))}</p>
+    ${emailButton(reviewUrl, '📊 View Payment Details')}
+    <p style="margin:24px 0 0;font-size:13px;color:#94a3b8;text-align:center">Receipt ID: <span style="font-family:monospace;color:#64748b">${esc(String(receipt._id))}</span></p>
   `;
 }
 

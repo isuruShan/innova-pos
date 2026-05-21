@@ -26,20 +26,28 @@ const sendEmail = async ({ to, subject, html }) => {
 const sendWelcomeEmail = async ({ to, name, tempPassword, loginUrl }) => {
   await sendEmail({
     to,
-    subject: 'Welcome to Cafinity — Your account is ready',
+    subject: '🎉 Welcome to Cafinity — Your Account is Ready!',
     html: `
-      ${emailHeading('Welcome aboard!', 'Your merchant account is active')}
+      ${emailHeading('Welcome to Cafinity! 🎉', 'Your merchant account is active')}
       ${emailParagraph(`Hi <strong>${esc(name)}</strong>,`)}
-      ${emailParagraph('Your merchant account has been verified. Use the credentials below to sign in, then change your password right away.')}
+      ${emailParagraph('Congratulations! Your merchant account has been verified and is ready to use. You can start managing your café or restaurant right away.')}
       ${emailPanel(`
-        <p style="margin:0 0 10px;font-size:13px;color:#64748b;font-weight:600">Login URL</p>
-        <p style="margin:0 0 18px"><a href="${esc(loginUrl)}" style="color:#e94560;font-weight:600;text-decoration:none">${esc(loginUrl)}</a></p>
-        <p style="margin:0 0 8px;font-size:13px;color:#64748b;font-weight:600">Temporary password</p>
-        <p style="margin:0;font-size:22px;font-weight:700;letter-spacing:3px;color:#16213e;font-family:monospace">${esc(tempPassword)}</p>
+        <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#16213e;text-transform:uppercase;letter-spacing:0.05em">Your Credentials</p>
+        <div style="margin:0 0 16px">
+          <p style="margin:0 0 4px;font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase">Login URL</p>
+          <p style="margin:0"><a href="${esc(loginUrl)}" style="color:#ff6b35;font-weight:700;text-decoration:none;font-size:15px">${esc(loginUrl)}</a></p>
+        </div>
+        <div style="margin:0 0 14px;padding:12px 0;border-top:2px solid #e2e8f0">
+          <p style="margin:0 0 6px;font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase">Temporary Password</p>
+          <p style="margin:0;font-size:22px;font-weight:800;letter-spacing:3px;color:#ff6b35;font-family:monospace;background:#fff3ed;padding:14px;border-radius:8px;text-align:center">${esc(tempPassword)}</p>
+        </div>
       `)}
-      ${emailAlert('<strong style="color:#e94560">Please change your password</strong> immediately after your first login.', 'warning')}
-      ${emailParagraph('You have a <strong>30-day free trial</strong> with full access to all features.')}
-      ${emailButton(loginUrl, 'Access admin portal')}
+      ${emailAlert('<strong>🔒 Security First:</strong> Change this temporary password immediately after your first login. Never share your password with anyone!', 'warning')}
+      ${emailPanel(`
+        <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#10b981">🎁 30-Day Free Trial</p>
+        <p style="margin:0;font-size:14px;color:#64748b;line-height:1.7">You have full access to all features for 30 days. No credit card required!</p>
+      `)}
+      ${emailButton(loginUrl, '🚀 Access Admin Portal')}
     `,
   });
 };
@@ -47,16 +55,17 @@ const sendWelcomeEmail = async ({ to, name, tempPassword, loginUrl }) => {
 const sendRejectionEmail = async ({ to, name, reason }) => {
   await sendEmail({
     to,
-    subject: 'Update on your Cafinity application',
+    subject: 'Cafinity Application Status Update',
     html: `
-      ${emailHeading('Application update')}
+      ${emailHeading('Application Update', 'We\'ve reviewed your application')}
       ${emailParagraph(`Hi <strong>${esc(name)}</strong>,`)}
-      ${emailParagraph('Thank you for your interest in Cafinity. After reviewing your application, we were unable to approve it at this time.')}
+      ${emailParagraph('Thank you for your interest in Cafinity. After careful review, we were unable to approve your application at this time.')}
       ${emailAlert(`
-        <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#991b1b">Reason</p>
-        <p style="margin:0;color:#334155;line-height:1.55">${esc(reason)}</p>
+        <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#991b1b">Reason for Decision</p>
+        <p style="margin:0;color:#334155;line-height:1.7;font-size:15px">${esc(reason)}</p>
       `, 'error')}
-      ${emailParagraph('If you believe this is an error or would like to re-apply with updated information, please contact our support team using the details in the footer below.')}
+      ${emailParagraph('If you believe this is an error or would like to re-apply with updated information, please don\'t hesitate to contact our support team using the details below.')}
+      ${emailParagraph('<span style="color:#94a3b8;font-size:14px">We appreciate your understanding and wish you the best in your business endeavors.</span>')}
     `,
   });
 };
@@ -64,13 +73,19 @@ const sendRejectionEmail = async ({ to, name, reason }) => {
 const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
   await sendEmail({
     to,
-    subject: 'Cafinity password reset request',
+    subject: '🔐 Reset Your Cafinity Password',
     html: `
-      ${emailHeading('Reset your password')}
-      ${emailParagraph(`Hi ${esc(name || 'there')},`)}
-      ${emailParagraph('We received a request to reset your password. This link expires in <strong>30 minutes</strong>.')}
-      ${emailButton(resetUrl, 'Reset password')}
-      ${emailParagraph('<span style="color:#64748b;font-size:13px">If you did not request this, you can safely ignore this email.</span>')}
+      ${emailHeading('Password Reset Request 🔑', 'Reset your password securely')}
+      ${emailParagraph(`Hi <strong>${esc(name || 'there')}</strong>,`)}
+      ${emailParagraph('We received a request to reset your password. Click the button below to create a new password.')}
+      ${emailAlert('🕒 <strong>This link expires in 30 minutes</strong> for your security. If it expires, you can request a new one.', 'warning')}
+      ${emailButton(resetUrl, '🔑 Reset My Password')}
+      ${emailParagraph('<span style="color:#94a3b8;font-size:14px"><strong>Didn\'t request this?</strong> You can safely ignore this email. Your password will remain unchanged.</span>')}
+      ${emailPanel(`
+        <p style="margin:0;font-size:14px;color:#64748b;line-height:1.7">
+          <strong style="color:#16213e">🛡️ Security Tip:</strong> Always use a strong, unique password. Never share your password with anyone.
+        </p>
+      `)}
     `,
   });
 };

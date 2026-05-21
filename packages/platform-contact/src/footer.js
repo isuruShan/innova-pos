@@ -50,59 +50,59 @@ function buildEmailFooterHtml(contact) {
 
   const addressBlock =
     addressLines.length > 0
-      ? addressLines.map((line) => `<p style="margin:0 0 4px;font-size:13px;line-height:1.5;color:rgba(255,255,255,0.88)">${esc(line)}</p>`).join('')
+      ? addressLines.map((line) => `<p style="margin:0 0 6px;font-size:14px;line-height:1.6;color:rgba(255,255,255,0.92)">${esc(line)}</p>`).join('')
       : '';
 
   const contactRows = [];
   if (website) {
     contactRows.push(`
-      <p style="margin:0 0 8px;font-size:13px">
-        <a href="${esc(website)}" style="color:${BRAND.accent};text-decoration:none;font-weight:600">${esc(website.replace(/^https?:\/\//, ''))}</a>
+      <p style="margin:0 0 10px;font-size:14px">
+        <a href="${esc(website)}" style="color:${BRAND.accent};text-decoration:none;font-weight:700;transition:opacity 0.2s">${esc(website.replace(/^https?:\/\//, ''))}</a>
       </p>
     `);
   }
   if (supportEmail) {
     contactRows.push(`
-      <p style="margin:0 0 6px;font-size:13px;color:rgba(255,255,255,0.88)">
-        <span style="color:rgba(255,255,255,0.55)">Support</span>
-        <a href="mailto:${esc(supportEmail)}" style="color:${BRAND.white};text-decoration:none;margin-left:6px">${esc(supportEmail)}</a>
+      <p style="margin:0 0 8px;font-size:14px;color:rgba(255,255,255,0.92)">
+        <span style="color:rgba(255,255,255,0.6);text-transform:uppercase;font-size:11px;letter-spacing:0.05em;font-weight:700">Support</span><br/>
+        <a href="mailto:${esc(supportEmail)}" style="color:${BRAND.white};text-decoration:none;font-weight:500">${esc(supportEmail)}</a>
       </p>
     `);
   }
   if (salesEmail && salesEmail !== supportEmail) {
     contactRows.push(`
-      <p style="margin:0 0 6px;font-size:13px;color:rgba(255,255,255,0.88)">
-        <span style="color:rgba(255,255,255,0.55)">Sales</span>
-        <a href="mailto:${esc(salesEmail)}" style="color:${BRAND.white};text-decoration:none;margin-left:6px">${esc(salesEmail)}</a>
+      <p style="margin:0 0 8px;font-size:14px;color:rgba(255,255,255,0.92)">
+        <span style="color:rgba(255,255,255,0.6);text-transform:uppercase;font-size:11px;letter-spacing:0.05em;font-weight:700">Sales</span><br/>
+        <a href="mailto:${esc(salesEmail)}" style="color:${BRAND.white};text-decoration:none;font-weight:500">${esc(salesEmail)}</a>
       </p>
     `);
   }
   if (phone) {
-    contactRows.push(`<p style="margin:0 0 6px;font-size:13px;color:rgba(255,255,255,0.88)"><span style="color:rgba(255,255,255,0.55)">Tel</span> ${esc(phone)}</p>`);
+    contactRows.push(`<p style="margin:0 0 8px;font-size:14px;color:rgba(255,255,255,0.92);font-weight:500"><span style="color:rgba(255,255,255,0.6);font-weight:400">Tel:</span> ${esc(phone)}</p>`);
   }
   if (phone2) {
-    contactRows.push(`<p style="margin:0;font-size:13px;color:rgba(255,255,255,0.88)">${esc(phone2)}</p>`);
+    contactRows.push(`<p style="margin:0;font-size:14px;color:rgba(255,255,255,0.92);font-weight:500">${esc(phone2)}</p>`);
   }
 
   return `
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:${BRAND.primary};border-radius:0 0 12px 12px;overflow:hidden">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:${BRAND.gradient};border-radius:0 0 16px 16px;overflow:hidden">
       <tr>
-        <td style="height:4px;background:${BRAND.accent};font-size:0;line-height:0">&nbsp;</td>
+        <td style="height:6px;background:${BRAND.gradientWarm};font-size:0;line-height:0">&nbsp;</td>
       </tr>
       <tr>
-        <td style="padding:28px 32px 20px;text-align:center">
-          <p style="margin:0;font-size:18px;font-weight:700;color:${BRAND.white};letter-spacing:0.02em">${brand}</p>
-          <p style="margin:8px 0 0;font-size:12px;color:rgba(255,255,255,0.6)">Modern point of sale for cafés &amp; restaurants</p>
+        <td style="padding:36px 36px 24px;text-align:center">
+          <p style="margin:0;font-size:22px;font-weight:800;color:${BRAND.white};letter-spacing:-0.02em">${brand}</p>
+          <p style="margin:10px 0 0;font-size:14px;color:rgba(255,255,255,0.7);font-weight:500">Modern point of sale for cafés &amp; restaurants</p>
         </td>
       </tr>
       <tr>
-        <td style="padding:0 32px 24px">
+        <td style="padding:0 36px 28px">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
             <tr>
-              <td valign="top" style="width:50%;padding-right:12px">
-                ${addressBlock || '<p style="margin:0;font-size:13px;color:rgba(255,255,255,0.5)">&nbsp;</p>'}
+              <td valign="top" style="width:50%;padding-right:16px">
+                ${addressBlock || '<p style="margin:0;font-size:14px;color:rgba(255,255,255,0.5)">&nbsp;</p>'}
               </td>
-              <td valign="top" style="width:50%;padding-left:12px;text-align:right">
+              <td valign="top" style="width:50%;padding-left:16px;text-align:right">
                 ${contactRows.join('') || ''}
               </td>
             </tr>
@@ -111,13 +111,14 @@ function buildEmailFooterHtml(contact) {
       </tr>
       ${
         social
-          ? `<tr><td style="padding:0 32px 20px;text-align:center">${social}</td></tr>`
+          ? `<tr><td style="padding:0 36px 24px;text-align:center">${social}</td></tr>`
           : ''
       }
       <tr>
-        <td style="padding:16px 32px 24px;text-align:center;border-top:1px solid rgba(255,255,255,0.12)">
-          <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.45);line-height:1.5">
-            © ${year} ${brand}. All rights reserved.
+        <td style="padding:20px 36px 28px;text-align:center;border-top:1px solid rgba(255,255,255,0.15)">
+          <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.5);line-height:1.6;font-weight:400">
+            © ${year} ${brand}. All rights reserved.<br/>
+            <span style="opacity:0.7">Empowering cafés and restaurants with modern technology</span>
           </p>
         </td>
       </tr>
@@ -130,10 +131,16 @@ function buildEmailHeaderHtml(contact) {
   return `
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
       <tr>
-        <td style="background:${BRAND.primary};padding:32px 28px;text-align:center;border-radius:12px 12px 0 0">
-          <p style="margin:0;font-size:24px;font-weight:700;color:${BRAND.white};letter-spacing:-0.02em">${brand}</p>
-          <p style="margin:10px 0 0;font-size:13px;color:rgba(255,255,255,0.75)">Point of sale for cafés &amp; restaurants</p>
+        <td style="background:${BRAND.gradient};padding:40px 32px;text-align:center;border-radius:16px 16px 0 0;position:relative;overflow:hidden">
+          <div style="position:relative;z-index:1">
+            <p style="margin:0;font-size:30px;font-weight:900;color:${BRAND.white};letter-spacing:-0.03em;text-shadow:0 2px 8px rgba(0,0,0,0.15)">${brand}</p>
+            <p style="margin:12px 0 0;font-size:14px;color:rgba(255,255,255,0.85);font-weight:500;letter-spacing:0.02em">Point of sale for cafés &amp; restaurants</p>
+          </div>
+          <div style="position:absolute;top:0;right:0;width:200px;height:200px;background:${BRAND.gradientWarm};opacity:0.15;border-radius:50%;transform:translate(50%,-50%)"></div>
         </td>
+      </tr>
+      <tr>
+        <td style="height:6px;background:${BRAND.gradientWarm};font-size:0;line-height:0">&nbsp;</td>
       </tr>
     </table>
   `.trim();
