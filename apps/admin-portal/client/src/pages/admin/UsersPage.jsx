@@ -254,8 +254,8 @@ export default function UsersPage() {
       setPaymentError('Bank reference is required.');
       return;
     }
-    if (!bankFile) {
-      setPaymentError('Receipt upload is required.');
+    if (!bankFile || bankFile._validationError) {
+      setPaymentError(bankFile?._validationError || 'Receipt photo is required.');
       return;
     }
     const fd = new FormData();
@@ -617,23 +617,35 @@ export default function UsersPage() {
             )}
 
             {paymentStep === 'pay' && chosenMethod === 'bank_transfer' && (
-              <form onSubmit={handleBankSubmit} className="space-y-4">
+              <div className="space-y-4">
+                {paymentOptions?.bankAccounts?.length > 0 && (
+                  <div className="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                    <p className="font-medium text-gray-900">
+                      Transfer exactly {paymentQuote.priced?.currency}{' '}
+                      {Number(paymentQuote.priced?.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} to:
+                    </p>
+                    {paymentOptions.bankAccounts.map((b) => (
+                      <div key={b._id}>
+                        <p className="font-medium">{b.label} — {b.bankName}</p>
+                        <p className="text-xs">{b.accountName} · {b.accountNumber}{b.branch ? ` · ${b.branch}` : ''}</p>
+                        {b.instructions && <p className="text-xs text-gray-500 mt-0.5">{b.instructions}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <BankReceiptFields
-                  bankForm={bankForm}
-                  setBankForm={setBankForm}
-                  bankFile={bankFile}
-                  setBankFile={setBankFile}
-                  bankFileRef={bankFileRef}
-                  bankAccounts={paymentOptions?.bankAccounts || []}
-                  expectedAmount={paymentQuote.priced?.amount}
-                  currency={paymentQuote.priced?.currency}
+                  bankReference={bankForm.bankReference}
+                  onBankReferenceChange={(v) => setBankForm((f) => ({ ...f, bankReference: v }))}
+                  notes={bankForm.notes}
+                  onNotesChange={(v) => setBankForm((f) => ({ ...f, notes: v }))}
+                  file={bankFile}
+                  onFileChange={setBankFile}
+                  fileInputRef={bankFileRef}
+                  error={paymentError}
+                  isPending={bankReceiptMutation.isPending}
+                  onSubmit={handleBankSubmit}
                 />
-                {paymentError && <p className="text-sm text-red-600">{paymentError}</p>}
-                <button type="submit" disabled={bankReceiptMutation.isPending}
-                  className="w-full py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold disabled:opacity-60">
-                  {bankReceiptMutation.isPending ? 'Submitting…' : 'Submit receipt'}
-                </button>
-              </form>
+              </div>
             )}
           </div>
         </div>

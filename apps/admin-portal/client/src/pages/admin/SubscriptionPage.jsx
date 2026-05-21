@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Upload, Loader, CheckCircle, AlertTriangle, ExternalLink, FileText } from 'lucide-react';
+import { Upload, Loader, CheckCircle, AlertTriangle, ExternalLink, ImageIcon, X } from 'lucide-react';
+import { validateImageFile } from '../../components/billing/BankReceiptFields';
 import api from '../../api/axios';
 import PlanChangeModal from '../../components/subscription/PlanChangeModal';
 import BillingBreakdownPanel from '../../components/billing/BillingBreakdownPanel';
@@ -103,12 +104,19 @@ export default function SubscriptionPage() {
     onError: (err) => setErrors({ api: err.response?.data?.message || 'Request failed' }),
   });
 
+  const ACCEPTED_IMG = 'image/jpeg,image/png,image/webp,image/gif';
+  const ACCEPTED_EXT = '.jpg,.jpeg,.png,.webp,.gif';
+
   const validate = () => {
     const e = {};
     if (!form.amount || isNaN(form.amount) || parseFloat(form.amount) <= 0) e.amount = 'Valid amount required';
     if (!form.planId) e.planId = 'Plan selection is required';
     if (!form.bankReference.trim()) e.bankReference = 'Bank reference required';
-    if (!file) e.receipt = 'Receipt upload is required';
+    if (!file) { e.receipt = 'Receipt photo is required'; }
+    else {
+      const imgErr = validateImageFile(file);
+      if (imgErr) e.receipt = imgErr;
+    }
     return e;
   };
 
@@ -510,21 +518,47 @@ export default function SubscriptionPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Receipt photo / PDF *</label>
-              <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => { setFile(e.target.files[0]); setErrors((e2) => ({ ...e2, receipt: '' })); }} className="hidden" />
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700">Receipt photo *</label>
+                <span
+                  title="Upload a photo of your bank payment receipt. Accepted formats: JPG, PNG, WEBP or GIF."
+                  className="inline-flex items-center gap-1 text-xs text-gray-400 cursor-help select-none"
+                >
+                  <ImageIcon size={12} /> Images only (JPG, PNG, WEBP, GIF)
+                </span>
+              </div>
+              <input
+                ref={fileRef}
+                type="file"
+                accept={ACCEPTED_EXT}
+                onChange={(e) => {
+                  const chosen = e.target.files?.[0] || null;
+                  if (chosen) {
+                    const imgErr = validateImageFile(chosen);
+                    if (imgErr) { e.target.value = ''; setErrors((e2) => ({ ...e2, receipt: imgErr })); return; }
+                  }
+                  setFile(chosen);
+                  setErrors((e2) => ({ ...e2, receipt: '' }));
+                }}
+                className="hidden"
+              />
               {file ? (
                 <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <FileText size={16} className="text-green-600 shrink-0" />
+                  <ImageIcon size={16} className="text-green-600 shrink-0" />
                   <span className="text-sm text-green-700 flex-1 truncate">{file.name}</span>
-                  <button type="button" onClick={() => setFile(null)} className="text-gray-400 hover:text-gray-600 text-xs">Remove</button>
+                  <button type="button" onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = ''; }} className="p-0.5 rounded hover:bg-green-100 text-gray-400" aria-label="Remove">
+                    <X size={12} />
+                  </button>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className={`w-full border-2 border-dashed rounded-lg p-4 text-sm flex items-center justify-center gap-2 ${errors.receipt ? 'border-red-400 text-red-600' : 'border-gray-300 text-gray-500 hover:border-brand-orange'}`}
+                  className={`w-full border-2 border-dashed rounded-lg p-4 text-sm flex flex-col items-center justify-center gap-1.5 transition-colors ${errors.receipt ? 'border-red-400 text-red-600' : 'border-gray-300 text-gray-500 hover:border-brand-orange hover:text-brand-orange'}`}
                 >
-                  <Upload size={16} /> Upload receipt
+                  <Upload size={18} />
+                  <span>Click to upload receipt photo</span>
+                  <span className="text-xs opacity-70">JPG, PNG, WEBP or GIF</span>
                 </button>
               )}
               {errors.receipt && <p className="text-xs text-red-500 mt-0.5">{errors.receipt}</p>}

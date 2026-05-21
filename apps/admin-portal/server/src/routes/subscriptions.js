@@ -26,12 +26,14 @@ const { notifyPaymentSubmitted, notifyPaymentVerified } = require('../lib/paymen
 
 const router = express.Router();
 
+const RECEIPT_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)
-      ? cb(null, true) : cb(new Error('Only PDF or images allowed'));
+    RECEIPT_IMAGE_TYPES.includes(file.mimetype)
+      ? cb(null, true) : cb(new Error('Only image files are allowed (JPG, PNG, WEBP, GIF)'));
   },
 });
 
