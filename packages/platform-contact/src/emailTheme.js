@@ -2,9 +2,9 @@
 
 /** Cafinity brand palette for transactional email HTML. */
 const BRAND = {
-  primary: '#16213e',
+  primary: 'oklab(34.6413% -.0232849 -.0355999/.98)',
   primaryDark: '#0f1729',
-  accent: '#e94560',
+  accent: 'oklab(0.65 0.15 0.13)',
   accentSoft: '#fce8ec',
   text: '#334155',
   textMuted: '#64748b',

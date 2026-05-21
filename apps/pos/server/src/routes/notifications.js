@@ -189,6 +189,21 @@ router.patch('/:id/read', protect, tenantScope, async (req, res) => {
   }
 });
 
+router.delete('/:id', protect, tenantScope, async (req, res) => {
+  try {
+    const doc = await Notification.findOneAndDelete({
+      _id: req.params.id,
+      tenantId: req.tenantId,
+      userId: req.user.id,
+    });
+    if (!doc) return res.status(404).json({ message: 'Notification not found' });
+    publishNotificationRefresh(req.tenantId, [req.user.id]);
+    res.json({ ok: true, deleted: doc._id });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 router.post('/read-all', protect, tenantScope, async (req, res) => {
   try {
     await Notification.updateMany(

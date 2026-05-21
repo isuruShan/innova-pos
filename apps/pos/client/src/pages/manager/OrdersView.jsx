@@ -27,6 +27,19 @@ function todayStr() {
   const x = new Date();
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
 }
+
+function oneDayAgo() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function threeDaysAgo() {
+  const d = new Date();
+  d.setDate(d.getDate() - 3);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function sevenDaysAgo() {
   // Keep date calculations in local timezone so the server `since/until` range
   // matches what the Dashboard screen fetches.
@@ -45,7 +58,7 @@ export default function OrdersView() {
   const [showFilters, setShowFilters] = useState(false);
 
   const [search, setSearch]           = useState('');
-  const [fromDate, setFromDate]       = useState(sevenDaysAgo());
+  const [fromDate, setFromDate]       = useState(oneDayAgo());
   const [toDate, setToDate]           = useState(todayStr());
   const [statusFilter, setStatusFilter]     = useState([]);
   const [orderTypeFilter, setOrderTypeFilter] = useState([]);
@@ -105,7 +118,19 @@ export default function OrdersView() {
 
   const activeFilterCount =
     statusFilter.length + orderTypeFilter.length + paymentTypeFilter.length +
-    (fromDate !== sevenDaysAgo() || toDate !== todayStr() ? 1 : 0);
+    (fromDate !== oneDayAgo() || toDate !== todayStr() ? 1 : 0);
+
+  // Quick date range filters
+  const setQuickDateRange = (days) => {
+    setToDate(todayStr());
+    if (days === 1) {
+      setFromDate(oneDayAgo());
+    } else if (days === 3) {
+      setFromDate(threeDaysAgo());
+    } else if (days === 7) {
+      setFromDate(sevenDaysAgo());
+    }
+  };
 
   const liveSelected = selectedOrder
     ? orders.find(o => o._id === selectedOrder._id) || selectedOrder
@@ -194,6 +219,42 @@ export default function OrdersView() {
             {/* Date range */}
             <div>
               <p className="text-xs font-medium text-slate-400 mb-2">Date Range</p>
+              {/* Quick filter buttons */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setQuickDateRange(1)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                    fromDate === oneDayAgo() && toDate === todayStr()
+                      ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
+                      : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
+                  }`}
+                >
+                  Last 24 Hours
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickDateRange(3)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                    fromDate === threeDaysAgo() && toDate === todayStr()
+                      ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
+                      : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
+                  }`}
+                >
+                  Last 3 Days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickDateRange(7)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                    fromDate === sevenDaysAgo() && toDate === todayStr()
+                      ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
+                      : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
+                  }`}
+                >
+                  Last 7 Days
+                </button>
+              </div>
               <div className="flex gap-2">
                 <div className="flex-1">
                   <label className="text-xs text-slate-500 block mb-1">From</label>
@@ -276,7 +337,7 @@ export default function OrdersView() {
                 setStatusFilter([]);
                 setOrderTypeFilter([]);
                 setPaymentTypeFilter([]);
-                setFromDate(sevenDaysAgo());
+                setFromDate(oneDayAgo());
                 setToDate(todayStr());
               }}
               className="text-xs text-slate-500 hover:text-red-400 transition"

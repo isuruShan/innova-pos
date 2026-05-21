@@ -13,6 +13,14 @@ export const MANAGER_NAV_GROUPS = [
     ],
   },
   {
+    title: 'POS',
+    items: [
+      { to: '/register/order', label: 'New Order', icon: ShoppingCart },
+      { to: '/register/orders', label: 'Order Board', icon: ClipboardList },
+    ],
+    highlight: true,
+  },
+  {
     title: 'Menu & stock',
     items: [
       { to: '/manager/menu', label: 'Menu', icon: UtensilsCrossed },
@@ -24,8 +32,6 @@ export const MANAGER_NAV_GROUPS = [
   {
     title: 'Sales',
     items: [
-      { to: '/register/order', label: 'Register (new order)', icon: ShoppingCart },
-      { to: '/register/orders', label: 'Register (order board)', icon: ClipboardList },
       { to: '/manager/orders', label: 'Orders (admin)', icon: ClipboardList },
       { to: '/manager/cashier-sessions', label: 'Cash sessions', icon: Wallet },
     ],

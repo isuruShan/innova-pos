@@ -144,14 +144,17 @@ export default function WaiterCallBar() {
     qc.invalidateQueries({ queryKey: ['notifications-all'] });
   };
 
+  // When user clicks a notification chip:
+  // 1) Delete the notification from the database immediately
+  // 2) Open the detail modal (it will stay open until user manually closes it)
   const onChip = async (n) => {
-    if (!n.readAt) {
-      try {
-        await api.patch(`/notifications/${encodeURIComponent(n._id)}/read`);
-        invalidate();
-      } catch {
-        /* still show modal */
-      }
+    try {
+      // Delete the notification from the database
+      await api.delete(`/notifications/${encodeURIComponent(n._id)}`);
+      invalidate();
+    } catch (error) {
+      console.error('Failed to delete notification:', error);
+      /* still show modal */
     }
     setActive(n);
   };

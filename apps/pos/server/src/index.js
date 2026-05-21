@@ -30,6 +30,10 @@ await initNotificationBus(logger);
 connectDB(logger);
 require('@innovapos/analytics-core');
 
+// Initialize scheduled jobs (notification cleanup, etc.)
+const { initializeScheduledJobs } = require('./jobs/scheduler');
+initializeScheduledJobs();
+
 app.set('trust proxy', 1);
 
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false, crossOriginOpenerPolicy: false }));

@@ -237,15 +237,42 @@ Nothing listens on **port 80** until you add Nginx (or another proxy). So `**htt
 ```bash
 export EIP=3.210.65.252
 
+# POS client - needs admin URL and QR order URL
 cd apps/pos/client
-VITE_API_URL=http://${EIP}:5000/api pnpm run build
+VITE_API_URL=http://${EIP}:5000/api \
+VITE_ADMIN_URL=http://${EIP}:5001 \
+VITE_QR_ORDER_WEB_ORIGIN=http://${EIP}:5010 \
+VITE_PUBLIC_WEB_URL=http://${EIP}:5002 \
+VITE_POS_URL=http://${EIP}:5000 \
+pnpm run build
 
+# Admin portal client - needs POS URL
 cd ../../admin-portal/client
-VITE_API_URL=http://${EIP}:5001/api pnpm run build
+VITE_API_URL=http://${EIP}:5001/api \
+VITE_POS_URL=http://${EIP}:5000 \
+VITE_PUBLIC_WEB_URL=http://${EIP}:5002 \
+VITE_QR_ORDER_WEB_ORIGIN=http://${EIP}:5010 \
+pnpm run build
 
+# Public web client - needs admin URL and POS URL for sign-in modal
 cd ../../public-web/client
-VITE_PUBLIC_WEB_API_URL=http://${EIP}:5002 pnpm run build
+VITE_PUBLIC_WEB_API_URL=http://${EIP}:5002 \
+VITE_ADMIN_URL=http://${EIP}:5001 \
+VITE_POS_URL=http://${EIP}:5000 \
+VITE_PUBLIC_WEB_URL=http://${EIP}:5002 \
+VITE_QR_ORDER_WEB_ORIGIN=http://${EIP}:5010 \
+pnpm run build
+
+# QR order client - guest table ordering SPA
+cd ../../qr-order/client
+VITE_QR_ORDER_API_URL=http://${EIP}:5010 \
+VITE_POS_URL=http://${EIP}:5000 \
+VITE_ADMIN_URL=http://${EIP}:5001 \
+VITE_PUBLIC_WEB_URL=http://${EIP}:5002 \
+pnpm run build
 ```
+
+**Important:** These URLs must match exactly what users type in their browsers. QR codes generated in the POS will use `VITE_QR_ORDER_WEB_ORIGIN` (port 5010), not the POS URL (port 5000).
 
 Rebuild if the Elastic IP or ports change.
 

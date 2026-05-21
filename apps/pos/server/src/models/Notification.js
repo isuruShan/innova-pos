@@ -52,5 +52,7 @@ const notificationSchema = new mongoose.Schema(
 );
 
 notificationSchema.index({ tenantId: 1, userId: 1, readAt: 1, createdAt: -1 });
+// Index for efficient cleanup of old notifications
+notificationSchema.index({ createdAt: 1 });
 
 module.exports = mongoose.model('Notification', notificationSchema);

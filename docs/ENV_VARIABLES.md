@@ -157,15 +157,27 @@ Complete list of environment variables for all applications in the monorepo.
 
 ## 2. POS client (`apps/pos/client`) — build time only
 
+**CRITICAL:** These URLs are baked into the browser bundle at `pnpm run build`. QR codes generated in the POS will use `VITE_QR_ORDER_WEB_ORIGIN`.
 
-| Variable                        | Notes                                                              |
-| ------------------------------- | ------------------------------------------------------------------ |
-| `VITE_API_URL`                  | POS API base, e.g. `https://pos.example.com/api`                   |
-| `VITE_ADMIN_URL`                | Admin portal link in navbar                                        |
-| `VITE_ADMIN_PORTAL_URL`         | Subscription-blocked page link                                     |
-| `VITE_QR_ORDER_WEB_ORIGIN`      | Guest order app for Café table QR codes (port `5010`, not POS URL) |
-| `VITE_PUBLIC_ORDER_PAGE_ORIGIN` | Legacy fallback for QR origin                                      |
+| Variable                        | Required | Notes                                                              |
+| ------------------------------- | -------- | ------------------------------------------------------------------ |
+| `VITE_API_URL`                  | No       | POS API base, e.g. `https://pos.example.com/api` (uses proxy in dev) |
+| `VITE_ADMIN_URL`                | **YES**  | Admin portal link in navbar - must match production admin URL      |
+| `VITE_QR_ORDER_WEB_ORIGIN`      | **YES**  | Guest order app for Café table QR codes (NEVER use the POS URL)    |
+| `VITE_PUBLIC_WEB_URL`           | No       | Public marketing site (if POS links to public site)                 |
+| `VITE_POS_URL`                  | No       | POS web app (only if POS needs to link to itself externally)        |
+| `VITE_ADMIN_PORTAL_URL`         | No       | Legacy alias for `VITE_ADMIN_URL` (prefer VITE_ADMIN_URL)          |
+| `VITE_PUBLIC_ORDER_PAGE_ORIGIN` | No       | Legacy alias for `VITE_QR_ORDER_WEB_ORIGIN` (prefer VITE_QR_ORDER_WEB_ORIGIN) |
 
+**Example production build:**
+```bash
+VITE_API_URL=https://pos.cafinity.com/api \
+VITE_ADMIN_URL=https://admin.cafinity.com \
+VITE_QR_ORDER_WEB_ORIGIN=https://order.cafinity.com \
+VITE_PUBLIC_WEB_URL=https://www.cafinity.com \
+VITE_POS_URL=https://pos.cafinity.com \
+pnpm run build
+```
 
 Set in `deploy.env` or `apps/pos/client/.env.production` before `pnpm --filter @pos/client run build`.
 
@@ -214,13 +226,24 @@ Set in `deploy.env` or `apps/pos/client/.env.production` before `pnpm --filter @
 
 ## 4. Admin portal client (`apps/admin-portal/client`) — build time only
 
+**CRITICAL:** These URLs are baked into the browser bundle at `pnpm run build`. They must match your production deployment exactly.
 
-| Variable                    | Notes                                                  |
-| --------------------------- | ------------------------------------------------------ |
-| `VITE_API_URL`              | Admin API, e.g. `https://admin.example.com/api`        |
-| `VITE_POS_URL`              | “Open POS” sidebar link                                |
-| `VITE_HIDE_PAYMENT_SECRETS` | `true` hides secret fields in superadmin payment setup |
+| Variable                    | Required | Notes                                                          |
+| --------------------------- | -------- | -------------------------------------------------------------- |
+| `VITE_API_URL`              | No       | Admin API, e.g. `https://admin.example.com/api` (uses proxy in dev) |
+| `VITE_POS_URL`              | **YES**  | "Open POS" sidebar link - must point to production POS URL    |
+| `VITE_PUBLIC_WEB_URL`       | No       | Public marketing site (if linking from admin)                  |
+| `VITE_QR_ORDER_WEB_ORIGIN`  | No       | Guest QR order SPA (if admin shows order links)                |
+| `VITE_HIDE_PAYMENT_SECRETS` | No       | `true` hides secret fields in superadmin payment setup         |
 
+**Example production build:**
+```bash
+VITE_API_URL=https://admin.cafinity.com/api \
+VITE_POS_URL=https://pos.cafinity.com \
+VITE_PUBLIC_WEB_URL=https://www.cafinity.com \
+VITE_QR_ORDER_WEB_ORIGIN=https://order.cafinity.com \
+pnpm run build
+```
 
 **Example:** `apps/admin-portal/client/.env.example`
 
@@ -246,11 +269,25 @@ Set in `deploy.env` or `apps/pos/client/.env.production` before `pnpm --filter @
 
 ## 6. Public web client (`apps/public-web/client`) — build time only
 
+**CRITICAL:** These URLs are baked into the browser bundle at `pnpm run build`. They control the Sign In modal links.
 
-| Variable                  | Notes                                         |
-| ------------------------- | --------------------------------------------- |
-| `VITE_PUBLIC_WEB_API_URL` | API base; dev default `http://localhost:5002` |
+| Variable                  | Required | Notes                                                           |
+| ------------------------- | -------- | --------------------------------------------------------------- |
+| `VITE_PUBLIC_WEB_API_URL` | No       | API base; dev default `http://localhost:5002` (uses proxy in dev) |
+| `VITE_ADMIN_URL`          | **YES**  | Admin portal URL for Sign In modal - must match production     |
+| `VITE_POS_URL`            | **YES**  | POS URL for Sign In modal - must match production              |
+| `VITE_QR_ORDER_WEB_ORIGIN`| No       | Guest QR order SPA (if public web links to table ordering)      |
+| `VITE_PUBLIC_WEB_URL`     | No       | This site's public URL (for canonical links)                    |
 
+**Example production build:**
+```bash
+VITE_PUBLIC_WEB_API_URL=https://www.cafinity.com/api \
+VITE_ADMIN_URL=https://admin.cafinity.com \
+VITE_POS_URL=https://pos.cafinity.com \
+VITE_QR_ORDER_WEB_ORIGIN=https://order.cafinity.com \
+VITE_PUBLIC_WEB_URL=https://www.cafinity.com \
+pnpm run build
+```
 
 **Example:** `apps/public-web/client/.env.example`
 
@@ -273,12 +310,24 @@ Set in `deploy.env` or `apps/pos/client/.env.production` before `pnpm --filter @
 
 ## 8. QR order client (`apps/qr-order/client`) — build time only
 
+**CRITICAL:** These URLs are baked into the browser bundle at `pnpm run build`.
 
-| Variable                | Notes                                       |
-| ----------------------- | ------------------------------------------- |
-| `VITE_QR_ORDER_API_URL` | API base for guest SPA in production builds |
-| `VITE_DEV_QR_ORDER_API` | Vite dev proxy target only                  |
+| Variable                | Required | Notes                                                     |
+| ----------------------- | -------- | --------------------------------------------------------- |
+| `VITE_QR_ORDER_API_URL` | No       | API base for guest SPA in production builds (uses proxy in dev) |
+| `VITE_DEV_QR_ORDER_API` | No       | Vite dev proxy target only (not used in production)       |
+| `VITE_POS_URL`          | No       | POS URL (if QR order links back to POS)                    |
+| `VITE_ADMIN_URL`        | No       | Admin portal URL (if QR order links to admin)              |
+| `VITE_PUBLIC_WEB_URL`   | No       | Public marketing site (if QR order has links to public site) |
 
+**Example production build:**
+```bash
+VITE_QR_ORDER_API_URL=https://order.cafinity.com/api \
+VITE_POS_URL=https://pos.cafinity.com \
+VITE_ADMIN_URL=https://admin.cafinity.com \
+VITE_PUBLIC_WEB_URL=https://www.cafinity.com \
+pnpm run build
+```
 
 **Example:** `apps/qr-order/client/.env.example`
 
