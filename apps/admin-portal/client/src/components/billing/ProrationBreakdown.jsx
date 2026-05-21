@@ -5,26 +5,14 @@
  * StoresPage, etc.) can format amounts consistently without duplicating logic.
  */
 
-/** Currency code → symbol */
-const CURRENCY_SYMBOLS = {
-  LKR: 'Rs.',
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  AUD: 'A$',
-  CAD: 'C$',
-  SGD: 'S$',
-  INR: '₹',
-};
-
 /**
- * Return the display symbol for a currency code.
- * Falls back to the code itself if unknown, or 'Rs.' if code is falsy.
+ * Return the display code for a currency.
+ * Falls back to 'LKR' when the value is missing, empty, or the number 0.
  */
 export function currencySymbol(code) {
-  const str = String(code ?? '').toUpperCase().trim();
-  if (!str) return 'Rs.'; // default: LKR
-  return CURRENCY_SYMBOLS[str] ?? str;
+  const str = String(code ?? '').trim();
+  if (!str || str === '0') return 'LKR';
+  return str.toUpperCase();
 }
 
 /**
