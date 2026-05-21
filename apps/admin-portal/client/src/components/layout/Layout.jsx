@@ -23,7 +23,6 @@ const SUPERADMIN_NAV_GROUPS = [
       { label: 'Payments', icon: Receipt, to: '/payments' },
       { label: 'Plans', icon: CreditCard, to: '/plans' },
       { label: 'Paid add-ons', icon: Tag, to: '/paid-addons' },
-      { label: 'User license pricing', icon: Users, to: '/user-license-pricing' },
       { label: 'Payment setup', icon: Wallet, to: '/payment-setup' },
     ],
   },

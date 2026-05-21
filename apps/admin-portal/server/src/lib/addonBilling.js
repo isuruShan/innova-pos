@@ -228,43 +228,97 @@ async function computeSubscriptionRenewalExpected(tenant) {
     addonTotal += storeLine.amount;
   }
 
-  // Get active users for the tenant
+  // Get active users details for the tenant
   const activeUsers = await User.find({ tenantId: t._id, isActive: true })
     .sort({ createdAt: 1 })
     .lean();
 
-  if (activeUsers.length > 1) {
-    const billableUsers = activeUsers.slice(1);
-    const usersByRole = {};
-    for (const u of billableUsers) {
-      const r = u.role || 'cashier';
-      usersByRole[r] = (usersByRole[r] || 0) + 1;
-    }
+  const usersDetail = [];
+  if (activeUsers.length > 0) {
+    usersDetail.push({
+      name: activeUsers[0].name,
+      email: activeUsers[0].email,
+      role: activeUsers[0].role,
+      cost: 0,
+      isFree: true,
+    });
 
-    for (const [role, count] of Object.entries(usersByRole)) {
-      const pricing = await getRolePricing(role, t.countryIso, 'userSeat');
-      const cycle = plan.billingCycle || 'monthly';
-      const unit = cycle === 'yearly' ? pricing.yearlyAmount : pricing.monthlyAmount;
-      if (unit > 0) {
-        const totalAmount = unit * count;
-        const roleLabel = role
-          .split('_')
-          .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-          .join(' ');
-        
-        addons.push({
-          code: `user_license_${role}`,
-          label: count === 1 ? `${roleLabel} User Seat` : `${roleLabel} User Seats`,
-          amount: totalAmount,
-          quantity: count,
-          unitAmount: unit,
-          currency: pricing.currency,
+    if (activeUsers.length > 1) {
+      const billableUsers = activeUsers.slice(1);
+      const usersByRole = {};
+      for (const u of billableUsers) {
+        const r = u.role || 'cashier';
+        usersByRole[r] = (usersByRole[r] || 0) + 1;
+      }
+
+      for (const [role, count] of Object.entries(usersByRole)) {
+        const pricing = await getRolePricing(role, t.countryIso, 'userSeat');
+        const cycle = plan.billingCycle || 'monthly';
+        const unit = cycle === 'yearly' ? pricing.yearlyAmount : pricing.monthlyAmount;
+        if (unit > 0) {
+          const totalAmount = unit * count;
+          const roleLabel = role
+            .split('_')
+            .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ');
+          
+          addons.push({
+            code: `user_license_${role}`,
+            label: count === 1 ? `${roleLabel} User Seat` : `${roleLabel} User Seats`,
+            amount: totalAmount,
+            quantity: count,
+            unitAmount: unit,
+            currency: pricing.currency,
+          });
+          addonTotal += totalAmount;
+        }
+      }
+
+      for (const u of billableUsers) {
+        const pricing = await getRolePricing(u.role, t.countryIso, 'userSeat');
+        const cycle = plan.billingCycle || 'monthly';
+        const unit = cycle === 'yearly' ? pricing.yearlyAmount : pricing.monthlyAmount;
+        usersDetail.push({
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          cost: unit,
+          isFree: unit <= 0,
         });
-        addonTotal += totalAmount;
       }
     }
   }
 
+  // Get active stores details for the tenant
+  const storesDetail = [];
+  const activeStores = await Store.find({ tenantId: t._id, isActive: true })
+    .sort({ createdAt: 1 })
+    .lean();
+
+  if (activeStores.length > 0) {
+    storesDetail.push({
+      name: activeStores[0].name,
+      code: activeStores[0].code,
+      cost: 0,
+      isFree: true,
+    });
+
+    if (activeStores.length > 1) {
+      const extraStores = activeStores.slice(1);
+      const addon = await getAddonByCode('additional_store');
+      const priced = addon && addon.isActive ? priceAddonForPlan(addon, plan, t.countryIso) : { amount: 0 };
+      const unit = Number(priced.amount) || 0;
+
+      for (const s of extraStores) {
+        storesDetail.push({
+          name: s.name,
+          code: s.code,
+          cost: unit,
+          isFree: unit <= 0,
+        });
+      }
+    }
+  }
 
   const base = Number(plan.amount) || 0;
   const currency = plan.currency || 'LKR';
@@ -279,6 +333,8 @@ async function computeSubscriptionRenewalExpected(tenant) {
       isScheduledChange: Boolean(t.pendingPlanId),
     },
     addons,
+    storesDetail,
+    usersDetail,
     total: base + addonTotal,
     currency,
   };
