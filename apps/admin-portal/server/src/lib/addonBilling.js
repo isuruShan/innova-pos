@@ -5,6 +5,9 @@ const SubscriptionPlan = require('../models/SubscriptionPlan');
 const Tenant = require('../models/Tenant');
 const Store = require('../models/Store');
 const { isLocalMerchant } = require('../utils/merchantRegion');
+const User = require('../models/User');
+const { getRolePricing } = require('./userLicensePricing');
+
 
 /** First active store per tenant is included in the base plan. */
 const INCLUDED_STORES_PER_TENANT = 1;
@@ -224,6 +227,44 @@ async function computeSubscriptionRenewalExpected(tenant) {
     });
     addonTotal += storeLine.amount;
   }
+
+  // Get active users for the tenant
+  const activeUsers = await User.find({ tenantId: t._id, isActive: true })
+    .sort({ createdAt: 1 })
+    .lean();
+
+  if (activeUsers.length > 1) {
+    const billableUsers = activeUsers.slice(1);
+    const usersByRole = {};
+    for (const u of billableUsers) {
+      const r = u.role || 'cashier';
+      usersByRole[r] = (usersByRole[r] || 0) + 1;
+    }
+
+    for (const [role, count] of Object.entries(usersByRole)) {
+      const pricing = await getRolePricing(role, t.countryIso, 'userSeat');
+      const cycle = plan.billingCycle || 'monthly';
+      const unit = cycle === 'yearly' ? pricing.yearlyAmount : pricing.monthlyAmount;
+      if (unit > 0) {
+        const totalAmount = unit * count;
+        const roleLabel = role
+          .split('_')
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ');
+        
+        addons.push({
+          code: `user_license_${role}`,
+          label: count === 1 ? `${roleLabel} User Seat` : `${roleLabel} User Seats`,
+          amount: totalAmount,
+          quantity: count,
+          unitAmount: unit,
+          currency: pricing.currency,
+        });
+        addonTotal += totalAmount;
+      }
+    }
+  }
+
 
   const base = Number(plan.amount) || 0;
   const currency = plan.currency || 'LKR';
