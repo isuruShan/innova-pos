@@ -236,7 +236,7 @@ router.post('/logo', authenticateJWT, authorize('merchant_admin', 'superadmin'),
       await Tenant.findByIdAndUpdate(tenantId, { 'settings.logoUrl': '', 'settings.logoKey': key });
 
       const freshUrl = await presignObjectKey(key, 86400);
-      res.json({ url: freshUrl, key });
+      res.json({ logoUrl: freshUrl, logoKey: key });
     } catch (err) {
       if (err.status) return res.status(err.status).json({ message: err.message });
       sendRouteError(res, err, { req });
@@ -248,7 +248,7 @@ router.post('/logo', authenticateJWT, authorize('merchant_admin', 'superadmin'),
 router.delete('/logo', authenticateJWT, authorize('merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
   const logger = childLogger(req.app.locals.logger, req);
   try {
-    const tenantId = req.user.role === 'superadmin' ? (req.body.tenantId || req.tenantId) : req.tenantId;
+    const tenantId = req.user.role === 'superadmin' ? (req.query.tenantId || req.tenantId) : req.tenantId;
     const s = await getOrCreate(tenantId);
     s.logoUrl = '';
     s.logoKey = '';
@@ -259,7 +259,7 @@ router.delete('/logo', authenticateJWT, authorize('merchant_admin', 'superadmin'
     logger.info('Logo removed successfully', { tenantId });
     res.json({ message: 'Logo removed successfully' });
   } catch (err) {
-    logger.error('Logo removal failed', { error: err.message });
+    logger.error('Logo removal failed', { error: err.message, stack: err.stack });
     sendRouteError(res, err, { req });
   }
 });
