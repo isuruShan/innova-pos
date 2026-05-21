@@ -94,6 +94,7 @@ app.use('/api/platform-payments', require('./routes/platform-payments'));
 app.use('/api/platform-contact', require('./routes/platformContact'));
 app.use('/api/tenant-settings', require('./routes/tenantSettings'));
 app.use('/api/users',           require('./routes/users'));
+app.use('/api/user-licensing', require('./routes/userLicensing'));
 app.use('/api/stores',          require('./routes/stores'));
 app.use('/api/cashier-sessions', require('./routes/cashier-sessions'));
 /** Same collections as POS — local routes avoid duplicate Mongoose model registration with the POS app */

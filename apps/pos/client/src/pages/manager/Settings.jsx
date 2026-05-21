@@ -11,6 +11,7 @@ import SlideOver from '../../components/SlideOver';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { AvatarDisplay } from '../../components/ProfileSlideOver';
 import { useStoreContext } from '../../context/StoreContext';
+import { useAuth } from '../../context/AuthContext';
 import { SettingsChargesSkeleton, StaffListSkeleton } from '../../components/StoreSkeletons';
 
 // ─── Order-charges tab ────────────────────────────────────────────────────────
@@ -467,6 +468,8 @@ const TABS = [
 
 export default function SettingsPage() {
   const [tab, setTab] = useState('charges');
+  const { user } = useAuth();
+  const visibleTabs = TABS.filter((t) => t.id !== 'users' || user?.role === 'merchant_admin');
 
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
@@ -477,7 +480,7 @@ export default function SettingsPage() {
 
         {/* Tab bar */}
         <div className="flex gap-1 bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-1 mb-6 w-fit">
-          {TABS.map(t => {
+          {visibleTabs.map(t => {
             const Icon = t.icon;
             return (
               <button
@@ -496,7 +499,7 @@ export default function SettingsPage() {
           })}
         </div>
 
-        {tab === 'charges' ? <ChargesTab /> : tab === 'guestqr' ? <GuestQrTab /> : tab === 'users' ? <UsersTab /> : <PaymentMethodsTab />}
+        {tab === 'charges' ? <ChargesTab /> : tab === 'guestqr' ? <GuestQrTab /> : tab === 'users' && user?.role === 'merchant_admin' ? <UsersTab /> : tab === 'payments' ? <PaymentMethodsTab /> : <ChargesTab />}
       </div>
     </div>
   );

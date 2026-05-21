@@ -17,6 +17,8 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ROLES, required: true },
     storeIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Store' }],
     defaultStoreId: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', default: null },
+    /** Paid store slots for this user (1 included; extra stores billed per assignment). */
+    licensedStoreSlots: { type: Number, default: 1, min: 1 },
     profileImage: { type: String, default: '' },
     profileImageKey: { type: String, default: '' },
 

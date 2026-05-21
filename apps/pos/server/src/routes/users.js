@@ -105,7 +105,7 @@ router.put('/me/approval-pin', protect, authorize('manager'), tenantScope, async
 });
 
 // POST create user
-router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/', protect, authorize('merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: 'Name is required' });
@@ -113,8 +113,10 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
     if (!password || password.length < 6)
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
 
-    if (req.user.role === 'manager' && !MANAGER_ROLES.includes(role)) {
-      return res.status(403).json({ message: 'Managers can only create cashier or kitchen users' });
+    if (req.user.role === 'manager') {
+      return res.status(403).json({
+        message: 'Only merchant admins can create users. Use the admin portal.',
+      });
     }
     if (req.user.role === 'merchant_admin' && ![...ADMIN_ROLES, 'merchant_admin'].includes(role)) {
       return res.status(403).json({ message: 'Invalid role for merchant admin' });
@@ -151,7 +153,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
 });
 
 // PUT update user
-router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.put('/:id', protect, authorize('merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const user = await User.findOne({ _id: req.params.id, tenantId: req.tenantId, ...storeAccessFilter(req.storeId) });
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -188,7 +190,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
 });
 
 // DELETE user (soft delete)
-router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.delete('/:id', protect, authorize('merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const user = await User.findOne({ _id: req.params.id, tenantId: req.tenantId, ...storeAccessFilter(req.storeId) });
     if (!user) return res.status(404).json({ message: 'User not found' });

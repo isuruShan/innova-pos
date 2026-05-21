@@ -167,11 +167,13 @@ router.get('/receipts/:id', authenticateJWT, authorize('superadmin'), async (req
       addonMeta,
       storeMeta,
       receiptKindLabel:
-        receipt.receiptKind === 'store'
-          ? 'Additional store'
-          : receipt.receiptKind === 'addon' || receipt.addonCode
-            ? 'Paid add-on'
-            : 'Subscription renewal',
+        receipt.receiptKind === 'user_license'
+          ? 'User license'
+          : receipt.receiptKind === 'store'
+            ? 'Additional store'
+            : receipt.receiptKind === 'addon' || receipt.addonCode
+              ? 'Paid add-on'
+              : 'Subscription renewal',
     });
   } catch (err) {
     sendRouteError(res, err, { req });
@@ -188,6 +190,8 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       planId,
       addonCode,
       purchaseKind,
+      userLicenseAction,
+      userLicensePayload,
       paymentMethod = 'bank_transfer',
     } = req.body;
     const method = ['bank_transfer', 'stripe', 'paypal'].includes(paymentMethod)
@@ -246,6 +250,65 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       );
       return uploadRes.data.key || '';
     };
+
+    if (purchaseKindNorm === 'user_license') {
+      const {
+        buildCreateUserPayload,
+        buildAssignStoresPayload,
+        createPendingUserLicenseReceipt,
+      } = require('../lib/userLicenseCheckout');
+      const actionNorm = String(userLicenseAction || '').trim().toLowerCase();
+      if (!['create_user', 'assign_stores'].includes(actionNorm)) {
+        return res.status(400).json({ message: 'userLicenseAction must be create_user or assign_stores' });
+      }
+      let payloadBody = {};
+      try {
+        payloadBody =
+          typeof userLicensePayload === 'string'
+            ? JSON.parse(userLicensePayload)
+            : userLicensePayload || {};
+      } catch {
+        return res.status(400).json({ message: 'userLicensePayload must be valid JSON' });
+      }
+
+      const built =
+        actionNorm === 'create_user'
+          ? await buildCreateUserPayload(req.tenantId, payloadBody, req.user.id)
+          : await buildAssignStoresPayload(req.tenantId, payloadBody, req.user.id);
+
+      const expected = Number(built.quote.priced?.amount) || 0;
+      if (!amountsEqual(amountValue, expected)) {
+        return res.status(400).json({
+          message: `Amount must exactly match the charge (${built.quote.priced.currency} ${Number(expected).toLocaleString()}).`,
+        });
+      }
+
+      let receiptFileKey = '';
+      try {
+        receiptFileKey = await uploadReceiptFile();
+      } catch (_) {
+        return res.status(500).json({ message: 'Failed to upload receipt file' });
+      }
+      if (!receiptFileKey) {
+        return res.status(500).json({ message: 'Failed to upload receipt file' });
+      }
+
+      const receipt = await createPendingUserLicenseReceipt({
+        tenantId: req.tenantId,
+        action: actionNorm,
+        payload: built.payload,
+        amount: amountValue,
+        currency: built.quote.priced.currency || 'LKR',
+        paymentMethod: method,
+        bankReference: bankReference.trim(),
+        receiptFileKey,
+        notes,
+        createdBy: req.user.id,
+      });
+
+      await notifyPaymentSubmitted(receipt, tenant);
+      return res.status(201).json(receipt);
+    }
 
     if (purchaseKindNorm === 'store') {
       const quote = await getStoreCreateQuote(req.tenantId);
@@ -454,6 +517,46 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
 
     if (!receipt.amountMatchesExpected) {
       return res.status(400).json({ message: 'Receipt amount does not match expected amount' });
+    }
+
+    if (receipt.receiptKind === 'user_license') {
+      const { processVerifiedUserLicenseReceipt } = require('../lib/userLicenseFulfill');
+      const tenantId = receipt.tenantId?._id || receipt.tenantId;
+      const now = new Date();
+      receipt.status = 'verified';
+      receipt.verifiedBy = req.user.id;
+      receipt.verifiedAt = now;
+      receipt.subscriptionExtended = false;
+      receipt.updatedBy = req.user.id;
+      await receipt.save();
+
+      const result = await processVerifiedUserLicenseReceipt(receipt, req);
+
+      await emitAudit({
+        req,
+        action: 'USER_LICENSE_PAYMENT_VERIFIED',
+        resource: 'PaymentReceipt',
+        resourceId: receipt._id,
+        changes: { after: { action: receipt.userLicenseAction, userId: result.user?._id } },
+      });
+
+      try {
+        await notifyMerchantAdmins(tenantId, {
+          type: 'subscription_approved',
+          title:
+            receipt.userLicenseAction === 'create_user' ? 'User created' : 'Store access updated',
+          body:
+            receipt.userLicenseAction === 'create_user'
+              ? 'Your new user account is ready.'
+              : 'Additional store access has been applied.',
+          meta: { resourceType: 'tenant', resourceId: String(tenantId), receiptId: String(receipt._id) },
+        }).catch(() => {});
+      } catch (_) {}
+
+      const tenantDoc = await Tenant.findById(tenantId).lean();
+      await notifyPaymentVerified(receipt.toObject ? receipt.toObject() : receipt, tenantDoc);
+
+      return res.json({ message: 'User license applied', receipt, user: result.user });
     }
 
     if (receipt.receiptKind === 'store') {

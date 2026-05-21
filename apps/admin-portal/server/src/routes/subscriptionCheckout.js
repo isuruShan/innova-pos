@@ -12,6 +12,12 @@ const { createOrder, createAddonOrder, captureOrder } = require('../lib/payments
 const { fulfillOnlinePayment } = require('./subscriptionWebhooks');
 const { getAddonPurchaseQuote } = require('../lib/addonPurchaseQuote');
 const { getStoreCreateQuote } = require('../lib/storeCreateQuote');
+const {
+  buildCreateUserPayload,
+  buildAssignStoresPayload,
+  createPendingUserLicenseReceipt,
+} = require('../lib/userLicenseCheckout');
+const { processVerifiedUserLicenseReceipt } = require('../lib/userLicenseFulfill');
 const { computeSubscriptionRenewalExpected } = require('../lib/addonBilling');
 const PaidAddonDefinition = require('../models/PaidAddonDefinition');
 
@@ -205,6 +211,64 @@ router.post('/paypal/create-addon-order', authenticateJWT, authorize('merchant_a
   }
 });
 
+router.post('/paypal/create-user-license-order', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
+  try {
+    const { action } = req.body;
+    const actionNorm = String(action || '').trim().toLowerCase();
+    if (!['create_user', 'assign_stores'].includes(actionNorm)) {
+      return res.status(400).json({ message: 'action must be create_user or assign_stores' });
+    }
+
+    const settings = await loadPaymentSettings();
+    if (!settings.paypal?.enabled) {
+      return res.status(400).json({ message: 'PayPal is not enabled' });
+    }
+
+    const tenant = await Tenant.findById(req.tenantId);
+    if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+    const built =
+      actionNorm === 'create_user'
+        ? await buildCreateUserPayload(req.tenantId, req.body, req.user.id)
+        : await buildAssignStoresPayload(req.tenantId, req.body, req.user.id);
+
+    const { quote, payload } = built;
+    const amount = quote.priced?.amount;
+    const currency = quote.priced?.currency || 'LKR';
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: 'User license price is not configured yet. Contact support.' });
+    }
+
+    const desc =
+      actionNorm === 'create_user'
+        ? `User seat: ${payload.name} (${payload.role})`
+        : `Extra store access (${quote.slotsToAdd || 1} slot${quote.slotsToAdd > 1 ? 's' : ''})`;
+
+    const { orderId } = await createAddonOrder({
+      tenant,
+      addonCode: 'user_license',
+      amount,
+      currency,
+      description: `${desc}${quote.proration?.isProrated ? ' (prorated)' : ''}`,
+    });
+
+    await createPendingUserLicenseReceipt({
+      tenantId: tenant._id,
+      action: actionNorm,
+      payload,
+      amount,
+      currency,
+      paymentMethod: 'paypal',
+      paypalOrderId: orderId,
+      createdBy: req.user.id,
+    });
+
+    res.json({ orderId, proration: quote.proration, priced: quote.priced });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 router.post('/paypal/create-store-order', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
   try {
     const settings = await loadPaymentSettings();
@@ -297,6 +361,36 @@ router.post('/paypal/capture', authenticateJWT, authorize('merchant_admin'), asy
         message: 'Add-on payment captured',
         addon: true,
         addonCode: receipt.addonCode,
+      });
+    }
+
+    if (receipt.receiptKind === 'user_license') {
+      const capture = await captureOrder(orderId);
+      if (capture.status !== 'COMPLETED') {
+        return res.status(400).json({ message: 'PayPal payment was not completed' });
+      }
+      const unit = capture.purchase_units?.[0];
+      const custom = unit?.payments?.captures?.[0]?.id || orderId;
+
+      if (receipt.status === 'verified') {
+        return res.json({ message: 'Payment already applied', userLicense: true });
+      }
+
+      receipt.status = 'verified';
+      receipt.bankReference = custom;
+      receipt.verifiedAt = new Date();
+      receipt.updatedBy = req.user.id;
+      await receipt.save();
+
+      const result = await processVerifiedUserLicenseReceipt(receipt, req);
+      return res.json({
+        message:
+          receipt.userLicenseAction === 'create_user'
+            ? 'User created'
+            : 'Store access updated',
+        userLicense: true,
+        action: receipt.userLicenseAction,
+        user: result.user,
       });
     }
 

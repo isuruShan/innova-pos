@@ -17,12 +17,15 @@ const paymentReceiptSchema = new mongoose.Schema(
     /** subscription renewal vs paid feature add-on */
     receiptKind: {
       type: String,
-      enum: ['subscription', 'addon', 'store'],
+      enum: ['subscription', 'addon', 'store', 'user_license'],
       default: 'subscription',
       index: true,
     },
     /** When receiptKind is addon — e.g. qr_ordering */
     addonCode: { type: String, default: '', trim: true, lowercase: true },
+    /** create_user | assign_stores */
+    userLicenseAction: { type: String, default: '', trim: true, lowercase: true },
+    userLicensePayload: { type: mongoose.Schema.Types.Mixed, default: null },
 
     paymentMethod: {
       type: String,

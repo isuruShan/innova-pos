@@ -18,6 +18,7 @@ const RECEIPT_KIND_LABELS = {
   subscription: 'Subscription renewal',
   addon: 'Paid add-on',
   store: 'Additional store',
+  user_license: 'User license',
 };
 
 function formatMoney(amount, currency) {
@@ -26,6 +27,7 @@ function formatMoney(amount, currency) {
 }
 
 function receiptKindLabel(receipt) {
+  if (receipt.receiptKind === 'user_license') return RECEIPT_KIND_LABELS.user_license;
   if (receipt.receiptKind === 'addon' || receipt.addonCode) return RECEIPT_KIND_LABELS.addon;
   if (receipt.receiptKind === 'store') return RECEIPT_KIND_LABELS.store;
   return RECEIPT_KIND_LABELS.subscription;

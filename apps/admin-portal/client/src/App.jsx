@@ -17,6 +17,7 @@ import MerchantWorkspacePage from './pages/superadmin/MerchantWorkspacePage';
 import MerchantStoresPage from './pages/superadmin/MerchantStoresPage';
 import PaymentProviderSettingsPage from './pages/superadmin/PaymentProviderSettingsPage';
 import PaidAddonsPage from './pages/superadmin/PaidAddonsPage';
+import UserLicensePricingPage from './pages/superadmin/UserLicensePricingPage';
 import MerchantSubscriptionGate from './components/MerchantSubscriptionGate';
 
 // Merchant admin pages
@@ -93,6 +94,11 @@ export default function App() {
           <Route path="/paid-addons" element={
             <PrivateRoute roles={['superadmin']}>
               <Layout><PaidAddonsPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/user-license-pricing" element={
+            <PrivateRoute roles={['superadmin']}>
+              <Layout><UserLicensePricingPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/merchants/:id/stores" element={
