@@ -664,25 +664,6 @@ export default function StoresPage() {
           </aside>
         </>
       )}
-                />
-                Store is active (visible in POS)
-              </label>
-              {!isSuperAdmin && editMeta.deactivatedBySuperadmin && (
-                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5">
-                  This store was disabled by a superadmin. You cannot turn it back on.
-                </p>
-              )}
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setEditingStore(null)} className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
-                <button type="submit" disabled={updateStore.isPending} className="flex-1 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold disabled:opacity-60">
-                  {updateStore.isPending ? 'Saving...' : 'Save'}
-                </button>
-              </div>
-            </form>
-          </aside>
-        </>
-      )}
     </div>
   );
 }

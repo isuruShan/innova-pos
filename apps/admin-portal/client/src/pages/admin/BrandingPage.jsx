@@ -598,6 +598,6 @@ export default function BrandingPage() {
           </div>
         </div>
       </div>
-
-      {/* Save */}
-      <div className=\"hidden\">\n      </div>\n    </div>\n  );\n}
+    </div>
+  );
+}
