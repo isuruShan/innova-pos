@@ -24,26 +24,59 @@ if ! command -v pm2 >/dev/null 2>&1; then
   exit 1
 fi
 
+# Load bootstrap.env for Azure Key Vault configuration
+BOOTSTRAP_LOADED=false
+for bootstrap_path in "/etc/innovapos/bootstrap.env" "$ROOT/bootstrap.env"; do
+  if [[ -f "$bootstrap_path" ]]; then
+    echo "==> Loading bootstrap from $bootstrap_path"
+    set -a
+    # shellcheck source=/dev/null
+    source "$bootstrap_path"
+    set +a
+    BOOTSTRAP_LOADED=true
+    break
+  fi
+done
+
 # Load VITE_* frontend URLs from Azure Key Vault or deploy.env
 echo "==> Loading frontend URLs for build"
 
 # If Azure Key Vault is configured, use it (preferred method)
-if [[ -n "${AZURE_KEY_VAULT_URL:-}" ]]; then
+if [[ -n "${AZURE_KEY_VAULT_URL:-}" && -n "${AZURE_KEY_VAULT_SECRET_NAME:-}" ]]; then
   echo "    Fetching VITE_* variables from Azure Key Vault..."
-  if command -v node >/dev/null 2>&1; then
-    VAULT_VARS=$(node "$ROOT/scripts/fetch-frontend-urls.js" 2>&1)
-    if [[ $? -eq 0 && -n "$VAULT_VARS" ]]; then
-      set -a
-      eval "$VAULT_VARS"
-      set +a
-      echo "    ✓ Variables loaded from Key Vault"
+  
+  if ! command -v az >/dev/null 2>&1; then
+    echo "    WARNING: Azure CLI (az) not found, cannot fetch from Key Vault"
+    echo "    Install Azure CLI: https://aka.ms/install-azure-cli"
+    echo "    Falling back to deploy.env"
+  elif ! command -v jq >/dev/null 2>&1; then
+    echo "    WARNING: jq not found, cannot parse Key Vault secret"
+    echo "    Install jq: sudo apt-get install jq"
+    echo "    Falling back to deploy.env"
+  else
+    # Extract vault name from URL (e.g., https://mykeyvault.vault.azure.net/ -> mykeyvault)
+    VAULT_NAME=$(echo "$AZURE_KEY_VAULT_URL" | sed -E 's|https://([^.]+)\.vault\.azure\.net/?|\1|')
+    
+    # Fetch secret from Azure Key Vault
+    SECRET_JSON=$(az keyvault secret show --vault-name "$VAULT_NAME" --name "$AZURE_KEY_VAULT_SECRET_NAME" --query value -o tsv 2>&1)
+    
+    if [[ $? -eq 0 && -n "$SECRET_JSON" ]]; then
+      # Extract VITE_* variables from the JSON secret
+      VITE_VARS=("VITE_POS_URL" "VITE_ADMIN_URL" "VITE_PUBLIC_WEB_URL" "VITE_QR_ORDER_WEB_ORIGIN" "VITE_API_URL" "VITE_PUBLIC_WEB_API_URL" "VITE_QR_ORDER_API_URL")
+      
+      for var_name in "${VITE_VARS[@]}"; do
+        var_value=$(echo "$SECRET_JSON" | jq -r ".$var_name // empty")
+        if [[ -n "$var_value" ]]; then
+          export "$var_name=$var_value"
+        fi
+      done
+      
+      echo "    ✓ Variables loaded from Key Vault (Vault: $VAULT_NAME, Secret: $AZURE_KEY_VAULT_SECRET_NAME)"
     else
-      echo "    WARNING: Could not fetch from Key Vault: $VAULT_VARS"
+      echo "    WARNING: Could not fetch secret from Key Vault"
+      echo "    Error: $SECRET_JSON"
       echo "    Falling back to deploy.env if available"
     fi
-  else
-    echo "    WARNING: Node.js not found, cannot fetch from Key Vault"
-    echo "    Falling back to deploy.env"
   fi
 fi
 
