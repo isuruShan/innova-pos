@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Production deploy: pull, install, build SPAs, reload PM2.
-# Works on Azure VM or EC2 — set CLOUD_PROVIDER / Key Vault or Secrets Manager bootstrap before running.
-# Requires /etc/innovapos/bootstrap.env or bootstrap.env in repo root for cloud provider config.
+# Fetches frontend URLs (VITE_*) from Azure Key Vault for building client apps.
+# Requires bootstrap.env with AZURE_KEY_VAULT_URL and AZURE_KEY_VAULT_SECRET_NAME.
 # Run from repo root: ./scripts/deploy-production.sh
 set -euo pipefail
 
@@ -38,21 +38,21 @@ for bootstrap_path in "/etc/innovapos/bootstrap.env" "$ROOT/bootstrap.env"; do
   fi
 done
 
-# Load VITE_* frontend URLs from Azure Key Vault or deploy.env
+# Load VITE_* frontend URLs from Azure Key Vault
 echo "==> Loading frontend URLs for build"
 
-# If Azure Key Vault is configured, use it (preferred method)
+# Azure Key Vault is required (no fallback)
 if [[ -n "${AZURE_KEY_VAULT_URL:-}" && -n "${AZURE_KEY_VAULT_SECRET_NAME:-}" ]]; then
   echo "    Fetching VITE_* variables from Azure Key Vault..."
   
   if ! command -v az >/dev/null 2>&1; then
-    echo "    WARNING: Azure CLI (az) not found, cannot fetch from Key Vault"
-    echo "    Install Azure CLI: https://aka.ms/install-azure-cli"
-    echo "    Falling back to deploy.env"
+    echo "    ERROR: Azure CLI (az) not found"
+    echo "    Install: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash"
+    exit 1
   elif ! command -v jq >/dev/null 2>&1; then
-    echo "    WARNING: jq not found, cannot parse Key Vault secret"
-    echo "    Install jq: sudo apt-get install jq"
-    echo "    Falling back to deploy.env"
+    echo "    ERROR: jq not found"
+    echo "    Install: sudo apt-get update && sudo apt-get install -y jq"
+    exit 1
   else
     # Extract vault name from URL (e.g., https://mykeyvault.vault.azure.net/ -> mykeyvault)
     VAULT_NAME=$(echo "$AZURE_KEY_VAULT_URL" | sed -E 's|https://([^.]+)\.vault\.azure\.net/?|\1|')
@@ -73,14 +73,30 @@ if [[ -n "${AZURE_KEY_VAULT_URL:-}" && -n "${AZURE_KEY_VAULT_SECRET_NAME:-}" ]];
       
       echo "    ✓ Variables loaded from Key Vault (Vault: $VAULT_NAME, Secret: $AZURE_KEY_VAULT_SECRET_NAME)"
     else
-      echo "    WARNING: Could not fetch secret from Key Vault"
+      echo ""
+      echo "    ERROR: Could not fetch secret from Azure Key Vault"
       echo "    Error: $SECRET_JSON"
-      echo "    Falling back to deploy.env if available"
+      echo ""
+      echo "    Troubleshooting:"
+      echo "      1. Ensure Azure CLI is authenticated: az login"
+      echo "      2. Verify you have access to the Key Vault"
+      echo "      3. Check that the secret exists: az keyvault secret list --vault-name $VAULT_NAME"
+      echo ""
+      exit 1
     fi
   fi
+else
+  echo ""
+  echo "    ERROR: Azure Key Vault not configured"
+  echo ""
+  echo "    Configure bootstrap.env (or /etc/innovapos/bootstrap.env) with:"
+  echo "      AZURE_KEY_VAULT_URL=https://your-keyvault.vault.azure.net/"
+  echo "      AZURE_KEY_VAULT_SECRET_NAME=innovapos-production-env"
+  echo ""
+  exit 1
 fi
 
-# Fall back to deploy.env if Key Vault didn't provide all variables
+# Verify all required VITE_* variables are set
 REQUIRED_VITE_VARS=("VITE_POS_URL" "VITE_ADMIN_URL" "VITE_PUBLIC_WEB_URL" "VITE_QR_ORDER_WEB_ORIGIN")
 MISSING_VARS=()
 for var in "${REQUIRED_VITE_VARS[@]}"; do
@@ -89,41 +105,23 @@ for var in "${REQUIRED_VITE_VARS[@]}"; do
   fi
 done
 
-if [[ ${#MISSING_VARS[@]} -gt 0 && -f "$ROOT/deploy.env" ]]; then
-  echo "    Loading missing variables from deploy.env"
-  set -a
-  # shellcheck source=/dev/null
-  source "$ROOT/deploy.env"
-  set +a
-  # Re-check what's still missing
-  MISSING_VARS=()
-  for var in "${REQUIRED_VITE_VARS[@]}"; do
-    if [[ -z "${!var:-}" ]]; then
-      MISSING_VARS+=("$var")
-    fi
-  done
-fi
-
-# Final verification
 if [[ ${#MISSING_VARS[@]} -gt 0 ]]; then
+  echo ""
   echo "    ERROR: Required frontend URL variables not set: ${MISSING_VARS[*]}"
   echo ""
-  if [[ -n "${AZURE_KEY_VAULT_URL:-}" ]]; then
-    echo "    Please add these variables to your Azure Key Vault secret:"
-    echo "      Secret: ${AZURE_KEY_VAULT_SECRET_NAME:-innovapos-production-env}"
-    echo "      Vault: $AZURE_KEY_VAULT_URL"
-    for var in "${MISSING_VARS[@]}"; do
-      echo "        \"$var\": \"https://your-domain.com\""
-    done
-  else
-    echo "    Option 1: Configure Azure Key Vault (recommended)"
-    echo "      Set AZURE_KEY_VAULT_URL in bootstrap.env and add VITE_* to secret"
-    echo ""
-    echo "    Option 2: Create $ROOT/deploy.env with these variables:"
-    for var in "${MISSING_VARS[@]}"; do
-      echo "      $var=https://your-domain.com"
-    done
-  fi
+  echo "    Add these variables to your Azure Key Vault secret:"
+  echo "      Vault: ${AZURE_KEY_VAULT_URL:-<not configured>}"
+  echo "      Secret: ${AZURE_KEY_VAULT_SECRET_NAME:-<not configured>}"
+  echo ""
+  echo "    Missing variables (add to JSON secret):"
+  for var in "${MISSING_VARS[@]}"; do
+    echo "      \"$var\": \"http://your-server-ip:port\""
+  done
+  echo ""
+  echo "    Example: Update secret with az CLI:"
+  echo "      az keyvault secret show --vault-name ${AZURE_KEY_VAULT_URL##*/} --name ${AZURE_KEY_VAULT_SECRET_NAME:-innovapos-production-env} --query value -o tsv > secret.json"
+  echo "      # Edit secret.json to add missing VITE_* variables"
+  echo "      az keyvault secret set --vault-name ${AZURE_KEY_VAULT_URL##*/} --name ${AZURE_KEY_VAULT_SECRET_NAME:-innovapos-production-env} --file secret.json"
   echo ""
   exit 1
 fi
