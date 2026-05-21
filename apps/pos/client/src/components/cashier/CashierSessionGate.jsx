@@ -229,11 +229,6 @@ export default function CashierSessionGate({ children, requireSession = false })
     setMovementNotes('');
   }, []);
 
-  const gateActive = sessionRequired && isStoreReady && online;
-  const needsSession = gateActive && !session && !isError;
-  const showSessionLoading = gateActive && needsSession && isPending;
-  const showOpenForm = gateActive && needsSession && !isPending;
-
   const ctxValue = useMemo(
     () => {
       if (!gateActive) return null;
