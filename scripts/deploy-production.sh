@@ -24,26 +24,56 @@ if ! command -v pm2 >/dev/null 2>&1; then
   exit 1
 fi
 
-# Optional: export VITE_* / build-time vars (apps/*/client/.env.production)
+# Load VITE_* frontend URLs from Azure Key Vault or deploy.env
+echo "==> Loading frontend URLs for build"
 if [[ -f "$ROOT/deploy.env" ]]; then
-  echo "==> Loading $ROOT/deploy.env"
+  echo "    Loading VITE_* variables from deploy.env"
   set -a
   # shellcheck source=/dev/null
   source "$ROOT/deploy.env"
   set +a
+elif [[ -n "${AZURE_KEY_VAULT_URL:-}" ]]; then
+  echo "    Fetching VITE_* variables from Azure Key Vault"
+  # Use Node.js to fetch secrets and export them
+  if command -v node >/dev/null 2>&1; then
+    VAULT_VARS=$(node "$ROOT/scripts/fetch-frontend-urls.js")
+    if [[ $? -eq 0 && -n "$VAULT_VARS" ]]; then
+      set -a
+      eval "$VAULT_VARS"
+      set +a
+      echo "    ✓ Frontend URLs loaded from Key Vault"
+    else
+      echo "    WARNING: Could not fetch URLs from Key Vault, using defaults"
+    fi
+  fi
 fi
+
+# Verify required VITE_* variables are set
+REQUIRED_VITE_VARS=("VITE_POS_URL" "VITE_ADMIN_URL" "VITE_PUBLIC_WEB_URL" "VITE_QR_ORDER_WEB_ORIGIN")
+MISSING_VARS=()
+for var in "${REQUIRED_VITE_VARS[@]}"; do
+  if [[ -z "${!var:-}" ]]; then
+    MISSING_VARS+=("$var")
+  fi
+done
+
+if [[ ${#MISSING_VARS[@]} -gt 0 ]]; then
+  echo "    ERROR: Required frontend URL variables not set: ${MISSING_VARS[*]}"
+  echo "    Create $ROOT/deploy.env with production URLs or add to Azure Key Vault secret"
+  exit 1
+fi
+
+echo "    ✓ Frontend URLs configured:"
+echo "      VITE_POS_URL=$VITE_POS_URL"
+echo "      VITE_ADMIN_URL=$VITE_ADMIN_URL"
+echo "      VITE_PUBLIC_WEB_URL=$VITE_PUBLIC_WEB_URL"
+echo "      VITE_QR_ORDER_WEB_ORIGIN=$VITE_QR_ORDER_WEB_ORIGIN"
+
 echo "==> git stash"
 git stash
 
 echo "==> git pull"
 git pull --ff-only origin main
-
-echo "==> Copy .env.example to .env for client apps"
-cp "$ROOT/apps/pos/client/.env.example" "$ROOT/apps/pos/client/.env"
-cp "$ROOT/apps/admin-portal/client/.env.example" "$ROOT/apps/admin-portal/client/.env"
-cp "$ROOT/apps/public-web/client/.env.example" "$ROOT/apps/public-web/client/.env"
-cp "$ROOT/apps/qr-order/client/.env.example" "$ROOT/apps/qr-order/client/.env"
-echo "    ✓ Client environment files created"
 
 echo "==> pnpm install"
 pnpm install 
