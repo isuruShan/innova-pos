@@ -375,6 +375,10 @@ app.listen(PORT, '0.0.0.0', () => {
   }, 3 * 60 * 60 * 1000);
 
   startAnlySyncScheduler(logger);
+  
+  // Initialize scheduled jobs (add-on trial expiration, etc.)
+  const { initializeScheduledJobs } = require('./jobs/scheduler');
+  initializeScheduledJobs(logger);
 });
 }
 

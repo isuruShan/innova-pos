@@ -34,8 +34,41 @@ export function AddonActionButton({
   onUnsubscribe,
   unsubscribePending,
   unsubscribingCode,
+  onStartTrial,
+  trialStartPending,
 }) {
   const busy = unsubscribePending && unsubscribingCode === row.code;
+  const trialBusy = trialStartPending === row.code;
+
+  // Show trial information if in trial
+  if (row.isInTrial) {
+    return (
+      <div className="flex flex-col items-stretch sm:items-end gap-2">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <p className="text-xs font-semibold text-amber-800">🎉 Trial Active</p>
+          <p className="text-xs text-amber-700 mt-0.5">
+            Trial ends: <strong>{formatPeriodEnd(row.trialEndsAt)}</strong>
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 justify-end">
+          <button
+            type="button"
+            onClick={() => onView?.(row)}
+            className="px-4 py-2 rounded-lg border border-gray-300 text-gray-800 hover:bg-gray-50 text-sm font-semibold"
+          >
+            View
+          </button>
+          <button
+            type="button"
+            onClick={() => onReview?.(row)}
+            className="px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover"
+          >
+            Subscribe Now
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (row.alreadyActive) {
     if (row.cancelScheduled) {
@@ -44,6 +77,11 @@ export function AddonActionButton({
           <p className="text-xs text-gray-600 text-right max-w-[200px]">
             Active until <strong>{formatPeriodEnd(row.periodEndsAt)}</strong>
           </p>
+          {row.billingCycle && (
+            <p className="text-xs text-gray-500 text-right">
+              Billing: <strong>{row.billingCycle === 'yearly' ? 'Yearly' : 'Monthly'}</strong>
+            </p>
+          )}
           <button
             type="button"
             onClick={() => onView?.(row)}
@@ -56,6 +94,11 @@ export function AddonActionButton({
     }
     return (
       <div className="flex flex-wrap gap-2 justify-end">
+        {row.billingCycle && (
+          <p className="text-xs text-gray-500 w-full text-right">
+            Billing: <strong>{row.billingCycle === 'yearly' ? 'Yearly' : 'Monthly'}</strong>
+          </p>
+        )}
         <button
           type="button"
           onClick={() => onView?.(row)}
@@ -100,6 +143,29 @@ export function AddonActionButton({
     return <p className="text-xs text-amber-700 text-right">Pricing not set — contact support.</p>;
   }
 
+  // Show trial option if eligible
+  if (row.canStartTrial && onStartTrial) {
+    return (
+      <div className="flex flex-col items-stretch sm:items-end gap-2">
+        <button
+          type="button"
+          onClick={() => onStartTrial?.(row)}
+          disabled={trialBusy}
+          className="px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+        >
+          {trialBusy ? 'Starting…' : '🎉 Start 7-Day Trial'}
+        </button>
+        <button
+          type="button"
+          onClick={() => onReview?.(row)}
+          className="px-4 py-2 rounded-lg border border-brand-orange text-brand-orange text-sm font-semibold hover:bg-brand-orange/5"
+        >
+          Subscribe Now
+        </button>
+      </div>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -121,6 +187,8 @@ export default function AddonCatalogTiles({
   unsubscribingCode = '',
   variant = 'tiles',
   linkToAddonsPage = false,
+  onStartTrial,
+  trialStartPending = '',
 }) {
   const [search, setSearch] = useState('');
 
@@ -200,6 +268,8 @@ export default function AddonCatalogTiles({
                     onUnsubscribe={onUnsubscribe}
                     unsubscribePending={unsubscribePending}
                     unsubscribingCode={unsubscribingCode}
+                    onStartTrial={onStartTrial}
+                    trialStartPending={trialStartPending}
                   />
                 )}
               </div>
@@ -244,6 +314,8 @@ export default function AddonCatalogTiles({
                     onUnsubscribe={onUnsubscribe}
                     unsubscribePending={unsubscribePending}
                     unsubscribingCode={unsubscribingCode}
+                    onStartTrial={onStartTrial}
+                    trialStartPending={trialStartPending}
                   />
                 )}
               </div>

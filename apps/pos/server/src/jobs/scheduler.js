@@ -1,12 +1,12 @@
 const cron = require('node-cron');
-const logger = require('@innovapos/logger');
 const { cleanupOldNotifications } = require('./cleanupNotifications');
 
 /**
  * Initialize all scheduled jobs for the POS server.
  * Jobs run in the local timezone of the server.
+ * @param {object} logger - Winston logger instance
  */
-function initializeScheduledJobs() {
+function initializeScheduledJobs(logger) {
   // Cleanup old notifications daily at 2:00 AM
   // Cron expression: '0 2 * * *' = minute 0, hour 2, every day
   cron.schedule('0 2 * * *', async () => {

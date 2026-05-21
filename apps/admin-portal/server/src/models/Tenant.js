@@ -47,6 +47,7 @@ const tenantSchema = new mongoose.Schema(
     /**
      * Paid feature add-ons (e.g. guest QR ordering). Activated after successful payment + verification.
      * `amountPerCycle` is snapshot at activation for billing transparency.
+     * Supports 7-day trial period before requiring payment.
      */
     paidAddons: {
       qrOrdering: {
@@ -56,6 +57,9 @@ const tenantSchema = new mongoose.Schema(
         currency: { type: String, default: '', trim: true, uppercase: true },
         periodEndsAt: { type: Date, default: null },
         cancelAtPeriodEnd: { type: Boolean, default: false },
+        trialActivatedAt: { type: Date, default: null },
+        trialEndsAt: { type: Date, default: null },
+        billingCycle: { type: String, enum: ['', 'monthly', 'yearly'], default: '' },
       },
       loyalty: {
         active: { type: Boolean, default: false },
@@ -64,6 +68,9 @@ const tenantSchema = new mongoose.Schema(
         currency: { type: String, default: '', trim: true, uppercase: true },
         periodEndsAt: { type: Date, default: null },
         cancelAtPeriodEnd: { type: Boolean, default: false },
+        trialActivatedAt: { type: Date, default: null },
+        trialEndsAt: { type: Date, default: null },
+        billingCycle: { type: String, enum: ['', 'monthly', 'yearly'], default: '' },
       },
     },
 

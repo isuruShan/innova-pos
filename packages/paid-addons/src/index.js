@@ -20,7 +20,20 @@ function emptyEntitlement() {
     currency: '',
     periodEndsAt: null,
     cancelAtPeriodEnd: false,
+    trialActivatedAt: null,
+    trialEndsAt: null,
+    billingCycle: '',
   };
+}
+
+/**
+ * Check if addon is in active trial period
+ */
+function isInTrialPeriod(entitlement) {
+  if (!entitlement?.trialEndsAt) return false;
+  const now = new Date();
+  const trialEnd = new Date(entitlement.trialEndsAt);
+  return now < trialEnd && entitlement.active;
 }
 
 /**
@@ -30,6 +43,11 @@ function emptyEntitlement() {
 function isPaidAddonEffective(paidAddons, entitlementKey) {
   const row = paidAddons?.[entitlementKey];
   if (!row?.active) return false;
+  
+  // If in trial period, addon is effective
+  if (isInTrialPeriod(row)) return true;
+  
+  // Check paid subscription validity
   if (!row.periodEndsAt) return true;
   return new Date() < new Date(row.periodEndsAt);
 }
@@ -50,4 +68,5 @@ module.exports = {
   isPaidAddonEffective,
   isQrOrderingEffective,
   isLoyaltyEffective,
+  isInTrialPeriod,
 };

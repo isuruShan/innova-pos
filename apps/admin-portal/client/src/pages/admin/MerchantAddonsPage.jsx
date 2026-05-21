@@ -106,6 +106,27 @@ export default function MerchantAddonsPage() {
     },
   });
 
+  const [trialStartingCode, setTrialStartingCode] = useState('');
+
+  const startTrialMutation = useMutation({
+    mutationFn: (code) => api.post(`/paid-addons/${encodeURIComponent(code)}/start-trial`).then((r) => r.data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      toast.success(data?.message || 'Trial started successfully!');
+      setTrialStartingCode('');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Could not start trial');
+      setTrialStartingCode('');
+    },
+  });
+
+  const handleStartTrial = (row) => {
+    setTrialStartingCode(row.code);
+    startTrialMutation.mutate(row.code);
+  };
+
   const handleUnsubscribe = (row) => {
     if (!window.confirm(
       `Unsubscribe from ${row.name}? It will stay active until the end of your current paid period, then turn off.`,
@@ -302,6 +323,8 @@ export default function MerchantAddonsPage() {
         onUnsubscribe={handleUnsubscribe}
         unsubscribePending={unsubscribeMutation.isPending}
         unsubscribingCode={unsubscribingCode}
+        onStartTrial={handleStartTrial}
+        trialStartPending={trialStartingCode}
       />
 
       {selectedAddon && flowStep && (

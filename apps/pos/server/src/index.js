@@ -32,7 +32,7 @@ require('@innovapos/analytics-core');
 
 // Initialize scheduled jobs (notification cleanup, etc.)
 const { initializeScheduledJobs } = require('./jobs/scheduler');
-initializeScheduledJobs();
+initializeScheduledJobs(logger);
 
 app.set('trust proxy', 1);
 

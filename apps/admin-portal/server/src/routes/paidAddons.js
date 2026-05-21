@@ -116,6 +116,70 @@ router.post('/:code/unsubscribe', authenticateJWT, authorize('merchant_admin'), 
   }
 });
 
+/** Start 7-day trial for an add-on */
+router.post('/:code/start-trial', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
+  try {
+    const code = String(req.params.code || '').trim().toLowerCase();
+    let tenant = await Tenant.findById(req.tenantId);
+    if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+    tenant = await applyPaidAddonExpiryIfNeeded(tenant);
+
+    const entitlementKey = entitlementKeyForCode(code);
+    if (!entitlementKey) {
+      return res.status(400).json({ message: 'Unknown add-on' });
+    }
+
+    const addon = await getAddonByCode(code);
+    if (!addon || !addon.isActive) {
+      return res.status(404).json({ message: 'Add-on not available' });
+    }
+
+    const state = await getAddonMerchantState(tenant, code);
+    
+    if (!state.canStartTrial) {
+      if (state.alreadyActive) {
+        return res.status(400).json({ message: 'This add-on is already active' });
+      }
+      if (state.trialActivatedAt) {
+        return res.status(400).json({ message: 'Trial has already been used for this add-on' });
+      }
+      if (state.pendingVerification) {
+        return res.status(400).json({ message: 'Payment verification is pending for this add-on' });
+      }
+      return res.status(400).json({ message: 'Cannot start trial for this add-on' });
+    }
+
+    const now = new Date();
+    const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+
+    tenant.paidAddons = tenant.paidAddons || {};
+    tenant.paidAddons[entitlementKey] = {
+      active: true,
+      activatedAt: now,
+      amountPerCycle: 0,
+      currency: '',
+      periodEndsAt: null,
+      cancelAtPeriodEnd: false,
+      trialActivatedAt: now,
+      trialEndsAt: trialEnd,
+      billingCycle: '',
+    };
+    tenant.updatedBy = req.user.id;
+    await tenant.save();
+
+    res.json({
+      message: `${addon.name} trial started! You have 7 days to try it out.`,
+      trialEndsAt: trialEnd,
+      addon: {
+        code: addon.code,
+        name: addon.name,
+      },
+    });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {
     await ensureDefaultPaidAddons();

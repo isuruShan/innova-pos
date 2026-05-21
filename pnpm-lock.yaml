@@ -139,6 +139,9 @@ importers:
       multer:
         specifier: ^2.1.1
         version: 2.1.1
+      node-cron:
+        specifier: ^3.0.3
+        version: 3.0.3
       stripe:
         specifier: ^17.7.0
         version: 17.7.0

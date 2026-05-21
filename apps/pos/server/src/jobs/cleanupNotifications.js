@@ -1,5 +1,6 @@
 const Notification = require('../models/Notification');
-const logger = require('@innovapos/logger');
+const { createLogger } = require('@innovapos/logger');
+const logger = createLogger('notification-cleanup');
 
 /**
  * Cleanup notifications older than 30 days across all tenants.

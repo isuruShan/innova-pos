@@ -1,7 +1,7 @@
 'use strict';
 
 const PaymentReceipt = require('../models/PaymentReceipt');
-const { isPaidAddonEffective, entitlementKeyForCode } = require('@innovapos/paid-addons');
+const { isPaidAddonEffective, entitlementKeyForCode, isInTrialPeriod } = require('@innovapos/paid-addons');
 
 /**
  * @param {import('mongoose').LeanDocument<any>} tenant
@@ -28,19 +28,32 @@ async function getAddonMerchantState(tenant, code) {
       periodEndsAt: null,
       canSubscribe: false,
       canUnsubscribe: false,
+      isInTrial: false,
+      trialEndsAt: null,
+      canStartTrial: false,
     };
   }
 
   const row = tenant.paidAddons?.[entitlementKey] || {};
   const active = isPaidAddonEffective(tenant.paidAddons, entitlementKey);
+  const inTrial = isInTrialPeriod(row);
   const cancelScheduled = Boolean(row.cancelAtPeriodEnd && active);
+  
+  // Can start trial if: not active, no pending receipt, and never had trial before
+  const canStartTrial = !active && !pendingReceipt && !row.trialActivatedAt;
+  
   return {
     pendingVerification: Boolean(pendingReceipt),
     alreadyActive: active,
     cancelScheduled,
     periodEndsAt: row.periodEndsAt || null,
     canSubscribe: !active && !pendingReceipt,
-    canUnsubscribe: active && !row.cancelAtPeriodEnd,
+    canUnsubscribe: active && !row.cancelAtPeriodEnd && !inTrial,
+    isInTrial: inTrial,
+    trialEndsAt: row.trialEndsAt || null,
+    trialActivatedAt: row.trialActivatedAt || null,
+    canStartTrial,
+    billingCycle: row.billingCycle || null,
   };
 }
 
