@@ -9,7 +9,7 @@ import ListPagination from '../../components/common/ListPagination';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
 import { fieldAttrs, validateEmail, validatePersonName } from '../../utils/formFields';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
-import ProrationBreakdown from '../../components/billing/ProrationBreakdown';
+import ProrationBreakdown, { formatMoney } from '../../components/billing/ProrationBreakdown';
 import BankReceiptFields from '../../components/billing/BankReceiptFields';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
 
@@ -560,9 +560,9 @@ export default function UsersPage() {
                       <div key={idx} className="flex items-center justify-between px-4 py-2.5 text-sm">
                         <span className="text-gray-600">{item.label}</span>
                         <span className="font-semibold text-gray-900">
-                          {item.currency} {Number(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {formatMoney(item.currency, item.amount)}
                           {item.proration?.isProrated && (
-                            <span className="ml-1 text-xs text-amber-600 font-normal">
+                            <span className="ml-1.5 text-xs text-amber-600 font-normal">
                               ({item.proration.remainingDays}d prorated)
                             </span>
                           )}
@@ -572,15 +572,14 @@ export default function UsersPage() {
                     <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 text-sm font-bold">
                       <span className="text-gray-900">Total due now</span>
                       <span className="text-brand-orange">
-                        {paymentQuote.priced?.currency}{' '}
-                        {Number(paymentQuote.priced?.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {formatMoney(paymentQuote.priced?.currency, paymentQuote.priced?.amount)}
                       </span>
                     </div>
                   </div>
                 ) : (
                   <p className="text-sm text-gray-600 mb-4">
                     {paymentQuote.priced?.label || 'License fee'}{' '}
-                    — <strong>{paymentQuote.priced?.currency} {Number(paymentQuote.priced?.amount || 0).toLocaleString()}</strong>
+                    — <strong>{formatMoney(paymentQuote.priced?.currency, paymentQuote.priced?.amount)}</strong>
                     {paymentQuote.billingLabel ? ` (${paymentQuote.billingLabel})` : ''}
                   </p>
                 )}

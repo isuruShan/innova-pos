@@ -9,7 +9,7 @@ import ViewModeToggle from '../../components/common/ViewModeToggle';
 import ListPagination from '../../components/common/ListPagination';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
-import ProrationBreakdown from '../../components/billing/ProrationBreakdown';
+import ProrationBreakdown, { formatMoney } from '../../components/billing/ProrationBreakdown';
 import BankReceiptFields from '../../components/billing/BankReceiptFields';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
 
@@ -489,7 +489,7 @@ export default function StoresPage() {
                 <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
                   <p className="text-xs text-gray-500 uppercase">Amount due now</p>
                   <p className="text-2xl font-bold tabular-nums mt-1">
-                    {purchaseQuote.priced.currency} {Number(purchaseQuote.priced.amount).toLocaleString()}
+                    {formatMoney(purchaseQuote.priced.currency, purchaseQuote.priced.amount)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">{purchaseQuote.priced.billingLabel}</p>
                 </div>
@@ -546,7 +546,7 @@ export default function StoresPage() {
               <div className="space-y-4">
                 <ProrationBreakdown proration={purchaseQuote.proration} currency={purchaseQuote.priced?.currency} />
                 <div className="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
-                  <p className="font-medium">Transfer exactly {purchaseQuote.priced.currency} {Number(purchaseQuote.priced.amount).toLocaleString()} to:</p>
+                  <p className="font-medium">Transfer exactly {formatMoney(purchaseQuote.priced.currency, purchaseQuote.priced.amount)} to:</p>
                   {paymentOptions.bankAccounts.map((b) => (
                     <div key={b._id} className="mt-2">
                       <p className="font-medium">{b.label} — {b.bankName}</p>
