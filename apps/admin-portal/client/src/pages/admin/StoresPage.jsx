@@ -17,10 +17,10 @@ export default function StoresPage() {
   const { isSuperAdmin, isMerchantAdmin } = useAuth();
   const canCreateStore = isSuperAdmin || isMerchantAdmin;
   const queryClient = useQueryClient();
-  const [form, setForm] = useState({ name: '', code: '', address: '', phone: '', paymentMethods: ['cash'] });
+  const [form, setForm] = useState({ name: '', address: '', phone: '', paymentMethods: ['cash'] });
   const [editingStore, setEditingStore] = useState(null);
   const [editForm, setEditForm] = useState({
-    name: '', code: '', address: '', phone: '', paymentMethods: ['cash'], isActive: true,
+    name: '', address: '', phone: '', paymentMethods: ['cash'], isActive: true,
   });
   const [editMeta, setEditMeta] = useState({ deactivatedBySuperadmin: false });
   const toast = useToast();
@@ -65,7 +65,7 @@ export default function StoresPage() {
   const createStoreSuper = useMutation({
     mutationFn: (payload) => api.post('/stores', payload),
     onSuccess: () => {
-      setForm({ name: '', code: '', address: '', phone: '', paymentMethods: ['cash'] });
+      setForm({ name: '', address: '', phone: '', paymentMethods: ['cash'] });
       setError('');
       queryClient.invalidateQueries({ queryKey: ['admin-stores'] });
       queryClient.invalidateQueries({ queryKey: ['stores'] });
@@ -226,7 +226,7 @@ export default function StoresPage() {
     onSuccess: () => {
       setEditingStore(null);
       setEditForm({
-        name: '', code: '', address: '', phone: '', paymentMethods: ['cash'], isActive: true,
+        name: '', address: '', phone: '', paymentMethods: ['cash'], isActive: true,
       });
       setEditMeta({ deactivatedBySuperadmin: false });
       setError('');
@@ -246,8 +246,8 @@ export default function StoresPage() {
 
   const onCreate = (e) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.code.trim()) {
-      setError('Store name and code are required');
+    if (!form.name.trim()) {
+      setError('Store name is required');
       return;
     }
     createStoreSuper.mutate(form);
@@ -257,7 +257,6 @@ export default function StoresPage() {
     setEditingStore(store);
     setEditForm({
       name: store.name || '',
-      code: store.code || '',
       address: store.address || '',
       phone: store.phone || '',
       paymentMethods: store.paymentMethods?.length ? store.paymentMethods : ['cash'],
@@ -269,8 +268,8 @@ export default function StoresPage() {
 
   const onEditSave = (e) => {
     e.preventDefault();
-    if (!editForm.name.trim() || !editForm.code.trim()) {
-      setError('Store name and code are required');
+    if (!editForm.name.trim()) {
+      setError('Store name is required');
       return;
     }
     updateStore.mutate({ id: editingStore._id, payload: editForm });
@@ -325,10 +324,8 @@ export default function StoresPage() {
 
       {isSuperAdmin && canCreateStore && (
         <form onSubmit={onCreate} className="rounded-xl border border-gray-200 bg-white p-4 grid gap-3 md:grid-cols-2">
-          <div><label className="block text-xs text-gray-500 mb-1">Store Name</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder={PLACEHOLDERS.storeName}
+          <div className="md:col-span-2"><label className="block text-xs text-gray-500 mb-1">Store Name</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder={PLACEHOLDERS.storeName}
           maxLength={fieldAttrs('storeName').maxLength} value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} /></div>
-          <div><label className="block text-xs text-gray-500 mb-1">Store Code</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder={PLACEHOLDERS.storeCode}
-          maxLength={fieldAttrs('storeCode').maxLength} value={form.code} onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))} /></div>
           <div><label className="block text-xs text-gray-500 mb-1">Address</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder={PLACEHOLDERS.addressLine1}
           maxLength={fieldAttrs('addressLine1').maxLength} value={form.address} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} /></div>
           <div><label className="block text-xs text-gray-500 mb-1">Phone</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Phone (optional)" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} /></div>
@@ -370,16 +367,17 @@ export default function StoresPage() {
         {viewMode === 'grid' ? (
           <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {stores.map((store) => (
-              <div key={store._id} className="rounded-xl border border-gray-200 p-4">
-                <p className="font-semibold text-gray-900">{store.name}</p>
-                <p className="text-xs text-gray-500">{store.code}</p>
-                <p className="text-xs text-gray-600 mt-1">{store.address || '-'}</p>
-                <p className="text-xs text-gray-600 mt-1">{store.phone || '-'}</p>
-                {store.isActive === false && (
-                  <span className="mt-2 inline-block text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded">Inactive</span>
-                )}
-                <button className="mt-3 text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50" onClick={() => openEdit(store)}>
-                  Edit
+              <div key={store._id} className="rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <p className="font-semibold text-gray-900">{store.name}</p>
+                  {store.isActive === false && (
+                    <span className="inline-block text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded">Inactive</span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-600">{store.address || 'No address'}</p>
+                <p className="text-xs text-gray-500 mt-1">{store.phone || 'No phone'}</p>
+                <button className="mt-3 text-xs px-3 py-1.5 rounded-lg border border-brand-orange text-brand-orange font-medium hover:bg-brand-orange hover:text-white transition-colors" onClick={() => openEdit(store)}>
+                  Edit store
                 </button>
                 {!isSuperAdmin && (
                   <div className="mt-4 border-t border-gray-200 pt-3">
@@ -410,7 +408,7 @@ export default function StoresPage() {
           <table className="w-full text-sm min-w-[560px]">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              {['Store', 'Code', 'Address', 'Status', 'Default', 'Action'].map((h) => (
+              {['Store', 'Address', 'Phone', 'Status', 'Default', 'Action'].map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
               ))}
             </tr>
@@ -422,8 +420,8 @@ export default function StoresPage() {
             {!isLoading && stores.map((store) => (
               <tr key={store._id} className={store.isActive === false ? 'bg-gray-50/80' : ''}>
                 <td className="px-4 py-3 font-medium text-gray-900">{store.name}</td>
-                <td className="px-4 py-3 text-gray-600">{store.code}</td>
                 <td className="px-4 py-3 text-gray-600">{store.address || '-'}</td>
+                <td className="px-4 py-3 text-gray-600">{store.phone || '-'}</td>
                 <td className="px-4 py-3 text-gray-600">
                   {store.isActive === false ? (
                     <span className="text-xs font-medium text-red-600">Inactive</span>
@@ -559,23 +557,51 @@ export default function StoresPage() {
         <>
           <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setEditingStore(null)} aria-hidden="true" />
           <aside className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl border-l border-gray-200 flex flex-col">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-900">Edit store</h3>
-              <button type="button" onClick={() => setEditingStore(null)} className="p-1 rounded-lg hover:bg-gray-100 text-gray-600">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg">Edit Store</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{editingStore.name}</p>
+              </div>
+              <button type="button" onClick={() => setEditingStore(null)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={onEditSave} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-              <div><label className="block text-xs text-gray-500 mb-1">Store Name</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder={PLACEHOLDERS.storeName}
-          maxLength={fieldAttrs('storeName').maxLength} value={editForm.name} onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))} /></div>
-              <div><label className="block text-xs text-gray-500 mb-1">Store Code</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Code" value={editForm.code} onChange={(e) => setEditForm((p) => ({ ...p, code: e.target.value }))} /></div>
-              <div><label className="block text-xs text-gray-500 mb-1">Address</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Address" value={editForm.address} onChange={(e) => setEditForm((p) => ({ ...p, address: e.target.value }))} /></div>
-              <div><label className="block text-xs text-gray-500 mb-1">Phone</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Phone" value={editForm.phone} onChange={(e) => setEditForm((p) => ({ ...p, phone: e.target.value }))} /></div>
+            <form onSubmit={onEditSave} className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Payment Methods (cash required)</label>
-                <div className="flex flex-wrap gap-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Store Name *</label>
+                <input 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" 
+                  placeholder={PLACEHOLDERS.storeName}
+                  maxLength={fieldAttrs('storeName').maxLength} 
+                  value={editForm.name} 
+                  onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))} 
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
+                <input 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" 
+                  placeholder="Store address" 
+                  value={editForm.address} 
+                  onChange={(e) => setEditForm((p) => ({ ...p, address: e.target.value }))} 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
+                <input 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" 
+                  placeholder="Phone number" 
+                  value={editForm.phone} 
+                  onChange={(e) => setEditForm((p) => ({ ...p, phone: e.target.value }))} 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Payment Methods</label>
+                <p className="text-xs text-gray-500 mb-3">Cash is always required. Select additional payment types accepted at this location.</p>
+                <div className="grid grid-cols-2 gap-2">
                   {['cash', 'card', 'bank_transfer', 'mobile_wallet'].map((m) => (
-                    <label key={m} className="text-sm text-gray-700 flex items-center gap-1.5">
+                    <label key={m} className="flex items-center gap-2 p-3 rounded-lg border border-gray-200 hover:border-brand-orange transition-colors cursor-pointer">
                       <input
                         type="checkbox"
                         checked={editForm.paymentMethods.includes(m)}
@@ -586,18 +612,58 @@ export default function StoresPage() {
                           if (!next.includes('cash')) next.unshift('cash');
                           return { ...p, paymentMethods: [...new Set(next)] };
                         })}
+                        className="w-4 h-4 accent-brand-orange"
                       />
-                      <span className="capitalize">{m.replace('_', ' ')}</span>
+                      <span className="text-sm text-gray-700 capitalize">{m.replace('_', ' ')}</span>
                     </label>
                   ))}
                 </div>
               </div>
-              <label className="flex items-center gap-2 text-sm text-gray-800">
-                <input
-                  type="checkbox"
-                  checked={editForm.isActive}
-                  disabled={!isSuperAdmin && editMeta.deactivatedBySuperadmin}
-                  onChange={(e) => setEditForm((p) => ({ ...p, isActive: e.target.checked }))}
+              <div className="pt-2">
+                <label className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50 cursor-pointer hover:border-gray-300 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={editForm.isActive}
+                    disabled={!isSuperAdmin && editMeta.deactivatedBySuperadmin}
+                    onChange={(e) => setEditForm((p) => ({ ...p, isActive: e.target.checked }))}
+                    className="w-4 h-4 accent-brand-orange"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-gray-800">Store is active</span>
+                    <span className="block text-xs text-gray-500 mt-0.5">Inactive stores cannot accept orders</span>
+                  </span>
+                </label>
+                {!isSuperAdmin && editMeta.deactivatedBySuperadmin && (
+                  <p className="text-xs text-amber-600 mt-2 flex items-start gap-1.5">
+                    <span>⚠️</span>
+                    <span>This store was deactivated by a superadmin. Contact support to reactivate.</span>
+                  </p>
+                )}
+              </div>
+            </form>
+            <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
+              {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+              <div className="flex items-center gap-3">
+                <button 
+                  type="button" 
+                  onClick={onEditSave} 
+                  disabled={updateStore.isPending}
+                  className="flex-1 px-4 py-2.5 rounded-lg bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60 transition-colors"
+                >
+                  {updateStore.isPending ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setEditingStore(null)} 
+                  className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </aside>
+        </>
+      )}
                 />
                 Store is active (visible in POS)
               </label>

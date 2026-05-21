@@ -244,4 +244,24 @@ router.post('/logo', authenticateJWT, authorize('merchant_admin', 'superadmin'),
   }
 );
 
+// DELETE /tenant-settings/logo — remove logo
+router.delete('/logo', authenticateJWT, authorize('merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
+  const logger = childLogger(req.app.locals.logger, req);
+  try {
+    const tenantId = req.user.role === 'superadmin' ? (req.body.tenantId || req.tenantId) : req.tenantId;
+    const s = await getOrCreate(tenantId);
+    s.logoUrl = '';
+    s.logoKey = '';
+    s.updatedBy = req.user.id;
+    await s.save();
+    await Tenant.findByIdAndUpdate(tenantId, { 'settings.logoUrl': '', 'settings.logoKey': '' });
+    
+    logger.info('Logo removed successfully', { tenantId });
+    res.json({ message: 'Logo removed successfully' });
+  } catch (err) {
+    logger.error('Logo removal failed', { error: err.message });
+    sendRouteError(res, err, { req });
+  }
+});
+
 module.exports = router;

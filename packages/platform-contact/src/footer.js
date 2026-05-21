@@ -128,19 +128,21 @@ function buildEmailFooterHtml(contact) {
 
 function buildEmailHeaderHtml(contact) {
   const brand = esc(contact?.brandName || 'Cafinity POS');
+  // Use public web URL for logo, fallback to placeholder if not configured
+  const publicWebUrl = process.env.PUBLIC_WEB_URL || process.env.VITE_PUBLIC_WEB_URL || 'https://cafinity.com';
+  const logoUrl = `${publicWebUrl.replace(/\/$/, '')}/logo-1.png`;
   return `
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
       <tr>
-        <td style="background:${BRAND.gradient};padding:40px 32px;text-align:center;border-radius:16px 16px 0 0;position:relative;overflow:hidden">
+        <td style="background:${BRAND.gradient};padding:24px 32px;text-align:center;border-radius:16px 16px 0 0;position:relative;overflow:hidden">
           <div style="position:relative;z-index:1">
-            <p style="margin:0;font-size:30px;font-weight:900;color:${BRAND.white};letter-spacing:-0.03em;text-shadow:0 2px 8px rgba(0,0,0,0.15)">${brand}</p>
-            <p style="margin:12px 0 0;font-size:14px;color:rgba(255,255,255,0.85);font-weight:500;letter-spacing:0.02em">Point of sale for cafés &amp; restaurants</p>
+            <img src="${logoUrl}" alt="${brand}" style="width:120px;height:auto;margin:0 auto 12px;display:block" />
+            <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.85);font-weight:500;letter-spacing:0.02em">Point of sale for cafés &amp; restaurants</p>
           </div>
-          <div style="position:absolute;top:0;right:0;width:200px;height:200px;background:${BRAND.gradientWarm};opacity:0.15;border-radius:50%;transform:translate(50%,-50%)"></div>
         </td>
       </tr>
       <tr>
-        <td style="height:6px;background:${BRAND.gradientWarm};font-size:0;line-height:0">&nbsp;</td>
+        <td style="height:4px;background:${BRAND.gradientWarm};font-size:0;line-height:0">&nbsp;</td>
       </tr>
     </table>
   `.trim();

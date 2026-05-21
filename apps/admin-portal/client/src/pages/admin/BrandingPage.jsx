@@ -96,10 +96,22 @@ export default function BrandingPage() {
     mutationFn: (fd) => api.post('/tenant-settings/logo', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
     onSuccess: () => {
       setLogoFile(null);
+      setLogoPreview(null);
       queryClient.invalidateQueries({ queryKey: ['tenant-settings'] });
       toast.success('Logo uploaded');
     },
     onError: (err) => toast.error(err.response?.data?.message || 'Logo upload failed'),
+  });
+
+  const removeLogoMutation = useMutation({
+    mutationFn: () => api.delete('/tenant-settings/logo'),
+    onSuccess: () => {
+      setLogoFile(null);
+      setLogoPreview(null);
+      queryClient.invalidateQueries({ queryKey: ['tenant-settings'] });
+      toast.success('Logo removed');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to remove logo'),
   });
 
   const handleLogoChange = async (e) => {
@@ -183,7 +195,8 @@ export default function BrandingPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="pb-24">
+      <div className="max-w-3xl space-y-6">
       <div>
         <h2 className="text-xl font-bold text-gray-900">Branding & Settings</h2>
         <p className="text-sm text-gray-500 mt-0.5">Customize your POS appearance and business details</p>
@@ -217,10 +230,21 @@ export default function BrandingPage() {
                   Upload
                 </button>
               )}
-              {logoPreview && (
-                <button onClick={() => { setLogoPreview(null); setLogoFile(null); }}
-                  className="px-2 py-2 border border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50">
-                  <X size={14} />
+              {(logoPreview || form.logoUrl) && (
+                <button 
+                  onClick={() => {
+                    if (logoPreview) {
+                      setLogoPreview(null);
+                      setLogoFile(null);
+                    } else {
+                      removeLogoMutation.mutate();
+                    }
+                  }}
+                  disabled={removeLogoMutation.isPending}
+                  className="px-3 py-2 border border-red-300 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-60 text-sm font-medium"
+                  title="Remove logo"
+                >
+                  {removeLogoMutation.isPending ? <Loader size={14} className="animate-spin" /> : <X size={14} />}
                 </button>
               )}
             </div>
@@ -548,24 +572,32 @@ export default function BrandingPage() {
           Managers can set a 4–8 digit approval passcode in their POS profile (otherwise their login password is used).
         </p>
       </div>
+      </div>
+
+      {/* Sticky Save Button */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur-sm shadow-lg">
+        <div className="max-w-3xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <button onClick={handleSave} disabled={updateMutation.isPending || saving}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60 transition-colors shadow-md"
+              >
+                {updateMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Save size={14} />}
+                Save preferences
+              </button>
+              {saved && (
+                <span className="flex items-center gap-1.5 text-sm text-green-600 font-medium">
+                  <CheckCircle size={15} /> Saved!
+                </span>
+              )}
+              {updateMutation.isError && (
+                <span className="text-sm text-red-600">Failed to save. Please try again.</span>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 hidden sm:block">Changes apply immediately to your POS and receipts</p>
+          </div>
+        </div>
+      </div>
 
       {/* Save */}
-      <div className="flex items-center gap-3">
-        <button onClick={handleSave} disabled={updateMutation.isPending}
-          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60"
-        >
-          {updateMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Save size={14} />}
-          Save changes
-        </button>
-        {saved && (
-          <span className="flex items-center gap-1.5 text-sm text-green-600">
-            <CheckCircle size={15} /> Saved!
-          </span>
-        )}
-        {updateMutation.isError && (
-          <span className="text-sm text-red-600">Failed to save. Please try again.</span>
-        )}
-      </div>
-    </div>
-  );
-}
+      <div className=\"hidden\">\n      </div>\n    </div>\n  );\n}

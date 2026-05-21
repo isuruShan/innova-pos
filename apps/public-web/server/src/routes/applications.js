@@ -315,6 +315,7 @@ router.post('/', upload.single('brFile'), async (req, res) => {
       if (!emailRecipients.size) {
         logger.warn('No superadmin emails for new application — set ADMIN_NOTIFY_EMAIL or create a superadmin user');
       } else {
+        logger.info(`Sending application emails to ${emailRecipients.size} recipients`, { recipients: [...emailRecipients] });
         await Promise.all(
           [...emailRecipients].map((to) =>
             sendNewApplicationAdminEmail({
@@ -326,10 +327,11 @@ router.post('/', upload.single('brFile'), async (req, res) => {
               applicationId: String(application._id),
               reviewUrl,
             }).catch((mailErr) => {
-              logger.error('Superadmin application email failed', { to, error: mailErr.message });
+              logger.error('Superadmin application email failed', { to, error: mailErr.message, stack: mailErr.stack });
             }),
           ),
         );
+        logger.info('Application notification emails sent successfully');
       }
     } catch (adminAlertErr) {
       logger.error('Admin alerts for application failed', { error: adminAlertErr.message });
