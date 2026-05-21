@@ -38,16 +38,12 @@ git stash
 echo "==> git pull"
 git pull --ff-only origin main
 
-echo "==> Copy bootstrap.env from /etc/innovapos if available"
-if [[ -f "/etc/innovapos/bootstrap.env" ]]; then
-  echo "    Copying /etc/innovapos/bootstrap.env to repo root"
-  cp /etc/innovapos/bootstrap.env "$ROOT/bootstrap.env"
-elif [[ ! -f "$ROOT/bootstrap.env" ]]; then
-  echo "    WARNING: No bootstrap.env found in /etc/innovapos or repo root"
-  echo "    Cloud provider configuration may not be available"
-else
-  echo "    Using existing bootstrap.env in repo root"
-fi
+echo "==> Copy .env.example to .env for client apps"
+cp "$ROOT/apps/pos/client/.env.example" "$ROOT/apps/pos/client/.env"
+cp "$ROOT/apps/admin-portal/client/.env.example" "$ROOT/apps/admin-portal/client/.env"
+cp "$ROOT/apps/public-web/client/.env.example" "$ROOT/apps/public-web/client/.env"
+cp "$ROOT/apps/qr-order/client/.env.example" "$ROOT/apps/qr-order/client/.env"
+echo "    ✓ Client environment files created"
 
 echo "==> pnpm install"
 pnpm install 
