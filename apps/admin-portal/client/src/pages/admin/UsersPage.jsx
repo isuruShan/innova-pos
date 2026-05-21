@@ -553,12 +553,41 @@ export default function UsersPage() {
 
             {paymentStep === 'review' && (
               <>
-                <p className="text-sm text-gray-600 mb-4">
-                  {paymentQuote.priced?.label || 'License fee'}{' '}
-                  — <strong>{paymentQuote.priced?.currency} {Number(paymentQuote.priced?.amount || 0).toLocaleString()}</strong>
-                  {paymentQuote.billingLabel ? ` (${paymentQuote.billingLabel})` : ''}
-                </p>
+                {/* Line-item breakdown when multiple charges are present */}
+                {paymentQuote.lineItems?.length > 1 ? (
+                  <div className="mb-4 rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+                    {paymentQuote.lineItems.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                        <span className="text-gray-600">{item.label}</span>
+                        <span className="font-semibold text-gray-900">
+                          {item.currency} {Number(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {item.proration?.isProrated && (
+                            <span className="ml-1 text-xs text-amber-600 font-normal">
+                              ({item.proration.remainingDays}d prorated)
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 text-sm font-bold">
+                      <span className="text-gray-900">Total due now</span>
+                      <span className="text-brand-orange">
+                        {paymentQuote.priced?.currency}{' '}
+                        {Number(paymentQuote.priced?.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 mb-4">
+                    {paymentQuote.priced?.label || 'License fee'}{' '}
+                    — <strong>{paymentQuote.priced?.currency} {Number(paymentQuote.priced?.amount || 0).toLocaleString()}</strong>
+                    {paymentQuote.billingLabel ? ` (${paymentQuote.billingLabel})` : ''}
+                  </p>
+                )}
                 {paymentQuote.proration && <ProrationBreakdown proration={paymentQuote.proration} />}
+                {paymentQuote.billingLabel && paymentQuote.lineItems?.length > 1 && (
+                  <p className="text-xs text-gray-400 mb-2">{paymentQuote.billingLabel}</p>
+                )}
                 <div className="flex gap-3 mt-6">
                   <button type="button" onClick={closePayment} className="flex-1 py-2.5 border rounded-xl text-sm">Cancel</button>
                   <button type="button" onClick={() => setPaymentStep('method')} className="flex-1 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold">Continue to payment</button>

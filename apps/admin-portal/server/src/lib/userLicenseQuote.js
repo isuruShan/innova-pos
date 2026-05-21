@@ -55,8 +55,14 @@ async function prorateRoleCharge(tenant, role, kind, quantity = 1) {
 
 /**
  * Quote for adding a new user (beyond the one included merchant admin).
+ * For staff roles assigned to multiple stores, the extra store slot charges
+ * are combined into a single total so the payment popup shows the full cost.
+ *
+ * @param {string} tenantId
+ * @param {string} role
+ * @param {string[]} [storeIds=[]]  — store IDs the new user will be assigned to
  */
-async function quoteCreateUser(tenantId, role) {
+async function quoteCreateUser(tenantId, role, storeIds = []) {
   const tenant = await loadTenantForBilling(tenantId);
   if (!tenant) throw new Error('Tenant not found');
 
@@ -72,19 +78,53 @@ async function quoteCreateUser(tenantId, role) {
     };
   }
 
-  const charge = await prorateRoleCharge(tenant, role, 'userSeat', 1);
+  // --- User seat charge ---
+  const seatCharge = await prorateRoleCharge(tenant, role, 'userSeat', 1);
+
+  // --- Extra store slots charge (staff only, 1 slot included per user) ---
+  // merchant_admin always has access to all stores — no extra slot fee
+  const isAdmin = role === 'merchant_admin';
+  const storeCount = Array.isArray(storeIds) ? storeIds.length : 0;
+  const extraSlots = isAdmin ? 0 : Math.max(0, storeCount - 1);
+  const hasExtraStores = extraSlots > 0;
+
+  let storeCharge = null;
+  if (hasExtraStores) {
+    storeCharge = await prorateRoleCharge(tenant, role, 'extraStore', extraSlots);
+  }
+
+  const totalAmount = Math.round(
+    ((Number(seatCharge.amount) || 0) + (hasExtraStores ? Number(storeCharge.amount) || 0 : 0)) * 100,
+  ) / 100;
+  const currency = seatCharge.currency || 'LKR';
+  const billingLabel =
+    seatCharge.plan?.billingCycle === 'yearly'
+      ? 'per year (your next billing cycle)'
+      : 'per month (your next billing cycle)';
+
+  // Build a human-readable combined label
+  const labelParts = [seatCharge.label];
+  if (hasExtraStores) labelParts.push(storeCharge.label);
+  const combinedLabel = labelParts.join(' + ');
+
   return {
     requiresPayment: true,
     activeUsers: active,
     role,
-    priced: { amount: charge.amount, currency: charge.currency, label: charge.label },
-    proration: charge.proration,
-    billingLabel:
-      charge.plan?.billingCycle === 'yearly'
-        ? 'per year (your next billing cycle)'
-        : 'per month (your next billing cycle)',
+    extraStoreSlots: extraSlots,
+    priced: { amount: totalAmount, currency, label: combinedLabel },
+    // Individual line items so the UI can show a breakdown
+    lineItems: [
+      { label: seatCharge.label, amount: seatCharge.amount, currency, proration: seatCharge.proration },
+      ...(hasExtraStores
+        ? [{ label: storeCharge.label, amount: storeCharge.amount, currency, proration: storeCharge.proration }]
+        : []),
+    ],
+    proration: seatCharge.proration,
+    billingLabel,
   };
 }
+
 
 /**
  * Quote for assigning more stores than the user is licensed for (staff only).

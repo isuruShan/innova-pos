@@ -88,7 +88,7 @@ router.post('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), asy
       return res.status(400).json({ message: `Role ${role} not allowed` });
     }
 
-    const quote = await quoteCreateUser(tenantId, role);
+    const quote = await quoteCreateUser(tenantId, role, storeIds || []);
 
     if (quote.requiresPayment && req.user.role !== 'superadmin') {
       return res.status(402).json({

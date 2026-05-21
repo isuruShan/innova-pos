@@ -57,14 +57,15 @@ router.put('/pricing/:role', authenticateJWT, authorize('superadmin'), async (re
 
 router.post('/quote/create-user', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
   try {
-    const { role } = req.body;
+    const { role, storeIds } = req.body;
     if (!role) return res.status(400).json({ message: 'role is required' });
-    const quote = await quoteCreateUser(req.tenantId, role);
+    const quote = await quoteCreateUser(req.tenantId, role, storeIds || []);
     res.json(quote);
   } catch (err) {
     sendRouteError(res, err, { req });
   }
 });
+
 
 router.post('/quote/assign-stores', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
   try {

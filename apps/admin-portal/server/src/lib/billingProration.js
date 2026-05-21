@@ -47,8 +47,18 @@ function computeProratedAddonCharge(addon, plan, periodEnd, opts = {}) {
       ? 'per year (your next billing cycle)'
       : 'per month (your next billing cycle)';
 
-  const end = periodEnd ? new Date(periodEnd) : null;
-  const now = new Date();
+  // Normalise both dates to midnight (UTC) so proration is calendar-date based,
+  // not time-of-day based.
+  const endRaw = periodEnd ? new Date(periodEnd) : null;
+  const nowRaw = new Date();
+
+  // Strip time: floor to start of calendar day in UTC
+  function toDateOnly(d) {
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  }
+
+  const end = endRaw ? toDateOnly(endRaw) : null;
+  const now = toDateOnly(nowRaw);
   const currentPeriodDays = opts.currentPeriodDays > 0 ? opts.currentPeriodDays : null;
 
   if (!end || end <= now || fullAmount <= 0) {
@@ -65,8 +75,9 @@ function computeProratedAddonCharge(addon, plan, periodEnd, opts = {}) {
     };
   }
 
+  // Use calendar-day difference (each day is exactly 86400 s in UTC-normalised dates)
   const msLeft = end.getTime() - now.getTime();
-  let remainingDays = Math.max(1, Math.ceil(msLeft / 86400000));
+  let remainingDays = Math.max(1, Math.round(msLeft / 86400000));
   if (currentPeriodDays) {
     remainingDays = Math.min(currentPeriodDays, remainingDays);
   }

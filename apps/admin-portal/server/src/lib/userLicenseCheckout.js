@@ -9,7 +9,7 @@ async function buildCreateUserPayload(tenantId, body, createdBy) {
   if (!name?.trim() || !email?.trim() || !role) {
     throw new Error('name, email, and role are required');
   }
-  const quote = await quoteCreateUser(tenantId, role);
+  const quote = await quoteCreateUser(tenantId, role, storeIds || []);
   if (!quote.requiresPayment) {
     throw new Error('No payment required for this user');
   }
