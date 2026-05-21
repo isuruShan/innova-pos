@@ -64,14 +64,16 @@ if [[ -n "${AZURE_KEY_VAULT_URL:-}" && -n "${AZURE_KEY_VAULT_SECRET_NAME:-}" ]];
       # Extract VITE_* variables from the JSON secret
       VITE_VARS=("VITE_POS_URL" "VITE_ADMIN_URL" "VITE_PUBLIC_WEB_URL" "VITE_QR_ORDER_WEB_ORIGIN" "VITE_API_URL" "VITE_PUBLIC_WEB_API_URL" "VITE_QR_ORDER_API_URL")
       
+      LOADED_COUNT=0
       for var_name in "${VITE_VARS[@]}"; do
         var_value=$(echo "$SECRET_JSON" | jq -r ".$var_name // empty")
         if [[ -n "$var_value" ]]; then
           export "$var_name=$var_value"
+          LOADED_COUNT=$((LOADED_COUNT + 1))
         fi
       done
       
-      echo "    ✓ Variables loaded from Key Vault (Vault: $VAULT_NAME, Secret: $AZURE_KEY_VAULT_SECRET_NAME)"
+      echo "    ✓ Loaded $LOADED_COUNT VITE_* variables from Key Vault (Vault: $VAULT_NAME, Secret: $AZURE_KEY_VAULT_SECRET_NAME)"
     else
       echo ""
       echo "    ERROR: Could not fetch secret from Azure Key Vault"
@@ -109,19 +111,28 @@ if [[ ${#MISSING_VARS[@]} -gt 0 ]]; then
   echo ""
   echo "    ERROR: Required frontend URL variables not set: ${MISSING_VARS[*]}"
   echo ""
-  echo "    Add these variables to your Azure Key Vault secret:"
-  echo "      Vault: ${AZURE_KEY_VAULT_URL:-<not configured>}"
-  echo "      Secret: ${AZURE_KEY_VAULT_SECRET_NAME:-<not configured>}"
+  echo "    These variables are missing from your Azure Key Vault secret."
+  echo "    Update your secret to include them:"
   echo ""
-  echo "    Missing variables (add to JSON secret):"
+  echo "    Vault:  $AZURE_KEY_VAULT_URL"
+  echo "    Secret: $AZURE_KEY_VAULT_SECRET_NAME"
+  echo ""
+  echo "    Missing variables to add (JSON format):"
   for var in "${MISSING_VARS[@]}"; do
     echo "      \"$var\": \"http://your-server-ip:port\""
   done
   echo ""
-  echo "    Example: Update secret with az CLI:"
-  echo "      az keyvault secret show --vault-name ${AZURE_KEY_VAULT_URL##*/} --name ${AZURE_KEY_VAULT_SECRET_NAME:-innovapos-production-env} --query value -o tsv > secret.json"
-  echo "      # Edit secret.json to add missing VITE_* variables"
-  echo "      az keyvault secret set --vault-name ${AZURE_KEY_VAULT_URL##*/} --name ${AZURE_KEY_VAULT_SECRET_NAME:-innovapos-production-env} --file secret.json"
+  echo "    Update using Azure CLI:"
+  echo "      # Download current secret"
+  echo "      az keyvault secret show --vault-name $VAULT_NAME --name $AZURE_KEY_VAULT_SECRET_NAME --query value -o tsv > secret.json"
+  echo ""
+  echo "      # Edit secret.json to add missing VITE_* variables above"
+  echo ""
+  echo "      # Upload updated secret"
+  echo "      az keyvault secret set --vault-name $VAULT_NAME --name $AZURE_KEY_VAULT_SECRET_NAME --file secret.json"
+  echo ""
+  echo "    Or update via Azure Portal:"
+  echo "      https://portal.azure.com → Key vaults → $VAULT_NAME → Secrets → $AZURE_KEY_VAULT_SECRET_NAME → New Version"
   echo ""
   exit 1
 fi
