@@ -197,9 +197,18 @@ export function printReceipt(order, { branding, store, paymentType, cashTender }
 </html>`;
 
   const w = window.open('', '_blank', 'width=380,height=720');
-  if (!w) return;
-  w.document.write(html);
-  w.document.close();
-  w.focus();
-  w.print();
+  if (!w) {
+    console.warn('[Receipt Print] Popup blocked or failed to open');
+    return;
+  }
+  
+  try {
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  } catch (err) {
+    console.error('[Receipt Print] Error during print:', err);
+    w.close();
+  }
 }

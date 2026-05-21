@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
+import OfflineBanner from '../../components/OfflineBanner';
 import CashierSessionGate from '../../components/cashier/CashierSessionGate';
 import { useFohrMode } from '../../hooks/useFohrMode';
 import { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/cashierSessionContext';
@@ -562,12 +563,17 @@ export default function NewOrder() {
     mutationFn: (payload) => api.post('/orders', payload),
     onSuccess: (axiosRes, variables) => {
       const createdOrder = axiosRes?.data;
+      const isOfflineOrder = createdOrder?._offlinePending === true;
+      
+      // Invalidate queries - React Query handles offline gracefully
       qc.invalidateQueries({ queryKey: [CASHIER_SESSION_QUERY_KEY] });
       qc.invalidateQueries({ queryKey: ['order-board'] });
       qc.invalidateQueries({ queryKey: ['kitchen-orders'] });
       qc.invalidateQueries({ queryKey: ['cashier-ready-orders'] });
       qc.invalidateQueries({ queryKey: ['customer-loyalty'] });
       qc.invalidateQueries({ queryKey: ['customers-search'] });
+      
+      // Reset form state
       setCart([]);
       setTableNumber('');
       setReference('');
@@ -580,20 +586,41 @@ export default function NewOrder() {
       setQuickName('');
       setQuickMobile('');
       setQuickEmail('');
-      setSuccessMsg('Order placed successfully!');
-      setTimeout(() => setSuccessMsg(''), 3000);
+      
+      // Show success message
+      const msg = isOfflineOrder 
+        ? 'Order saved offline. Will sync when online.'
+        : 'Order placed successfully!';
+      setSuccessMsg(msg);
+      setTimeout(() => setSuccessMsg(''), isOfflineOrder ? 4000 : 3000);
+      
+      // Print receipt (skip for offline orders to avoid popup blocker issues)
       if (
         createdOrder &&
+        !isOfflineOrder &&
         shouldPrintReceiptOnOrderCreated(branding, createdOrder) &&
         createdOrder.paymentCollected !== false
       ) {
-        printReceipt(createdOrder, {
-          branding,
-          store: selectedStore,
-          paymentType: variables?.paymentType,
-          cashTender: variables?.cashTender,
-        });
+        try {
+          printReceipt(createdOrder, {
+            branding,
+            store: selectedStore,
+            paymentType: variables?.paymentType,
+            cashTender: variables?.cashTender,
+          });
+        } catch (err) {
+          console.warn('[Receipt Print] Failed:', err);
+          // Don't block order placement if printing fails
+        }
       }
+    },
+    onError: (error) => {
+      console.error('[Order Placement] Failed:', error);
+      // Error will be shown via mutation.error in UI
+    },
+    onSettled: () => {
+      // Always close payment modal when mutation completes (success or error)
+      setPaymentModalOpen(false);
     },
   });
 
@@ -784,7 +811,7 @@ export default function NewOrder() {
         ? { loyaltyRewardId: selectedLoyaltyRewardId }
         : {}),
     });
-    setPaymentModalOpen(false);
+    // Note: payment modal is now closed in onSettled handler
   };
 
   const sendTableTabOrder = () => {
@@ -813,6 +840,7 @@ export default function NewOrder() {
     <CashierSessionGate requireSession={fohr.requireCashierSession}>
     <div className="h-screen flex flex-col bg-[var(--pos-surface-inset)]">
       <Navbar groups={fohr.navGroups} />
+      <OfflineBanner />
       <div className="shrink-0 border-b border-slate-700/50 bg-[var(--pos-panel)]/90 px-3 py-2 flex items-center gap-2">
         <span className="text-[10px] font-bold uppercase tracking-wider text-green-400 shrink-0">Ready</span>
         <div className="flex-1 min-w-0 overflow-x-auto flex items-center gap-2">

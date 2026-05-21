@@ -300,17 +300,25 @@ export default function OrderBoard() {
       qc.invalidateQueries({ queryKey: ['sales-report'] });
       qc.invalidateQueries({ queryKey: ['recent-orders'] });
       qc.invalidateQueries({ queryKey: [CASHIER_SESSION_QUERY_KEY] });
+      
+      const isOfflineOrder = updatedOrder?._offlinePending === true;
       const policyPrint = updatedOrder && shouldPrintReceiptForUpdatedOrder(branding, updatedOrder);
       const paidOnComplete =
         variables?.status === 'completed' &&
         variables?.paymentType &&
         variables.paymentType !== 'pending';
-      if (updatedOrder && (policyPrint || paidOnComplete)) {
-        printReceipt(updatedOrder, {
-          branding,
-          store: selectedStore,
-          paymentType: updatedOrder.paymentType,
-        });
+      
+      // Skip printing for offline orders to avoid popup issues
+      if (updatedOrder && !isOfflineOrder && (policyPrint || paidOnComplete)) {
+        try {
+          printReceipt(updatedOrder, {
+            branding,
+            store: selectedStore,
+            paymentType: updatedOrder.paymentType,
+          });
+        } catch (err) {
+          console.warn('[Receipt Print] Failed:', err);
+        }
       }
     },
     onError: (e) => alert(e.response?.data?.message || 'Failed to update status'),

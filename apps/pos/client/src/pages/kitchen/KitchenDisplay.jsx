@@ -341,12 +341,19 @@ export default function KitchenDisplay() {
     onMutate: (id) => setAdvancingId(id),
     onSuccess: (updatedOrder) => {
       invalidate();
-      if (updatedOrder && shouldPrintReceiptForUpdatedOrder(branding, updatedOrder)) {
-        printReceipt(updatedOrder, {
-          branding,
-          store: selectedStore,
-          paymentType: updatedOrder.paymentType,
-        });
+      const isOfflineOrder = updatedOrder?._offlinePending === true;
+      
+      // Skip printing for offline orders to avoid popup issues
+      if (updatedOrder && !isOfflineOrder && shouldPrintReceiptForUpdatedOrder(branding, updatedOrder)) {
+        try {
+          printReceipt(updatedOrder, {
+            branding,
+            store: selectedStore,
+            paymentType: updatedOrder.paymentType,
+          });
+        } catch (err) {
+          console.warn('[Receipt Print] Failed:', err);
+        }
       }
     },
     onError: (err) => alert(err.response?.data?.message || 'Failed to update status'),
