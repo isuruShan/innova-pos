@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Plus } from 'lucide-react';
@@ -6,41 +6,63 @@ import api from '../../api/axios';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
 import StoreCreateDrawer from '../../components/superadmin/StoreCreateDrawer';
 
-function StoreCard({ store, onSave }) {
-  const [form, setForm] = useState({
+const storeIdStr = (store) => String(store?._id ?? store?.id ?? '');
+
+function buildFormFromStore(store) {
+  return {
     name: store.name || '',
     address: store.address || '',
     phone: store.phone || '',
-    paymentMethods: store.paymentMethods || ['cash'],
-  });
+    paymentMethods: store.paymentMethods?.length ? [...store.paymentMethods] : ['cash'],
+  };
+}
+
+function StoreCard({ store, onSave, isSaving }) {
+  const id = storeIdStr(store);
+  const [form, setForm] = useState(() => buildFormFromStore(store));
+
+  useEffect(() => {
+    setForm(buildFormFromStore(store));
+  }, [id, store.name, store.address, store.phone, store.paymentMethods?.join(',')]);
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-3 hover:border-gray-300 transition-colors">
+      <p className="text-xs text-gray-400 font-mono truncate">{store.code || id}</p>
       <div>
         <label className="block text-xs font-medium text-gray-600 mb-1.5">Store Name</label>
-        <input 
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30" 
-          value={form.name} 
-          onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} 
-          placeholder="e.g. Main Street branch" 
-          maxLength={120} 
+        <input
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+          value={form.name}
+          onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+          placeholder="e.g. Main Street branch"
+          maxLength={120}
         />
       </div>
       <div>
         <label className="block text-xs font-medium text-gray-600 mb-1.5">Address</label>
-        <input 
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30" 
-          value={form.address} 
-          onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} 
-          placeholder="Store address" 
+        <input
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+          value={form.address}
+          onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
+          placeholder="Store address"
         />
       </div>
-      <button 
-        type="button" 
-        onClick={() => onSave(form)} 
-        className="w-full mt-2 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover transition-colors"
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1.5">Phone</label>
+        <input
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+          value={form.phone}
+          onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
+          placeholder="Phone (optional)"
+        />
+      </div>
+      <button
+        type="button"
+        onClick={() => onSave(id, form)}
+        disabled={isSaving || !id}
+        className="w-full mt-2 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60 transition-colors"
       >
-        Save changes
+        {isSaving ? 'Saving…' : 'Save changes'}
       </button>
     </div>
   );
@@ -50,6 +72,7 @@ export default function MerchantStoresPage() {
   const { id } = useParams();
   const queryClient = useQueryClient();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [savingStoreId, setSavingStoreId] = useState(null);
 
   const { data: tenant } = useQuery({
     queryKey: ['tenant-workspace', id],
@@ -74,7 +97,20 @@ export default function MerchantStoresPage() {
   });
 
   const updateStoreMutation = useMutation({
-    mutationFn: ({ storeId, payload }) => api.put(`/stores/${storeId}`, payload),
+    mutationFn: ({ storeId, payload }) =>
+      api.put(`/stores/${storeId}`, {
+        tenantId: id,
+        name: payload.name?.trim(),
+        address: payload.address?.trim(),
+        phone: payload.phone?.trim(),
+        paymentMethods: payload.paymentMethods ? [...payload.paymentMethods] : ['cash'],
+      }),
+    onMutate: ({ storeId }) => {
+      setSavingStoreId(storeId);
+    },
+    onSettled: () => {
+      setSavingStoreId(null);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['workspace-stores', id] }),
   });
 
@@ -98,9 +134,17 @@ export default function MerchantStoresPage() {
         <p className="text-sm text-gray-500">Loading stores…</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {stores.map((store) => (
-            <StoreCard key={store._id} store={store} onSave={(payload) => updateStoreMutation.mutate({ storeId: store._id, payload: { ...payload, tenantId: id } })} />
-          ))}
+          {stores.map((store) => {
+            const sid = storeIdStr(store);
+            return (
+              <StoreCard
+                key={sid}
+                store={store}
+                isSaving={savingStoreId === sid && updateStoreMutation.isPending}
+                onSave={(storeId, payload) => updateStoreMutation.mutate({ storeId, payload })}
+              />
+            );
+          })}
           {!stores.length && <p className="text-sm text-gray-500 col-span-full">No stores yet.</p>}
         </div>
       )}

@@ -9,6 +9,7 @@ const { presignObjectKey } = require('../utils/s3Runtime');
 const { proxyUploadToService } = require('../lib/uploadProxy');
 const { getPreset, listPresets } = require('@innovapos/pos-theme-presets');
 const { validateEmail } = require('@innovapos/form-validation');
+const { childLogger } = require('@innovapos/logger');
 
 function validateBrandingPayload(body) {
   if (!String(body.businessName || '').trim()) return 'Business name is required';

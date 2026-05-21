@@ -253,15 +253,21 @@ export default function StoresPage() {
     createStoreSuper.mutate(form);
   };
 
+  const storeIdStr = (store) => String(store?._id ?? store?.id ?? '');
+
+  const buildEditFormFromStore = (store) => ({
+    name: store.name || '',
+    address: store.address || '',
+    phone: store.phone || '',
+    paymentMethods: store.paymentMethods?.length ? [...store.paymentMethods] : ['cash'],
+    isActive: store.isActive !== false,
+  });
+
   const openEdit = (store) => {
-    setEditingStore(store);
-    setEditForm({
-      name: store.name || '',
-      address: store.address || '',
-      phone: store.phone || '',
-      paymentMethods: store.paymentMethods?.length ? store.paymentMethods : ['cash'],
-      isActive: store.isActive !== false,
-    });
+    const id = storeIdStr(store);
+    if (!id) return;
+    setEditingStore({ ...store, _id: id });
+    setEditForm(buildEditFormFromStore(store));
     setEditMeta({ deactivatedBySuperadmin: Boolean(store.deactivatedBySuperadmin) });
     setError('');
   };
@@ -272,7 +278,21 @@ export default function StoresPage() {
       setError('Store name is required');
       return;
     }
-    updateStore.mutate({ id: editingStore._id, payload: editForm });
+    const id = storeIdStr(editingStore);
+    if (!id) {
+      setError('Store not found');
+      return;
+    }
+    updateStore.mutate({
+      id,
+      payload: {
+        name: editForm.name.trim(),
+        address: editForm.address.trim(),
+        phone: editForm.phone.trim(),
+        paymentMethods: [...editForm.paymentMethods],
+        isActive: editForm.isActive,
+      },
+    });
   };
   const onViewModeChange = (mode) => {
     setViewMode(mode);
@@ -556,7 +576,10 @@ export default function StoresPage() {
       {editingStore && (
         <>
           <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setEditingStore(null)} aria-hidden="true" />
-          <aside className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl border-l border-gray-200 flex flex-col">
+          <aside
+            key={storeIdStr(editingStore)}
+            className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl border-l border-gray-200 flex flex-col"
+          >
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
               <div>
                 <h3 className="font-bold text-gray-900 text-lg">Edit Store</h3>

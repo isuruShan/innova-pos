@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Upload, Loader, CheckCircle, Save, Palette, X, Receipt, Printer, Sparkles } from 'lucide-react';
+import { Upload, Loader, CheckCircle, Save, Palette, Trash2, X, Receipt, Printer, Sparkles } from 'lucide-react';
 import { PRESET_SWATCHES } from '../../utils/posThemePresets';
 import { useToast } from '../../context/ToastContext';
 import { useTenantCurrency } from '../../context/TenantCurrencyContext';
@@ -214,31 +214,34 @@ export default function BrandingPage() {
           <Palette size={16} className="text-brand-orange" /> Logo
         </h3>
         <div className="flex items-center gap-6">
-          <div className="relative w-20 h-20">
+          <div className="relative w-24 h-24 shrink-0">
             <div className="w-full h-full rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
               {logoPreview || form.logoUrl ? (
                 <img src={logoPreview || form.logoUrl} alt="logo" className="w-full h-full object-contain" />
               ) : (
                 <Upload size={24} className="text-gray-300" />
               )}
-            </div>
-            {(logoPreview || form.logoUrl) && (
-              <button
-                onClick={() => {
-                  if (logoPreview) {
-                    setLogoPreview(null);
-                    setLogoFile(null);
-                  } else {
+              {(logoPreview || form.logoUrl) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (logoPreview) {
+                      setLogoPreview(null);
+                      setLogoFile(null);
+                      if (fileRef.current) fileRef.current.value = '';
+                      return;
+                    }
                     removeLogoMutation.mutate();
-                  }
-                }}
-                disabled={removeLogoMutation.isPending}
-                className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white hover:bg-red-600 disabled:opacity-60 flex items-center justify-center shadow-md transition-colors"
-                title="Remove logo"
-              >
-                {removeLogoMutation.isPending ? <Loader size={12} className="animate-spin" /> : <X size={12} />}
-              </button>
-            )}
+                  }}
+                  disabled={removeLogoMutation.isPending}
+                  className="absolute top-1.5 right-1.5 w-7 h-7 rounded-lg bg-gray-900/80 backdrop-blur text-white hover:bg-red-600 disabled:opacity-60 flex items-center justify-center shadow-md transition-colors"
+                  title="Remove logo"
+                  aria-label="Remove logo"
+                >
+                  {removeLogoMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                </button>
+              )}
+            </div>
           </div>
           <div>
             <input ref={fileRef} type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
