@@ -23,6 +23,7 @@ import { MenuGridSkeleton } from '../../components/StoreSkeletons';
 import { printReceipt } from '../../utils/receiptPrint';
 import { shouldPrintReceiptOnOrderCreated } from '../../utils/receiptPolicy';
 import { validateMobile, validateEmail } from '../../utils/customerValidation';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 
 const formatPrice = formatCurrency;
 
@@ -347,6 +348,7 @@ export default function NewOrder() {
   const qc = useQueryClient();
   const branding = useBranding();
   const { stores, selectedStoreId, isStoreReady } = useStoreContext();
+  const online = useOnlineStatus();
   const selectedStore =
     stores.find((s) => String(s._id) === String(selectedStoreId)) || stores.find((s) => s.isDefault) || null;
   const tableMgmt = selectedStore?.tableManagementEnabled === true;
@@ -794,38 +796,31 @@ export default function NewOrder() {
   const placeOrder = () => {
     if (!canPlace) return;
     
-    // Ensure modal will close after mutation
-    const closeModal = () => setPaymentModalOpen(false);
-    
     const parsedTender = parseFloat(String(cashReceivedInput).replace(/,/g, ''));
     const cashTender =
       paymentType === 'cash' && Number.isFinite(parsedTender) ? parsedTender : undefined;
     
-    try {
-      mutation.mutate({
-        orderType,
-        ...(orderType === 'dine-in' && tableMgmt && selectedTableId ? { tableId: selectedTableId } : {}),
-        tableNumber:
-          orderType === 'dine-in' && !tableMgmt ? tableNumber.trim() : '',
-        reference: orderType !== 'dine-in' ? nonDineInReference : '',
-        items: cart,
-        paymentType,
-        paymentAmount: total,
-        cashTender,
-        ...(selectedCustomer?._id ? { customerId: selectedCustomer._id } : {}),
-        ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0 && !deferPayment
-          ? { loyaltyRewardId: selectedLoyaltyRewardId }
-          : {}),
-      });
-      
-      // In offline mode, mutation completes synchronously
-      // Ensure modal closes with a small delay for state to settle
-      setTimeout(closeModal, 50);
-    } catch (err) {
-      console.error('[Place Order] Error:', err);
-      closeModal();
+    mutation.mutate({
+      orderType,
+      ...(orderType === 'dine-in' && tableMgmt && selectedTableId ? { tableId: selectedTableId } : {}),
+      tableNumber:
+        orderType === 'dine-in' && !tableMgmt ? tableNumber.trim() : '',
+      reference: orderType !== 'dine-in' ? nonDineInReference : '',
+      items: cart,
+      paymentType,
+      paymentAmount: total,
+      cashTender,
+      ...(selectedCustomer?._id ? { customerId: selectedCustomer._id } : {}),
+      ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0 && !deferPayment
+        ? { loyaltyRewardId: selectedLoyaltyRewardId }
+        : {}),
+    });
+    
+    // In offline mode, close modal immediately (mutation is local/instant)
+    if (!online) {
+      setPaymentModalOpen(false);
     }
-    // Note: payment modal is also closed in onSettled handler
+    // Note: for online mode, modal is closed in onSettled handler
   };
 
   const sendTableTabOrder = () => {
@@ -1566,7 +1561,9 @@ export default function NewOrder() {
                 disabled={mutation.isPending}
                 className="flex-1 min-h-[54px] rounded-2xl bg-green-500 hover:bg-green-400 disabled:opacity-60 text-white text-lg font-bold shadow-lg shadow-green-500/25 transition"
               >
-                {mutation.isPending ? 'Processing…' : 'Confirm & print'}
+                {mutation.isPending
+                  ? (online ? 'Processing…' : 'Saving offline…')
+                  : 'Confirm & print'}
               </button>
             </div>
           </div>
