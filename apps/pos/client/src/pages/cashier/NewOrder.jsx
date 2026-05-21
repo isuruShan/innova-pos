@@ -567,6 +567,8 @@ export default function NewOrder() {
       const createdOrder = axiosRes?.data;
       const isOfflineOrder = createdOrder?._offlinePending === true;
       
+      console.log('[Order Placement] Success:', { isOfflineOrder, order: createdOrder });
+      
       // Invalidate queries - React Query handles offline gracefully
       qc.invalidateQueries({ queryKey: [CASHIER_SESSION_QUERY_KEY] });
       qc.invalidateQueries({ queryKey: ['order-board'] });
@@ -621,6 +623,7 @@ export default function NewOrder() {
       // Error will be shown via mutation.error in UI
     },
     onSettled: () => {
+      console.log('[Order Placement] Settled, closing modal');
       // Always close payment modal when mutation completes (success or error)
       setPaymentModalOpen(false);
     },
@@ -800,6 +803,8 @@ export default function NewOrder() {
     const cashTender =
       paymentType === 'cash' && Number.isFinite(parsedTender) ? parsedTender : undefined;
     
+    console.log('[Place Order] Starting mutation, online:', online);
+    
     mutation.mutate({
       orderType,
       ...(orderType === 'dine-in' && tableMgmt && selectedTableId ? { tableId: selectedTableId } : {}),
@@ -816,11 +821,7 @@ export default function NewOrder() {
         : {}),
     });
     
-    // In offline mode, close modal immediately (mutation is local/instant)
-    if (!online) {
-      setPaymentModalOpen(false);
-    }
-    // Note: for online mode, modal is closed in onSettled handler
+    // Note: modal is closed in onSettled handler for both online and offline
   };
 
   const sendTableTabOrder = () => {

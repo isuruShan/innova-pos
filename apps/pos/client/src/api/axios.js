@@ -54,8 +54,12 @@ api.interceptors.response.use(
     }
 
     if (isRecoverableNetworkError(err)) {
+      console.log('[Axios Interceptor] Network error detected, attempting offline mutation:', reqUrl);
       const offlineMutation = await serveOfflineMutation(err);
-      if (offlineMutation) return Promise.resolve(offlineMutation);
+      if (offlineMutation) {
+        console.log('[Axios Interceptor] Offline mutation successful:', offlineMutation);
+        return Promise.resolve(offlineMutation);
+      }
 
       if ((cfg?.method || 'get').toLowerCase() === 'get') {
         const cached = await readCachedGet(cfg);

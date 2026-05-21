@@ -2,12 +2,14 @@ export function isRecoverableNetworkError(err) {
   if (!err || err.response) return false;
   const code = err.code;
   const msg = String(err.message || '');
-  return (
+  const isRecoverable = (
     code === 'ERR_NETWORK' ||
     code === 'ECONNABORTED' ||
     msg === 'Network Error' ||
     msg.includes('Failed to fetch')
   );
+  console.log('[isRecoverableNetworkError]', { code, msg, isRecoverable, hasResponse: !!err.response });
+  return isRecoverable;
 }
 
 export function normalizeApiPath(config) {

@@ -55,13 +55,17 @@ export async function serveOfflineMutation(err) {
   const rawPath = normalizeApiPath(config);
   const pathOnly = rawPath.split('?')[0];
 
+  console.log('[serveOfflineMutation] Checking offline mutation:', { method, pathOnly });
+
   if (method === 'POST' && /\/orders\/?$/.test(pathOnly)) {
+    console.log('[serveOfflineMutation] Handling POST /orders offline');
     const clientRequestId = crypto.randomUUID();
     const base = parseBody(config);
     const body = { ...base, clientRequestId };
     const user = getStoredUser();
     const synthetic = buildSyntheticOrderFromPostBody(body, clientRequestId, user);
 
+    console.log('[serveOfflineMutation] Saving to IndexedDB:', synthetic);
     await putPendingOrder(clientRequestId, synthetic);
     await enqueue({
       id: crypto.randomUUID(),
@@ -74,6 +78,7 @@ export async function serveOfflineMutation(err) {
     });
     dispatchQueueChanged();
 
+    console.log('[serveOfflineMutation] Order saved offline, returning synthetic response');
     return {
       data: synthetic,
       status: 201,
