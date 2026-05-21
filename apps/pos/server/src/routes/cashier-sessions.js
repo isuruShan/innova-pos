@@ -167,6 +167,42 @@ router.get(
   },
 );
 
+// GET suggested opening balance (last float from previous session)
+router.get(
+  '/suggested-opening',
+  protect,
+  authorize('cashier', 'manager', 'merchant_admin'),
+  tenantScope,
+  resolveSelectedStore,
+  requireSelectedStore,
+  async (req, res) => {
+    try {
+      // Find the most recent closed session for this cashier and store
+      const lastSession = await CashierSession.findOne({
+        tenantId: req.tenantId,
+        storeId: req.storeId,
+        cashierId: req.user.id,
+        status: 'closed',
+      })
+        .sort({ closedAt: -1 })
+        .select('floatAmount closedAt')
+        .lean();
+
+      if (!lastSession || lastSession.floatAmount == null) {
+        return res.json({ suggestedOpening: 0, hasLastSession: false });
+      }
+
+      return res.json({
+        suggestedOpening: round2(lastSession.floatAmount),
+        hasLastSession: true,
+        lastSessionClosedAt: lastSession.closedAt,
+      });
+    } catch (err) {
+      sendRouteError(res, err, { req });
+    }
+  },
+);
+
 // POST open session
 router.post(
   '/open',
@@ -320,6 +356,15 @@ router.post(
         return res.status(400).json({ message: 'Closing counted cash must be a non-negative number' });
       }
 
+      const floatAmount = round2(req.body.floatAmount ?? 0);
+      if (!Number.isFinite(floatAmount) || floatAmount < 0) {
+        return res.status(400).json({ message: 'Float amount must be a non-negative number' });
+      }
+      
+      if (floatAmount > counted) {
+        return res.status(400).json({ message: 'Float amount cannot exceed the counted cash' });
+      }
+
       const notes = typeof req.body.varianceNotes === 'string' ? req.body.varianceNotes.trim() : '';
 
       const closedAt = new Date();
@@ -365,6 +410,7 @@ router.post(
       session.status = 'closed';
       session.closedAt = closedAt;
       session.closingCountedCash = counted;
+      session.floatAmount = floatAmount;
       session.expectedCashInDrawer = expectedCashInDrawer;
       session.cashSalesDuringSession = cashSalesDuringSession;
       session.varianceAmount = varianceAmount;

@@ -793,25 +793,39 @@ export default function NewOrder() {
 
   const placeOrder = () => {
     if (!canPlace) return;
+    
+    // Ensure modal will close after mutation
+    const closeModal = () => setPaymentModalOpen(false);
+    
     const parsedTender = parseFloat(String(cashReceivedInput).replace(/,/g, ''));
     const cashTender =
       paymentType === 'cash' && Number.isFinite(parsedTender) ? parsedTender : undefined;
-    mutation.mutate({
-      orderType,
-      ...(orderType === 'dine-in' && tableMgmt && selectedTableId ? { tableId: selectedTableId } : {}),
-      tableNumber:
-        orderType === 'dine-in' && !tableMgmt ? tableNumber.trim() : '',
-      reference: orderType !== 'dine-in' ? nonDineInReference : '',
-      items: cart,
-      paymentType,
-      paymentAmount: total,
-      cashTender,
-      ...(selectedCustomer?._id ? { customerId: selectedCustomer._id } : {}),
-      ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0 && !deferPayment
-        ? { loyaltyRewardId: selectedLoyaltyRewardId }
-        : {}),
-    });
-    // Note: payment modal is now closed in onSettled handler
+    
+    try {
+      mutation.mutate({
+        orderType,
+        ...(orderType === 'dine-in' && tableMgmt && selectedTableId ? { tableId: selectedTableId } : {}),
+        tableNumber:
+          orderType === 'dine-in' && !tableMgmt ? tableNumber.trim() : '',
+        reference: orderType !== 'dine-in' ? nonDineInReference : '',
+        items: cart,
+        paymentType,
+        paymentAmount: total,
+        cashTender,
+        ...(selectedCustomer?._id ? { customerId: selectedCustomer._id } : {}),
+        ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0 && !deferPayment
+          ? { loyaltyRewardId: selectedLoyaltyRewardId }
+          : {}),
+      });
+      
+      // In offline mode, mutation completes synchronously
+      // Ensure modal closes with a small delay for state to settle
+      setTimeout(closeModal, 50);
+    } catch (err) {
+      console.error('[Place Order] Error:', err);
+      closeModal();
+    }
+    // Note: payment modal is also closed in onSettled handler
   };
 
   const sendTableTabOrder = () => {

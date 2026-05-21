@@ -152,6 +152,7 @@ export default function CashierSessionGate({ children, requireSession = false })
 
   const [closeOpen, setCloseOpen] = useState(false);
   const [countInput, setCountInput] = useState('');
+  const [floatInput, setFloatInput] = useState('');
   const [notesInput, setNotesInput] = useState('');
   const [closeNoteError, setCloseNoteError] = useState('');
   const [cashMovementKind, setCashMovementKind] = useState(null);
@@ -166,6 +167,26 @@ export default function CashierSessionGate({ children, requireSession = false })
     refetchInterval: 60_000,
   });
 
+  const session = data?.session;
+  const expected = data?.expectedCashInDrawer;
+  const cashSalesSoFar = data?.cashSalesSoFar;
+  const breakdown = data?.breakdown;
+  const cashInTotal = data?.cashInTotal;
+  const cashOutTotal = data?.cashOutTotal;
+  const netCashMovements = data?.netCashMovements;
+
+  const gateActive = sessionRequired && isStoreReady && online;
+  const needsSession = gateActive && !session && !isError;
+  const showSessionLoading = gateActive && needsSession && isPending;
+  const showOpenForm = gateActive && needsSession && !isPending;
+
+  const { data: suggestedOpeningData } = useQuery({
+    queryKey: ['cashier-suggested-opening', selectedStoreId],
+    queryFn: () => api.get('/cashier-sessions/suggested-opening').then((r) => r.data),
+    enabled: Boolean(sessionRequired && isStoreReady && online && needsSession && !isPending),
+    staleTime: 30_000,
+  });
+
   const openMutation = useMutation({
     mutationFn: (openingCashBalance) =>
       api.post('/cashier-sessions/open', { openingCashBalance }),
@@ -173,12 +194,13 @@ export default function CashierSessionGate({ children, requireSession = false })
   });
 
   const closeMutation = useMutation({
-    mutationFn: ({ id, closingCountedCash, varianceNotes }) =>
-      api.post(`/cashier-sessions/${id}/close`, { closingCountedCash, varianceNotes }),
+    mutationFn: ({ id, closingCountedCash, floatAmount, varianceNotes }) =>
+      api.post(`/cashier-sessions/${id}/close`, { closingCountedCash, floatAmount, varianceNotes }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [CASHIER_SESSION_QUERY_KEY] });
       setCloseOpen(false);
       setCountInput('');
+      setFloatInput('');
       setNotesInput('');
       setCloseNoteError('');
     },
@@ -195,17 +217,10 @@ export default function CashierSessionGate({ children, requireSession = false })
     },
   });
 
-  const session = data?.session;
-  const expected = data?.expectedCashInDrawer;
-  const cashSalesSoFar = data?.cashSalesSoFar;
-  const breakdown = data?.breakdown;
-  const cashInTotal = data?.cashInTotal;
-  const cashOutTotal = data?.cashOutTotal;
-  const netCashMovements = data?.netCashMovements;
-
   const openCloseModal = useCallback(() => {
     setCloseOpen(true);
     setCountInput(expected != null ? String(expected) : '');
+    setFloatInput(''); // Empty by default, user can set desired float
   }, [expected]);
 
   const openCashMovementModal = useCallback((kind) => {
@@ -354,6 +369,11 @@ export default function CashierSessionGate({ children, requireSession = false })
               <label htmlFor="opening-cash" className="block text-sm text-slate-300 mb-2">
                 Opening cash balance
               </label>
+              {suggestedOpeningData?.hasLastSession && (
+                <p className="text-xs text-emerald-400 mb-2">
+                  💡 Suggested: {formatCurrency(suggestedOpeningData.suggestedOpening || 0)} (float from last session)
+                </p>
+              )}
               <input
                 id="opening-cash"
                 name="opening"
@@ -362,6 +382,8 @@ export default function CashierSessionGate({ children, requireSession = false })
                 min="0"
                 required
                 autoFocus
+                defaultValue={suggestedOpeningData?.suggestedOpening || ''}
+                placeholder="0.00"
                 className="w-full px-4 py-3 rounded-xl bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] text-lg font-semibold tabular-nums"
               />
               {openMutation.isError && (
@@ -499,6 +521,28 @@ export default function CashierSessionGate({ children, requireSession = false })
                       }}
                       className="w-full px-4 py-3 rounded-xl bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] text-lg font-semibold tabular-nums"
                     />
+                  </div>
+                  <div>
+                    <label htmlFor="float-amount" className="block text-sm text-slate-300 mb-1">
+                      Float to keep for next session
+                      <span className="text-xs text-slate-500 ml-2">(optional, default: 0)</span>
+                    </label>
+                    <input
+                      id="float-amount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={floatInput}
+                      onChange={(e) => {
+                        setFloatInput(e.target.value);
+                        setCloseNoteError('');
+                      }}
+                      placeholder="0.00"
+                      className="w-full px-4 py-3 rounded-xl bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] text-lg font-semibold tabular-nums"
+                    />
+                    <p className="text-xs text-slate-400 mt-1">
+                      Amount to remain in drawer as opening balance for next session
+                    </p>
                   </div>
                   <div>
                     <label htmlFor="variance-notes" className="block text-sm text-slate-300 mb-1">
