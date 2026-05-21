@@ -44,10 +44,10 @@ export function AddonActionButton({
   if (row.isInTrial) {
     return (
       <div className="flex flex-col items-stretch sm:items-end gap-2">
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          <p className="text-xs font-semibold text-amber-800">🎉 Trial Active</p>
-          <p className="text-xs text-amber-700 mt-0.5">
-            Trial ends: <strong>{formatPeriodEnd(row.trialEndsAt)}</strong>
+        <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+          <p className="text-xs font-semibold text-green-800">Trial Active</p>
+          <p className="text-xs text-green-700 mt-0.5">
+            Ends: <strong>{formatPeriodEnd(row.trialEndsAt)}</strong>
           </p>
         </div>
         <div className="flex flex-wrap gap-2 justify-end">
@@ -63,7 +63,7 @@ export function AddonActionButton({
             onClick={() => onReview?.(row)}
             className="px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover"
           >
-            Subscribe Now
+            Subscribe
           </button>
         </div>
       </div>
@@ -93,27 +93,29 @@ export function AddonActionButton({
       );
     }
     return (
-      <div className="flex flex-wrap gap-2 justify-end">
+      <div className="flex flex-col items-stretch sm:items-end gap-2">
         {row.billingCycle && (
-          <p className="text-xs text-gray-500 w-full text-right">
+          <p className="text-xs text-gray-500 text-right">
             Billing: <strong>{row.billingCycle === 'yearly' ? 'Yearly' : 'Monthly'}</strong>
           </p>
         )}
-        <button
-          type="button"
-          onClick={() => onView?.(row)}
-          className="px-4 py-2 rounded-lg border border-gray-300 text-gray-800 hover:bg-gray-50 text-sm font-semibold"
-        >
-          View
-        </button>
-        <button
-          type="button"
-          onClick={() => onUnsubscribe?.(row)}
-          disabled={busy || !row.canUnsubscribe}
-          className="px-4 py-2 rounded-lg border border-red-200 text-red-700 hover:bg-red-50 text-sm font-semibold disabled:opacity-50"
-        >
-          {busy ? 'Scheduling…' : 'Unsubscribe'}
-        </button>
+        <div className="flex flex-wrap gap-2 justify-end">
+          <button
+            type="button"
+            onClick={() => onView?.(row)}
+            className="px-4 py-2 rounded-lg border border-gray-300 text-gray-800 hover:bg-gray-50 text-sm font-semibold"
+          >
+            View
+          </button>
+          <button
+            type="button"
+            onClick={() => onUnsubscribe?.(row)}
+            disabled={busy || !row.canUnsubscribe}
+            className="px-4 py-2 rounded-lg border border-red-200 text-red-700 hover:bg-red-50 text-sm font-semibold disabled:opacity-50"
+          >
+            {busy ? 'Scheduling…' : 'Unsubscribe'}
+          </button>
+        </div>
       </div>
     );
   }
@@ -140,40 +142,73 @@ export function AddonActionButton({
   }
 
   if (!row.priced?.amount) {
-    return <p className="text-xs text-amber-700 text-right">Pricing not set — contact support.</p>;
-  }
-
-  // Show trial option if eligible
-  if (row.canStartTrial && onStartTrial) {
     return (
       <div className="flex flex-col items-stretch sm:items-end gap-2">
         <button
           type="button"
-          onClick={() => onStartTrial?.(row)}
-          disabled={trialBusy}
-          className="px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+          onClick={() => onView?.(row)}
+          className="px-4 py-2 rounded-lg border border-gray-300 text-gray-800 hover:bg-gray-50 text-sm font-semibold"
         >
-          {trialBusy ? 'Starting…' : '🎉 Start 7-Day Trial'}
+          View
         </button>
-        <button
-          type="button"
-          onClick={() => onReview?.(row)}
-          className="px-4 py-2 rounded-lg border border-brand-orange text-brand-orange text-sm font-semibold hover:bg-brand-orange/5"
-        >
-          Subscribe Now
-        </button>
+        <p className="text-xs text-amber-700 text-right">Pricing not set — contact support.</p>
       </div>
     );
   }
 
+  // Show trial option if eligible - always include View button
+  if (row.canStartTrial && onStartTrial) {
+    return (
+      <div className="flex flex-col items-stretch sm:items-end gap-2">
+        {row.priced?.amount && (
+          <p className="text-xs text-gray-500 text-right">7-day free trial available</p>
+        )}
+        <div className="flex flex-wrap gap-2 justify-end">
+          <button
+            type="button"
+            onClick={() => onView?.(row)}
+            className="px-4 py-2 rounded-lg border border-gray-300 text-gray-800 hover:bg-gray-50 text-sm font-semibold"
+          >
+            View
+          </button>
+          <button
+            type="button"
+            onClick={() => onStartTrial?.(row)}
+            disabled={trialBusy}
+            className="px-4 py-2 rounded-lg border border-green-300 bg-green-50 text-green-800 hover:bg-green-100 text-sm font-semibold disabled:opacity-50"
+          >
+            {trialBusy ? 'Starting…' : 'Start Trial'}
+          </button>
+          <button
+            type="button"
+            onClick={() => onReview?.(row)}
+            className="px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover"
+          >
+            Subscribe
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Default: not active, no trial available
   return (
-    <button
-      type="button"
-      onClick={() => onReview?.(row)}
-      className="px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover"
-    >
-      Review & subscribe
-    </button>
+    <div className="flex flex-wrap gap-2 justify-end">
+      <button
+        type="button"
+        onClick={() => onView?.(row)}
+        className="px-4 py-2 rounded-lg border border-gray-300 text-gray-800 hover:bg-gray-50 text-sm font-semibold"
+      >
+        View
+      </button>
+      <button
+        type="button"
+        onClick={() => onReview?.(row)}
+        className="px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover"
+      >
+        Subscribe
+      </button>
+    </div>
   );
 }
 

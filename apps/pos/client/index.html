@@ -29,13 +29,35 @@
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
             .then(registration => {
-              console.log('ServiceWorker registered:', registration.scope);
+              console.log('✅ ServiceWorker registered:', registration.scope);
+              
+              // Check for updates
+              registration.addEventListener('updatefound', () => {
+                console.log('🔄 ServiceWorker update found');
+              });
             })
             .catch(error => {
-              console.log('ServiceWorker registration failed:', error);
+              console.error('❌ ServiceWorker registration failed:', error);
             });
         });
+      } else {
+        console.warn('⚠️ ServiceWorkers not supported in this browser');
       }
+
+      // Listen for install prompt
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        console.log('✅ PWA install prompt available');
+        e.preventDefault();
+        deferredPrompt = e;
+        // You can show a custom install button here
+        // For now, users can install via browser menu
+      });
+
+      window.addEventListener('appinstalled', () => {
+        console.log('✅ PWA installed successfully');
+        deferredPrompt = null;
+      });
     </script>
   </body>
 </html>

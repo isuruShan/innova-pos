@@ -242,7 +242,6 @@ function NavDropdown({
   userRole,
   location,
   navTabActiveFg,
-  highlight,
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -272,8 +271,6 @@ function NavDropdown({
         aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
         className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-          highlight ? 'ring-2 ring-amber-500/60' : ''
-        } ${
           active ? '' : 'hover:bg-white/10'
         }`}
         style={
@@ -402,7 +399,6 @@ export default function Navbar({ links = [], groups: groupsProp }) {
                   userRole={user?.role}
                   location={location}
                   navTabActiveFg={navTabActiveFg}
-                  highlight={group.highlight}
                 />
               );
             })}
