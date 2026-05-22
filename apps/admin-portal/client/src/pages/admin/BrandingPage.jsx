@@ -5,7 +5,7 @@ import { PRESET_SWATCHES } from '../../utils/posThemePresets';
 import { useToast } from '../../context/ToastContext';
 import { useTenantCurrency } from '../../context/TenantCurrencyContext';
 import api from '../../api/axios';
-import { fieldAttrs, LIMITS, validateEmail, validateBusinessName, validateAddressLine } from '../../utils/formFields';
+import { fieldAttrs, LIMITS, validateEmail, validateBusinessName, validateAddressLine, validateWebsite } from '../../utils/formFields';
 import MobilePhoneField, { validateMobileField, phoneValueFromField } from '../../components/MobilePhoneField';
 import { CURRENCY_OPTIONS } from '../../constants/currencies';
 import { parsePhoneForField } from '../../utils/phone';
@@ -138,6 +138,10 @@ export default function BrandingPage() {
 
   const set = (k) => (v) => setForm(f => ({ ...f, [k]: v }));
 
+  /** Detect obvious script-injection patterns in a text field. */
+  const hasScriptContent = (str) =>
+    /<script|javascript:|on\w+\s*=|<iframe|<object|<embed/i.test(String(str || ''));
+
   const validateBrandingForm = () => {
     const e = {};
     const nameRes = validateBusinessName(form.businessName);
@@ -148,6 +152,14 @@ export default function BrandingPage() {
     if (mobileErr) e.phone = mobileErr;
     const email = String(form.email || '').trim();
     if (email && !validateEmail(email)) e.email = 'Enter a valid email address';
+    const website = String(form.website || '').trim();
+    if (website) {
+      const wsRes = validateWebsite(website);
+      if (!wsRes.ok) e.website = wsRes.error || 'Enter a valid URL (e.g. https://example.com)';
+    }
+    const desc = String(form.description || '').trim();
+    if (desc && hasScriptContent(desc)) e.description = 'Description must not contain scripts or HTML tags.';
+    if (desc && desc.length > 1000) e.description = 'Description must be 1,000 characters or fewer.';
     return e;
   };
 
@@ -163,6 +175,7 @@ export default function BrandingPage() {
     const phone = phoneValueFromField(phoneCountryIso, phoneNationalDigits);
     updateMutation.mutate({
       businessName: form.businessName.trim(),
+      description: String(form.description || '').trim(),
       themePresetId: form.themePresetId,
       themePresetName: form.themePresetName,
       themeBaseColor: form.themeBaseColor,
@@ -335,11 +348,52 @@ export default function BrandingPage() {
           <input
             type="text"
             value={form.website || ''}
-            onChange={(e) => set('website')(e.target.value)}
-            placeholder={fieldAttrs('website').placeholder}
-            maxLength={fieldAttrs('website').maxLength}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+            onChange={(e) => {
+              set('website')(e.target.value);
+              if (fieldErrors.website) setFieldErrors((er) => ({ ...er, website: '' }));
+            }}
+            onBlur={(e) => {
+              const v = e.target.value.trim();
+              if (v) {
+                const res = validateWebsite(v);
+                if (!res.ok) setFieldErrors((er) => ({ ...er, website: res.error || 'Enter a valid URL (e.g. https://example.com)' }));
+              }
+            }}
+            placeholder={fieldAttrs('website').placeholder || 'https://example.com'}
+            maxLength={fieldAttrs('website').maxLength || 200}
+            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
+              fieldErrors.website ? 'border-red-400' : 'border-gray-300'
+            }`}
           />
+          {fieldErrors.website && <p className="text-xs text-red-500 mt-1">{fieldErrors.website}</p>}
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-medium text-gray-700">Business description</label>
+            <span className={`text-xs tabular-nums ${
+              (form.description || '').length > 900 ? 'text-red-500' : 'text-gray-400'
+            }`}>
+              {(form.description || '').length}/1,000
+            </span>
+          </div>
+          <textarea
+            value={form.description || ''}
+            onChange={(e) => {
+              set('description')(e.target.value);
+              if (fieldErrors.description) setFieldErrors((er) => ({ ...er, description: '' }));
+            }}
+            rows={3}
+            maxLength={1000}
+            placeholder="Briefly describe your business — cuisine type, ambience, specialties, opening hours, etc. This appears on customer-facing pages and your Google Business Profile."
+            className={`w-full border rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
+              fieldErrors.description ? 'border-red-400' : 'border-gray-300'
+            }`}
+          />
+          {fieldErrors.description
+            ? <p className="text-xs text-red-500 mt-1">{fieldErrors.description}</p>
+            : <p className="text-xs text-gray-400 mt-1">No HTML or scripts. Used on receipts, customer pages, and your Google Business Profile.</p>
+          }
         </div>
       </div>
 
