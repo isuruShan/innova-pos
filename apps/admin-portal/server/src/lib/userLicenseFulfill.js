@@ -6,6 +6,7 @@ const Store = require('../models/Store');
 const PaymentReceipt = require('../models/PaymentReceipt');
 const { sendWelcomeEmail } = require('../utils/mailer');
 const { emitAudit } = require('@innovapos/shared-middleware');
+const { endTenantTrialOnPaidPurchase } = require('./subscriptionActivation');
 
 const generateTempPassword = () => crypto.randomBytes(6).toString('hex');
 
@@ -105,6 +106,7 @@ async function fulfillAssignStores(tenantId, userId, targetStoreIds, newLicensed
 
 async function processVerifiedUserLicenseReceipt(receipt, req) {
   const tenantId = receipt.tenantId?._id || receipt.tenantId;
+  await endTenantTrialOnPaidPurchase(tenantId, { activatedBy: receipt.createdBy || req?.user?.id || null });
   const payload = receipt.userLicensePayload || {};
   const action = receipt.userLicenseAction;
 

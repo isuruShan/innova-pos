@@ -65,19 +65,19 @@ async function fulfillOnlinePayment({ tenantId, planId, paymentMethod, externalI
     await receipt.save();
   }
 
-  const { tenant: updated, newEnd, pendingMatch } = await activateSubscriptionForTenant(
-    tenantId,
-    plan,
-    { paymentNote: `${paymentMethod} payment confirmed`, activatedBy: null },
-  );
+  const { tenant: updated, subscription, newEnd, pendingMatch, convertedFromTrial } =
+    await activateSubscriptionForTenant(tenantId, plan, {
+      paymentNote: `${paymentMethod} payment confirmed`,
+      activatedBy: null,
+    });
 
-  const latestSub = await Subscription.findOne({ tenantId }).sort({ createdAt: -1 });
-  if (latestSub) {
-    receipt.subscriptionId = latestSub._id;
+  if (subscription?._id) {
+    receipt.subscriptionId = subscription._id;
+    receipt.subscriptionExtended = true;
     await receipt.save();
   }
 
-  await notifySubscriptionActivated(updated, newEnd, { pendingMatch });
+  await notifySubscriptionActivated(updated, newEnd, { pendingMatch, convertedFromTrial });
   return { receipt, newEnd };
 }
 

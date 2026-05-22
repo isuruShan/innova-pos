@@ -23,6 +23,11 @@ const { getAddonPurchaseQuote } = require('../lib/addonPurchaseQuote');
 const { getStoreCreateQuote } = require('../lib/storeCreateQuote');
 const { createDefaultStoreForTenant } = require('../lib/storePurchase');
 const { notifyPaymentSubmitted, notifyPaymentVerified } = require('../lib/paymentNotify');
+const {
+  activateSubscriptionForTenant,
+  notifySubscriptionActivated,
+  endTenantTrialOnPaidPurchase,
+} = require('../lib/subscriptionActivation');
 
 const router = express.Router();
 
@@ -524,6 +529,7 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
     if (receipt.receiptKind === 'user_license') {
       const { processVerifiedUserLicenseReceipt } = require('../lib/userLicenseFulfill');
       const tenantId = receipt.tenantId?._id || receipt.tenantId;
+      await endTenantTrialOnPaidPurchase(tenantId, { activatedBy: req.user.id });
       const now = new Date();
       receipt.status = 'verified';
       receipt.verifiedBy = req.user.id;
@@ -563,6 +569,7 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
 
     if (receipt.receiptKind === 'store') {
       const tenantId = receipt.tenantId?._id || receipt.tenantId;
+      await endTenantTrialOnPaidPurchase(tenantId, { activatedBy: req.user.id });
       const store = await createDefaultStoreForTenant(tenantId, req.user.id);
       const now = new Date();
       receipt.status = 'verified';
@@ -643,66 +650,29 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
     if (!plan) {
       return res.status(400).json({ message: 'Cannot verify receipt: requested plan no longer active' });
     }
-    const extensionDays = plan.durationDays;
 
-    // Extend subscription
-    const tenant = await require('../models/Tenant').findById(receipt.tenantId._id || receipt.tenantId);
+    const tenantId = receipt.tenantId?._id || receipt.tenantId;
     const now = new Date();
-
-    // Find current end date (trial end or last subscription end)
-    let currentEnd = tenant.trialEndsAt || now;
-    const latestSub = await Subscription.findOne({ tenantId: tenant._id }).sort({ endDate: -1 });
-    if (latestSub && latestSub.endDate > currentEnd) currentEnd = latestSub.endDate;
-
-    const newEnd = new Date(Math.max(currentEnd.getTime(), now.getTime()));
-    newEnd.setDate(newEnd.getDate() + extensionDays);
-
     const planAmount = Number(plan.amount) || 0;
     const addonPortion = Math.max(0, Number(receipt.amount) - planAmount);
 
-    const subscription = await Subscription.create({
-      tenantId: tenant._id,
-      plan: plan.billingCycle || 'custom',
-      planId: plan._id,
-      planCode: plan.code,
-      amount: Number(receipt.amount) || planAmount,
-      addonAmount: addonPortion,
-      currency: plan.currency || 'LKR',
-      durationDays: extensionDays,
-      startDate: now,
-      endDate: newEnd,
-      extendedByAdmin: true,
-      extensionNote: `Payment receipt verified. Extension: ${plan.name} (${extensionDays} days)`,
-      extendedBy: req.user.id,
-      extendedAt: now,
-      createdBy: req.user.id,
-    });
+    const { tenant, subscription, newEnd, pendingMatch, convertedFromTrial } =
+      await activateSubscriptionForTenant(tenantId, plan, {
+        paymentNote: `Payment receipt verified. ${plan.name}`,
+        activatedBy: req.user.id,
+      });
 
-    // Update tenant subscription status
-    tenant.subscriptionStatus = 'active';
-    tenant.status = 'active';
-    // Clear any temporary-activation overrides once payment is verified.
-    tenant.temporaryActivationUntil = null;
-    tenant.temporaryActivationRequestedAt = null;
-    tenant.temporaryActivationRequestedBy = null;
-    tenant.temporaryActivationExpiryEndDate = null;
-    tenant.temporaryActivationUsedForEndDate = null;
-    tenant.subscriptionExpiryReminderSentForEndDate = null;
-    tenant.subscriptionDeactivationNotifiedForEndDate = null;
-    if (!tenant.assignedPlanId) {
-      tenant.assignedPlanId = plan._id;
-      tenant.assignedAt = now;
-      tenant.assignedBy = req.user.id;
+    if (addonPortion > 0 && subscription) {
+      subscription.addonAmount = addonPortion;
+      subscription.amount = Number(receipt.amount) || planAmount;
+      await subscription.save();
     }
-    tenant.updatedBy = req.user.id;
-    await tenant.save();
 
-    // Update receipt
     receipt.status = 'verified';
     receipt.verifiedBy = req.user.id;
     receipt.verifiedAt = now;
     receipt.subscriptionExtended = true;
-    receipt.extensionDays = extensionDays;
+    receipt.extensionDays = plan.durationDays;
     receipt.amountMatchesExpected = amountsEqual(receipt.amount, receipt.expectedAmount);
     receipt.subscriptionId = subscription._id;
     receipt.updatedBy = req.user.id;
@@ -713,33 +683,20 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
       action: 'PAYMENT_VERIFIED',
       resource: 'PaymentReceipt',
       resourceId: receipt._id,
-      changes: { after: { subscriptionExtendedTo: newEnd, extensionDays } },
+      changes: { after: { subscriptionExtendedTo: newEnd, extensionDays: plan.durationDays, convertedFromTrial } },
     });
 
-    try {
-      await notifySuperAdmins(tenant._id, {
-        type: 'payment_receipt_verified',
-        title: 'Payment verified — subscription extended',
-        body: `Subscription extended until ${newEnd.toDateString()} for "${tenant.businessName}".`,
-        meta: { resourceType: 'tenant', resourceId: String(tenant._id), subscriptionEndDate: newEnd.toISOString() },
-      });
-      await notifyMerchantAdmins(tenant._id, {
-        type: 'subscription_approved',
-        title: 'Subscription activated',
-        body: `Your subscription is active until ${newEnd.toDateString()}.`,
-        meta: { resourceType: 'tenant', resourceId: String(tenant._id), subscriptionEndDate: newEnd.toISOString() },
-      }).catch(() => {});
-    } catch (_) {}
+    await notifySubscriptionActivated(tenant, newEnd, { pendingMatch, convertedFromTrial });
 
     const receiptLean = receipt.toObject ? receipt.toObject() : receipt;
-    receiptLean.extensionDays = extensionDays;
+    receiptLean.extensionDays = plan.durationDays;
     await notifyPaymentVerified(receiptLean, tenant);
 
-    res.json({
-      message: `Subscription extended by ${extensionDays} days (until ${newEnd.toDateString()})`,
-      receipt,
-      subscription,
-    });
+    const message = convertedFromTrial
+      ? `Trial ended — subscription active until ${newEnd.toDateString()}`
+      : `Subscription extended by ${plan.durationDays} days (until ${newEnd.toDateString()})`;
+
+    res.json({ message, receipt, subscription });
   } catch (err) {
     sendRouteError(res, err, { req });
   }

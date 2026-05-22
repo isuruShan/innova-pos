@@ -39,7 +39,40 @@ export default function StoresPage() {
   const [bankFile, setBankFile] = useState(null);
   const bankFileRef = useRef(null);
   const paypalContainerRef = useRef(null);
+  const editingStoreIdRef = useRef('');
   const [paypalReady, setPaypalReady] = useState(false);
+
+  const storeIdStr = (store) => {
+    const raw = store?._id ?? store?.id;
+    if (raw == null || raw === '') return '';
+    if (typeof raw === 'object') {
+      if (raw._id != null) return String(raw._id);
+      if (typeof raw.toString === 'function') {
+        const s = raw.toString();
+        if (/^[a-f0-9]{24}$/i.test(s)) return s;
+      }
+      return '';
+    }
+    return String(raw);
+  };
+
+  const buildEditFormFromStore = (store) => ({
+    name: store.name || '',
+    address: store.address || '',
+    phone: store.phone || '',
+    paymentMethods: store.paymentMethods?.length ? [...store.paymentMethods] : ['cash'],
+    isActive: store.isActive !== false,
+  });
+
+  const openEdit = (store) => {
+    const id = storeIdStr(store);
+    if (!id) return;
+    editingStoreIdRef.current = id;
+    setEditingStore({ ...store, _id: id });
+    setEditForm(buildEditFormFromStore(store));
+    setEditMeta({ deactivatedBySuperadmin: Boolean(store.deactivatedBySuperadmin) });
+    setError('');
+  };
 
   const { data: storeList = { items: [], page: 1, pages: 1, total: 0 }, isLoading, isFetching } = useQuery({
     queryKey: ['admin-stores', storePage],
@@ -76,14 +109,13 @@ export default function StoresPage() {
   });
 
   const createIncludedStore = useMutation({
-    mutationFn: () => api.post('/stores/create-included'),
-    onSuccess: (res) => {
-      const created = res?.data;
+    mutationFn: () => api.post('/stores/create-included').then((r) => r.data),
+    onSuccess: (created) => {
       toast.success(`Store ${created?.code || ''} created. Edit name and settings below.`);
       queryClient.invalidateQueries({ queryKey: ['admin-stores'] });
       queryClient.invalidateQueries({ queryKey: ['stores'] });
       closePurchase();
-      if (created?._id) openEdit(created);
+      if (created) openEdit(created);
     },
     onError: (err) => setPurchaseError(err.response?.data?.message || 'Failed to create store'),
   });
@@ -101,11 +133,16 @@ export default function StoresPage() {
   const paypalCaptureMutation = useMutation({
     mutationFn: (orderId) => api.post('/subscriptions/checkout/paypal/capture', { orderId }).then((r) => r.data),
     onSuccess: (data) => {
-      if (data?.store) {
+      const createdId = data?.storeId ? storeIdStr({ _id: data.storeId }) : '';
+      if (createdId || data?.store) {
         toast.success(data.message || 'Store created.');
         queryClient.invalidateQueries({ queryKey: ['admin-stores'] });
         queryClient.invalidateQueries({ queryKey: ['stores'] });
         closePurchase();
+        const toEdit = typeof data.store === 'object' && data.store
+          ? data.store
+          : { _id: createdId, name: 'New store', code: data.storeCode || '' };
+        if (createdId) openEdit(toEdit);
         return;
       }
       setPurchaseError(data?.message || 'Payment did not create a store.');
@@ -224,8 +261,10 @@ export default function StoresPage() {
   };
 
   const updateStore = useMutation({
-    mutationFn: ({ id, payload }) => api.put(`/stores/${id}`, payload),
+    mutationFn: ({ id, payload }) =>
+      api.put(`/stores/${id}`, payload, { headers: { 'x-store-id': '' } }),
     onSuccess: () => {
+      editingStoreIdRef.current = '';
       setEditingStore(null);
       setEditForm({
         name: '', address: '', phone: '', paymentMethods: ['cash'], isActive: true,
@@ -255,24 +294,13 @@ export default function StoresPage() {
     createStoreSuper.mutate(form);
   };
 
-  const storeIdStr = (store) => String(store?._id ?? store?.id ?? '');
-
-  const buildEditFormFromStore = (store) => ({
-    name: store.name || '',
-    address: store.address || '',
-    phone: store.phone || '',
-    paymentMethods: store.paymentMethods?.length ? [...store.paymentMethods] : ['cash'],
-    isActive: store.isActive !== false,
-  });
-
-  const openEdit = (store) => {
-    const id = storeIdStr(store);
+  useEffect(() => {
+    if (!editingStore) return;
+    const id = storeIdStr(editingStore);
     if (!id) return;
-    setEditingStore({ ...store, _id: id });
-    setEditForm(buildEditFormFromStore(store));
-    setEditMeta({ deactivatedBySuperadmin: Boolean(store.deactivatedBySuperadmin) });
-    setError('');
-  };
+    setEditForm(buildEditFormFromStore(editingStore));
+    setEditMeta({ deactivatedBySuperadmin: Boolean(editingStore.deactivatedBySuperadmin) });
+  }, [editingStore?._id, editingStore?.id]);
 
   const onEditSave = (e) => {
     e.preventDefault();
@@ -280,7 +308,7 @@ export default function StoresPage() {
       setError('Store name is required');
       return;
     }
-    const id = storeIdStr(editingStore);
+    const id = editingStoreIdRef.current || storeIdStr(editingStore);
     if (!id) {
       setError('Store not found');
       return;
@@ -301,9 +329,13 @@ export default function StoresPage() {
     localStorage.setItem('view_mode_admin_stores', mode);
   };
 
-  const storeUsers = (storeId) => (
-    users.filter((u) => Array.isArray(u.storeIds) && u.storeIds.some((s) => (typeof s === 'string' ? s : s?._id) === storeId))
-  );
+  const storeUsers = (storeId) => {
+    const sid = storeIdStr({ _id: storeId });
+    return users.filter(
+      (u) => Array.isArray(u.storeIds)
+        && u.storeIds.some((s) => storeIdStr({ _id: s }) === sid),
+    );
+  };
 
   const toggleUserStoreAccess = (user, storeId, checked) => {
     const currentStoreIds = Array.isArray(user.storeIds)
@@ -388,8 +420,10 @@ export default function StoresPage() {
       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
         {viewMode === 'grid' ? (
           <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {stores.map((store) => (
-              <div key={store._id} className="rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors">
+            {stores.map((store) => {
+              const sid = storeIdStr(store);
+              return (
+              <div key={sid || store.code} className="rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <p className="font-semibold text-gray-900">{store.name}</p>
                   {store.isActive === false && (
@@ -406,13 +440,13 @@ export default function StoresPage() {
                     <p className="text-xs font-semibold text-gray-600 mb-2">Store Access Users</p>
                     <div className="space-y-1 max-h-32 overflow-auto">
                       {users.map((u) => {
-                        const assigned = storeUsers(store._id).some((su) => su._id === u._id);
+                        const assigned = storeUsers(sid).some((su) => su._id === u._id);
                         return (
                           <label key={u._id} className="flex items-center gap-2 text-xs text-gray-700">
                             <input
                               type="checkbox"
                               checked={assigned}
-                              onChange={(e) => toggleUserStoreAccess(u, store._id, e.target.checked)}
+                              onChange={(e) => toggleUserStoreAccess(u, sid, e.target.checked)}
                             />
                             <span>{u.name} ({u.role?.replace('_', ' ')})</span>
                           </label>
@@ -422,7 +456,8 @@ export default function StoresPage() {
                   </div>
                 )}
               </div>
-            ))}
+            );
+            })}
             {!stores.length && <p className="text-sm text-gray-500">No stores yet.</p>}
           </div>
         ) : (
@@ -439,8 +474,10 @@ export default function StoresPage() {
             {isLoading && (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">Loading stores...</td></tr>
             )}
-            {!isLoading && stores.map((store) => (
-              <tr key={store._id} className={store.isActive === false ? 'bg-gray-50/80' : ''}>
+            {!isLoading && stores.map((store) => {
+              const sid = storeIdStr(store);
+              return (
+              <tr key={sid || store.code} className={store.isActive === false ? 'bg-gray-50/80' : ''}>
                 <td className="px-4 py-3 font-medium text-gray-900">{store.name}</td>
                 <td className="px-4 py-3 text-gray-600">{store.address || '-'}</td>
                 <td className="px-4 py-3 text-gray-600">{store.phone || '-'}</td>
@@ -458,7 +495,8 @@ export default function StoresPage() {
                   </button>
                 </td>
               </tr>
-            ))}
+            );
+            })}
             {!isLoading && !stores.length && (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No stores yet</td></tr>
             )}
@@ -587,7 +625,14 @@ export default function StoresPage() {
 
       {editingStore && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setEditingStore(null)} aria-hidden="true" />
+          <div
+            className="fixed inset-0 z-40 bg-black/30"
+            onClick={() => {
+              editingStoreIdRef.current = '';
+              setEditingStore(null);
+            }}
+            aria-hidden="true"
+          />
           <aside
             key={storeIdStr(editingStore)}
             className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl border-l border-gray-200 flex flex-col"
@@ -595,9 +640,19 @@ export default function StoresPage() {
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
               <div>
                 <h3 className="font-bold text-gray-900 text-lg">Edit Store</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{editingStore.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {editingStore.name}
+                  {editingStore.code ? ` · ${editingStore.code}` : ''}
+                </p>
               </div>
-              <button type="button" onClick={() => setEditingStore(null)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">
+              <button
+                type="button"
+                onClick={() => {
+                  editingStoreIdRef.current = '';
+                  setEditingStore(null);
+                }}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -689,7 +744,10 @@ export default function StoresPage() {
                 </button>
                 <button 
                   type="button" 
-                  onClick={() => setEditingStore(null)} 
+                  onClick={() => {
+                    editingStoreIdRef.current = '';
+                    setEditingStore(null);
+                  }}
                   className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
                 >
                   Cancel

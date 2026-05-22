@@ -6,6 +6,7 @@ const { computeAddonPeriodEnd } = require('./addonPeriod');
 const { entitlementKeyForCode, emptyEntitlement } = require('@innovapos/paid-addons');
 const { getAddonByCode, priceAddonForPlan } = require('./addonBilling');
 const { resolveNextBillingPlan } = require('./resolveBillingPlan');
+const { endTenantTrialOnPaidPurchase } = require('./subscriptionActivation');
 
 /**
  * @param {string} tenantId
@@ -16,6 +17,8 @@ async function activatePaidAddonForTenant(tenantId, addonCode, opts) {
   const code = String(addonCode || '').trim().toLowerCase();
   const entitlementKey = entitlementKeyForCode(code);
   if (!entitlementKey) throw new Error(`Unknown add-on code: ${code}`);
+
+  await endTenantTrialOnPaidPurchase(tenantId, { activatedBy: opts.createdBy || null });
 
   const tenant = await Tenant.findById(tenantId)
     .populate('assignedPlanId')
@@ -42,6 +45,8 @@ async function activatePaidAddonForTenant(tenantId, addonCode, opts) {
     currency: String(opts.currency || 'LKR').toUpperCase(),
     periodEndsAt,
     cancelAtPeriodEnd: false,
+    trialActivatedAt: null,
+    trialEndsAt: null,
   };
   await tenant.save();
   return tenant;
@@ -141,6 +146,7 @@ async function recordVerifiedStoreReceipt({
   createdBy,
 }) {
   const { createDefaultStoreForTenant } = require('./storePurchase');
+  await endTenantTrialOnPaidPurchase(tenantId, { activatedBy: createdBy || null });
   const existing = await PaymentReceipt.findOne({
     $or: [
       ...(externalId ? [{ externalPaymentId: externalId }] : []),

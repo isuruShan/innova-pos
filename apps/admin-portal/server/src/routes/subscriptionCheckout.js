@@ -413,11 +413,16 @@ router.post('/paypal/capture', authenticateJWT, authorize('merchant_admin'), asy
         createdBy: req.user.id,
       });
       if (r.duplicate) {
-        return res.json({ message: 'Payment already applied', store: r.store });
+        return res.json({
+          message: 'Payment already applied',
+          store: r.store || null,
+          storeId: r.store?._id,
+          storeCode: r.store?.code,
+        });
       }
       return res.json({
         message: 'Store created',
-        store: true,
+        store: r.store,
         storeId: r.store?._id,
         storeCode: r.store?.code,
       });

@@ -22,7 +22,7 @@ const normalizePaymentMethods = (methods) => {
 const assignedStoreFilter = async (req, tenantId) => {
   if (req.user.role === 'superadmin') return {};
   const requester = await User.findOne({ _id: req.user.id, tenantId }).select('storeIds');
-  const storeIds = Array.isArray(requester?.storeIds) ? requester.storeIds : [];
+  const storeIds = (requester?.storeIds || []).map((id) => String(id)).filter(Boolean);
   if (!storeIds.length) return { _id: { $in: [] } };
   return { _id: { $in: storeIds } };
 };
@@ -135,11 +135,14 @@ router.post('/', authenticateJWT, authorize('superadmin'), tenantScope, async (r
 
 router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
   try {
+    const storeId = String(req.params.id || '').trim();
+    if (!storeId) return res.status(400).json({ message: 'Store id is required' });
+
     const { tenantId: tenantIdHint, ...body } = req.body;
     const tenantId = resolveTenantId(req, tenantIdHint);
     if (!tenantId) return res.status(400).json({ message: 'tenantId required' });
     const store = await Store.findOne({
-      _id: req.params.id,
+      _id: storeId,
       tenantId,
       ...(await assignedStoreFilter(req, tenantId)),
     });

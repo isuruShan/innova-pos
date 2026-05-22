@@ -6,8 +6,48 @@ const { notifyMerchantAdmins, notifySuperAdmins } = require('./notificationHelpe
 const { notifySubscriptionEvent } = require('./subscriptionNotify');
 
 /**
+ * Tenant is on trial (or expired after trial) and should move to paid access immediately on payment.
+ */
+function shouldActivateSubscriptionImmediately(tenant) {
+  if (!tenant) return false;
+  if (tenant.subscriptionStatus === 'trial') return true;
+  if (tenant.subscriptionStatus === 'expired' && tenant.suspensionReason === 'trial_ended') {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * End merchant trial when they complete any paid purchase (add-on, store, etc.).
+ * Main subscription activation calls this via convertFromTrial path.
+ */
+async function endTenantTrialOnPaidPurchase(tenantId, { activatedBy = null } = {}) {
+  const tenant = await Tenant.findById(tenantId);
+  if (!tenant) return null;
+  if (tenant.subscriptionStatus !== 'trial') return tenant;
+
+  const now = new Date();
+  tenant.subscriptionStatus = 'active';
+  tenant.status = 'active';
+  tenant.suspensionReason = '';
+  tenant.trialEndsAt = now;
+  tenant.temporaryActivationUntil = null;
+  tenant.temporaryActivationRequestedAt = null;
+  tenant.temporaryActivationRequestedBy = null;
+  tenant.temporaryActivationExpiryEndDate = null;
+  tenant.temporaryActivationUsedForEndDate = null;
+  tenant.subscriptionExpiryReminderSentForEndDate = null;
+  tenant.subscriptionDeactivationNotifiedForEndDate = null;
+  if (activatedBy) tenant.updatedBy = activatedBy;
+  await tenant.save();
+  return tenant;
+}
+
+/**
  * Activate or extend a tenant subscription after successful payment.
- * @returns {{ tenant, subscription, newEnd }}
+ * Trial (or trial-ended) → starts immediately from today.
+ * Active subscription → extends from current period end (or scheduled plan change).
+ * @returns {{ tenant, subscription, newEnd, pendingMatch, convertedFromTrial }}
  */
 async function activateSubscriptionForTenant(tenantId, plan, options = {}) {
   const {
@@ -21,6 +61,53 @@ async function activateSubscriptionForTenant(tenantId, plan, options = {}) {
 
   const now = new Date();
   const extensionDays = plan.durationDays || 30;
+  const convertFromTrial = shouldActivateSubscriptionImmediately(tenant);
+
+  if (convertFromTrial) {
+    const startDate = now;
+    const newEnd = new Date(now);
+    newEnd.setDate(newEnd.getDate() + extensionDays);
+
+    const subscription = await Subscription.create({
+      tenantId: tenant._id,
+      plan: plan.billingCycle || 'custom',
+      planId: plan._id,
+      planCode: plan.code,
+      amount: plan.amount,
+      currency: plan.currency || 'LKR',
+      durationDays: extensionDays,
+      startDate,
+      endDate: newEnd,
+      extendedByAdmin: Boolean(activatedBy),
+      extensionNote: paymentNote,
+      extendedBy: activatedBy,
+      extendedAt: now,
+      createdBy: activatedBy,
+    });
+
+    tenant.subscriptionStatus = 'active';
+    tenant.status = 'active';
+    tenant.assignedPlanId = plan._id;
+    tenant.assignedAt = now;
+    if (activatedBy) tenant.assignedBy = activatedBy;
+    tenant.trialEndsAt = now;
+    tenant.pendingPlanId = null;
+    tenant.pendingPlanEffectiveAt = null;
+    tenant.pendingPlanPaymentReceived = false;
+    tenant.temporaryActivationUntil = null;
+    tenant.temporaryActivationRequestedAt = null;
+    tenant.temporaryActivationRequestedBy = null;
+    tenant.temporaryActivationExpiryEndDate = null;
+    tenant.temporaryActivationUsedForEndDate = null;
+    tenant.subscriptionExpiryReminderSentForEndDate = null;
+    tenant.subscriptionDeactivationNotifiedForEndDate = null;
+    tenant.suspensionReason = '';
+    tenant.updatedBy = activatedBy;
+    await tenant.save();
+
+    return { tenant, subscription, newEnd, pendingMatch: false, convertedFromTrial: true };
+  }
+
   let startDate = now;
   let currentEnd = tenant.trialEndsAt ? new Date(tenant.trialEndsAt) : now;
   const latestSub = await Subscription.findOne({ tenantId: tenant._id }).sort({ endDate: -1 });
@@ -89,17 +176,25 @@ async function activateSubscriptionForTenant(tenantId, plan, options = {}) {
   tenant.updatedBy = activatedBy;
   await tenant.save();
 
-  return { tenant, subscription, newEnd, pendingMatch };
+  return { tenant, subscription, newEnd, pendingMatch, convertedFromTrial: false };
 }
 
-async function notifySubscriptionActivated(tenant, newEnd, { pendingMatch }) {
+async function notifySubscriptionActivated(tenant, newEnd, { pendingMatch, convertedFromTrial = false }) {
   const body = pendingMatch
     ? `Payment received. Your plan will activate on ${new Date(tenant.pendingPlanEffectiveAt).toDateString()}.`
-    : `Your subscription is active until ${newEnd.toDateString()}.`;
+    : convertedFromTrial
+      ? `Your trial has ended and your paid subscription is active until ${newEnd.toDateString()}.`
+      : `Your subscription is active until ${newEnd.toDateString()}.`;
+
+  const title = pendingMatch
+    ? 'Plan change paid'
+    : convertedFromTrial
+      ? 'Subscription activated'
+      : 'Subscription activated';
 
   await notifyMerchantAdmins(tenant._id, {
     type: 'subscription_approved',
-    title: pendingMatch ? 'Plan change paid' : 'Subscription activated',
+    title,
     body,
     meta: { resourceType: 'tenant', resourceId: String(tenant._id), subscriptionEndDate: newEnd.toISOString() },
   }).catch(() => {});
@@ -163,6 +258,8 @@ async function applyDuePendingPlanSwitches() {
 }
 
 module.exports = {
+  shouldActivateSubscriptionImmediately,
+  endTenantTrialOnPaidPurchase,
   activateSubscriptionForTenant,
   notifySubscriptionActivated,
   applyDuePendingPlanSwitches,
