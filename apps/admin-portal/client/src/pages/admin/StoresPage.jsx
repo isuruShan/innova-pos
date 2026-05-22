@@ -19,6 +19,7 @@ export default function StoresPage() {
   const canCreateStore = isSuperAdmin || isMerchantAdmin;
   const queryClient = useQueryClient();
   const [form, setForm] = useState({ name: '', address: '', phone: '', paymentMethods: ['cash'] });
+  const [editingStoreId, setEditingStoreId] = useState('');
   const [editingStore, setEditingStore] = useState(null);
   const [editForm, setEditForm] = useState({
     name: '', address: '', phone: '', paymentMethods: ['cash'], isActive: true,
@@ -64,14 +65,37 @@ export default function StoresPage() {
     isActive: store.isActive !== false,
   });
 
-  const openEdit = (store) => {
-    const id = storeIdStr(store);
+  const closeEditDrawer = () => {
+    editingStoreIdRef.current = '';
+    setEditingStoreId('');
+    setEditingStore(null);
+    setError('');
+  };
+
+  const openEdit = async (storeOrId) => {
+    const id = typeof storeOrId === 'string' ? storeOrId.trim() : storeIdStr(storeOrId);
     if (!id) return;
     editingStoreIdRef.current = id;
-    setEditingStore({ ...store, _id: id });
-    setEditForm(buildEditFormFromStore(store));
-    setEditMeta({ deactivatedBySuperadmin: Boolean(store.deactivatedBySuperadmin) });
+    setEditingStoreId(id);
     setError('');
+
+    const fromList = stores.find((s) => storeIdStr(s) === id);
+    if (fromList) {
+      setEditingStore({ ...fromList, _id: id });
+      setEditForm(buildEditFormFromStore(fromList));
+      setEditMeta({ deactivatedBySuperadmin: Boolean(fromList.deactivatedBySuperadmin) });
+      return;
+    }
+
+    try {
+      const { data } = await api.get(`/stores/${id}`);
+      setEditingStore({ ...data, _id: id });
+      setEditForm(buildEditFormFromStore(data));
+      setEditMeta({ deactivatedBySuperadmin: Boolean(data.deactivatedBySuperadmin) });
+    } catch (err) {
+      closeEditDrawer();
+      setError(err.response?.data?.message || 'Could not load store');
+    }
   };
 
   const { data: storeList = { items: [], page: 1, pages: 1, total: 0 }, isLoading, isFetching } = useQuery({
@@ -115,7 +139,7 @@ export default function StoresPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-stores'] });
       queryClient.invalidateQueries({ queryKey: ['stores'] });
       closePurchase();
-      if (created) openEdit(created);
+      if (created) openEdit(storeIdStr(created));
     },
     onError: (err) => setPurchaseError(err.response?.data?.message || 'Failed to create store'),
   });
@@ -133,16 +157,15 @@ export default function StoresPage() {
   const paypalCaptureMutation = useMutation({
     mutationFn: (orderId) => api.post('/subscriptions/checkout/paypal/capture', { orderId }).then((r) => r.data),
     onSuccess: (data) => {
-      const createdId = data?.storeId ? storeIdStr({ _id: data.storeId }) : '';
-      if (createdId || data?.store) {
+      const createdId = data?.storeId
+        ? storeIdStr({ _id: data.storeId })
+        : (typeof data?.store === 'object' && data.store ? storeIdStr(data.store) : '');
+      if (createdId) {
         toast.success(data.message || 'Store created.');
         queryClient.invalidateQueries({ queryKey: ['admin-stores'] });
         queryClient.invalidateQueries({ queryKey: ['stores'] });
         closePurchase();
-        const toEdit = typeof data.store === 'object' && data.store
-          ? data.store
-          : { _id: createdId, name: 'New store', code: data.storeCode || '' };
-        if (createdId) openEdit(toEdit);
+        openEdit(createdId);
         return;
       }
       setPurchaseError(data?.message || 'Payment did not create a store.');
@@ -261,18 +284,17 @@ export default function StoresPage() {
   };
 
   const updateStore = useMutation({
-    mutationFn: ({ id, payload }) =>
-      api.put(`/stores/${id}`, payload, { headers: { 'x-store-id': '' } }),
-    onSuccess: () => {
-      editingStoreIdRef.current = '';
-      setEditingStore(null);
+    mutationFn: ({ id, payload }) => api.put(`/stores/${id}`, payload),
+    onSuccess: (_data, { id }) => {
+      toast.success('Store saved.');
+      closeEditDrawer();
       setEditForm({
         name: '', address: '', phone: '', paymentMethods: ['cash'], isActive: true,
       });
       setEditMeta({ deactivatedBySuperadmin: false });
-      setError('');
       queryClient.invalidateQueries({ queryKey: ['admin-stores'] });
       queryClient.invalidateQueries({ queryKey: ['stores'] });
+      queryClient.invalidateQueries({ queryKey: ['users-for-store-access'] });
     },
     onError: (err) => setError(err.response?.data?.message || 'Failed to update store'),
   });
@@ -294,21 +316,13 @@ export default function StoresPage() {
     createStoreSuper.mutate(form);
   };
 
-  useEffect(() => {
-    if (!editingStore) return;
-    const id = storeIdStr(editingStore);
-    if (!id) return;
-    setEditForm(buildEditFormFromStore(editingStore));
-    setEditMeta({ deactivatedBySuperadmin: Boolean(editingStore.deactivatedBySuperadmin) });
-  }, [editingStore?._id, editingStore?.id]);
-
   const onEditSave = (e) => {
     e.preventDefault();
     if (!editForm.name.trim()) {
       setError('Store name is required');
       return;
     }
-    const id = editingStoreIdRef.current || storeIdStr(editingStore);
+    const id = editingStoreId || editingStoreIdRef.current;
     if (!id) {
       setError('Store not found');
       return;
@@ -432,7 +446,7 @@ export default function StoresPage() {
                 </div>
                 <p className="text-xs text-gray-600">{store.address || 'No address'}</p>
                 <p className="text-xs text-gray-500 mt-1">{store.phone || 'No phone'}</p>
-                <button className="mt-3 text-xs px-3 py-1.5 rounded-lg border border-brand-orange text-brand-orange font-medium hover:bg-brand-orange hover:text-white transition-colors" onClick={() => openEdit(store)}>
+                <button type="button" className="mt-3 text-xs px-3 py-1.5 rounded-lg border border-brand-orange text-brand-orange font-medium hover:bg-brand-orange hover:text-white transition-colors" onClick={() => openEdit(sid)}>
                   Edit store
                 </button>
                 {!isSuperAdmin && (
@@ -490,7 +504,7 @@ export default function StoresPage() {
                 </td>
                 <td className="px-4 py-3 text-gray-600">{store.isDefault ? 'Yes' : 'No'}</td>
                 <td className="px-4 py-3">
-                  <button className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50" onClick={() => openEdit(store)}>
+                  <button type="button" className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50" onClick={() => openEdit(sid)}>
                     Edit
                   </button>
                 </td>
@@ -623,18 +637,15 @@ export default function StoresPage() {
         </div>
       )}
 
-      {editingStore && (
+      {editingStoreId && editingStore && (
         <>
           <div
             className="fixed inset-0 z-40 bg-black/30"
-            onClick={() => {
-              editingStoreIdRef.current = '';
-              setEditingStore(null);
-            }}
+            onClick={closeEditDrawer}
             aria-hidden="true"
           />
           <aside
-            key={storeIdStr(editingStore)}
+            key={editingStoreId}
             className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl border-l border-gray-200 flex flex-col"
           >
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
@@ -647,10 +658,7 @@ export default function StoresPage() {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  editingStoreIdRef.current = '';
-                  setEditingStore(null);
-                }}
+                onClick={closeEditDrawer}
                 className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
               >
                 <X size={20} />
@@ -744,10 +752,7 @@ export default function StoresPage() {
                 </button>
                 <button 
                   type="button" 
-                  onClick={() => {
-                    editingStoreIdRef.current = '';
-                    setEditingStore(null);
-                  }}
+                  onClick={closeEditDrawer}
                   className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
                 >
                   Cancel

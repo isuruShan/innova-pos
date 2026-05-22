@@ -42,20 +42,26 @@ async function createDefaultStoreForTenant(tenantId, createdBy) {
     createdBy: createdBy || null,
   });
 
+  await syncMerchantAdminStoreIds(tenantId, createdBy);
+  return store;
+}
+
+/** Merchant admins always receive every active store on the tenant (POS + admin). */
+async function syncMerchantAdminStoreIds(tenantId, updatedBy = null) {
+  const stores = await Store.find({ tenantId, isActive: true }).select('_id').lean();
+  const allIds = stores.map((s) => String(s._id));
   const merchantAdmins = await User.find({ tenantId, role: 'merchant_admin', isActive: true }).select(
-    '_id storeIds defaultStoreId',
+    '_id defaultStoreId',
   );
   for (const tenantUser of merchantAdmins) {
-    const nextStoreIds = new Set((tenantUser.storeIds || []).map((sid) => String(sid)));
-    nextStoreIds.add(String(store._id));
-    tenantUser.storeIds = [...nextStoreIds];
-    if (!tenantUser.defaultStoreId) tenantUser.defaultStoreId = store._id;
-    tenantUser.updatedBy = createdBy || null;
+    tenantUser.storeIds = allIds;
+    if (!tenantUser.defaultStoreId || !allIds.includes(String(tenantUser.defaultStoreId))) {
+      tenantUser.defaultStoreId = allIds[0] || null;
+    }
+    if (updatedBy) tenantUser.updatedBy = updatedBy;
     // eslint-disable-next-line no-await-in-loop
     await tenantUser.save();
   }
-
-  return store;
 }
 
 async function countActiveStoresForTenant(tenantId) {
@@ -68,6 +74,7 @@ function requiresPaymentForNewStore(activeCount) {
 
 module.exports = {
   createDefaultStoreForTenant,
+  syncMerchantAdminStoreIds,
   countActiveStoresForTenant,
   requiresPaymentForNewStore,
   INCLUDED_STORES_PER_TENANT,

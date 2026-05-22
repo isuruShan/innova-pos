@@ -19,13 +19,20 @@ const normalizePaymentMethods = (methods) => {
   return cleaned.length ? cleaned : ['cash'];
 };
 
+/** Merchant admins manage every store on their tenant; staff are limited to assigned stores. */
 const assignedStoreFilter = async (req, tenantId) => {
-  if (req.user.role === 'superadmin') return {};
+  if (req.user.role === 'superadmin' || req.user.role === 'merchant_admin') return {};
   const requester = await User.findOne({ _id: req.user.id, tenantId }).select('storeIds');
   const storeIds = (requester?.storeIds || []).map((id) => String(id)).filter(Boolean);
   if (!storeIds.length) return { _id: { $in: [] } };
   return { _id: { $in: storeIds } };
 };
+
+function serializeStore(doc) {
+  const plain = doc?.toObject ? doc.toObject() : doc;
+  const id = String(plain._id);
+  return { ...plain, _id: id, id };
+}
 
 router.get('/', authenticateJWT, tenantScope, async (req, res) => {
   try {
@@ -43,8 +50,9 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
     })
       .sort({ isActive: -1, isDefault: -1, name: 1 })
       .skip(skip)
-      .limit(limit);
-    res.json(paginated(stores, total, page, limit));
+      .limit(limit)
+      .lean();
+    res.json(paginated(stores.map(serializeStore), total, page, limit));
   } catch (err) {
     sendRouteError(res, err, { req });
   }
@@ -81,7 +89,7 @@ router.post(
       }
       const store = await createDefaultStoreForTenant(req.tenantId, req.user.id);
       await emitAudit({ req, action: 'STORE_CREATED', resource: 'Store', resourceId: store._id });
-      res.status(201).json(store);
+      res.status(201).json(serializeStore(store));
     } catch (err) {
       res.status(400).json({ message: err.message });
     }
@@ -113,23 +121,32 @@ router.post('/', authenticateJWT, authorize('superadmin'), tenantScope, async (r
       createdBy: req.user.id,
     });
 
-    const merchantAdmins = await User.find({ tenantId, role: 'merchant_admin', isActive: true }).select(
-      '_id storeIds defaultStoreId',
-    );
-    for (const tenantUser of merchantAdmins) {
-      const nextStoreIds = new Set((tenantUser.storeIds || []).map((sid) => String(sid)));
-      nextStoreIds.add(String(store._id));
-      tenantUser.storeIds = [...nextStoreIds];
-      if (!tenantUser.defaultStoreId) tenantUser.defaultStoreId = store._id;
-      tenantUser.updatedBy = req.user.id;
-      // eslint-disable-next-line no-await-in-loop
-      await tenantUser.save();
-    }
+    const { syncMerchantAdminStoreIds } = require('../lib/storePurchase');
+    await syncMerchantAdminStoreIds(tenantId, req.user.id);
 
     await emitAudit({ req, action: 'STORE_CREATED', resource: 'Store', resourceId: store._id });
-    res.status(201).json(store);
+    res.status(201).json(serializeStore(store));
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+});
+
+router.get('/:id', authenticateJWT, tenantScope, async (req, res) => {
+  try {
+    const tenantId = resolveTenantId(req);
+    if (!tenantId) return res.status(400).json({ message: 'tenantId required' });
+    const storeId = String(req.params.id || '').trim();
+    if (!storeId) return res.status(400).json({ message: 'Store id is required' });
+
+    const store = await Store.findOne({
+      _id: storeId,
+      tenantId,
+      ...(await assignedStoreFilter(req, tenantId)),
+    }).lean();
+    if (!store) return res.status(404).json({ message: 'Store not found' });
+    res.json(serializeStore(store));
+  } catch (err) {
+    sendRouteError(res, err, { req });
   }
 });
 
@@ -178,7 +195,7 @@ router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), t
 
     await store.save();
     await emitAudit({ req, action: 'STORE_UPDATED', resource: 'Store', resourceId: store._id });
-    res.json(store);
+    res.json(serializeStore(store));
   } catch (err) {
     res.status(400).json({ message: err.message });
   }

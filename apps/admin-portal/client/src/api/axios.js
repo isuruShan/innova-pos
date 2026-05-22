@@ -11,9 +11,15 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('admin_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  const url = String(config.url || '');
+  // Never scope store CRUD by the header store selector (prevents wrong-store updates).
+  const isStoreById = /\/stores\/[a-f0-9]{24}$/i.test(url);
   const selectedStore = localStorage.getItem('admin_selected_store');
   // Allow per-request x-store-id (e.g. 'all') without being overwritten by localStorage
-  if (config.headers['x-store-id'] === undefined || config.headers['x-store-id'] === null) {
+  if (
+    !isStoreById
+    && (config.headers['x-store-id'] === undefined || config.headers['x-store-id'] === null)
+  ) {
     if (selectedStore) {
       config.headers['x-store-id'] = selectedStore;
     }
