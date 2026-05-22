@@ -9,7 +9,6 @@ const {
 } = require('./billingProration');
 const {
   loadTenantForBilling,
-  planBillingCycleDays,
   resolveCurrentSubscriptionPeriod,
   resolveNextBillingPlan,
 } = require('./resolveBillingPlan');
@@ -43,15 +42,13 @@ function recurringRatesFromPricing(pricing, plan) {
 
 async function prorateRoleCharge(tenant, role, kind, quantity = 1) {
   const plan = await resolveNextBillingPlan(tenant);
-  const { periodEnd, periodDays } = await resolveCurrentSubscriptionPeriod(tenant);
+  const { periodEnd } = await resolveCurrentSubscriptionPeriod(tenant);
   const pricing = await getRolePricing(role, tenant.countryIso, kind);
   const pseudo = pseudoAddonFromPricing(pricing);
   const lines = [];
   let total = 0;
   for (let i = 0; i < quantity; i += 1) {
     const prorated = computeProratedAddonCharge(pseudo, plan, periodEnd, {
-      billingCycleDays: planBillingCycleDays(plan),
-      currentPeriodDays: periodDays,
       countryIso: tenant.countryIso,
     });
     total += Number(prorated.amount) || 0;

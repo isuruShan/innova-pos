@@ -9,7 +9,6 @@ const {
 const { applyPaidAddonExpiryIfNeeded } = require('./addonPeriod');
 const {
   loadTenantForBilling,
-  planBillingCycleDays,
   resolveCurrentSubscriptionPeriod,
   resolveNextBillingPlan,
 } = require('./resolveBillingPlan');
@@ -26,11 +25,9 @@ async function getAddonPurchaseQuote(tenantId, code) {
   if (!addon || !addon.isActive) throw new Error('Add-on not available');
 
   const plan = await resolveNextBillingPlan(tenant);
-  const { periodEnd, periodDays } = await resolveCurrentSubscriptionPeriod(tenant);
+  const { periodEnd } = await resolveCurrentSubscriptionPeriod(tenant);
   const full = priceAddonForPlan(addon, plan, tenant.countryIso);
   const prorated = computeProratedAddonCharge(addon, plan, periodEnd, {
-    billingCycleDays: planBillingCycleDays(plan),
-    currentPeriodDays: periodDays,
     countryIso: tenant.countryIso,
   });
 

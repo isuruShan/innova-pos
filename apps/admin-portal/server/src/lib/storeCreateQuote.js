@@ -8,7 +8,6 @@ const {
 } = require('./billingProration');
 const {
   loadTenantForBilling,
-  planBillingCycleDays,
   resolveCurrentSubscriptionPeriod,
   resolveNextBillingPlan,
 } = require('./resolveBillingPlan');
@@ -51,11 +50,9 @@ async function getStoreCreateQuote(tenantId) {
     };
   }
 
-  const { periodEnd, periodDays } = await resolveCurrentSubscriptionPeriod(tenant);
+  const { periodEnd } = await resolveCurrentSubscriptionPeriod(tenant);
   const full = priceAddonForPlan(addon, plan, tenant.countryIso);
   const prorated = computeProratedAddonCharge(addon, plan, periodEnd, {
-    billingCycleDays: planBillingCycleDays(plan),
-    currentPeriodDays: periodDays,
     countryIso: tenant.countryIso,
   });
 

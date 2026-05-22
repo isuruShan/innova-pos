@@ -2,6 +2,8 @@
  * Billing quote UI — recurring subscription price (priority) + prorated amount due today.
  */
 
+const PRORATION_DAYS_PER_MONTH = 30;
+
 const CURRENCY_DISPLAY = {
   LKR: 'Rs.',
   USD: '$',
@@ -61,16 +63,19 @@ export function RecurringPriceHero({ recurringRates, merchantSymbol }) {
 }
 
 /**
- * Amount due today + proration math using current subscription period days.
+ * Amount due today: (monthly ÷ 30) × remaining days in current subscription.
  */
 function ProrationDetail({ proration, amountDue, currency, merchantSymbol }) {
   if (!proration) return null;
   const cur = proration.currency || currency || 'LKR';
   const due = amountDue != null ? Number(amountDue) : Number(proration.amount);
-  const periodLength = proration.periodLength ?? proration.cycleDays;
+  const monthly =
+    Number(proration.monthlyListPrice) > 0
+      ? Number(proration.monthlyListPrice)
+      : Number(proration.fullAmount) || 0;
   const remainingDays = proration.remainingDays;
-  const cycleAmount = proration.fullAmount;
-  const isProrated = proration.isProrated && remainingDays && periodLength && remainingDays < periodLength;
+  const daysPerMonth = proration.daysPerMonth ?? PRORATION_DAYS_PER_MONTH;
+  const isProrated = proration.isProrated && monthly > 0 && remainingDays > 0;
 
   const endDate = proration.periodEndsAt ? new Date(proration.periodEndsAt) : null;
   const endLabel = endDate
@@ -98,17 +103,17 @@ function ProrationDetail({ proration, amountDue, currency, merchantSymbol }) {
             {endLabel ? (
               <> until <strong>{endLabel}</strong></>
             ) : null}
-            . You pay only for those days now; the full rate applies from your next cycle.
+            . Today&apos;s charge is the monthly price spread over 30 days, times those remaining days.
           </p>
-          {cycleAmount != null && periodLength ? (
+          {monthly > 0 ? (
             <p className="text-xs text-blue-700/90 font-mono bg-white/60 rounded px-2 py-1.5">
-              {formatMoney(cur, cycleAmount, merchantSymbol)} ÷ {periodLength} days in your current period ×{' '}
-              {remainingDays} days left = {formatMoney(cur, due, merchantSymbol)}
+              ({formatMoney(cur, monthly, merchantSymbol)} ÷ {daysPerMonth} days) × {remainingDays} days
+              remaining = {formatMoney(cur, due, merchantSymbol)}
             </p>
           ) : null}
         </>
       ) : (
-        <p className="text-xs text-blue-800/80">Full period charge for your current subscription.</p>
+        <p className="text-xs text-blue-800/80">Full monthly charge.</p>
       )}
     </div>
   );
@@ -184,7 +189,7 @@ export function LicenseQuoteBreakdown({
     ? endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : null;
   const remainingDays = first?.remainingDays;
-  const periodLength = first?.periodLength ?? first?.cycleDays;
+  const daysPerMonth = first?.daysPerMonth ?? PRORATION_DAYS_PER_MONTH;
 
   return (
     <div className="space-y-3">
@@ -195,40 +200,43 @@ export function LicenseQuoteBreakdown({
       ) : null}
 
       <ul className="rounded-lg border border-gray-200 divide-y divide-gray-100 text-sm">
-        {lineItems.map((item, idx) => (
-          <li key={idx} className="px-4 py-3 space-y-1">
-            <div className="flex justify-between">
-              <span className="text-gray-700">{item.label}</span>
-              <span className="font-semibold tabular-nums">
-                {formatMoney(item.currency || cur, item.amount, merchantSymbol)}
-              </span>
-            </div>
-            {item.recurringRates?.monthly > 0 ? (
-              <p className="text-xs text-gray-500">
-                List price: {formatMoney(item.recurringRates.currency || cur, item.recurringRates.monthly, merchantSymbol)} / month
-                {item.recurringRates.billingCycle === 'yearly' && item.recurringRates.yearly > 0
-                  ? ` · ${formatMoney(item.recurringRates.currency || cur, item.recurringRates.yearly, merchantSymbol)} / year`
-                  : ''}
-              </p>
-            ) : null}
-            {item.proration?.isProrated && item.proration.fullAmount != null && (
-              <p className="text-xs text-gray-500 font-mono">
-                {formatMoney(item.currency || cur, item.proration.fullAmount, merchantSymbol)} ÷{' '}
-                {item.proration.periodLength ?? item.proration.cycleDays} days × {item.proration.remainingDays} days
-              </p>
-            )}
-          </li>
-        ))}
+        {lineItems.map((item, idx) => {
+          const monthly =
+            Number(item.proration?.monthlyListPrice) > 0
+              ? Number(item.proration.monthlyListPrice)
+              : Number(item.proration?.fullAmount) || Number(item.recurringRates?.monthly) || 0;
+          return (
+            <li key={idx} className="px-4 py-3 space-y-1">
+              <div className="flex justify-between">
+                <span className="text-gray-700">{item.label}</span>
+                <span className="font-semibold tabular-nums">
+                  {formatMoney(item.currency || cur, item.amount, merchantSymbol)}
+                </span>
+              </div>
+              {item.recurringRates?.monthly > 0 ? (
+                <p className="text-xs text-gray-500">
+                  List price: {formatMoney(item.recurringRates.currency || cur, item.recurringRates.monthly, merchantSymbol)} / month
+                </p>
+              ) : null}
+              {item.proration?.isProrated && monthly > 0 && (
+                <p className="text-xs text-gray-500 font-mono">
+                  ({formatMoney(item.currency || cur, monthly, merchantSymbol)} ÷ {daysPerMonth}) ×{' '}
+                  {item.proration.remainingDays} days
+                </p>
+              )}
+            </li>
+          );
+        })}
         <li className="flex justify-between px-4 py-3 bg-gray-50 font-bold">
           <span>Total due now</span>
           <span className="text-brand-orange tabular-nums">{formatMoney(cur, total, merchantSymbol)}</span>
         </li>
       </ul>
 
-      {remainingDays && periodLength ? (
+      {remainingDays ? (
         <p className="text-xs text-blue-900/80 bg-blue-50 border border-blue-100 rounded-lg p-2.5">
-          All charges are prorated for <strong>{remainingDays} days</strong> left in your current subscription
-          {endLabel ? <> (ends {endLabel})</> : null}. Each line uses: plan rate ÷ {periodLength} days × {remainingDays} days.
+          Each line: (monthly price ÷ {daysPerMonth}) × <strong>{remainingDays} days</strong> left in your
+          current subscription{endLabel ? <> (ends {endLabel})</> : null}.
           {billingLabel ? ` ${billingLabel}` : ''}
         </p>
       ) : null}
