@@ -99,12 +99,23 @@ async function resolveRequestedPlan({ tenant, planId }) {
   return SubscriptionPlan.findOne({ isActive: true, isDefault: true, ...regionFilter }).sort({ createdAt: 1 });
 }
 
-// GET /subscriptions — list payment receipts
+// GET /subscriptions/receipts — list payment receipts
 router.get('/receipts', authenticateJWT, async (req, res) => {
   try {
     const tenantId = req.user.role === 'superadmin' ? (req.query.tenantId || undefined) : req.tenantId;
     const filter = tenantId ? { tenantId } : {};
     if (req.query.status) filter.status = req.query.status;
+    if (req.query.kind) filter.receiptKind = req.query.kind;
+    if (req.query.method) filter.paymentMethod = req.query.method;
+    if (req.query.dateFrom || req.query.dateTo) {
+      filter.paymentDate = {};
+      if (req.query.dateFrom) filter.paymentDate.$gte = new Date(req.query.dateFrom);
+      if (req.query.dateTo) {
+        const to = new Date(req.query.dateTo);
+        to.setHours(23, 59, 59, 999);
+        filter.paymentDate.$lte = to;
+      }
+    }
 
     const search = String(req.query.search || req.query.q || '').trim();
     if (search && req.user.role === 'superadmin') {
@@ -130,11 +141,200 @@ router.get('/receipts', authenticateJWT, async (req, res) => {
       .populate('requestedPlanId', 'name code amount currency billingCycle durationDays')
       .lean();
     receipts = await attachFreshReceiptUrls(receipts);
+
+    // Attach a human-readable label for what was purchased
+    receipts = receipts.map((r) => {
+      let purchasedItemLabel = 'Subscription renewal';
+      if (r.receiptKind === 'addon' && r.addonCode) {
+        purchasedItemLabel = r.addonCode.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      } else if (r.receiptKind === 'store') {
+        purchasedItemLabel = 'Additional store';
+      } else if (r.receiptKind === 'user_license') {
+        const action = r.userLicenseAction || '';
+        const role = r.userLicensePayload?.role || '';
+        if (action === 'create_user') purchasedItemLabel = `New user seat${role ? ` (${role})` : ''}`;
+        else if (action === 'assign_stores') purchasedItemLabel = 'Store access (user)';
+        else purchasedItemLabel = 'User license';
+      } else if (r.requestedPlanId?.name) {
+        purchasedItemLabel = r.requestedPlanId.name;
+      }
+      return { ...r, purchasedItemLabel };
+    });
+
     res.json(paginated(receipts, total, page, limit));
   } catch (err) {
     sendRouteError(res, err, { req });
   }
 });
+
+// GET /subscriptions/receipts/analytics — superadmin payment analytics (supports dateFrom/dateTo)
+router.get('/receipts/analytics', authenticateJWT, authorize('superadmin'), async (req, res) => {
+  try {
+    const now = new Date();
+
+    // Parse optional date range
+    let rangeFrom = req.query.dateFrom ? (() => { const d = new Date(req.query.dateFrom); d.setHours(0,0,0,0); return d; })() : null;
+    let rangeTo   = req.query.dateTo   ? (() => { const d = new Date(req.query.dateTo);   d.setHours(23,59,59,999); return d; })() : null;
+
+    // Date filter applied to the selected window (verified payments)
+    const windowMatch = {};
+    if (rangeFrom || rangeTo) {
+      windowMatch.paymentDate = {};
+      if (rangeFrom) windowMatch.paymentDate.$gte = rangeFrom;
+      if (rangeTo)   windowMatch.paymentDate.$lte = rangeTo;
+    }
+    const verifiedInWindow  = { status: 'verified', ...windowMatch };
+    const anyStatusInWindow = Object.keys(windowMatch).length ? windowMatch : null;
+
+    // Chart granularity: daily <=31d, weekly <=90d, monthly otherwise
+    const chartFrom  = rangeFrom || new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    const chartTo    = rangeTo   || now;
+    const spanDays   = Math.ceil((chartTo - chartFrom) / 86_400_000);
+    const granularity = spanDays <= 31 ? 'day' : spanDays <= 90 ? 'week' : 'month';
+
+    const timeGroupId = granularity === 'day'
+      ? { year: { $year: '$paymentDate' }, month: { $month: '$paymentDate' }, day: { $dayOfMonth: '$paymentDate' } }
+      : granularity === 'week'
+      ? { year: { $isoWeekYear: '$paymentDate' }, week: { $isoWeek: '$paymentDate' } }
+      : { year: { $year: '$paymentDate' }, month: { $month: '$paymentDate' } };
+
+    const [statusAgg, kindAgg, methodAgg, timeAgg, topMerchantsAgg, recentAgg, pendingCount] = await Promise.all([
+      // Status totals — scoped to window if range selected
+      PaymentReceipt.aggregate([
+        ...(anyStatusInWindow ? [{ $match: anyStatusInWindow }] : []),
+        { $group: { _id: '$status', count: { $sum: 1 }, revenue: { $sum: { $cond: [{ $eq: ['$status', 'verified'] }, '$amount', 0] } } } },
+      ]),
+      // By kind — verified in window
+      PaymentReceipt.aggregate([
+        { $match: verifiedInWindow },
+        { $group: { _id: '$receiptKind', count: { $sum: 1 }, revenue: { $sum: '$amount' } } },
+        { $sort: { revenue: -1 } },
+      ]),
+      // By payment method — verified in window
+      PaymentReceipt.aggregate([
+        { $match: verifiedInWindow },
+        { $group: { _id: '$paymentMethod', count: { $sum: 1 }, revenue: { $sum: '$amount' } } },
+        { $sort: { revenue: -1 } },
+      ]),
+      // Time-series chart — adaptive granularity
+      PaymentReceipt.aggregate([
+        { $match: { status: 'verified', paymentDate: { $gte: chartFrom, $lte: chartTo } } },
+        { $group: { _id: timeGroupId, count: { $sum: 1 }, revenue: { $sum: '$amount' } } },
+        { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.week': 1 } },
+      ]),
+      // Top merchants — verified in window
+      PaymentReceipt.aggregate([
+        { $match: verifiedInWindow },
+        { $group: { _id: '$tenantId', count: { $sum: 1 }, revenue: { $sum: '$amount' } } },
+        { $sort: { revenue: -1 } },
+        { $limit: 10 },
+        { $lookup: { from: 'tenants', localField: '_id', foreignField: '_id', as: 'tenant' } },
+        { $unwind: { path: '$tenant', preserveNullAndEmptyArrays: false } },
+        { $project: { _id: 1, count: 1, revenue: 1, name: '$tenant.businessName', tenantId: '$_id' } },
+      ]),
+      // Recent verified — in window
+      PaymentReceipt.find({ status: 'verified', ...windowMatch })
+        .sort({ verifiedAt: -1 })
+        .limit(5)
+        .populate('tenantId', 'businessName')
+        .lean(),
+      // Pending count — always all-time
+      PaymentReceipt.countDocuments({ status: 'pending' }),
+    ]);
+
+    // Shape status totals
+    const totals = { verified: 0, pending: 0, rejected: 0, totalRevenue: 0 };
+    for (const s of statusAgg) {
+      totals[s._id] = s.count;
+      if (s._id === 'verified') totals.totalRevenue = s.revenue;
+    }
+
+    // Build filled time-series buckets
+    const timeMap = {};
+    for (const pt of timeAgg) {
+      const key = granularity === 'day'
+        ? `${pt._id.year}-${String(pt._id.month).padStart(2,'0')}-${String(pt._id.day).padStart(2,'0')}`
+        : granularity === 'week'
+        ? `${pt._id.year}-W${String(pt._id.week).padStart(2,'0')}`
+        : `${pt._id.year}-${String(pt._id.month).padStart(2,'0')}`;
+      timeMap[key] = pt;
+    }
+
+    const byPeriod = [];
+    if (granularity === 'day') {
+      for (const d = new Date(chartFrom); d <= chartTo; d.setDate(d.getDate() + 1)) {
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        byPeriod.push({ period: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), count: timeMap[key]?.count || 0, revenue: timeMap[key]?.revenue || 0 });
+      }
+    } else if (granularity === 'week') {
+      const cursor = new Date(chartFrom);
+      cursor.setDate(cursor.getDate() - ((cursor.getDay() + 6) % 7)); // align to Monday
+      while (cursor <= chartTo) {
+        const startOfYear = new Date(cursor.getFullYear(), 0, 1);
+        const weekNum = Math.ceil(((cursor - startOfYear) / 86_400_000 + startOfYear.getDay() + 1) / 7);
+        const key = `${cursor.getFullYear()}-W${String(weekNum).padStart(2,'0')}`;
+        byPeriod.push({ period: `W${String(weekNum).padStart(2,'0')} '${String(cursor.getFullYear()).slice(2)}`, count: timeMap[key]?.count || 0, revenue: timeMap[key]?.revenue || 0 });
+        cursor.setDate(cursor.getDate() + 7);
+      }
+    } else {
+      const cursor = new Date(chartFrom.getFullYear(), chartFrom.getMonth(), 1);
+      const end    = new Date(chartTo.getFullYear(), chartTo.getMonth(), 1);
+      while (cursor <= end) {
+        const key = `${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'00')}`;
+        byPeriod.push({ period: cursor.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }), count: timeMap[key]?.count || 0, revenue: timeMap[key]?.revenue || 0 });
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+    }
+
+    res.json({
+      totals,
+      pendingCount,
+      granularity,
+      byKind:         kindAgg.map((k) => ({ kind: k._id || 'subscription', count: k.count, revenue: k.revenue })),
+      byMethod:       methodAgg.map((m) => ({ method: m._id || 'bank_transfer', count: m.count, revenue: m.revenue })),
+      byPeriod,
+      topMerchants:   topMerchantsAgg,
+      recentActivity: recentAgg,
+    });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
+// GET /subscriptions/receipts/by-tenant/:tenantId — merchant payment history
+router.get('/receipts/by-tenant/:tenantId', authenticateJWT, authorize('superadmin'), async (req, res) => {
+  try {
+    const { tenantId } = req.params;
+    const filter = { tenantId };
+    if (req.query.status) filter.status = req.query.status;
+    if (req.query.kind) filter.receiptKind = req.query.kind;
+    const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 20, maxLimit: 50 });
+    const total = await PaymentReceipt.countDocuments(filter);
+    let receipts = await PaymentReceipt.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('requestedPlanId', 'name')
+      .lean();
+    // Attach purchasedItemLabel
+    receipts = receipts.map((r) => {
+      let purchasedItemLabel = 'Subscription renewal';
+      if (r.receiptKind === 'addon' && r.addonCode) purchasedItemLabel = r.addonCode.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      else if (r.receiptKind === 'store') purchasedItemLabel = 'Additional store';
+      else if (r.receiptKind === 'user_license') {
+        const role = r.userLicensePayload?.role || '';
+        purchasedItemLabel = r.userLicenseAction === 'create_user' ? `New user seat${role ? ` (${role})` : ''}` : 'User license';
+      } else if (r.requestedPlanId?.name) purchasedItemLabel = r.requestedPlanId.name;
+      return { ...r, purchasedItemLabel };
+    });
+    const Tenant = require('../models/Tenant');
+    const tenant = await Tenant.findById(tenantId).select('businessName subscriptionStatus trialEndsAt').lean();
+    res.json({ tenant, ...paginated(receipts, total, page, limit) });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 
 // GET /subscriptions/receipts/:id — superadmin payment detail
 router.get('/receipts/:id', authenticateJWT, authorize('superadmin'), async (req, res) => {

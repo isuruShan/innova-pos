@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { X, ExternalLink, Loader } from 'lucide-react';
 import api from '../../api/axios';
 import BillingBreakdownPanel from '../billing/BillingBreakdownPanel';
+import { formatMoney } from '../billing/ProrationBreakdown';
 
 function DetailRow({ label, children }) {
   return (
@@ -54,12 +55,10 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
                   <span className="capitalize font-medium">{receipt.status}</span>
                 </DetailRow>
                 <DetailRow label="Amount">
-                  <strong>
-                    {receipt.currency || 'LKR'} {Number(receipt.amount ?? 0).toLocaleString()}
-                  </strong>
+                  <strong>{formatMoney(receipt.currency, receipt.amount)}</strong>
                 </DetailRow>
                 <DetailRow label="Expected">
-                  {receipt.currency || 'LKR'} {Number(receipt.expectedAmount ?? 0).toLocaleString()}
+                  {formatMoney(receipt.currency, receipt.expectedAmount)}
                   {receipt.amountMatchesExpected ? (
                     <span className="ml-2 text-green-700 text-xs">(matches)</span>
                   ) : (
@@ -105,7 +104,7 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Requested plan</p>
                   <p className="font-semibold text-gray-900">{receipt.requestedPlanId.name}</p>
                   <p className="text-sm text-gray-600 mt-1">
-                    {receipt.requestedPlanId.currency} {Number(receipt.requestedPlanId.amount).toLocaleString()}
+                    {formatMoney(receipt.requestedPlanId.currency, receipt.requestedPlanId.amount)}
                     {' · '}
                     {receipt.requestedPlanId.durationDays} days
                     {receipt.requestedPlanId.billingCycle ? ` · ${receipt.requestedPlanId.billingCycle}` : ''}

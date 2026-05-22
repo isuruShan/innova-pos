@@ -138,6 +138,18 @@ export default function BrandingPage() {
 
   const set = (k) => (v) => setForm(f => ({ ...f, [k]: v }));
 
+  /** True if the string looks like a usable URL. */
+  const isValidUrl = (str) => {
+    const v = str.trim();
+    if (!v) return true; // optional field
+    try {
+      const parsed = new URL(v.startsWith('http') ? v : `https://${v}`);
+      return parsed.hostname.includes('.');
+    } catch {
+      return false;
+    }
+  };
+
   /** Detect obvious script-injection patterns in a text field. */
   const hasScriptContent = (str) =>
     /<script|javascript:|on\w+\s*=|<iframe|<object|<embed/i.test(String(str || ''));
@@ -151,11 +163,13 @@ export default function BrandingPage() {
     const mobileErr = validateMobileField(phoneCountryIso, phoneNationalDigits);
     if (mobileErr) e.phone = mobileErr;
     const email = String(form.email || '').trim();
-    if (email && !validateEmail(email)) e.email = 'Enter a valid email address';
+    if (email) {
+      const emailRes = validateEmail(email, { required: false });
+      if (!emailRes.ok) e.email = emailRes.error;
+    }
     const website = String(form.website || '').trim();
-    if (website) {
-      const wsRes = validateWebsite(website);
-      if (!wsRes.ok) e.website = wsRes.error || 'Enter a valid URL (e.g. https://example.com)';
+    if (website && !isValidUrl(website)) {
+      e.website = 'Enter a valid website URL (e.g. https://example.com)';
     }
     const desc = String(form.description || '').trim();
     if (desc && hasScriptContent(desc)) e.description = 'Description must not contain scripts or HTML tags.';
@@ -334,10 +348,17 @@ export default function BrandingPage() {
               set('email')(e.target.value);
               if (fieldErrors.email) setFieldErrors((er) => ({ ...er, email: '' }));
             }}
+            onBlur={(e) => {
+              const v = e.target.value.trim();
+              if (v) {
+                const res = validateEmail(v, { required: false });
+                if (!res.ok) setFieldErrors((er) => ({ ...er, email: res.error }));
+              }
+            }}
             placeholder={fieldAttrs('email').placeholder}
             maxLength={fieldAttrs('email').maxLength}
             autoComplete={fieldAttrs('email').autoComplete}
-            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${
+            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
               fieldErrors.email ? 'border-red-400' : 'border-gray-300'
             }`}
           />
@@ -354,9 +375,8 @@ export default function BrandingPage() {
             }}
             onBlur={(e) => {
               const v = e.target.value.trim();
-              if (v) {
-                const res = validateWebsite(v);
-                if (!res.ok) setFieldErrors((er) => ({ ...er, website: res.error || 'Enter a valid URL (e.g. https://example.com)' }));
+              if (v && !isValidUrl(v)) {
+                setFieldErrors((er) => ({ ...er, website: 'Enter a valid website URL (e.g. https://example.com)' }));
               }
             }}
             placeholder={fieldAttrs('website').placeholder || 'https://example.com'}
