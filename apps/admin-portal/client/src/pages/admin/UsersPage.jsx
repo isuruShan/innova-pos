@@ -9,7 +9,7 @@ import ListPagination from '../../components/common/ListPagination';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
 import { fieldAttrs, validateEmail, validatePersonName } from '../../utils/formFields';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
-import ProrationBreakdown, { formatMoney, LicenseQuoteBreakdown } from '../../components/billing/ProrationBreakdown';
+import { BillingQuotePanel, formatMoney, LicenseQuoteBreakdown } from '../../components/billing/ProrationBreakdown';
 import BankReceiptFields from '../../components/billing/BankReceiptFields';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
 import { useTenantCurrency } from '../../context/TenantCurrencyContext';
@@ -555,36 +555,6 @@ export default function UsersPage() {
 
             {paymentStep === 'review' && (
               <>
-                {/* Line-item breakdown when multiple charges are present */}
-                {paymentQuote.lineItems?.length > 1 ? (
-                  <div className="mb-4 rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
-                    {paymentQuote.lineItems.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                        <span className="text-gray-600">{item.label}</span>
-                        <span className="font-semibold text-gray-900">
-                          {formatMoney(item.currency || tenantCurrency, item.amount, merchantSymbol)}
-                          {item.proration?.isProrated && (
-                            <span className="ml-1.5 text-xs text-amber-600 font-normal">
-                              ({item.proration.remainingDays}d prorated)
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    ))}
-                    <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 text-sm font-bold">
-                      <span className="text-gray-900">Total due now</span>
-                      <span className="text-brand-orange">
-                        {formatMoney(paymentQuote.priced?.currency || tenantCurrency, paymentQuote.priced?.amount, merchantSymbol)}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-600 mb-4">
-                    {paymentQuote.priced?.label || 'License fee'}{' '}
-                    — <strong>{formatMoney(paymentQuote.priced?.currency || tenantCurrency, paymentQuote.priced?.amount, merchantSymbol)}</strong>
-                    {paymentQuote.billingLabel ? ` (${paymentQuote.billingLabel})` : ''}
-                  </p>
-                )}
                 {paymentQuote.lineItems?.length > 1 ? (
                   <LicenseQuoteBreakdown
                     lineItems={paymentQuote.lineItems}
@@ -592,15 +562,17 @@ export default function UsersPage() {
                     currency={paymentQuote.priced?.currency || tenantCurrency}
                     billingLabel={paymentQuote.billingLabel}
                     merchantSymbol={merchantSymbol}
+                    recurringRates={paymentQuote.recurringRates}
                   />
-                ) : paymentQuote.proration ? (
-                  <ProrationBreakdown
+                ) : (
+                  <BillingQuotePanel
+                    recurringRates={paymentQuote.recurringRates}
                     proration={paymentQuote.proration}
-                    currency={paymentQuote.priced?.currency || tenantCurrency}
                     amountDue={paymentQuote.priced?.amount}
+                    currency={paymentQuote.priced?.currency || tenantCurrency}
                     merchantSymbol={merchantSymbol}
                   />
-                ) : null}
+                )}
                 <div className="flex gap-3 mt-6">
                   <button type="button" onClick={closePayment} className="flex-1 py-2.5 border rounded-xl text-sm">Cancel</button>
                   <button type="button" onClick={() => setPaymentStep('method')} className="flex-1 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold">Continue to payment</button>

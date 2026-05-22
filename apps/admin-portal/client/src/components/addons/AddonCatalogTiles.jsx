@@ -6,6 +6,7 @@ import {
   Sparkles,
   Search,
 } from 'lucide-react';
+import { formatMoney } from '../billing/ProrationBreakdown';
 
 function formatPeriodEnd(iso) {
   if (!iso) return '';
@@ -283,9 +284,10 @@ export default function AddonCatalogTiles({
                     <CheckCircle size={16} /> Active
                   </span>
                 ) : null}
-                {row.priced?.amount && !row.alreadyActive && !row.pendingVerification ? (
+                {row.recurringRates?.monthly > 0 && !row.alreadyActive && !row.pendingVerification ? (
                   <p className="text-lg font-bold text-gray-900 tabular-nums">
-                    {row.priced.currency} {Number(row.priced.amount).toLocaleString()}
+                    {formatMoney(row.recurringRates.currency, row.recurringRates.monthly)}
+                    <span className="text-sm font-medium text-gray-500"> / mo</span>
                   </p>
                 ) : null}
                 {linkToAddonsPage && onReview ? (
@@ -328,9 +330,10 @@ export default function AddonCatalogTiles({
                 </div>
               </div>
               <p className="text-xs text-gray-500">{row.billingLabel}</p>
-              {row.priced?.amount && !row.alreadyActive && !row.pendingVerification ? (
+              {row.recurringRates?.monthly > 0 && !row.alreadyActive && !row.pendingVerification ? (
                 <p className="text-lg font-bold text-gray-900 tabular-nums">
-                  {row.priced.currency} {Number(row.priced.amount).toLocaleString()}
+                  {formatMoney(row.recurringRates.currency, row.recurringRates.monthly)}
+                  <span className="text-sm font-medium text-gray-500"> / mo</span>
                 </p>
               ) : null}
               <div className="mt-auto">

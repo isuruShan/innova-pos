@@ -1,5 +1,5 @@
 /**
- * Shared currency formatting and proration UI for billing flows.
+ * Billing quote UI — recurring subscription price (priority) + prorated amount due today.
  */
 
 const CURRENCY_DISPLAY = {
@@ -9,29 +9,18 @@ const CURRENCY_DISPLAY = {
   GBP: '£',
 };
 
-/**
- * Normalise currency code; never return a bare number.
- */
 export function currencySymbol(code) {
   const str = String(code ?? '').trim();
   if (!str || str === '0' || str === 'undefined' || str === 'null') return 'LKR';
   return str.toUpperCase();
 }
 
-/**
- * Display symbol for a currency code (Rs., $, …).
- * @param {string} currencyCode
- * @param {string} [merchantSymbol] — optional override from tenant branding
- */
 export function displayCurrencySymbol(currencyCode, merchantSymbol) {
   const code = currencySymbol(currencyCode);
   if (merchantSymbol && String(merchantSymbol).trim()) return String(merchantSymbol).trim();
   return CURRENCY_DISPLAY[code] || code;
 }
 
-/**
- * Format amount with merchant-appropriate symbol (always en-US number grouping).
- */
 export function formatMoney(currencyCode, amount, merchantSymbol) {
   const sym = displayCurrencySymbol(currencyCode, merchantSymbol);
   const n = Number(amount);
@@ -40,143 +29,209 @@ export function formatMoney(currencyCode, amount, merchantSymbol) {
 }
 
 /**
- * Single charge proration panel (add-ons, one store, one seat).
+ * Primary pricing block — monthly list price first, then cycle rate if yearly.
  */
-export default function ProrationBreakdown({ proration, fullCycle, currency, amountDue, merchantSymbol }) {
+export function RecurringPriceHero({ recurringRates, merchantSymbol }) {
+  if (!recurringRates) return null;
+  const cur = recurringRates.currency || 'LKR';
+  const monthly = Number(recurringRates.monthly) || 0;
+  const yearly = Number(recurringRates.yearly) || 0;
+  const isYearly = recurringRates.billingCycle === 'yearly';
+
+  return (
+    <div className="rounded-xl border-2 border-brand-orange/30 bg-gradient-to-br from-orange-50 to-white p-4 space-y-2">
+      <p className="text-xs font-semibold text-brand-orange uppercase tracking-wide">
+        Subscription price
+      </p>
+      {monthly > 0 ? (
+        <p className="text-2xl font-bold text-gray-900 tabular-nums">
+          {formatMoney(cur, monthly, merchantSymbol)}
+          <span className="text-base font-semibold text-gray-600"> / month</span>
+        </p>
+      ) : null}
+      {isYearly && yearly > 0 ? (
+        <p className="text-sm text-gray-600 tabular-nums">
+          {formatMoney(cur, yearly, merchantSymbol)} / year on your current plan
+        </p>
+      ) : !isYearly && monthly > 0 ? (
+        <p className="text-xs text-gray-500">Billed each month with your subscription</p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Amount due today + proration math using current subscription period days.
+ */
+function ProrationDetail({ proration, amountDue, currency, merchantSymbol }) {
   if (!proration) return null;
   const cur = proration.currency || currency || 'LKR';
   const due = amountDue != null ? Number(amountDue) : Number(proration.amount);
+  const periodLength = proration.periodLength ?? proration.cycleDays;
+  const remainingDays = proration.remainingDays;
+  const cycleAmount = proration.fullAmount;
+  const isProrated = proration.isProrated && remainingDays && periodLength && remainingDays < periodLength;
 
   const endDate = proration.periodEndsAt ? new Date(proration.periodEndsAt) : null;
   const endLabel = endDate
     ? endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : null;
 
-  const daysLeft = proration.remainingDays;
-  const cycleDays = proration.cycleDays;
-  const isProrated = proration.isProrated;
-  const cycleName = cycleDays >= 360 ? 'yearly' : 'monthly';
-
   return (
     <div className="rounded-lg border border-blue-100 bg-blue-50/80 p-3 text-sm space-y-2">
       <p className="text-xs font-semibold text-blue-900 uppercase tracking-wide">
-        First payment breakdown
+        Today&apos;s charge (prorated)
       </p>
 
-      {isProrated ? (
-        <div className="space-y-1">
-          <p className="text-blue-900/90 leading-snug">
-            You&apos;re paying for{' '}
-            <strong className="font-semibold">{daysLeft} day{daysLeft === 1 ? '' : 's'}</strong>
-            {endLabel ? (
-              <>
-                {' '}remaining until your next billing cycle on{' '}
-                <strong className="font-semibold">{endLabel}</strong>.
-                {' '}After that, the full {cycleName} rate applies.
-              </>
-            ) : (
-              ' until your next billing cycle.'
-            )}
-          </p>
-          {proration.fullAmount != null && (
-            <p className="text-xs text-blue-700/80 font-mono">
-              {formatMoney(cur, proration.fullAmount, merchantSymbol)} ÷ {cycleDays} days × {daysLeft} days
-            </p>
-          )}
-        </div>
-      ) : (
-        <p className="text-blue-900/80">
-          Full {cycleName} charge — your billing cycle starts fresh from today.
-        </p>
-      )}
-
-      {isProrated && fullCycle?.amount != null ? (
-        <div className="flex justify-between text-blue-900/70 text-xs pt-1">
-          <span>Full {cycleName} price (from next cycle)</span>
-          <span className="tabular-nums">{formatMoney(cur, fullCycle.amount, merchantSymbol)}</span>
-        </div>
-      ) : null}
-
-      <div className="flex justify-between font-semibold text-blue-950 pt-1 border-t border-blue-100">
-        <span>Amount due now</span>
-        <span className="tabular-nums">{formatMoney(cur, due, merchantSymbol)}</span>
+      <div className="flex justify-between items-baseline">
+        <span className="font-medium text-blue-950">Amount due now</span>
+        <span className="text-lg font-bold text-brand-orange tabular-nums">
+          {formatMoney(cur, due, merchantSymbol)}
+        </span>
       </div>
+
+      {isProrated ? (
+        <>
+          <p className="text-blue-900/90 leading-snug text-xs">
+            Your subscription has{' '}
+            <strong>{remainingDays} day{remainingDays === 1 ? '' : 's'}</strong> remaining
+            {endLabel ? (
+              <> until <strong>{endLabel}</strong></>
+            ) : null}
+            . You pay only for those days now; the full rate applies from your next cycle.
+          </p>
+          {cycleAmount != null && periodLength ? (
+            <p className="text-xs text-blue-700/90 font-mono bg-white/60 rounded px-2 py-1.5">
+              {formatMoney(cur, cycleAmount, merchantSymbol)} ÷ {periodLength} days in your current period ×{' '}
+              {remainingDays} days left = {formatMoney(cur, due, merchantSymbol)}
+            </p>
+          ) : null}
+        </>
+      ) : (
+        <p className="text-xs text-blue-800/80">Full period charge for your current subscription.</p>
+      )}
     </div>
   );
 }
 
 /**
- * Combined user-license quote (user seat + extra store slots).
+ * Full quote panel for add-ons, stores, and single user-license charges.
  */
-export function LicenseQuoteBreakdown({ lineItems = [], totalAmount, currency, billingLabel, merchantSymbol }) {
+export function BillingQuotePanel({
+  recurringRates,
+  proration,
+  amountDue,
+  currency,
+  merchantSymbol,
+  fullCycle,
+}) {
+  const cur = currency || recurringRates?.currency || proration?.currency || 'LKR';
+  const rates =
+    recurringRates ||
+    (fullCycle
+      ? {
+          monthly: fullCycle.monthlyAmount,
+          yearly: fullCycle.yearlyAmount,
+          currency: fullCycle.currency || cur,
+          billingCycle: fullCycle.billingCycle,
+        }
+      : null);
+
+  return (
+    <div className="space-y-3">
+      <RecurringPriceHero recurringRates={rates} merchantSymbol={merchantSymbol} />
+      <ProrationDetail
+        proration={proration}
+        amountDue={amountDue}
+        currency={cur}
+        merchantSymbol={merchantSymbol}
+      />
+    </div>
+  );
+}
+
+/** @deprecated Use BillingQuotePanel — kept for imports that expect default export */
+export default function ProrationBreakdown(props) {
+  return (
+    <BillingQuotePanel
+      recurringRates={props.recurringRates}
+      proration={props.proration}
+      amountDue={props.amountDue ?? props.proration?.amount}
+      currency={props.currency}
+      merchantSymbol={props.merchantSymbol}
+      fullCycle={props.fullCycle}
+    />
+  );
+}
+
+/**
+ * Combined user-license quote (seat + extra stores).
+ */
+export function LicenseQuoteBreakdown({
+  lineItems = [],
+  totalAmount,
+  currency,
+  billingLabel,
+  merchantSymbol,
+  recurringRates,
+}) {
   if (!lineItems.length) return null;
   const cur = currency || lineItems[0]?.currency || 'LKR';
+  const total = Number(totalAmount) || lineItems.reduce((s, i) => s + (Number(i.amount) || 0), 0);
   const first = lineItems[0]?.proration;
   const endDate = first?.periodEndsAt ? new Date(first.periodEndsAt) : null;
   const endLabel = endDate
     ? endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : null;
-  const daysLeft = first?.remainingDays;
-  const cycleDays = first?.cycleDays;
-  const isProrated = first?.isProrated;
-  const cycleName = cycleDays >= 360 ? 'yearly' : 'monthly';
-  const total = Number(totalAmount) || lineItems.reduce((s, i) => s + (Number(i.amount) || 0), 0);
-
-  const chargeSummary =
-    lineItems.length > 1
-      ? 'your new user seat and additional store access'
-      : lineItems[0]?.label || 'this license';
+  const remainingDays = first?.remainingDays;
+  const periodLength = first?.periodLength ?? first?.cycleDays;
 
   return (
-    <div className="rounded-lg border border-blue-100 bg-blue-50/80 p-3 text-sm space-y-3">
-      <p className="text-xs font-semibold text-blue-900 uppercase tracking-wide">
-        First payment breakdown
-      </p>
+    <div className="space-y-3">
+      {lineItems.length === 1 && lineItems[0].recurringRates ? (
+        <RecurringPriceHero recurringRates={lineItems[0].recurringRates} merchantSymbol={merchantSymbol} />
+      ) : recurringRates ? (
+        <RecurringPriceHero recurringRates={recurringRates} merchantSymbol={merchantSymbol} />
+      ) : null}
 
-      {isProrated && daysLeft ? (
-        <p className="text-blue-900/90 leading-snug">
-          This payment covers {chargeSummary} for the remaining{' '}
-          <strong>{daysLeft} day{daysLeft === 1 ? '' : 's'}</strong>
-          {endLabel ? (
-            <>
-              {' '}until your next billing cycle on <strong>{endLabel}</strong>.
-            </>
-          ) : (
-            ' until your next billing cycle.'
-          )}
-          {' '}After that, the full {cycleName} rate applies for each item.
-        </p>
-      ) : (
-        <p className="text-blue-900/80">Full {cycleName} charges for {chargeSummary}.</p>
-      )}
-
-      <ul className="space-y-2 border-t border-blue-100 pt-2">
+      <ul className="rounded-lg border border-gray-200 divide-y divide-gray-100 text-sm">
         {lineItems.map((item, idx) => (
-          <li key={idx} className="space-y-0.5">
-            <div className="flex justify-between text-blue-950">
-              <span className="text-blue-900/90">{item.label}</span>
+          <li key={idx} className="px-4 py-3 space-y-1">
+            <div className="flex justify-between">
+              <span className="text-gray-700">{item.label}</span>
               <span className="font-semibold tabular-nums">
                 {formatMoney(item.currency || cur, item.amount, merchantSymbol)}
               </span>
             </div>
+            {item.recurringRates?.monthly > 0 ? (
+              <p className="text-xs text-gray-500">
+                List price: {formatMoney(item.recurringRates.currency || cur, item.recurringRates.monthly, merchantSymbol)} / month
+                {item.recurringRates.billingCycle === 'yearly' && item.recurringRates.yearly > 0
+                  ? ` · ${formatMoney(item.recurringRates.currency || cur, item.recurringRates.yearly, merchantSymbol)} / year`
+                  : ''}
+              </p>
+            ) : null}
             {item.proration?.isProrated && item.proration.fullAmount != null && (
-              <p className="text-xs text-blue-700/80 font-mono">
+              <p className="text-xs text-gray-500 font-mono">
                 {formatMoney(item.currency || cur, item.proration.fullAmount, merchantSymbol)} ÷{' '}
-                {item.proration.cycleDays} days × {item.proration.remainingDays} days
+                {item.proration.periodLength ?? item.proration.cycleDays} days × {item.proration.remainingDays} days
               </p>
             )}
           </li>
         ))}
+        <li className="flex justify-between px-4 py-3 bg-gray-50 font-bold">
+          <span>Total due now</span>
+          <span className="text-brand-orange tabular-nums">{formatMoney(cur, total, merchantSymbol)}</span>
+        </li>
       </ul>
 
-      {billingLabel ? (
-        <p className="text-xs text-blue-800/70">{billingLabel}</p>
+      {remainingDays && periodLength ? (
+        <p className="text-xs text-blue-900/80 bg-blue-50 border border-blue-100 rounded-lg p-2.5">
+          All charges are prorated for <strong>{remainingDays} days</strong> left in your current subscription
+          {endLabel ? <> (ends {endLabel})</> : null}. Each line uses: plan rate ÷ {periodLength} days × {remainingDays} days.
+          {billingLabel ? ` ${billingLabel}` : ''}
+        </p>
       ) : null}
-
-      <div className="flex justify-between font-semibold text-blue-950 pt-1 border-t border-blue-100">
-        <span>Total amount due now</span>
-        <span className="tabular-nums text-brand-orange">{formatMoney(cur, total, merchantSymbol)}</span>
-      </div>
     </div>
   );
 }

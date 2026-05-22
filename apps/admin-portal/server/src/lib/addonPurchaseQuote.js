@@ -1,7 +1,11 @@
 'use strict';
 
 const { getAddonByCode, priceAddonForPlan } = require('./addonBilling');
-const { computeProratedAddonCharge } = require('./billingProration');
+const {
+  computeProratedAddonCharge,
+  buildRecurringRates,
+  buildProrationPayload,
+} = require('./billingProration');
 const { applyPaidAddonExpiryIfNeeded } = require('./addonPeriod');
 const {
   loadTenantForBilling,
@@ -11,7 +15,7 @@ const {
 } = require('./resolveBillingPlan');
 
 /**
- * First-payment quote for an add-on (prorated to remaining subscription days).
+ * First-payment quote for an add-on (prorated to remaining days in current subscription).
  */
 async function getAddonPurchaseQuote(tenantId, code) {
   let tenant = await loadTenantForBilling(tenantId);
@@ -29,15 +33,12 @@ async function getAddonPurchaseQuote(tenantId, code) {
     currentPeriodDays: periodDays,
     countryIso: tenant.countryIso,
   });
-  const billingLabel =
-    plan?.billingCycle === 'yearly'
-      ? 'per year (your next billing cycle)'
-      : 'per month (your next billing cycle)';
 
   return {
     addon,
     plan,
-    billingLabel,
+    billingLabel: prorated.billingLabel,
+    recurringRates: buildRecurringRates(full, plan),
     priced: {
       amount: prorated.amount,
       currency: prorated.currency,
@@ -47,17 +48,11 @@ async function getAddonPurchaseQuote(tenantId, code) {
       amount: full.amount,
       currency: full.currency,
       label: full.label,
+      monthlyAmount: full.monthlyAmount,
+      yearlyAmount: full.yearlyAmount,
+      billingCycle: full.billingCycle,
     },
-    proration: {
-      fullAmount: prorated.fullAmount,
-      amount: prorated.amount,
-      currency: prorated.currency,
-      cycleDays: prorated.cycleDays,
-      remainingDays: prorated.remainingDays,
-      periodEndsAt: prorated.periodEndsAt,
-      isProrated: prorated.isProrated,
-      note: prorated.prorationNote,
-    },
+    proration: buildProrationPayload(prorated),
   };
 }
 

@@ -2,7 +2,11 @@
 
 const User = require('../models/User');
 const { getRolePricing } = require('./userLicensePricing');
-const { computeProratedAddonCharge } = require('./billingProration');
+const {
+  computeProratedAddonCharge,
+  buildRecurringRates,
+  buildProrationPayload,
+} = require('./billingProration');
 const {
   loadTenantForBilling,
   planBillingCycleDays,
@@ -26,6 +30,17 @@ function pseudoAddonFromPricing(pricing) {
   };
 }
 
+function recurringRatesFromPricing(pricing, plan) {
+  const full = {
+    amount: plan?.billingCycle === 'yearly' ? pricing.yearlyAmount : pricing.monthlyAmount,
+    monthlyAmount: pricing.monthlyAmount,
+    yearlyAmount: pricing.yearlyAmount,
+    currency: pricing.currency,
+    billingCycle: plan?.billingCycle || 'monthly',
+  };
+  return buildRecurringRates(full, plan);
+}
+
 async function prorateRoleCharge(tenant, role, kind, quantity = 1) {
   const plan = await resolveNextBillingPlan(tenant);
   const { periodEnd, periodDays } = await resolveCurrentSubscriptionPeriod(tenant);
@@ -42,6 +57,7 @@ async function prorateRoleCharge(tenant, role, kind, quantity = 1) {
     total += Number(prorated.amount) || 0;
     lines.push(prorated);
   }
+  const first = lines[0] || null;
   return {
     plan,
     pricing,
@@ -49,7 +65,8 @@ async function prorateRoleCharge(tenant, role, kind, quantity = 1) {
     currency: pricing.currency || 'LKR',
     label: quantity > 1 ? `${pricing.name} (×${quantity})` : pricing.name,
     lines,
-    proration: lines[0] || null,
+    proration: first ? buildProrationPayload(first) : null,
+    recurringRates: recurringRatesFromPricing(pricing, plan),
   };
 }
 
@@ -97,15 +114,19 @@ async function quoteCreateUser(tenantId, role, storeIds = []) {
     ((Number(seatCharge.amount) || 0) + (hasExtraStores ? Number(storeCharge.amount) || 0 : 0)) * 100,
   ) / 100;
   const currency = seatCharge.currency || 'LKR';
-  const billingLabel =
-    seatCharge.plan?.billingCycle === 'yearly'
-      ? 'per year (your next billing cycle)'
-      : 'per month (your next billing cycle)';
+  const billingLabel = seatCharge.proration?.billingLabel || 'on your subscription';
 
-  // Build a human-readable combined label
   const labelParts = [seatCharge.label];
   if (hasExtraStores) labelParts.push(storeCharge.label);
   const combinedLabel = labelParts.join(' + ');
+
+  const mapLine = (charge) => ({
+    label: charge.label,
+    amount: charge.amount,
+    currency: charge.currency || currency,
+    proration: charge.proration,
+    recurringRates: charge.recurringRates,
+  });
 
   return {
     requiresPayment: true,
@@ -113,12 +134,10 @@ async function quoteCreateUser(tenantId, role, storeIds = []) {
     role,
     extraStoreSlots: extraSlots,
     priced: { amount: totalAmount, currency, label: combinedLabel },
-    // Individual line items so the UI can show a breakdown
+    recurringRates: seatCharge.recurringRates,
     lineItems: [
-      { label: seatCharge.label, amount: seatCharge.amount, currency, proration: seatCharge.proration },
-      ...(hasExtraStores
-        ? [{ label: storeCharge.label, amount: storeCharge.amount, currency, proration: storeCharge.proration }]
-        : []),
+      mapLine(seatCharge),
+      ...(hasExtraStores ? [mapLine(storeCharge)] : []),
     ],
     proration: seatCharge.proration,
     billingLabel,
@@ -167,11 +186,9 @@ async function quoteAssignStores(tenantId, userId, targetStoreIds) {
     targetStoreCount: targetCount,
     slotsToAdd,
     priced: { amount: charge.amount, currency: charge.currency, label: charge.label },
+    recurringRates: charge.recurringRates,
     proration: charge.proration,
-    billingLabel:
-      charge.plan?.billingCycle === 'yearly'
-        ? 'per year (your next billing cycle)'
-        : 'per month (your next billing cycle)',
+    billingLabel: charge.proration?.billingLabel || 'on your subscription',
   };
 }
 

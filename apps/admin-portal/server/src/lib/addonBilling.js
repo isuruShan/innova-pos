@@ -20,23 +20,38 @@ const INCLUDED_STORES_PER_TENANT = 1;
 function priceAddonForPlan(addon, plan, countryIso = 'LK') {
   if (!addon || !addon.isActive) {
     const fallbackCur = isLocalMerchant(countryIso) ? 'LKR' : 'USD';
-    return { amount: 0, currency: fallbackCur, label: '' };
+    return {
+      amount: 0,
+      monthlyAmount: 0,
+      yearlyAmount: 0,
+      currency: fallbackCur,
+      label: '',
+      billingCycle: plan?.billingCycle || 'monthly',
+    };
   }
   const local = isLocalMerchant(countryIso);
   const currency = local
     ? (addon.currency || 'LKR')
     : (addon.internationalCurrency || 'USD');
   const cycle = plan?.billingCycle || 'monthly';
-  let amount = local
+  const monthlyAmount = local
     ? Number(addon.monthlyAmount) || 0
     : Number(addon.internationalMonthlyAmount) || 0;
+  const yearlyAmount = local
+    ? Number(addon.yearlyAmount) || 0
+    : Number(addon.internationalYearlyAmount) || 0;
+  let amount = monthlyAmount;
   if (cycle === 'yearly') {
-    const y = local
-      ? Number(addon.yearlyAmount) || 0
-      : Number(addon.internationalYearlyAmount) || 0;
-    amount = y > 0 ? y : amount * 12;
+    amount = yearlyAmount > 0 ? yearlyAmount : monthlyAmount * 12;
   }
-  return { amount, currency, label: addon.name };
+  return {
+    amount,
+    monthlyAmount,
+    yearlyAmount: yearlyAmount > 0 ? yearlyAmount : monthlyAmount * 12,
+    currency,
+    label: addon.name,
+    billingCycle: cycle,
+  };
 }
 
 async function getAddonByCode(code) {

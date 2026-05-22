@@ -9,7 +9,8 @@ import ViewModeToggle from '../../components/common/ViewModeToggle';
 import ListPagination from '../../components/common/ListPagination';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
-import ProrationBreakdown, { formatMoney } from '../../components/billing/ProrationBreakdown';
+import { BillingQuotePanel, formatMoney } from '../../components/billing/ProrationBreakdown';
+import { useTenantCurrency } from '../../context/TenantCurrencyContext';
 import BankReceiptFields from '../../components/billing/BankReceiptFields';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
 
@@ -25,6 +26,7 @@ export default function StoresPage() {
   const [editMeta, setEditMeta] = useState({ deactivatedBySuperadmin: false });
   const toast = useToast();
   const { isInternational } = useMerchantBillingRegion();
+  const { currencySymbol: merchantSymbol } = useTenantCurrency();
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_admin_stores') || 'table');
   const [storePage, setStorePage] = useState(1);
@@ -486,17 +488,13 @@ export default function StoresPage() {
             {purchaseStep === 'review' && (
               <div className="space-y-4">
                 <p className="text-sm text-gray-700">{purchaseQuote.shortDescription}</p>
-                <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
-                  <p className="text-xs text-gray-500 uppercase">Amount due now</p>
-                  <p className="text-2xl font-bold tabular-nums mt-1">
-                    {formatMoney(purchaseQuote.priced.currency, purchaseQuote.priced.amount)}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">{purchaseQuote.priced.billingLabel}</p>
-                </div>
-                <ProrationBreakdown
+                <BillingQuotePanel
+                  recurringRates={purchaseQuote.recurringRates}
                   proration={purchaseQuote.proration}
-                  fullCycle={{ amount: purchaseQuote.proration?.fullAmount, label: purchaseQuote.priced?.label }}
+                  amountDue={purchaseQuote.priced?.amount}
                   currency={purchaseQuote.priced?.currency}
+                  fullCycle={purchaseQuote.fullCycle}
+                  merchantSymbol={merchantSymbol}
                 />
                 {methodOptions.length === 0 ? (
                   <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">No payment methods configured. Contact support.</p>
@@ -534,7 +532,14 @@ export default function StoresPage() {
             )}
             {purchaseStep === 'pay' && chosenMethod === 'paypal' && (
               <div className="space-y-3">
-                <ProrationBreakdown proration={purchaseQuote.proration} currency={purchaseQuote.priced?.currency} />
+                <BillingQuotePanel
+                  recurringRates={purchaseQuote.recurringRates}
+                  proration={purchaseQuote.proration}
+                  amountDue={purchaseQuote.priced?.amount}
+                  currency={purchaseQuote.priced?.currency}
+                  fullCycle={purchaseQuote.fullCycle}
+                  merchantSymbol={merchantSymbol}
+                />
                 {!paypalReady ? <p className="text-xs text-gray-500">Loading PayPal…</p> : null}
                 <div ref={paypalContainerRef} className="min-h-[44px]" />
                 <button type="button" onClick={() => setPurchaseStep('method')} className="text-sm text-gray-600 flex items-center gap-1">
@@ -544,9 +549,16 @@ export default function StoresPage() {
             )}
             {purchaseStep === 'pay' && chosenMethod === 'bank_transfer' && paymentOptions?.bankAccounts?.length > 0 && (
               <div className="space-y-4">
-                <ProrationBreakdown proration={purchaseQuote.proration} currency={purchaseQuote.priced?.currency} />
+                <BillingQuotePanel
+                  recurringRates={purchaseQuote.recurringRates}
+                  proration={purchaseQuote.proration}
+                  amountDue={purchaseQuote.priced?.amount}
+                  currency={purchaseQuote.priced?.currency}
+                  fullCycle={purchaseQuote.fullCycle}
+                  merchantSymbol={merchantSymbol}
+                />
                 <div className="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
-                  <p className="font-medium">Transfer exactly {formatMoney(purchaseQuote.priced.currency, purchaseQuote.priced.amount)} to:</p>
+                  <p className="font-medium">Transfer exactly {formatMoney(purchaseQuote.priced.currency, purchaseQuote.priced.amount, merchantSymbol)} to:</p>
                   {paymentOptions.bankAccounts.map((b) => (
                     <div key={b._id} className="mt-2">
                       <p className="font-medium">{b.label} — {b.bankName}</p>

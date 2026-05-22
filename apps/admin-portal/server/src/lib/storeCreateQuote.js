@@ -1,7 +1,11 @@
 'use strict';
 
-const { getAddonByCode, ensureDefaultPaidAddons } = require('./addonBilling');
-const { computeProratedAddonCharge } = require('./billingProration');
+const { getAddonByCode, ensureDefaultPaidAddons, priceAddonForPlan } = require('./addonBilling');
+const {
+  computeProratedAddonCharge,
+  buildRecurringRates,
+  buildProrationPayload,
+} = require('./billingProration');
 const {
   loadTenantForBilling,
   planBillingCycleDays,
@@ -48,9 +52,11 @@ async function getStoreCreateQuote(tenantId) {
   }
 
   const { periodEnd, periodDays } = await resolveCurrentSubscriptionPeriod(tenant);
-  const priced = computeProratedAddonCharge(addon, plan, periodEnd, {
+  const full = priceAddonForPlan(addon, plan, tenant.countryIso);
+  const prorated = computeProratedAddonCharge(addon, plan, periodEnd, {
     billingCycleDays: planBillingCycleDays(plan),
     currentPeriodDays: periodDays,
+    countryIso: tenant.countryIso,
   });
 
   return {
@@ -60,22 +66,22 @@ async function getStoreCreateQuote(tenantId) {
     purchaseKind: 'store',
     name: 'Additional store location',
     shortDescription: 'Adds one new store to your account. You can edit name, code, and settings after payment.',
+    recurringRates: buildRecurringRates(full, plan),
     priced: {
-      amount: priced.amount,
-      currency: priced.currency,
-      label: priced.label,
-      billingLabel: priced.billingLabel,
+      amount: prorated.amount,
+      currency: prorated.currency,
+      label: prorated.label,
+      billingLabel: prorated.billingLabel,
     },
-    proration: {
-      fullAmount: priced.fullAmount,
-      amount: priced.amount,
-      currency: priced.currency,
-      cycleDays: priced.cycleDays,
-      remainingDays: priced.remainingDays,
-      periodEndsAt: priced.periodEndsAt,
-      isProrated: priced.isProrated,
-      note: priced.prorationNote,
+    fullCycle: {
+      amount: full.amount,
+      currency: full.currency,
+      label: full.label,
+      monthlyAmount: full.monthlyAmount,
+      yearlyAmount: full.yearlyAmount,
+      billingCycle: full.billingCycle,
     },
+    proration: buildProrationPayload(prorated),
     plan: plan ? { name: plan.name, billingCycle: plan.billingCycle } : null,
   };
 }

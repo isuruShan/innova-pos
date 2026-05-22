@@ -24,86 +24,136 @@ async function resolveSubscriptionPeriodEnd(tenant) {
   return null;
 }
 
+function toDateOnly(d) {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
 /**
- * Prorate a full-cycle add-on price for remaining days in the active subscription period.
- * Rate uses the next billing cycle length (`billingCycleDays`); days left use the current period end.
+ * Calendar days from today until the end of the current subscription period.
+ */
+function remainingDaysInCurrentPeriod(periodEnd) {
+  if (!periodEnd) return null;
+  const end = toDateOnly(new Date(periodEnd));
+  const now = toDateOnly(new Date());
+  if (end <= now) return 0;
+  return Math.max(1, Math.round((end.getTime() - now.getTime()) / 86400000));
+}
+
+/**
+ * Prorate using the **current** subscription period:
+ *   amount = (cycle price ÷ period length in days) × remaining days
+ *
  * @param {import('mongoose').LeanDocument<any>} addon
- * @param {import('mongoose').LeanDocument<any>|null} plan — next billing plan (monthly/yearly pricing)
- * @param {Date|string|null} periodEnd — end of current paid subscription period
- * @param {{ billingCycleDays?: number, currentPeriodDays?: number }} [opts]
+ * @param {import('mongoose').LeanDocument<any>|null} plan
+ * @param {Date|string|null} periodEnd
+ * @param {{ billingCycleDays?: number, currentPeriodDays?: number, countryIso?: string }} [opts]
  */
 function computeProratedAddonCharge(addon, plan, periodEnd, opts = {}) {
   const full = priceAddonForPlan(addon, plan, opts.countryIso);
   const currency = full.currency || 'LKR';
-  const fullAmount = Number(full.amount) || 0;
-  const billingCycleDays = Math.max(
-    1,
+  const cycleAmount = Number(full.amount) || 0;
+  const monthlyListPrice = Number(full.monthlyAmount) || 0;
+  const yearlyListPrice = Number(full.yearlyAmount) || 0;
+  const billingCycle = full.billingCycle || plan?.billingCycle || 'monthly';
+
+  const fallbackCycleDays =
     Number(opts.billingCycleDays)
-      || Number(plan?.durationDays)
-      || (plan?.billingCycle === 'yearly' ? 365 : 30)
+    || Number(plan?.durationDays)
+    || (billingCycle === 'yearly' ? 365 : 30);
+
+  /** Length of the merchant's current paid subscription period (days). */
+  const periodLength = Math.max(
+    1,
+    Number(opts.currentPeriodDays) > 0 ? Number(opts.currentPeriodDays) : fallbackCycleDays,
   );
+
   const billingLabel =
-    plan?.billingCycle === 'yearly'
-      ? 'per year (your next billing cycle)'
-      : 'per month (your next billing cycle)';
+    billingCycle === 'yearly'
+      ? 'per year on your subscription'
+      : 'per month on your subscription';
 
-  // Normalise both dates to midnight (UTC) so proration is calendar-date based,
-  // not time-of-day based.
-  const endRaw = periodEnd ? new Date(periodEnd) : null;
-  const nowRaw = new Date();
+  const remainingDays = remainingDaysInCurrentPeriod(periodEnd);
 
-  // Strip time: floor to start of calendar day in UTC
-  function toDateOnly(d) {
-    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  }
-
-  const end = endRaw ? toDateOnly(endRaw) : null;
-  const now = toDateOnly(nowRaw);
-  const currentPeriodDays = opts.currentPeriodDays > 0 ? opts.currentPeriodDays : null;
-
-  if (!end || end <= now || fullAmount <= 0) {
+  if (remainingDays == null || remainingDays <= 0 || cycleAmount <= 0) {
     return {
-      fullAmount,
-      amount: fullAmount,
+      fullAmount: cycleAmount,
+      amount: cycleAmount,
       currency,
       label: full.label || addon?.name || '',
       billingLabel,
-      cycleDays: billingCycleDays,
-      remainingDays: billingCycleDays,
+      billingCycle,
+      monthlyListPrice,
+      yearlyListPrice,
+      cycleDays: periodLength,
+      periodLength,
+      remainingDays: remainingDays || periodLength,
+      periodEndsAt: periodEnd ? toDateOnly(new Date(periodEnd)) : null,
+      currentPeriodDays: opts.currentPeriodDays || null,
       isProrated: false,
       prorationNote: 'Full billing period charge.',
     };
   }
 
-  // Use calendar-day difference (each day is exactly 86400 s in UTC-normalised dates)
-  const msLeft = end.getTime() - now.getTime();
-  let remainingDays = Math.max(1, Math.round(msLeft / 86400000));
-  if (currentPeriodDays) {
-    remainingDays = Math.min(currentPeriodDays, remainingDays);
-  }
-
-  const amount = roundMoney((fullAmount / billingCycleDays) * remainingDays);
-  const isProrated = remainingDays < billingCycleDays;
+  const amount = roundMoney((cycleAmount / periodLength) * remainingDays);
+  const isProrated = remainingDays < periodLength;
+  const end = toDateOnly(new Date(periodEnd));
 
   return {
-    fullAmount,
+    fullAmount: cycleAmount,
     amount,
     currency,
     label: full.label || addon?.name || '',
     billingLabel,
-    cycleDays: billingCycleDays,
+    billingCycle,
+    monthlyListPrice,
+    yearlyListPrice,
+    cycleDays: periodLength,
+    periodLength,
     remainingDays,
     periodEndsAt: end,
-    currentPeriodDays,
+    currentPeriodDays: opts.currentPeriodDays || periodLength,
     isProrated,
     prorationNote: isProrated
-      ? `Prorated: ${remainingDays} day${remainingDays === 1 ? '' : 's'} left in your current period (ends ${end.toLocaleDateString()}), priced at your ${plan?.billingCycle === 'yearly' ? 'yearly' : 'monthly'} add-on rate for the next billing cycle.`
+      ? `Prorated for ${remainingDays} day${remainingDays === 1 ? '' : 's'} left in your current subscription (ends ${end.toLocaleDateString()}).`
       : 'Full billing period charge.',
+  };
+}
+
+/** Rates block for API / UI — always includes real monthly list price. */
+function buildRecurringRates(full, plan) {
+  const billingCycle = full?.billingCycle || plan?.billingCycle || 'monthly';
+  return {
+    monthly: Number(full?.monthlyAmount) || 0,
+    yearly: Number(full?.yearlyAmount) || 0,
+    currency: full?.currency || 'LKR',
+    billingCycle,
+    cycleAmount: Number(full?.amount) || 0,
+    cycleLabel: billingCycle === 'yearly' ? 'year' : 'month',
+  };
+}
+
+function buildProrationPayload(prorated) {
+  return {
+    fullAmount: prorated.fullAmount,
+    amount: prorated.amount,
+    currency: prorated.currency,
+    cycleDays: prorated.periodLength ?? prorated.cycleDays,
+    periodLength: prorated.periodLength ?? prorated.cycleDays,
+    remainingDays: prorated.remainingDays,
+    periodEndsAt: prorated.periodEndsAt,
+    isProrated: prorated.isProrated,
+    billingCycle: prorated.billingCycle,
+    monthlyListPrice: prorated.monthlyListPrice,
+    yearlyListPrice: prorated.yearlyListPrice,
+    note: prorated.prorationNote,
   };
 }
 
 module.exports = {
   roundMoney,
   resolveSubscriptionPeriodEnd,
+  remainingDaysInCurrentPeriod,
   computeProratedAddonCharge,
+  buildRecurringRates,
+  buildProrationPayload,
 };

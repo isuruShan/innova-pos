@@ -13,7 +13,8 @@ import {
 import api from '../../api/axios';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
 import AddonCatalogTiles from '../../components/addons/AddonCatalogTiles';
-import ProrationBreakdown, { formatMoney } from '../../components/billing/ProrationBreakdown';
+import { BillingQuotePanel, formatMoney } from '../../components/billing/ProrationBreakdown';
+import { useTenantCurrency } from '../../context/TenantCurrencyContext';
 import BankReceiptFields from '../../components/billing/BankReceiptFields';
 import { useToast } from '../../context/ToastContext';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
@@ -26,6 +27,7 @@ export default function MerchantAddonsPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
   const { isInternational } = useMerchantBillingRegion();
+  const { currencySymbol: merchantSymbol } = useTenantCurrency();
   const [searchParams, setSearchParams] = useSearchParams();
   const [paypalReady, setPaypalReady] = useState(false);
 
@@ -161,6 +163,7 @@ export default function MerchantAddonsPage() {
         setSelectedAddon({
           ...row,
           priced: quote.priced,
+          recurringRates: quote.recurringRates,
           proration: quote.proration,
           fullCycle: quote.fullCycle,
           billingLabel: quote.billingLabel,
@@ -366,20 +369,14 @@ export default function MerchantAddonsPage() {
                 {quoteLoading ? (
                   <p className="text-sm text-gray-500 flex items-center gap-2"><Loader size={14} className="animate-spin" /> Loading pricing…</p>
                 ) : (
-                  <>
-                    <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
-                      <p className="text-xs text-gray-500 uppercase tracking-wide">Amount due now</p>
-                      <p className="text-2xl font-bold text-gray-900 tabular-nums mt-1">
-                        {formatMoney(selectedAddon.priced.currency, selectedAddon.priced.amount)}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">{selectedAddon.billingLabel}</p>
-                    </div>
-                    <ProrationBreakdown
-                      proration={selectedAddon.proration}
-                      fullCycle={selectedAddon.fullCycle}
-                      currency={selectedAddon.priced?.currency}
-                    />
-                  </>
+                  <BillingQuotePanel
+                    recurringRates={selectedAddon.recurringRates}
+                    proration={selectedAddon.proration}
+                    amountDue={selectedAddon.priced?.amount}
+                    currency={selectedAddon.priced?.currency}
+                    fullCycle={selectedAddon.fullCycle}
+                    merchantSymbol={merchantSymbol}
+                  />
                 )}
                 {viewOnly ? (
                   <button
@@ -444,14 +441,13 @@ export default function MerchantAddonsPage() {
 
             {flowStep === 'pay' && chosenMethod && (
               <div className="space-y-4">
-                <p className="text-sm text-gray-600">
-                  Pay <strong>{formatMoney(selectedAddon.priced.currency, selectedAddon.priced.amount)}</strong> for{' '}
-                  <strong>{selectedAddon.name}</strong>.
-                </p>
-                <ProrationBreakdown
+                <BillingQuotePanel
+                  recurringRates={selectedAddon.recurringRates}
                   proration={selectedAddon.proration}
-                  fullCycle={selectedAddon.fullCycle}
+                  amountDue={selectedAddon.priced?.amount}
                   currency={selectedAddon.priced?.currency}
+                  fullCycle={selectedAddon.fullCycle}
+                  merchantSymbol={merchantSymbol}
                 />
 
                 {chosenMethod === 'stripe' && (
@@ -472,7 +468,7 @@ export default function MerchantAddonsPage() {
                   <div className="space-y-4">
                     <div className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
                       <p className="font-medium text-gray-900">
-                        Transfer exactly {formatMoney(selectedAddon.priced.currency, selectedAddon.priced.amount)} to:
+                        Transfer exactly {formatMoney(selectedAddon.priced.currency, selectedAddon.priced.amount, merchantSymbol)} to:
                       </p>
                       {paymentOptions.bankAccounts.map((b) => (
                         <div key={b._id}>

@@ -8,6 +8,7 @@ const PaidAddonDefinition = require('../models/PaidAddonDefinition');
 const Tenant = require('../models/Tenant');
 const { authenticateJWT, authorize, sendRouteError, resolveUploadProxyTimeoutMs } = require('@innovapos/shared-middleware');
 const { ensureDefaultPaidAddons, priceAddonForPlan, getAddonByCode } = require('../lib/addonBilling');
+const { buildRecurringRates } = require('../lib/billingProration');
 const { getAddonPurchaseQuote } = require('../lib/addonPurchaseQuote');
 const { resolveNextBillingPlan, loadTenantForBilling } = require('../lib/resolveBillingPlan');
 const { applyPaidAddonExpiryIfNeeded, entitlementKeyForCode } = require('../lib/addonPeriod');
@@ -35,7 +36,15 @@ async function buildCatalogRow(tenant, addon, plan, billingLabel) {
     shortDescription: addon.shortDescription,
     longDescription: addon.longDescription,
     screenshotUrls,
-    priced,
+    priced: {
+      amount: priced.amount,
+      monthlyAmount: priced.monthlyAmount,
+      yearlyAmount: priced.yearlyAmount,
+      currency: priced.currency,
+      label: priced.label,
+      billingCycle: priced.billingCycle,
+    },
+    recurringRates: buildRecurringRates(priced, plan),
     billingLabel,
     plan: plan ? { name: plan.name, billingCycle: plan.billingCycle, code: plan.code } : null,
     ...state,
@@ -320,6 +329,7 @@ router.get('/quote/:code', authenticateJWT, authorize('merchant_admin'), async (
         screenshotUrls: await resolveMediaUrls(addon.screenshotUrls || []),
       },
       priced: quote.priced,
+      recurringRates: quote.recurringRates,
       fullCycle: quote.fullCycle,
       proration: quote.proration,
       billingLabel: quote.billingLabel,
