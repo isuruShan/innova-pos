@@ -4,6 +4,7 @@
 const ENTITLEMENT_BY_CODE = {
   qr_ordering: 'qrOrdering',
   loyalty: 'loyalty',
+  table_management: 'tableManagement',
 };
 
 const KNOWN_ENTITLEMENT_KEYS = Object.values(ENTITLEMENT_BY_CODE);
@@ -60,6 +61,10 @@ function isLoyaltyEffective(paidAddons) {
   return isPaidAddonEffective(paidAddons, 'loyalty');
 }
 
+function isTableManagementEffective(paidAddons) {
+  return isPaidAddonEffective(paidAddons, 'tableManagement');
+}
+
 module.exports = {
   ENTITLEMENT_BY_CODE,
   KNOWN_ENTITLEMENT_KEYS,
@@ -68,5 +73,6 @@ module.exports = {
   isPaidAddonEffective,
   isQrOrderingEffective,
   isLoyaltyEffective,
+  isTableManagementEffective,
   isInTrialPeriod,
 };

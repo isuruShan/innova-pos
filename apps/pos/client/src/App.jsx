@@ -26,6 +26,11 @@ import LoyaltyRewardsPage from './pages/manager/LoyaltyRewardsPage';
 import ApprovalsPage from './pages/manager/ApprovalsPage';
 import CafeTablesPage from './pages/manager/CafeTablesPage';
 import NotificationsPage from './pages/manager/NotificationsPage';
+import FloorPlanEditorPage from './pages/manager/FloorPlanEditorPage';
+import FloorPlanViewPage from './pages/manager/FloorPlanViewPage';
+import ReservationsPage from './pages/manager/ReservationsPage';
+import WaitlistPage from './pages/manager/WaitlistPage';
+import TableAnalyticsPage from './pages/manager/TableAnalyticsPage';
 import SubscriptionBlocked from './pages/SubscriptionBlocked';
 
 const queryClient = new QueryClient({
@@ -126,6 +131,31 @@ export default function App() {
                 <Route path="/manager/cafe-tables" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
                     <CafeTablesPage />
+                  </RoleRoute>
+                } />
+                <Route path="/manager/floor-plan" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <FloorPlanViewPage />
+                  </RoleRoute>
+                } />
+                <Route path="/manager/floor-plan/edit" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <FloorPlanEditorPage />
+                  </RoleRoute>
+                } />
+                <Route path="/manager/reservations" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <ReservationsPage />
+                  </RoleRoute>
+                } />
+                <Route path="/manager/waitlist" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <WaitlistPage />
+                  </RoleRoute>
+                } />
+                <Route path="/manager/table-analytics" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <TableAnalyticsPage />
                   </RoleRoute>
                 } />
                 <Route path="/manager/inventory" element={

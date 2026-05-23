@@ -45,6 +45,14 @@ const tenantSchema = new mongoose.Schema(
         periodEndsAt: { type: Date, default: null },
         cancelAtPeriodEnd: { type: Boolean, default: false },
       },
+      tableManagement: {
+        active: { type: Boolean, default: false },
+        activatedAt: { type: Date, default: null },
+        amountPerCycle: { type: Number, default: 0, min: 0 },
+        currency: { type: String, default: '', trim: true, uppercase: true },
+        periodEndsAt: { type: Date, default: null },
+        cancelAtPeriodEnd: { type: Boolean, default: false },
+      },
     },
 
     adminCount: { type: Number, default: 0, min: 0, max: 2 },

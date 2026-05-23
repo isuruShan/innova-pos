@@ -102,6 +102,18 @@ const DEFAULT_ADDONS = [
     isActive: true,
     sortOrder: 1,
   },
+  {
+    code: 'table_management',
+    name: 'Table Management',
+    shortDescription: 'Visual floor plans, reservations, waitlist, and table analytics.',
+    longDescription:
+      'Full table management suite: design your floor layout with drag-and-drop, accept online/phone reservations with SMS confirmations, ' +
+      'manage walk-in waitlists with accurate wait times, and track table turnover and revenue per cover. ' +
+      'Pricing follows your subscription billing period (monthly or yearly).',
+    screenshotUrls: [],
+    isActive: true,
+    sortOrder: 2,
+  },
 ];
 
 async function ensureDefaultPaidAddons() {

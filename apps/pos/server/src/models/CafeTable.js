@@ -19,6 +19,8 @@ const cafeTableSchema = new mongoose.Schema(
     label: { type: String, required: true, trim: true },
     sortOrder: { type: Number, default: 0 },
     active: { type: Boolean, default: true },
+    /** Seating capacity for this table */
+    capacity: { type: Number, default: 4, min: 1, max: 20 },
     /** Secret segment for public QR ordering links (unguessable). Indexed via schema.index below (unique sparse). */
     qrToken: { type: String, default: null },
     /** Throttle repeated “call waiter” from the same table QR link. */

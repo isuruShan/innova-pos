@@ -96,6 +96,12 @@ app.use('/api/tenant', require('./routes/tenantAddons'));
 app.use('/api/loyalty', require('./routes/loyalty'));
 app.use('/api/notifications', require('./routes/notifications'));
 
+// Table Management add-on routes
+app.use('/api/floor-plan', require('./routes/floorPlan'));
+app.use('/api/reservations', require('./routes/reservations'));
+app.use('/api/waitlist', require('./routes/waitlist'));
+app.use('/api/table-analytics', require('./routes/tableAnalytics'));
+
 app.get('/api/health', (_req, res) =>
   res.json({ status: 'ok', service: 'pos-server', env: process.env.NODE_ENV, ts: new Date().toISOString() })
 );

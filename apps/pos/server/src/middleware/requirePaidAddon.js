@@ -8,6 +8,8 @@ const ADDON_MESSAGES = {
     'The Loyalty program add-on is not active for this business. Subscribe in the admin portal under Add-ons.',
   qr_ordering:
     'QR Ordering is not active for this business. Subscribe in the admin portal under Add-ons.',
+  table_management:
+    'The Table Management add-on is not active for this business. Subscribe in the admin portal under Add-ons.',
 };
 
 /**

@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, UtensilsCrossed, Package, Truck, ClipboardList, Tag, Wallet,
-  Users, Gift, Inbox, Table, Bell, ShoppingCart,
+  Users, Gift, Inbox, Table, Bell, ShoppingCart, Grid3X3, CalendarDays, UserPlus, BarChart3,
 } from 'lucide-react';
 
 /** Grouped nav for the top bar (dropdowns). `roles` on an item = restrict to those roles. */
@@ -19,6 +19,16 @@ export const MANAGER_NAV_GROUPS = [
       { to: '/manager/cafe-tables', label: 'Café tables & QR', icon: Table },
       { to: '/manager/inventory', label: 'Inventory', icon: Package },
       { to: '/manager/suppliers', label: 'Suppliers', icon: Truck },
+    ],
+  },
+  {
+    title: 'Table Management',
+    addon: 'tableManagement',
+    items: [
+      { to: '/manager/floor-plan', label: 'Floor plan', icon: Grid3X3 },
+      { to: '/manager/reservations', label: 'Reservations', icon: CalendarDays },
+      { to: '/manager/waitlist', label: 'Waitlist', icon: UserPlus },
+      { to: '/manager/table-analytics', label: 'Table analytics', icon: BarChart3 },
     ],
   },
   {
