@@ -452,13 +452,35 @@ export default function UsersPage() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-gray-900">{editingUser ? 'Edit user' : 'Add new user'}</h3>
-              <button type="button" onClick={closeAll} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/30"
+            onClick={closeAll}
+            aria-hidden="true"
+          />
+          <aside
+            className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl border-l border-gray-200 flex flex-col"
+          >
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg">
+                  {editingUser ? 'Edit User' : 'Add New User'}
+                </h3>
+                {editingUser && (
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {editingUser.name} · {editingUser.email}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={closeAll}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
             </div>
-            <div className="space-y-4">
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
               {[
                 { label: 'Full name', key: 'name', ...fieldAttrs('staffName') },
                 { label: 'Email', key: 'email', type: 'email', ...fieldAttrs('email') },
@@ -530,15 +552,16 @@ export default function UsersPage() {
               {errors.api && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">{errors.api}</p>}
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <button type="button" onClick={closeAll} className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-end gap-3 shrink-0">
+              <button type="button" onClick={closeAll} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50 text-gray-700 transition">Cancel</button>
               <button type="button" onClick={validateAndSubmit} disabled={submitting}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold disabled:opacity-60">
-                {submitting ? <Loader size={14} className="animate-spin" /> : (editingUser ? 'Save changes' : 'Create user')}
+                className="inline-flex items-center gap-2 px-5 py-2 bg-brand-orange text-white text-sm font-semibold rounded-lg hover:bg-brand-orange-hover disabled:opacity-60 transition shadow-sm">
+                {submitting && <Loader size={14} className="animate-spin" />}
+                {editingUser ? 'Save changes' : 'Create user'}
               </button>
             </div>
-          </div>
-        </div>
+          </aside>
+        </>
       )}
 
       {paymentOpen && paymentQuote && (

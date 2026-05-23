@@ -226,25 +226,6 @@ export default function PromotionsAdminPage() {
     setFormError('');
   };
 
-  const toggleApplicableItem = (m) => {
-    setForm((f) => {
-      const ids = f.applicableItems || [];
-      const names = f.applicableItemNames || [];
-      const idx = ids.findIndex((id) => String(id) === String(m._id));
-      if (idx >= 0) {
-        return {
-          ...f,
-          applicableItems: ids.filter((_, i) => i !== idx),
-          applicableItemNames: names.filter((_, i) => i !== idx),
-        };
-      }
-      return {
-        ...f,
-        applicableItems: [...ids, m._id],
-        applicableItemNames: [...names, m.name],
-      };
-    });
-  };
 
   const submit = (e) => {
     e.preventDefault();
@@ -629,31 +610,7 @@ export default function PromotionsAdminPage() {
                   />
                 </label>
               </div>
-              {form.type === 'percentageDiscount' ? (
-                <label className="block text-xs text-gray-600">
-                  Percent off
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={form.discountPercent}
-                    onChange={(e) => setForm((f) => ({ ...f, discountPercent: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </label>
-              ) : (
-                <label className="block text-xs text-gray-600">
-                  Discount amount (Rs)
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={form.discountAmount}
-                    onChange={(e) => setForm((f) => ({ ...f, discountAmount: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </label>
-              )}
+
               <label className="block text-xs text-gray-600">
                 Minimum order amount (optional)
                 <input
@@ -689,31 +646,7 @@ export default function PromotionsAdminPage() {
                   className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 />
               </label>
-              {isStoreReady && menuItems.length > 0 ? (
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">Limit to items (optional — empty = whole order)</p>
-                  <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
-                    {menuItems.map((m) => (
-                      <button
-                        key={m._id}
-                        type="button"
-                        onClick={() => toggleApplicableItem(m)}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${
-                          form.applicableItems?.some((id) => String(id) === String(m._id))
-                            ? 'bg-brand-teal/10 text-brand-teal font-medium'
-                            : 'text-gray-800'
-                        }`}
-                      >
-                        {m.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  Select a store in the header to attach menu items to this promotion.
-                </p>
-              )}
+
               <label className="flex items-center gap-2 text-sm text-gray-800">
                 <input
                   type="checkbox"

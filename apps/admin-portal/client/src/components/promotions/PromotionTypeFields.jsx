@@ -1,6 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react';
 import FormField, { inputClass } from '../common/FormField';
-import ApplicableItemsField from './ApplicableItemsField';
+import RewardScopeCombobox from '../RewardScopeCombobox';
 
 export default function PromotionTypeFields({ form, setForm, menuItems, categories, tiers = [] }) {
   const patch = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -96,14 +96,20 @@ export default function PromotionTypeFields({ form, setForm, menuItems, categori
     return (
       <div className="space-y-3 border border-gray-100 rounded-xl p-4 bg-gray-50/80">
         <p className="text-sm font-semibold text-gray-900">Flat price</p>
-        <ApplicableItemsField
-          itemIds={form.applicableItems}
-          itemNames={form.applicableItemNames}
-          categoryNames={form.applicableCategories}
+        <RewardScopeCombobox
           menuItems={menuItems}
-          categories={categories}
-          required
-          onChange={(ids, names, cats) => setForm((f) => ({ ...f, applicableItems: ids, applicableItemNames: names, applicableCategories: cats }))}
+          isStoreReady={true}
+          categoryNames={form.applicableCategories || []}
+          itemIds={form.applicableItems || []}
+          itemNames={form.applicableItemNames || []}
+          onPatch={(patch) => {
+            setForm((f) => ({
+              ...f,
+              applicableCategories: patch.applicableCategories !== undefined ? patch.applicableCategories : f.applicableCategories,
+              applicableItems: patch.applicableItems !== undefined ? patch.applicableItems : f.applicableItems,
+              applicableItemNames: patch.applicableItemNames !== undefined ? patch.applicableItemNames : f.applicableItemNames,
+            }));
+          }}
         />
         <FormField label="Flat price" htmlFor="flat-price" required>
           <input id="flat-price" type="number" min={0} step="0.01" className={inputClass} value={form.flatPrice} onChange={patch('flatPrice')} />
@@ -119,13 +125,20 @@ export default function PromotionTypeFields({ form, setForm, menuItems, categori
         <FormField label="Discount amount" htmlFor="disc-amt" required>
           <input id="disc-amt" type="number" min={0} step="0.01" className={inputClass} value={form.discountAmount} onChange={patch('discountAmount')} />
         </FormField>
-        <ApplicableItemsField
-          itemIds={form.applicableItems}
-          itemNames={form.applicableItemNames}
-          categoryNames={form.applicableCategories}
+        <RewardScopeCombobox
           menuItems={menuItems}
-          categories={categories}
-          onChange={(ids, names, cats) => setForm((f) => ({ ...f, applicableItems: ids, applicableItemNames: names, applicableCategories: cats }))}
+          isStoreReady={true}
+          categoryNames={form.applicableCategories || []}
+          itemIds={form.applicableItems || []}
+          itemNames={form.applicableItemNames || []}
+          onPatch={(patch) => {
+            setForm((f) => ({
+              ...f,
+              applicableCategories: patch.applicableCategories !== undefined ? patch.applicableCategories : f.applicableCategories,
+              applicableItems: patch.applicableItems !== undefined ? patch.applicableItems : f.applicableItems,
+              applicableItemNames: patch.applicableItemNames !== undefined ? patch.applicableItemNames : f.applicableItemNames,
+            }));
+          }}
         />
       </div>
     );
@@ -138,13 +151,20 @@ export default function PromotionTypeFields({ form, setForm, menuItems, categori
         <FormField label="Discount percent" htmlFor="disc-pct" required>
           <input id="disc-pct" type="number" min={0} max={100} className={inputClass} value={form.discountPercent} onChange={patch('discountPercent')} />
         </FormField>
-        <ApplicableItemsField
-          itemIds={form.applicableItems}
-          itemNames={form.applicableItemNames}
-          categoryNames={form.applicableCategories}
+        <RewardScopeCombobox
           menuItems={menuItems}
-          categories={categories}
-          onChange={(ids, names, cats) => setForm((f) => ({ ...f, applicableItems: ids, applicableItemNames: names, applicableCategories: cats }))}
+          isStoreReady={true}
+          categoryNames={form.applicableCategories || []}
+          itemIds={form.applicableItems || []}
+          itemNames={form.applicableItemNames || []}
+          onPatch={(patch) => {
+            setForm((f) => ({
+              ...f,
+              applicableCategories: patch.applicableCategories !== undefined ? patch.applicableCategories : f.applicableCategories,
+              applicableItems: patch.applicableItems !== undefined ? patch.applicableItems : f.applicableItems,
+              applicableItemNames: patch.applicableItemNames !== undefined ? patch.applicableItemNames : f.applicableItemNames,
+            }));
+          }}
         />
       </div>
     );
