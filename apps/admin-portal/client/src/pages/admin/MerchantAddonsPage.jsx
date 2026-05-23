@@ -292,6 +292,7 @@ export default function MerchantAddonsPage() {
   };
 
   return (
+    <>
     <div className="max-w-3xl space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
@@ -569,5 +570,6 @@ export default function MerchantAddonsPage() {
         }}
         onCancel={() => setConfirmUnsubscribe(null)}
       />
+    </>
   );
 }
