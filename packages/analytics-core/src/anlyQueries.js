@@ -13,6 +13,16 @@ const {
 } = require('./anlyDateKeys');
 const { getAnlyConfig } = require('./anlySync');
 
+let orderArchiveModel = null;
+
+function registerOrderArchiveModel(model) {
+  orderArchiveModel = model;
+}
+
+function getOrderArchiveModel() {
+  return orderArchiveModel;
+}
+
 function getOrderModel() {
   return mongoose.model('Order');
 }
@@ -82,8 +92,27 @@ async function getOrderVolumeAnalytics(tenantId, storeId, fromQ, toQ) {
   if (range.error) return { error: range.error };
 
   const Order = getOrderModel();
+  const OrderArchive = getOrderArchiveModel();
+  
   const dailyMap = await buildDailyOrderVolumeTransactional(Order, tenantId, storeId, range);
+  
+  if (OrderArchive) {
+    const archiveDailyMap = await buildDailyOrderVolumeTransactional(OrderArchive, tenantId, storeId, range);
+    for (const key of Object.keys(archiveDailyMap)) {
+      if (dailyMap[key]) {
+        dailyMap[key].orders += archiveDailyMap[key].orders;
+        dailyMap[key].revenue += archiveDailyMap[key].revenue;
+      } else {
+        dailyMap[key] = archiveDailyMap[key];
+      }
+    }
+  }
+
   const daily = Object.values(dailyMap);
+  for (const d of daily) {
+    d.revenue = Math.round(d.revenue * 100) / 100;
+  }
+  
   const orderCount = daily.reduce((s, d) => s + (d.orders || 0), 0);
   const totalRevenue = Math.round(daily.reduce((s, d) => s + (d.revenue || 0), 0) * 100) / 100;
 
@@ -160,4 +189,6 @@ module.exports = {
   getOrderVolumeAnalytics,
   getTopItemsAnalytics,
   getAnlyStatus,
+  registerOrderArchiveModel,
+  getOrderArchiveModel,
 };

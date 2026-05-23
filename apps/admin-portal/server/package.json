@@ -15,6 +15,7 @@
     "@innovapos/logger": "workspace:*",
     "@innovapos/mail-transport": "workspace:*",
     "@innovapos/mongo-connection": "workspace:*",
+    "@innovapos/object-storage": "workspace:*",
     "@innovapos/paid-addons": "workspace:*",
     "@innovapos/platform-contact": "workspace:*",
     "@innovapos/pos-theme-presets": "workspace:*",

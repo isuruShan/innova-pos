@@ -56,12 +56,22 @@ router.get('/day-end', protect, authorize('cashier', 'manager', 'merchant_admin'
     const end = new Date(target);
     end.setHours(23, 59, 59, 999);
 
-    const orders = await Order.find({
+    const { getOrderArchiveModel } = require('../lib/archiveDb');
+    const OrderArchive = getOrderArchiveModel();
+
+    const queryParams = {
       tenantId: req.tenantId,
       ...buildStoreFilter(req),
       status: 'completed',
       createdAt: { $gte: start, $lte: end },
-    }).populate('createdBy', 'name').sort({ createdAt: 1 });
+    };
+
+    const [hotOrders, coldOrders] = await Promise.all([
+      Order.find(queryParams).populate({ path: 'createdBy', model: require('../models/User'), select: 'name' }),
+      OrderArchive.find(queryParams).populate({ path: 'createdBy', model: require('../models/User'), select: 'name' }),
+    ]);
+
+    const orders = [...hotOrders, ...coldOrders].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
     const totalRevenue = orders.reduce((s, o) => s + o.totalAmount, 0);
     const totalOrders = orders.length;
@@ -129,12 +139,22 @@ router.get('/sales', protect, authorize('manager', 'merchant_admin', 'superadmin
       startDate = startOfLocalDay(sd);
     }
 
-    const orders = await Order.find({
+    const { getOrderArchiveModel } = require('../lib/archiveDb');
+    const OrderArchive = getOrderArchiveModel();
+
+    const queryParams = {
       tenantId: req.tenantId,
       ...buildStoreFilter(req),
       status: 'completed',
       createdAt: { $gte: startDate, $lte: endDate },
-    });
+    };
+
+    const [hotOrders, coldOrders] = await Promise.all([
+      Order.find(queryParams),
+      OrderArchive.find(queryParams),
+    ]);
+
+    const orders = [...hotOrders, ...coldOrders];
 
     const menuIds = [...new Set(orders.flatMap((o) => o.items.map((i) => String(i.menuItem)).filter(Boolean)))];
     const menuDocs = menuIds.length

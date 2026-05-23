@@ -97,6 +97,9 @@ importers:
       '@innovapos/mongo-connection':
         specifier: workspace:*
         version: link:../../../packages/mongo-connection
+      '@innovapos/object-storage':
+        specifier: workspace:*
+        version: link:../../../packages/object-storage
       '@innovapos/paid-addons':
         specifier: workspace:*
         version: link:../../../packages/paid-addons

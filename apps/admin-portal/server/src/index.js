@@ -29,13 +29,16 @@ const { sendEmail } = require('./utils/mailer');
 const { notifySuperAdmins, notifyMerchantAdmins } = require('./lib/notificationHelpers');
 const { applyDuePendingPlanSwitches } = require('./lib/subscriptionActivation');
 const { processLoyaltyRetentionPeriods } = require('./lib/processLoyaltyRetention');
-const { startAnlySyncScheduler } = require('@innovapos/analytics-core');
+const { startAnlySyncScheduler, registerOrderArchiveModel } = require('@innovapos/analytics-core');
+const { initializeArchiveDb } = require('./lib/archiveDb');
 
 const app = express();
 const logger = createLogger('admin-portal-server');
 app.locals.logger = logger;
 
 connectDB(logger);
+const { OrderArchive } = initializeArchiveDb(logger);
+registerOrderArchiveModel(OrderArchive);
 
 app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false, crossOriginOpenerPolicy: false }));
