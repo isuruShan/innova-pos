@@ -770,13 +770,7 @@ export default function ReservationsPage() {
         isPending={editMutation.isPending}
         error={editError}
       />
-          setCreateError(null);
-        }}
-        tables={tables}
-        onSubmit={createMutation.mutate}
-        isPending={createMutation.isPending}
-        error={createError}
-      />
+
 
       {/* Status Error Toast */}
       {statusError && (
