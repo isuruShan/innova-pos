@@ -217,7 +217,7 @@ export default function FloorPlanViewPage() {
                 width: `${floorPlan.gridWidth * 50}px`,
                 height: `${floorPlan.gridHeight * 50}px`,
                 backgroundImage:
-                  'linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)',
+                  'linear-gradient(to right, var(--pos-grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--pos-grid-line) 1px, transparent 1px)',
                 backgroundSize: '50px 50px',
               }}
             >

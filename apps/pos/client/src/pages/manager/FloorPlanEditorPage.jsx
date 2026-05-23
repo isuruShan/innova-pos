@@ -29,7 +29,7 @@ const STATUS_COLORS = {
   reserved: 'ring-2 ring-yellow-500',
 };
 
-function TableShape({ table, isSelected, onClick, onDragStart, tableStatus, showCapacity, zoom = 1 }) {
+function TableShape({ table, isSelected, onClick, onDragStart, onDragEnd, tableStatus, showCapacity, zoom = 1 }) {
   const status = tableStatus?.[String(table.tableId)] || {};
   const statusClass = status.status ? STATUS_COLORS[status.status] || '' : '';
   const cellSize = 50 * zoom;
@@ -121,6 +121,7 @@ function TableShape({ table, isSelected, onClick, onDragStart, tableStatus, show
       }}
       draggable
       onDragStart={(e) => onDragStart?.(e, table)}
+      onDragEnd={onDragEnd}
     >
       {/* Chair indicators */}
       {chairPositions.map((pos, idx) => (
@@ -182,10 +183,11 @@ export default function FloorPlanEditorPage() {
   const { selectedStoreId, isStoreReady, stores } = useStoreContext();
   const selectedStore = stores.find((s) => String(s._id) === String(selectedStoreId));
   const canvasRef = useRef(null);
+  const draggedTableRef = useRef(null);
 
   const [selectedTable, setSelectedTable] = useState(null);
   const [selectedTables, setSelectedTables] = useState([]);
-  const [selectedShape, setSelectedShape] = useState('rectangle');
+  const [selectedShape, setSelectedShape] = useState(null);
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(true);
   const [showCapacity, setShowCapacity] = useState(true);
@@ -418,8 +420,14 @@ export default function FloorPlanEditorPage() {
   }, [localPlan, saveMutation]);
 
   const handleTableDragStart = useCallback((e, table) => {
+    e.dataTransfer.setData('text/plain', String(table.tableId));
     e.dataTransfer.setData('tableId', String(table.tableId));
     e.dataTransfer.effectAllowed = 'move';
+    draggedTableRef.current = { type: 'existing', id: String(table.tableId) };
+  }, []);
+
+  const handleTableDragEnd = useCallback(() => {
+    draggedTableRef.current = null;
   }, []);
 
   const handleCanvasDrop = useCallback(
@@ -428,8 +436,8 @@ export default function FloorPlanEditorPage() {
       e.stopPropagation();
       setIsDragOver(false);
       
-      const tableId = e.dataTransfer.getData('tableId');
-      const newTableId = e.dataTransfer.getData('newTableId');
+      const tableId = e.dataTransfer.getData('tableId') || (draggedTableRef.current?.type === 'existing' ? draggedTableRef.current.id : null);
+      const newTableId = e.dataTransfer.getData('newTableId') || (draggedTableRef.current?.type === 'new' ? draggedTableRef.current.id : null);
 
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) {
@@ -506,6 +514,7 @@ export default function FloorPlanEditorPage() {
         setLocalPlan({ ...localPlan, tables: updatedTables });
         setIsDirty(true);
       }
+      draggedTableRef.current = null;
     },
     [localPlan, tables, zoom, selectedShape]
   );
@@ -513,7 +522,8 @@ export default function FloorPlanEditorPage() {
   const handleCanvasDragOver = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
-    e.dataTransfer.dropEffect = 'copy';
+    const isNew = draggedTableRef.current?.type === 'new' || e.dataTransfer.types.includes('newtableid');
+    e.dataTransfer.dropEffect = isNew ? 'copy' : 'move';
   }, []);
 
   const handleCanvasDragEnter = useCallback((e) => {
@@ -548,6 +558,9 @@ export default function FloorPlanEditorPage() {
           return;
         }
         
+        // If in Select/Move mode (no shape selected), do not create table
+        if (!selectedShape) return;
+        
         // Create a new table at click position
         const rect = canvasRef.current?.getBoundingClientRect();
         if (!rect) return;
@@ -569,7 +582,7 @@ export default function FloorPlanEditorPage() {
         });
       }
     }
-  }, [localPlan, zoom, nextTableNumber, tables.length, createTableMutation, selectedTable, selectedTables]);
+  }, [localPlan, zoom, nextTableNumber, tables.length, createTableMutation, selectedTable, selectedTables, selectedShape]);
 
   const handleTableSelect = useCallback((table, event) => {
     if (event?.ctrlKey || event?.metaKey) {
@@ -749,7 +762,19 @@ export default function FloorPlanEditorPage() {
           {/* Toolbar */}
           <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-3 flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400">Shape:</span>
+              <button
+                onClick={() => setSelectedShape(null)}
+                className={`p-2 rounded-lg transition-colors ${
+                  selectedShape === null
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+                title="Select / Move mode"
+              >
+                <Move size={16} />
+              </button>
+              <div className="h-6 w-px bg-slate-700 mx-1" />
+              <span className="text-xs text-slate-400">Add Table:</span>
               {SHAPES.map((shape) => (
                 <button
                   key={shape.id}
@@ -847,7 +872,7 @@ export default function FloorPlanEditorPage() {
                   minWidth: '600px',
                   minHeight: '400px',
                   backgroundImage: showGrid
-                    ? 'linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)'
+                    ? 'linear-gradient(to right, var(--pos-grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--pos-grid-line) 1px, transparent 1px)'
                     : 'none',
                   backgroundSize: `${50 * zoom}px ${50 * zoom}px`,
                 }}
@@ -902,6 +927,7 @@ export default function FloorPlanEditorPage() {
                       isSelected={isSingleSelected || isMultiSelected}
                       onClick={handleTableSelect}
                       onDragStart={handleTableDragStart}
+                      onDragEnd={handleTableDragEnd}
                       tableStatus={tableStatus}
                       showCapacity={showCapacity}
                       zoom={zoom}
@@ -1051,9 +1077,12 @@ export default function FloorPlanEditorPage() {
                     key={table._id}
                     draggable
                     onDragStart={(e) => {
+                      e.dataTransfer.setData('text/plain', String(table._id));
                       e.dataTransfer.setData('newTableId', String(table._id));
                       e.dataTransfer.effectAllowed = 'copy';
+                      draggedTableRef.current = { type: 'new', id: String(table._id) };
                     }}
+                    onDragEnd={handleTableDragEnd}
                     className="flex items-center gap-3 p-2 rounded-lg bg-slate-700/50 cursor-grab hover:bg-slate-700 active:cursor-grabbing"
                   >
                     <Move size={14} className="text-slate-500" />

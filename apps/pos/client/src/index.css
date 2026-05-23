@@ -20,6 +20,7 @@
   --pos-scrollbar-track: #1e293b;
   --pos-scrollbar-thumb: #475569;
   --pos-scrollbar-thumb-hover: #64748b;
+  --pos-grid-line: rgba(255, 255, 255, 0.12);
 }
 
 :root[data-theme="light"] {
@@ -33,6 +34,7 @@
   --pos-scrollbar-track: #e2e8f0;
   --pos-scrollbar-thumb: #cbd5e1;
   --pos-scrollbar-thumb-hover: #94a3b8;
+  --pos-grid-line: rgba(0, 0, 0, 0.08);
 
   /* Tailwind CSS v4 dynamic theme variable overrides for light mode compatibility */
   --color-slate-50: #020617;
