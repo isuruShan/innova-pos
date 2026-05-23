@@ -32,7 +32,7 @@ export default function CashierSessionNavButton() {
   if (ctx.showSessionLoading) {
     return (
       <div
-        className="flex items-center gap-2 pl-3 pr-2.5 py-2 min-h-[42px] rounded-xl border border-white/10 bg-black/15 text-left max-w-[200px]"
+        className="flex items-center gap-2 pl-3 pr-2.5 py-2 min-h-[42px] rounded-xl border border-slate-700/40 bg-slate-800/25 text-left max-w-[200px]"
         style={{ color: 'var(--color-text)' }}
       >
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/25">
@@ -61,11 +61,11 @@ export default function CashierSessionNavButton() {
   if (!ctx.session) {
     return (
       <div
-        className="flex items-center gap-2 pl-3 pr-2.5 py-2 min-h-[42px] rounded-xl border border-white/10 bg-black/15 text-left max-w-[200px] opacity-80"
+        className="flex items-center gap-2 pl-3 pr-2.5 py-2 min-h-[42px] rounded-xl border border-slate-700/40 bg-slate-800/25 text-left max-w-[200px] opacity-80"
         style={{ color: 'var(--color-text)' }}
         title="Open or resume your drawer session from the prompt"
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-600/40 text-slate-300 border border-white/10">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-600/40 text-slate-300 border border-slate-700/40">
           <Wallet size={18} strokeWidth={2} />
         </span>
         <span className="flex-1 min-w-0">
@@ -81,7 +81,7 @@ export default function CashierSessionNavButton() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 pl-3 pr-2.5 py-2 min-h-[42px] rounded-xl border border-white/10 bg-black/20 hover:bg-black/30 hover:border-amber-500/35 text-left transition shadow-sm max-w-[220px] sm:max-w-[260px]"
+        className="flex items-center gap-2 pl-3 pr-2.5 py-2 min-h-[42px] rounded-xl border border-slate-700/40 bg-slate-800/30 hover:bg-slate-800/55 hover:border-amber-500/35 text-left transition shadow-sm max-w-[220px] sm:max-w-[260px]"
         style={{ color: 'var(--color-text)' }}
         aria-expanded={open}
         aria-haspopup="dialog"

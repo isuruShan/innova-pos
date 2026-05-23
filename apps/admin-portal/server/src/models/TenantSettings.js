@@ -41,6 +41,8 @@ const tenantSettingsSchema = new mongoose.Schema(
     phone: { type: String, default: '' },
     email: { type: String, default: '' },
     website: { type: String, default: '' },
+    description: { type: String, default: '', trim: true },
+    category: { type: String, default: '', trim: true },
 
     // Payment methods available in POS
     paymentMethods: {

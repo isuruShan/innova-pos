@@ -3,7 +3,7 @@
 const crypto = require('crypto');
 
 // Resolve a 32-byte key from environment variables
-const secret = process.env.UBER_TOKEN_ENCRYPTION_KEY || process.env.JWT_SECRET || 'fallback-key-32-chars-long-123456';
+const secret = process.env.GOOGLE_TOKEN_ENCRYPTION_KEY || process.env.JWT_SECRET || 'fallback-key-google-32-chars-long';
 const KEY = crypto.createHash('sha256').update(secret).digest();
 const ALGORITHM = 'aes-256-cbc';
 

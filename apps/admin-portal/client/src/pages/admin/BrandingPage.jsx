@@ -10,6 +10,8 @@ import MobilePhoneField, { validateMobileField, phoneValueFromField } from '../.
 import { CURRENCY_OPTIONS } from '../../constants/currencies';
 import { parsePhoneForField } from '../../utils/phone';
 import { DEFAULT_COUNTRY_CODE } from '../../constants/countries';
+import { GBP_CATEGORIES } from '../../constants/googleCategories';
+import GoogleBusinessCard from '../../components/branding/GoogleBusinessCard';
 import imageCompression from 'browser-image-compression';
 import {
   RECEIPT_PRINT_AT_OPTIONS,
@@ -210,6 +212,7 @@ export default function BrandingPage() {
       phone,
       email: String(form.email || '').trim(),
       website: form.website,
+      category: form.category || 'categories/gcid:restaurant',
       currency: form.currency,
       currencySymbol: form.currencySymbol,
       timezone: form.timezone,
@@ -389,6 +392,20 @@ export default function BrandingPage() {
         </div>
 
         <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Business category *</label>
+          <select
+            value={form.category || 'categories/gcid:restaurant'}
+            onChange={(e) => set('category')(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
+          >
+            {GBP_CATEGORIES.map((cat) => (
+              <option key={cat.value} value={cat.value}>{cat.label}</option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-500 mt-1">Primary category for your Google Business Profile listing.</p>
+        </div>
+
+        <div>
           <div className="flex items-center justify-between mb-1">
             <label className="block text-sm font-medium text-gray-700">Business description</label>
             <span className={`text-xs tabular-nums ${
@@ -416,6 +433,18 @@ export default function BrandingPage() {
           }
         </div>
       </div>
+
+      {/* Google Business Profile */}
+      <GoogleBusinessCard
+        businessDetails={{
+          businessName: form.businessName,
+          address: form.address,
+          phone: phoneValueFromField(phoneCountryIso, phoneNationalDigits),
+          website: form.website,
+          description: form.description,
+          category: form.category,
+        }}
+      />
 
       {/* Currency — receipts & POS displays */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">

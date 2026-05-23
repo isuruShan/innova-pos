@@ -2,7 +2,8 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getAdminUrl } from '@innovapos/app-urls';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, UserCircle, Settings, Store, ChevronDown, Check } from 'lucide-react';
+import { LogOut, UserCircle, Settings, Store, ChevronDown, Check, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 import ProfileSlideOver, { AvatarDisplay } from './ProfileSlideOver';
 import { useStoreContext, normalizeStoreId } from '../context/StoreContext';
 import { useBranding } from '../context/BrandingContext';
@@ -138,7 +139,7 @@ function StoreSwitcher({ stores, selectedStoreId, selectStore }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 pl-3 pr-2.5 py-2 min-h-[42px] rounded-xl border border-white/10 bg-black/20 hover:bg-black/30 hover:border-amber-500/35 text-left transition shadow-sm max-w-[220px] sm:max-w-[280px]"
+        className="flex items-center gap-2 pl-3 pr-2.5 py-2 min-h-[42px] rounded-xl border border-slate-700/40 bg-slate-800/30 hover:bg-slate-800/55 hover:border-amber-500/35 text-left transition shadow-sm max-w-[220px] sm:max-w-[280px]"
         style={{ color: 'var(--color-text)' }}
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -319,6 +320,7 @@ function NavDropdown({
 
 export default function Navbar({ links = [], groups: groupsProp }) {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { stores, selectedStoreId, selectStore } = useStoreContext();
   const branding = useBranding();
   const navigate = useNavigate();
@@ -410,8 +412,16 @@ export default function Navbar({ links = [], groups: groupsProp }) {
 
       <div className="flex items-center gap-2 sm:gap-3">
         {user?.tenantId ? (
-          <div className="flex items-center shrink-0 z-[60]">
+          <div className="flex items-center shrink-0 z-[60] gap-2 sm:gap-3">
             <NotificationBell />
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-2.5 rounded-xl border border-slate-700/40 bg-slate-800/30 text-[var(--color-header-text,var(--color-text))] hover:bg-slate-800/55 hover:border-amber-500/35 transition flex items-center justify-center shrink-0"
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+            >
+              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
           </div>
         ) : null}
         <CashierSessionNavButton />

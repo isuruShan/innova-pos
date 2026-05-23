@@ -33,6 +33,69 @@ function TableShape({ table, isSelected, onClick, onDragStart, tableStatus, show
   const status = tableStatus?.[String(table.tableId)] || {};
   const statusClass = status.status ? STATUS_COLORS[status.status] || '' : '';
   const cellSize = 50 * zoom;
+  const capacity = table.capacity || 4;
+
+  // Calculate chair positions around the table
+  const getChairPositions = () => {
+    const chairs = [];
+    const width = table.width * cellSize - 4;
+    const height = table.height * cellSize - 4;
+    const chairSize = Math.max(8, 12 * zoom);
+    
+    if (table.shape === 'round') {
+      // Circular arrangement for round tables
+      const radius = (Math.max(width, height) / 2) + chairSize;
+      for (let i = 0; i < capacity; i++) {
+        const angle = (i * 2 * Math.PI) / capacity - Math.PI / 2;
+        chairs.push({
+          x: Math.cos(angle) * radius,
+          y: Math.sin(angle) * radius,
+        });
+      }
+    } else if (table.shape === 'bar') {
+      // Single side for bar seating
+      const spacing = width / (capacity + 1);
+      for (let i = 0; i < capacity; i++) {
+        chairs.push({
+          x: spacing * (i + 1) - width / 2,
+          y: height / 2 + chairSize + 4,
+        });
+      }
+    } else {
+      // Rectangle/booth - distribute around perimeter
+      const perimeter = 2 * (width + height);
+      const spacing = perimeter / capacity;
+      
+      for (let i = 0; i < capacity; i++) {
+        const distance = i * spacing;
+        let x, y;
+        
+        if (distance < width) {
+          // Top edge
+          x = distance - width / 2;
+          y = -height / 2 - chairSize - 4;
+        } else if (distance < width + height) {
+          // Right edge
+          x = width / 2 + chairSize + 4;
+          y = (distance - width) - height / 2;
+        } else if (distance < 2 * width + height) {
+          // Bottom edge
+          x = width - (distance - width - height) - width / 2;
+          y = height / 2 + chairSize + 4;
+        } else {
+          // Left edge
+          x = -width / 2 - chairSize - 4;
+          y = height - (distance - 2 * width - height) - height / 2;
+        }
+        
+        chairs.push({ x, y });
+      }
+    }
+    
+    return chairs;
+  };
+
+  const chairPositions = showCapacity ? getChairPositions() : [];
 
   return (
     <div
@@ -54,13 +117,31 @@ function TableShape({ table, isSelected, onClick, onDragStart, tableStatus, show
       }}
       onClick={(e) => {
         e.stopPropagation();
-        onClick?.(table);
+        onClick?.(table, e);
       }}
       draggable
       onDragStart={(e) => onDragStart?.(e, table)}
     >
-      <div className="flex flex-col items-center">
+      {/* Chair indicators */}
+      {chairPositions.map((pos, idx) => (
+        <div
+          key={idx}
+          className="absolute bg-slate-600 rounded-sm"
+          style={{
+            width: `${Math.max(8, 12 * zoom)}px`,
+            height: `${Math.max(6, 10 * zoom)}px`,
+            left: `calc(50% + ${pos.x}px)`,
+            top: `calc(50% + ${pos.y}px)`,
+            transform: 'translate(-50%, -50%)',
+          }}
+        />
+      ))}
+      
+      <div className="flex flex-col items-center relative z-10">
         <span className="truncate max-w-full px-1">{table.label || 'T'}</span>
+        <span style={{ fontSize: `${Math.max(7, 9 * zoom)}px` }} className="opacity-60 capitalize">
+          {table.shape === 'bar' ? 'Bar' : table.shape === 'booth' ? 'Booth' : table.shape === 'round' ? 'Round' : 'Table'}
+        </span>
         {showCapacity && (
           <span style={{ fontSize: `${Math.max(8, 10 * zoom)}px` }} className="opacity-75 flex items-center gap-0.5">
             <Users size={Math.max(8, 10 * zoom)} /> {table.capacity}
@@ -103,6 +184,7 @@ export default function FloorPlanEditorPage() {
   const canvasRef = useRef(null);
 
   const [selectedTable, setSelectedTable] = useState(null);
+  const [selectedTables, setSelectedTables] = useState([]);
   const [selectedShape, setSelectedShape] = useState('rectangle');
   const [zoom, setZoom] = useState(1);
   const [showGrid, setShowGrid] = useState(true);
@@ -110,8 +192,9 @@ export default function FloorPlanEditorPage() {
   const [isDirty, setIsDirty] = useState(false);
   const [localPlan, setLocalPlan] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [isAddMode, setIsAddMode] = useState(false);
   const [nextTableNumber, setNextTableNumber] = useState(1);
+  const [selectionBox, setSelectionBox] = useState(null);
+  const [isSelecting, setIsSelecting] = useState(false);
 
   // Fetch floor plan
   const { data: floorPlan, isLoading } = useQuery({
@@ -171,6 +254,21 @@ export default function FloorPlanEditorPage() {
       setNextTableNumber(maxNum + 1);
     }
   }, [tables]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setSelectedTable(null);
+        setSelectedTables([]);
+        setIsSelecting(false);
+        setSelectionBox(null);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const plan = localPlan || floorPlan;
   const [errorMessage, setErrorMessage] = useState(null);
@@ -233,9 +331,76 @@ export default function FloorPlanEditorPage() {
         setIsDirty(true);
       }
       setNextTableNumber((n) => n + 1);
+      
+      // Show success message
+      const successMsg = `Created ${response.data.label}`;
+      setErrorMessage(successMsg);
+      setTimeout(() => {
+        if (errorMessage === successMsg) setErrorMessage(null);
+      }, 2000);
     },
     onError: (err) => {
       const message = err.response?.data?.message || 'Failed to create table';
+      setErrorMessage(message);
+      setTimeout(() => setErrorMessage(null), 5000);
+    },
+  });
+
+  // Delete table permanently mutation
+  const deleteTableMutation = useMutation({
+    mutationFn: (tableId) => api.delete(`/tables/${tableId}`),
+    onSuccess: (response, tableId) => {
+      qc.invalidateQueries({ queryKey: ['pos-tables'] });
+      
+      // Remove from floor plan if present
+      if (localPlan) {
+        const updatedTables = localPlan.tables.filter(
+          (t) => String(t.tableId) !== String(tableId)
+        );
+        setLocalPlan({ ...localPlan, tables: updatedTables });
+        setIsDirty(true);
+      }
+      
+      // Clear selection
+      setSelectedTable(null);
+      setSelectedTables([]);
+      
+      setErrorMessage('Table deleted permanently');
+      setTimeout(() => setErrorMessage(null), 2000);
+    },
+    onError: (err) => {
+      const message = err.response?.data?.message || 'Failed to delete table';
+      setErrorMessage(message);
+      setTimeout(() => setErrorMessage(null), 5000);
+    },
+  });
+
+  // Bulk delete tables mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (tableIds) => {
+      await Promise.all(tableIds.map(id => api.delete(`/tables/${id}`)));
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pos-tables'] });
+      
+      // Remove from floor plan
+      if (localPlan) {
+        const deletedIds = new Set(selectedTables.map(String));
+        const updatedTables = localPlan.tables.filter(
+          (t) => !deletedIds.has(String(t.tableId))
+        );
+        setLocalPlan({ ...localPlan, tables: updatedTables });
+        setIsDirty(true);
+      }
+      
+      setSelectedTable(null);
+      setSelectedTables([]);
+      
+      setErrorMessage(`${selectedTables.length} tables deleted`);
+      setTimeout(() => setErrorMessage(null), 2000);
+    },
+    onError: (err) => {
+      const message = err.response?.data?.message || 'Failed to delete tables';
       setErrorMessage(message);
       setTimeout(() => setErrorMessage(null), 5000);
     },
@@ -366,37 +531,62 @@ export default function FloorPlanEditorPage() {
     }
   }, []);
 
-  // Handle canvas click - create new table when in add mode
+  // Handle canvas click - create new table or deselect
   const handleCanvasClick = useCallback((e) => {
-    // If clicking on canvas background (not on a table), handle based on mode
-    if (isAddMode && localPlan) {
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) return;
+    // Check if we're clicking on the canvas itself (not a table or child element)
+    const isCanvasBackground = 
+      e.target === canvasRef.current || 
+      e.target.classList.contains('zone-overlay') ||
+      e.currentTarget === canvasRef.current;
+    
+    if (isCanvasBackground) {
+      if (localPlan) {
+        // If tables are selected, deselect them first
+        if (selectedTable || selectedTables.length > 0) {
+          setSelectedTable(null);
+          setSelectedTables([]);
+          return;
+        }
+        
+        // Create a new table at click position
+        const rect = canvasRef.current?.getBoundingClientRect();
+        if (!rect) return;
 
-      const cellSize = 50 * zoom;
-      const x = Math.floor((e.clientX - rect.left) / cellSize);
-      const y = Math.floor((e.clientY - rect.top) / cellSize);
+        const cellSize = 50 * zoom;
+        const x = Math.floor((e.clientX - rect.left) / cellSize);
+        const y = Math.floor((e.clientY - rect.top) / cellSize);
 
-      // Clamp to grid bounds
-      const gridX = Math.max(0, Math.min(x, (localPlan.gridWidth || 20) - 2));
-      const gridY = Math.max(0, Math.min(y, (localPlan.gridHeight || 15) - 2));
+        // Clamp to grid bounds
+        const gridX = Math.max(0, Math.min(x, (localPlan.gridWidth || 20) - 2));
+        const gridY = Math.max(0, Math.min(y, (localPlan.gridHeight || 15) - 2));
 
-      // Create a new table in the database and add to floor plan
-      createTableMutation.mutate({
-        label: `Table ${nextTableNumber}`,
-        capacity: 4,
-        sortOrder: tables.length,
-        _tempPosition: { x: gridX, y: gridY }, // Used in onSuccess to place on plan
-      });
-    } else {
-      // Deselect table when clicking on empty space
-      setSelectedTable(null);
+        // Create a new table in the database and add to floor plan
+        createTableMutation.mutate({
+          label: `Table ${nextTableNumber}`,
+          capacity: 4,
+          sortOrder: tables.length,
+          _tempPosition: { x: gridX, y: gridY }, // Used in onSuccess to place on plan
+        });
+      }
     }
-  }, [isAddMode, localPlan, zoom, nextTableNumber, tables.length, createTableMutation]);
+  }, [localPlan, zoom, nextTableNumber, tables.length, createTableMutation, selectedTable, selectedTables]);
 
-  const handleTableSelect = useCallback((table) => {
-    setSelectedTable(table);
-  }, []);
+  const handleTableSelect = useCallback((table, event) => {
+    if (event?.ctrlKey || event?.metaKey) {
+      // Multi-select with Ctrl/Cmd
+      const tableId = String(table.tableId);
+      if (selectedTables.includes(tableId)) {
+        setSelectedTables(selectedTables.filter(id => id !== tableId));
+      } else {
+        setSelectedTables([...selectedTables, tableId]);
+      }
+      setSelectedTable(null);
+    } else {
+      // Single select
+      setSelectedTable(table);
+      setSelectedTables([]);
+    }
+  }, [selectedTables]);
 
   const handleRotateSelected = useCallback(() => {
     if (!selectedTable || !localPlan) return;
@@ -413,6 +603,7 @@ export default function FloorPlanEditorPage() {
 
   const handleDeleteSelected = useCallback(() => {
     if (!selectedTable || !localPlan) return;
+    // Only remove from floor plan, not delete permanently
     const updatedTables = localPlan.tables.filter(
       (t) => String(t.tableId) !== String(selectedTable.tableId)
     );
@@ -420,6 +611,81 @@ export default function FloorPlanEditorPage() {
     setSelectedTable(null);
     setIsDirty(true);
   }, [selectedTable, localPlan]);
+
+  const handleDeletePermanently = useCallback(() => {
+    if (selectedTables.length > 0) {
+      if (confirm(`Permanently delete ${selectedTables.length} table(s)? This cannot be undone.`)) {
+        bulkDeleteMutation.mutate(selectedTables);
+      }
+    } else if (selectedTable) {
+      if (confirm(`Permanently delete "${selectedTable.label}"? This cannot be undone.`)) {
+        deleteTableMutation.mutate(selectedTable.tableId);
+      }
+    }
+  }, [selectedTable, selectedTables, deleteTableMutation, bulkDeleteMutation]);
+
+  // Selection box handlers
+  const handleMouseDown = useCallback((e) => {
+    // Only start selection if clicking on canvas background and not dragging a table
+    if (e.target === canvasRef.current || e.target.classList.contains('zone-overlay')) {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      
+      setIsSelecting(true);
+      setSelectionBox({
+        startX: e.clientX - rect.left,
+        startY: e.clientY - rect.top,
+        currentX: e.clientX - rect.left,
+        currentY: e.clientY - rect.top,
+      });
+    }
+  }, []);
+
+  const handleMouseMove = useCallback((e) => {
+    if (!isSelecting || !selectionBox) return;
+    
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    setSelectionBox({
+      ...selectionBox,
+      currentX: e.clientX - rect.left,
+      currentY: e.clientY - rect.top,
+    });
+  }, [isSelecting, selectionBox]);
+
+  const handleMouseUp = useCallback(() => {
+    if (!isSelecting || !selectionBox || !localPlan) {
+      setIsSelecting(false);
+      setSelectionBox(null);
+      return;
+    }
+
+    // Calculate selection box bounds
+    const minX = Math.min(selectionBox.startX, selectionBox.currentX);
+    const maxX = Math.max(selectionBox.startX, selectionBox.currentX);
+    const minY = Math.min(selectionBox.startY, selectionBox.currentY);
+    const maxY = Math.max(selectionBox.startY, selectionBox.currentY);
+
+    // Find tables within selection box
+    const cellSize = 50 * zoom;
+    const selectedIds = (localPlan.tables || [])
+      .filter((table) => {
+        const tableLeft = table.x * cellSize;
+        const tableTop = table.y * cellSize;
+        const tableRight = tableLeft + (table.width * cellSize);
+        const tableBottom = tableTop + (table.height * cellSize);
+        
+        // Check if table overlaps with selection box
+        return !(tableRight < minX || tableLeft > maxX || tableBottom < minY || tableTop > maxY);
+      })
+      .map((t) => String(t.tableId));
+
+    setSelectedTables(selectedIds);
+    setSelectedTable(null);
+    setIsSelecting(false);
+    setSelectionBox(null);
+  }, [isSelecting, selectionBox, localPlan, zoom]);
 
   const handleUpdateSelectedProperty = useCallback(
     (prop, value) => {
@@ -533,25 +799,9 @@ export default function FloorPlanEditorPage() {
               className={`p-2 rounded-lg transition-colors ${
                 showCapacity ? 'bg-amber-500/30 text-amber-400' : 'bg-slate-700 text-slate-300'
               }`}
-              title="Show capacity"
+              title="Show capacity & chairs"
             >
               <Users size={16} />
-            </button>
-
-            <div className="h-6 w-px bg-slate-700" />
-
-            {/* Add Mode Toggle */}
-            <button
-              onClick={() => setIsAddMode(!isAddMode)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${
-                isAddMode
-                  ? 'bg-green-500 text-white ring-2 ring-green-400'
-                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-              }`}
-              title={isAddMode ? 'Exit add mode' : 'Click to add tables'}
-            >
-              <Plus size={16} />
-              {isAddMode ? 'Adding...' : 'Add Mode'}
             </button>
 
             <div className="flex-1" />
@@ -584,7 +834,7 @@ export default function FloorPlanEditorPage() {
             ) : plan ? (
               <div
                 ref={canvasRef}
-                className={`relative transition-all ${isDragOver ? 'ring-2 ring-amber-400 ring-inset bg-amber-500/5' : ''} ${isAddMode ? 'cursor-crosshair' : ''}`}
+                className={`relative transition-all ${isDragOver ? 'ring-2 ring-amber-400 ring-inset bg-amber-500/5' : ''}`}
                 style={{
                   width: `${(plan.gridWidth || 20) * 50 * zoom}px`,
                   height: `${(plan.gridHeight || 15) * 50 * zoom}px`,
@@ -600,6 +850,9 @@ export default function FloorPlanEditorPage() {
                 onDragEnter={handleCanvasDragEnter}
                 onDragLeave={handleCanvasDragLeave}
                 onClick={handleCanvasClick}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
               >
                 {/* Zones */}
                 {plan.zones?.map((zone) => (
@@ -608,39 +861,47 @@ export default function FloorPlanEditorPage() {
 
                 {/* Empty state helper */}
                 {planTablesWithLabels.length === 0 && !isDragOver && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none zone-overlay">
                     <div className="text-center text-slate-500">
-                      {isAddMode ? (
-                        <>
-                          <Plus size={48} className="mx-auto mb-2 opacity-50 text-amber-400" />
-                          <p className="text-sm text-amber-400">Click anywhere to add a table</p>
-                          <p className="text-xs">Tables will be created as "Table {nextTableNumber}"</p>
-                        </>
-                      ) : (
-                        <>
-                          <Move size={48} className="mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">Click "Add Mode" in the toolbar to create tables</p>
-                          <p className="text-xs">or drag existing tables from the sidebar</p>
-                        </>
-                      )}
+                      <Plus size={48} className="mx-auto mb-2 opacity-50 text-amber-400" />
+                      <p className="text-sm text-amber-400">Click anywhere on the grid to add a table</p>
+                      <p className="text-xs">Or drag existing tables from the sidebar</p>
+                      <p className="text-xs mt-1">Ctrl+Click or drag to multi-select</p>
                     </div>
                   </div>
                 )}
 
+                {/* Selection Box */}
+                {selectionBox && (
+                  <div
+                    className="absolute border-2 border-amber-400 bg-amber-400/10 pointer-events-none"
+                    style={{
+                      left: `${Math.min(selectionBox.startX, selectionBox.currentX)}px`,
+                      top: `${Math.min(selectionBox.startY, selectionBox.currentY)}px`,
+                      width: `${Math.abs(selectionBox.currentX - selectionBox.startX)}px`,
+                      height: `${Math.abs(selectionBox.currentY - selectionBox.startY)}px`,
+                    }}
+                  />
+                )}
 
                 {/* Tables */}
-                {planTablesWithLabels.map((table) => (
-                  <TableShape
-                    key={String(table.tableId)}
-                    table={table}
-                    isSelected={String(selectedTable?.tableId) === String(table.tableId)}
-                    onClick={handleTableSelect}
-                    onDragStart={handleTableDragStart}
-                    tableStatus={tableStatus}
-                    showCapacity={showCapacity}
-                    zoom={zoom}
-                  />
-                ))}
+                {planTablesWithLabels.map((table) => {
+                  const tableId = String(table.tableId);
+                  const isSingleSelected = selectedTable && String(selectedTable.tableId) === tableId;
+                  const isMultiSelected = selectedTables.includes(tableId);
+                  return (
+                    <TableShape
+                      key={tableId}
+                      table={table}
+                      isSelected={isSingleSelected || isMultiSelected}
+                      onClick={handleTableSelect}
+                      onDragStart={handleTableDragStart}
+                      tableStatus={tableStatus}
+                      showCapacity={showCapacity}
+                      zoom={zoom}
+                    />
+                  );
+                })}
               </div>
             ) : (
               <div className="flex items-center justify-center h-full text-slate-400">
@@ -652,18 +913,53 @@ export default function FloorPlanEditorPage() {
 
         {/* Sidebar */}
         <div className="w-full lg:w-72 flex flex-col gap-4">
+          {/* Multi-Select Actions */}
+          {selectedTables.length > 0 && (
+            <div className="bg-[var(--pos-panel)] border border-amber-500/60 rounded-xl p-4 space-y-3">
+              <h3 className="font-semibold text-[var(--pos-text-primary)]">
+                {selectedTables.length} Table{selectedTables.length > 1 ? 's' : ''} Selected
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedTables([]);
+                  }}
+                  className="flex-1 px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 text-sm"
+                >
+                  Deselect All
+                </button>
+                <button
+                  onClick={handleDeletePermanently}
+                  className="flex-1 px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={14} />
+                  Delete
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Selected Table Properties */}
           {selectedTable && (
             <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4 space-y-4">
               <h3 className="font-semibold text-[var(--pos-text-primary)] flex items-center justify-between">
                 Table Properties
-                <button
-                  onClick={handleDeleteSelected}
-                  className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                  title="Remove from floor"
-                >
-                  <Trash2 size={14} />
-                </button>
+                <div className="flex gap-1">
+                  <button
+                    onClick={handleDeleteSelected}
+                    className="p-1.5 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30"
+                    title="Remove from floor plan"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                  <button
+                    onClick={handleDeletePermanently}
+                    className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                    title="Delete permanently"
+                  >
+                    <Trash2 size={14} className="fill-current" />
+                  </button>
+                </div>
               </h3>
 
               <div className="space-y-3">
@@ -782,13 +1078,30 @@ export default function FloorPlanEditorPage() {
                 <span className="text-slate-400">Reserved</span>
               </div>
             </div>
+            
+            <div className="mt-4 pt-4 border-t border-slate-700/60">
+              <h4 className="text-xs font-semibold text-slate-400 mb-2">Quick Guide</h4>
+              <ul className="space-y-1 text-xs text-slate-500">
+                <li>• Click grid to add table</li>
+                <li>• Drag tables to move</li>
+                <li>• Ctrl+Click for multi-select</li>
+                <li>• Drag on grid to select area</li>
+                <li>• ESC to deselect</li>
+                <li>• 🗑️ Hollow = Remove from plan</li>
+                <li>• 🗑️ Filled = Delete permanently</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Error Toast */}
+      {/* Status Toast */}
       {errorMessage && (
-        <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 max-w-md">
+        <div className={`fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 max-w-md ${
+          errorMessage.startsWith('Created') || errorMessage.includes('success')
+            ? 'bg-green-500 text-white'
+            : 'bg-red-500 text-white'
+        }`}>
           {errorMessage}
         </div>
       )}

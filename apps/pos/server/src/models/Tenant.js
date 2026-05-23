@@ -89,6 +89,8 @@ const tenantSchema = new mongoose.Schema(
       paymentMethods: { type: [String], default: ['cash'] },
     },
 
+    googleBusinessProfileId: { type: String, default: '' },
+
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },

@@ -68,7 +68,7 @@ export default function NotificationBell() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="relative p-2.5 rounded-xl border border-white/15 bg-black/25 text-amber-400 hover:text-amber-300 hover:bg-white/10 hover:border-amber-500/40 transition shadow-sm"
+        className="relative p-2.5 rounded-xl border border-slate-700/40 bg-slate-800/30 text-amber-500 hover:text-amber-600 hover:bg-slate-800/55 hover:border-amber-500/45 transition shadow-sm"
         aria-label="Notifications"
       >
         <Bell size={20} strokeWidth={2} />

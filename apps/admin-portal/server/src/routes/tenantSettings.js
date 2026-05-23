@@ -141,7 +141,7 @@ router.put('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
       'bodyColor', 'headerBarColor', 'buttonColor', 'selectionHighlightColor', 'hoverColor',
       'buttonTextColor', 'headerBarTextColor', 'bodyTextColor',
       'primaryColor', 'accentColor', 'sidebarColor', 'textColor', 'selectionTextColor',
-      'address', 'phone', 'email', 'website',
+      'address', 'phone', 'email', 'website', 'description', 'category',
       'paymentMethods', 'currency', 'currencySymbol', 'timezone',
       'receiptHeader', 'receiptFooter', 'printReceiptByDefault', 'receiptPrintAtStatus', 'receiptPrintAtByOrderType',
       'returnsEnabled', 'returnsRequireManagerApproval',

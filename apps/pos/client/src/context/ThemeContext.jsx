@@ -1,21 +1,33 @@
-import { createContext, useContext, useEffect, useMemo } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo } from 'react';
 
 const ThemeContext = createContext(null);
 
-/** POS uses dark chrome only; tenant branding still applies via BrandingContext. */
 export function ThemeProvider({ children }) {
-  const theme = 'dark';
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('pos_theme') || 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  const toggleTheme = () => {
+    setTheme((t) => {
+      const next = t === 'dark' ? 'light' : 'dark';
+      try {
+        localStorage.setItem('pos_theme', next);
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
-    document.documentElement.dataset.theme = 'dark';
-    try {
-      localStorage.removeItem('pos_theme');
-    } catch {
-      /* ignore */
-    }
-  }, []);
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
-  const value = useMemo(() => ({ theme }), []);
+  const value = useMemo(() => ({ theme, toggleTheme }), [theme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
