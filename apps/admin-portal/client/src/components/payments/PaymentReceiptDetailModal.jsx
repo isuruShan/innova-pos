@@ -6,11 +6,83 @@ import BillingBreakdownPanel from '../billing/BillingBreakdownPanel';
 import { formatMoney } from '../billing/ProrationBreakdown';
 import ConfirmDialog from '../common/ConfirmDialog';
 
+const SUB_STATUS_STYLES = {
+  trial:     { bg: 'bg-sky-50',    border: 'border-sky-200',    text: 'text-sky-700',    dot: 'bg-sky-500',    label: 'Trial' },
+  active:    { bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-700',  dot: 'bg-green-500',  label: 'Active' },
+  expired:   { bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-700',    dot: 'bg-red-500',    label: 'Expired' },
+  cancelled: { bg: 'bg-gray-50',   border: 'border-gray-200',   text: 'text-gray-500',   dot: 'bg-gray-400',   label: 'Cancelled' },
+};
+
+function SubStatusBadge({ status }) {
+  const s = SUB_STATUS_STYLES[status] || SUB_STATUS_STYLES.cancelled;
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${s.bg} ${s.border} ${s.text}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+      {s.label}
+    </span>
+  );
+}
+
 function DetailRow({ label, children }) {
   return (
     <div className="flex flex-col sm:flex-row sm:justify-between gap-1 py-2 border-b border-gray-100 last:border-0">
       <span className="text-xs font-medium text-gray-500 uppercase tracking-wide shrink-0">{label}</span>
       <span className="text-sm text-gray-900 text-right sm:max-w-[65%]">{children}</span>
+    </div>
+  );
+}
+
+function TenantContextPanel({ ctx }) {
+  if (!ctx) return null;
+  const statusStyle = SUB_STATUS_STYLES[ctx.subscriptionStatus] || SUB_STATUS_STYLES.cancelled;
+  const periodDate = ctx.periodEnd ? new Date(ctx.periodEnd) : null;
+  const isExpired = ctx.subscriptionStatus === 'expired' || (periodDate && periodDate < new Date());
+  const daysLeft = periodDate ? Math.ceil((periodDate - new Date()) / (1000 * 60 * 60 * 24)) : null;
+
+  return (
+    <div className={`rounded-lg border ${statusStyle.border} ${statusStyle.bg} p-4`}>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Merchant subscription</p>
+        <SubStatusBadge status={ctx.subscriptionStatus} />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+        <div>
+          <p className="text-xs text-gray-400 mb-0.5">Current plan</p>
+          <p className={`font-semibold ${statusStyle.text}`}>
+            {ctx.planName || 'No plan assigned'}
+            {ctx.planBillingCycle && <span className="text-xs font-normal text-gray-500 ml-1">({ctx.planBillingCycle})</span>}
+          </p>
+        </div>
+
+        {periodDate && (
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">
+              {ctx.subscriptionStatus === 'trial' ? 'Trial ends' : isExpired ? 'Expired on' : 'Period ends'}
+            </p>
+            <p className={`font-semibold ${isExpired ? 'text-red-600' : statusStyle.text}`}>
+              {periodDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+              {daysLeft !== null && !isExpired && (
+                <span className="text-xs font-normal text-gray-500 ml-1">({daysLeft}d left)</span>
+              )}
+              {isExpired && daysLeft !== null && (
+                <span className="text-xs font-normal text-red-500 ml-1">({Math.abs(daysLeft)}d ago)</span>
+              )}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {ctx.activeAddons?.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-gray-200/60">
+          <p className="text-xs text-gray-400 mb-1.5">Active add-ons</p>
+          <div className="flex flex-wrap gap-1.5">
+            {ctx.activeAddons.map((a) => (
+              <span key={a} className="px-2 py-0.5 bg-white border border-gray-200 rounded text-xs text-gray-700 font-medium">{a}</span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -93,6 +165,9 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
                   </DetailRow>
                 ) : null}
               </div>
+
+              {/* Merchant subscription context — shown for all receipt types */}
+              <TenantContextPanel ctx={data?.tenantContext} />
 
               {data?.addonMeta && (
                 <div className="rounded-lg bg-violet-50 border border-violet-100 p-4 text-sm">

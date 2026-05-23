@@ -407,6 +407,33 @@ router.get('/receipts/:id', authenticateJWT, authorize('superadmin'), async (req
     if (receipt.receiptKind === 'subscription' || (!receipt.receiptKind && !receipt.addonCode)) {
       billingBreakdown = await computeSubscriptionRenewalExpected(tenant);
     }
+
+    // Always build a rich subscription context for the admin to make decisions
+    const ADDON_LABELS = {
+      qrOrdering: 'QR Ordering',
+      loyalty: 'Loyalty Program',
+      tableManagement: 'Table Management',
+      uberEats: 'Uber Eats',
+      accounting: 'Accounting',
+    };
+    const fullTenant = await Tenant.findById(tenant._id)
+      .populate('assignedPlanId', 'name billingCycle amount currency')
+      .lean();
+    const latestSub = await Subscription.findOne({ tenantId: tenant._id })
+      .sort({ endDate: -1 })
+      .select('endDate')
+      .lean();
+    const periodEnd = resolveTenantPeriodEnd(fullTenant, latestSub?.endDate);
+    const activeAddons = Object.entries(fullTenant?.paidAddons || {})
+      .filter(([, v]) => v?.active === true)
+      .map(([key]) => ADDON_LABELS[key] || key);
+    const tenantContext = {
+      subscriptionStatus: fullTenant?.subscriptionStatus || tenant.subscriptionStatus,
+      planName: fullTenant?.assignedPlanId?.name || null,
+      planBillingCycle: fullTenant?.assignedPlanId?.billingCycle || null,
+      periodEnd: periodEnd ? periodEnd.toISOString() : null,
+      activeAddons,
+    };
     if (receipt.receiptKind === 'addon' || receipt.addonCode) {
       const addon = await PaidAddonDefinition.findOne({ code: receipt.addonCode }).lean();
       addonMeta = addon
@@ -438,6 +465,7 @@ router.get('/receipts/:id', authenticateJWT, authorize('superadmin'), async (req
       storeMeta,
       userMeta,
       storesMeta,
+      tenantContext,
       receiptKindLabel:
         receipt.receiptKind === 'user_license'
           ? 'User license'
