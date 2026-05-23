@@ -49,23 +49,27 @@ export const ORDER_TYPE_MAP = Object.fromEntries(ORDER_TYPES.map(t => [t.id, t])
 
 export default function OrderTypeBadge({ orderType, tableNumber, reference, size = 'sm' }) {
   const type = ORDER_TYPE_MAP[orderType] || ORDER_TYPE_MAP['dine-in'];
-  const label = orderType === 'dine-in' && tableNumber
+  const tooltipText = orderType === 'dine-in' && tableNumber
     ? `Table ${tableNumber}`
     : reference || type.label;
 
   if (size === 'xs') {
     return (
-      <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${type.bg} ${type.color} ${type.border}`}>
+      <span 
+        className={`inline-flex items-center justify-center w-6 h-6 text-sm rounded-full border ${type.bg} ${type.color} ${type.border}`}
+        title={tooltipText}
+      >
         <span>{type.icon}</span>
-        <span>{label}</span>
       </span>
     );
   }
 
   return (
-    <span className={`inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1 rounded-full border ${type.bg} ${type.color} ${type.border}`}>
+    <span 
+      className={`inline-flex items-center justify-center w-8 h-8 text-lg rounded-full border ${type.bg} ${type.color} ${type.border}`}
+      title={tooltipText}
+    >
       <span>{type.icon}</span>
-      <span>{label}</span>
     </span>
   );
 }

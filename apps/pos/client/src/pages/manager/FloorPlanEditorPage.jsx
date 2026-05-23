@@ -615,14 +615,20 @@ export default function FloorPlanEditorPage() {
   const handleDeletePermanently = useCallback(() => {
     if (selectedTables.length > 0) {
       if (confirm(`Permanently delete ${selectedTables.length} table(s)? This cannot be undone.`)) {
-        bulkDeleteMutation.mutate(selectedTables);
+        // Get the actual table IDs from the database
+        const tableIdsToDelete = selectedTables.map(tableId => {
+          const planTable = (localPlan?.tables || []).find(t => String(t.tableId) === String(tableId));
+          return planTable ? planTable.tableId : tableId;
+        });
+        bulkDeleteMutation.mutate(tableIdsToDelete);
       }
     } else if (selectedTable) {
       if (confirm(`Permanently delete "${selectedTable.label}"? This cannot be undone.`)) {
+        // Use the tableId from the floor plan, which is the actual table's _id in the database
         deleteTableMutation.mutate(selectedTable.tableId);
       }
     }
-  }, [selectedTable, selectedTables, deleteTableMutation, bulkDeleteMutation]);
+  }, [selectedTable, selectedTables, deleteTableMutation, bulkDeleteMutation, localPlan]);
 
   // Selection box handlers
   const handleMouseDown = useCallback((e) => {

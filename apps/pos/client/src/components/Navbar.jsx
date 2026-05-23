@@ -381,7 +381,7 @@ export default function Navbar({ links = [], groups: groupsProp }) {
                     style={
                       active
                         ? {
-                            backgroundColor: 'color-mix(in srgb, var(--color-selection) 35%, transparent)',
+                            backgroundColor: 'color-mix(in srgb, var(--color-selection) 55%, transparent)',
                             color: 'var(--pos-selection-text)',
                           }
                         : {
