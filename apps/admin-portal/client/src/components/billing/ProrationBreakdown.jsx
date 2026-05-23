@@ -113,7 +113,9 @@ function ProrationDetail({ proration, amountDue, currency, merchantSymbol }) {
           ) : null}
         </>
       ) : (
-        <p className="text-xs text-blue-800/80">Full monthly charge.</p>
+        <p className="text-xs text-blue-800/80">
+          Full monthly charge.{endLabel ? <> Billing period ends <strong>{endLabel}</strong>.</> : null}
+        </p>
       )}
     </div>
   );

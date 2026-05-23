@@ -232,7 +232,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
   const [chosenMethod, setChosenMethod] = useState(null);
   const [purchaseQuote, setPurchaseQuote] = useState(null);
   const [purchaseError, setPurchaseError] = useState('');
-  const [bankForm, setBankForm] = useState({ bankReference: '', notes: '' });
+  const [bankForm, setBankForm] = useState({ bankReference: '', notes: '', storeName: '' });
   const [bankFile, setBankFile] = useState(null);
   const bankFileRef = useRef(null);
   const paypalContainerRef = useRef(null);
@@ -343,7 +343,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
     queryKey: ['my-subscription'],
     queryFn: () => api.get('/subscriptions/my').then((r) => r.data),
     enabled: isMerchantAdmin && !workspaceMode,
-    staleTime: 60_000,
+    staleTime: 0,
   });
 
   const pendingStoreReceipts = useMemo(() => {
@@ -413,7 +413,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
     setChosenMethod(null);
     setPurchaseQuote(null);
     setPurchaseError('');
-    setBankForm({ bankReference: '', notes: '' });
+    setBankForm({ bankReference: '', notes: '', storeName: '' });
     setBankFile(null);
   }, []);
 
@@ -517,6 +517,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
     fd.append('amount', String(purchaseQuote.priced.amount));
     fd.append('bankReference', bankForm.bankReference.trim());
     fd.append('notes', bankForm.notes.trim());
+    if (bankForm.storeName.trim()) fd.append('storeLocationName', bankForm.storeName.trim());
     fd.append('receipt', bankFile);
     bankReceiptMutation.mutate(fd);
   };
@@ -720,7 +721,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
               : 'border-transparent text-gray-500 hover:text-gray-700'
           }`}
         >
-          Pending Verification
+          Pending Approval
           {pendingStoreReceipts.length > 0 && (
             <span className="bg-amber-100 text-amber-800 text-xs font-semibold px-2 py-0.5 rounded-full">
               {pendingStoreReceipts.length}
@@ -891,7 +892,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
           <div className="flex items-center gap-2 pb-4 border-b border-gray-100">
             <Clock className="text-amber-500" size={20} />
             <div>
-              <h3 className="font-semibold text-gray-900">Stores Pending Verification</h3>
+              <h3 className="font-semibold text-gray-900">Stores Pending Approval</h3>
               <p className="text-xs text-gray-500 mt-0.5">
                 These store locations will be automatically initialized once your payment receipt is verified by our team.
               </p>
@@ -906,7 +907,9 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
               {pendingStoreReceipts.map((r) => (
                 <div key={r._id} className="flex items-center justify-between gap-4 p-4 hover:bg-gray-50/50 transition-colors">
                   <div className="min-w-0">
-                    <p className="font-medium text-gray-800 text-sm">Additional Store Location</p>
+                    <p className="font-medium text-gray-800 text-sm">
+                    {r.userLicensePayload?.name ? r.userLicensePayload.name : 'Additional Store Location'}
+                  </p>
                     <p className="text-xs text-gray-500 mt-1">
                       Submitted: {new Date(r.createdAt).toLocaleDateString()} at {new Date(r.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
@@ -939,6 +942,17 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
             {purchaseStep === 'review' && (
               <div className="space-y-4">
                 <p className="text-sm text-gray-700">{purchaseQuote.shortDescription}</p>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Store name <span className="text-gray-400">(optional – helps identify this request)</span></label>
+                  <input
+                    type="text"
+                    value={bankForm.storeName}
+                    onChange={(e) => setBankForm((f) => ({ ...f, storeName: e.target.value }))}
+                    placeholder="e.g. Colombo City Branch"
+                    maxLength={100}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  />
+                </div>
                 <BillingQuotePanel
                   recurringRates={purchaseQuote.recurringRates}
                   proration={purchaseQuote.proration}

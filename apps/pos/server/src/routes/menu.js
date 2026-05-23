@@ -55,10 +55,17 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
 
 router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const { images, image, imageKey } = normalizeMenuItemImages(req.body);
+    const update = { ...sanitizeMenuPayload(req.body), updatedBy: req.user.id };
+    const hasImageData = req.body?.images !== undefined || req.body?.image !== undefined || req.body?.imageKey !== undefined;
+    if (hasImageData) {
+      const { images, image, imageKey } = normalizeMenuItemImages(req.body);
+      update.images = images;
+      update.image = image;
+      update.imageKey = imageKey;
+    }
     const item = await MenuItem.findOneAndUpdate(
       { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) },
-      { ...sanitizeMenuPayload(req.body), images, image, imageKey, updatedBy: req.user.id },
+      { $set: update },
       { new: true, runValidators: true },
     );
     if (!item) return res.status(404).json({ message: 'Menu item not found' });

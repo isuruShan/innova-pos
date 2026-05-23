@@ -492,6 +492,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       purchaseKind,
       userLicenseAction,
       userLicensePayload,
+      storeLocationName,
       paymentMethod = 'bank_transfer',
     } = req.body;
     const method = ['bank_transfer', 'stripe', 'paypal'].includes(paymentMethod)
@@ -648,6 +649,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
         receiptFileUrl: '',
         receiptFileKey,
         notes: (notes || '').trim(),
+        userLicensePayload: storeLocationName ? { name: String(storeLocationName).trim().slice(0, 100) } : null,
         createdBy: req.user.id,
       });
 

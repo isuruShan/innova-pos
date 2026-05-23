@@ -155,7 +155,7 @@ export default function UsersPage() {
   const { data: subscriptionData } = useQuery({
     queryKey: ['my-subscription'],
     queryFn: () => api.get('/subscriptions/my').then((r) => r.data),
-    staleTime: 60_000,
+    staleTime: 0,
   });
 
   const pendingUserReceipts = useMemo(() => {
@@ -164,7 +164,13 @@ export default function UsersPage() {
       (r) => r.receiptKind === 'user_license' && r.status === 'pending',
     ).map((r) => {
       let payload = {};
-      try { if (r.userLicensePayload) payload = JSON.parse(r.userLicensePayload); } catch { /* noop */ }
+      try {
+        if (r.userLicensePayload) {
+          payload = typeof r.userLicensePayload === 'string'
+            ? JSON.parse(r.userLicensePayload)
+            : r.userLicensePayload;
+        }
+      } catch { /* noop */ }
       return { ...r, _parsedPayload: payload };
     });
   }, [subscriptionData]);
@@ -296,6 +302,7 @@ export default function UsersPage() {
     mutationFn: (fd) => api.post('/subscriptions/receipts', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
     onSuccess: () => {
       toast.success('Receipt submitted. The change will apply after super admin approval.');
+      queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
       closeAll();
     },
     onError: (err) => setPaymentError(err.response?.data?.message || 'Upload failed'),
@@ -590,16 +597,16 @@ export default function UsersPage() {
                     </p>
                   )}
                   <div className="mt-4 flex flex-wrap gap-2 pt-3 border-t border-gray-150">
-                    <button type="button" onClick={() => openEdit(u)} disabled={!u.isActive} title={!u.isActive ? 'Reactivate user to edit' : undefined} className="text-xs px-2.5 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium flex-1 disabled:opacity-40 disabled:cursor-not-allowed">
-                      Edit details
+                    <button type="button" onClick={() => openEdit(u)} disabled={!u.isActive} title={!u.isActive ? 'Reactivate user to edit' : undefined} className="text-xs px-2.5 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium flex-1 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1">
+                      <Pencil size={12} /> Edit details
                     </button>
-                    <button type="button" onClick={() => handleResetPasswordClick(u)} disabled={!u.isActive} title={!u.isActive ? 'Cannot reset password for an inactive user' : undefined} className="text-xs px-2.5 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed">
-                      Reset Password
+                    <button type="button" onClick={() => handleResetPasswordClick(u)} disabled={!u.isActive} title={!u.isActive ? 'Cannot reset password for an inactive user' : undefined} className="text-xs px-2.5 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1">
+                      <Key size={12} /> Reset
                     </button>
-                    <button type="button" onClick={() => handleToggleActiveClick(u)} className={`text-xs px-2.5 py-1.5 rounded-md border font-medium ${u.isActive ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-green-200 text-green-700 hover:bg-green-50'}`}>
-                      {u.isActive ? 'Deactivate' : 'Activate'}
+                    <button type="button" onClick={() => handleToggleActiveClick(u)} disabled={u.isOwner && u.isActive} title={u.isOwner && u.isActive ? 'Account owner cannot be deactivated' : undefined} className={`text-xs px-2.5 py-1.5 rounded-md border font-medium flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed ${u.isActive ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-green-200 text-green-700 hover:bg-green-50'}`}>
+                      {u.isActive ? <><UserX size={12} /> Deactivate</> : <><UserCheck size={12} /> Activate</>}
                     </button>
-                    <button type="button" onClick={() => setDeleteTarget(u)} className="text-xs px-2.5 py-1.5 rounded-md border border-red-200 text-red-600 hover:bg-red-50 font-medium">
+                    <button type="button" onClick={() => setDeleteTarget(u)} disabled={u.isOwner} title={u.isOwner ? 'Account owner cannot be deleted' : 'Delete user'} className="text-xs px-2.5 py-1.5 rounded-md border border-red-200 text-red-600 hover:bg-red-50 font-medium disabled:opacity-40 disabled:cursor-not-allowed">
                       <Trash2 size={12} />
                     </button>
                   </div>
@@ -645,16 +652,16 @@ export default function UsersPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-2">
-                            <button type="button" onClick={() => openEdit(u)} disabled={!u.isActive} title={!u.isActive ? 'Reactivate user to edit' : undefined} className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed">
-                              Edit
+                            <button type="button" onClick={() => openEdit(u)} disabled={!u.isActive} title={!u.isActive ? 'Reactivate user to edit' : undefined} className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1">
+                              <Pencil size={12} /> Edit
                             </button>
-                            <button type="button" onClick={() => handleResetPasswordClick(u)} disabled={!u.isActive} title={!u.isActive ? 'Cannot reset password for an inactive user' : undefined} className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed">
-                              Reset Password
+                            <button type="button" onClick={() => handleResetPasswordClick(u)} disabled={!u.isActive} title={!u.isActive ? 'Cannot reset password for an inactive user' : undefined} className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1">
+                              <Key size={12} /> Reset
                             </button>
-                            <button type="button" onClick={() => handleToggleActiveClick(u)} className={`text-xs px-2.5 py-1 rounded-md border font-medium ${u.isActive ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-green-200 text-green-700 hover:bg-green-50'}`}>
-                              {u.isActive ? 'Deactivate' : 'Activate'}
+                            <button type="button" onClick={() => handleToggleActiveClick(u)} disabled={u.isOwner && u.isActive} title={u.isOwner && u.isActive ? 'Account owner cannot be deactivated' : undefined} className={`text-xs px-2.5 py-1 rounded-md border font-medium flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed ${u.isActive ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-green-200 text-green-700 hover:bg-green-50'}`}>
+                              {u.isActive ? <><UserX size={12} /> Deactivate</> : <><UserCheck size={12} /> Activate</>}
                             </button>
-                            <button type="button" onClick={() => setDeleteTarget(u)} title="Delete user" className="text-xs px-2 py-1 rounded-md border border-red-200 text-red-500 hover:bg-red-50 font-medium">
+                            <button type="button" onClick={() => setDeleteTarget(u)} disabled={u.isOwner} title={u.isOwner ? 'Account owner cannot be deleted' : 'Delete user'} className="text-xs px-2 py-1 rounded-md border border-red-200 text-red-500 hover:bg-red-50 font-medium disabled:opacity-40 disabled:cursor-not-allowed">
                               <Trash2 size={12} />
                             </button>
                           </div>
@@ -716,7 +723,7 @@ export default function UsersPage() {
                           ) : '—'}
                         </td>
                         <td className="px-4 py-3 font-semibold text-gray-900 tabular-nums whitespace-nowrap">
-                          {r.currency || 'LKR'} {Number(r.amount ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {formatMoney(r.currency || tenantCurrency || 'LKR', r.amount, merchantSymbol)}
                         </td>
                         <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
                           {new Date(r.paymentDate || r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}

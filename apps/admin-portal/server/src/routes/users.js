@@ -72,6 +72,12 @@ router.get('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), asyn
       .limit(limit)
       .lean();
     users = await attachFreshProfileImages(users);
+    // Identify the account owner (earliest merchant_admin) for the tenant
+    const ownerAdmin = await User.findOne({ tenantId, role: 'merchant_admin' }).sort({ createdAt: 1 }).select('_id').lean();
+    const ownerIdStr = ownerAdmin ? String(ownerAdmin._id) : null;
+    if (ownerIdStr) {
+      users = users.map((u) => ownerIdStr === String(u._id) ? { ...u, isOwner: true } : u);
+    }
     res.json(paginated(users, total, page, limit));
   } catch (err) {
     sendRouteError(res, err, { req });
@@ -147,6 +153,14 @@ router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), a
 
     const { name, email, role, isActive, storeIds, defaultStoreId } = req.body;
 
+    // Protect account owner from deactivation by non-superadmin
+    if (isActive === false && req.user.role !== 'superadmin') {
+      const oldestAdmin = await User.findOne({ tenantId: user.tenantId, role: 'merchant_admin' }).sort({ createdAt: 1 }).select('_id').lean();
+      if (oldestAdmin && String(oldestAdmin._id) === String(user._id)) {
+        return res.status(403).json({ message: 'The account owner cannot be deactivated. Contact support.' });
+      }
+    }
+
     if (name) user.name = name.trim();
     if (email) {
       const conflict = await User.findOne({ email: email.toLowerCase(), _id: { $ne: user._id } });
@@ -220,6 +234,14 @@ router.delete('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin')
     const user = await User.findOne(filter);
     if (!user) return res.status(404).json({ message: 'User not found' });
     if (String(user._id) === String(req.user.id)) return res.status(400).json({ message: 'Cannot delete your own account' });
+
+    // Protect account owner from deletion by non-superadmin
+    if (req.user.role !== 'superadmin') {
+      const oldestAdmin = await User.findOne({ tenantId: user.tenantId, role: 'merchant_admin' }).sort({ createdAt: 1 }).select('_id').lean();
+      if (oldestAdmin && String(oldestAdmin._id) === String(user._id)) {
+        return res.status(403).json({ message: 'The account owner cannot be deleted. Contact support.' });
+      }
+    }
 
     await emitAudit({ req, action: 'USER_DELETED', resource: 'User', resourceId: user._id,
       changes: { before: { name: user.name, email: user.email, role: user.role } } });
