@@ -625,7 +625,7 @@ export default function FloorPlanEditorPage() {
                       )}
                     </div>
                   </div>
-                ))}
+                )}
 
 
                 {/* Tables */}
