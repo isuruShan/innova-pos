@@ -139,7 +139,7 @@ function StoreSwitcher({ stores, selectedStoreId, selectStore }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 pl-3 pr-2.5 py-2 min-h-[42px] rounded-xl border border-slate-700/40 bg-slate-800/30 hover:bg-slate-800/55 hover:border-amber-500/35 text-left transition shadow-sm max-w-[220px] sm:max-w-[280px]"
+        className="flex items-center gap-2 pl-3 pr-2.5 py-2 min-h-[42px] rounded-xl border text-left transition shadow-sm max-w-[220px] sm:max-w-[280px] bg-[var(--pos-surface-inset)] border-[color-mix(in_srgb,var(--pos-text-primary)_22%,transparent)] hover:bg-[var(--pos-panel)] hover:border-[color-mix(in_srgb,var(--color-accent)_55%,transparent)]"
         style={{ color: 'var(--color-text)' }}
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -177,8 +177,8 @@ function StoreSwitcher({ stores, selectedStoreId, selectStore }) {
                     }}
                     className={`w-full flex items-center gap-3 px-3 py-3 text-left text-sm transition min-h-[48px] ${
                       active
-                        ? 'bg-amber-500/15 text-[var(--pos-selection-text)]'
-                        : 'text-slate-200 hover:bg-slate-700/60 active:bg-slate-700'
+                        ? 'bg-[color-mix(in_srgb,var(--color-selection)_22%,transparent)] text-[var(--pos-text-primary)]'
+                        : 'text-[var(--pos-text-primary)] hover:bg-[color-mix(in_srgb,var(--pos-text-primary)_8%,transparent)]'
                     }`}
                   >
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-800 border border-slate-600/50">
@@ -330,7 +330,7 @@ export default function Navbar({ links = [], groups: groupsProp }) {
   const sidebarResolved = branding.sidebarColor || '#16213e';
 
   const navTabActiveFg = useMemo(
-    () => navActiveLinkTextColor(accentResolved, sidebarResolved, 0.22),
+    () => navActiveLinkTextColor(accentResolved, sidebarResolved, 0.55),
     [accentResolved, sidebarResolved],
   );
 
@@ -381,8 +381,8 @@ export default function Navbar({ links = [], groups: groupsProp }) {
                     style={
                       active
                         ? {
-                            backgroundColor: 'color-mix(in srgb, var(--color-selection) 55%, transparent)',
-                            color: 'var(--pos-selection-text)',
+                            backgroundColor: 'color-mix(in srgb, var(--color-selection) 72%, transparent)',
+                            color: navTabActiveFg,
                           }
                         : {
                             color: 'color-mix(in srgb, var(--color-header-text, var(--color-text)) 55%, transparent)',
