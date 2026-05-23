@@ -343,7 +343,7 @@ export default function PaymentsPage() {
                   {receipts.map((r) => {
                     const kind = receiptKindKey(r);
                     return (
-                      <tr key={r._id} className="hover:bg-gray-50 transition-colors">
+                      <tr key={r._id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => openDetail(r._id)}>
                         {/* Merchant — clickable drill-down */}
                         <td className="px-4 py-3 font-medium">
                           <button
@@ -393,6 +393,7 @@ export default function PaymentsPage() {
                                 href={r.receiptFileUrl}
                                 target="_blank"
                                 rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-50"
                                 title="View receipt file"
                               >
@@ -402,7 +403,7 @@ export default function PaymentsPage() {
                             {r.status === 'pending' ? (
                               <button
                                 type="button"
-                                onClick={() => openDetail(r._id)}
+                                onClick={(e) => { e.stopPropagation(); openDetail(r._id); }}
                                 className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600"
                               >
                                 <Eye size={12} /> Verify
@@ -410,14 +411,14 @@ export default function PaymentsPage() {
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => openDetail(r._id)}
+                                onClick={(e) => { e.stopPropagation(); openDetail(r._id); }}
                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50"
                               >
                                 <Eye size={12} /> View
                               </button>
                             )}
                             {r.status === 'verified' && r.extensionDays > 0 && (
-                              <span className="text-xs text-green-700 bg-green-50 px-2.5 py-1 rounded-lg">
+                              <span className="text-xs text-green-700 bg-green-50 px-2.5 py-1 rounded-lg" onClick={(e) => e.stopPropagation()}>
                                 +{r.extensionDays}d
                               </span>
                             )}

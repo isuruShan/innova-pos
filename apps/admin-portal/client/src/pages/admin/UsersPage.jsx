@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Loader, UserCheck, UserX, Key, X, Pencil, Search, ArrowLeft, Clock, AlertTriangle } from 'lucide-react';
+import { Plus, Loader, UserCheck, UserX, Key, X, Pencil, Search, ArrowLeft, Clock, AlertTriangle, ChevronDown } from 'lucide-react';
 import TooltipWrap from '../../components/common/TooltipWrap';
 import { useToast } from '../../context/ToastContext';
 import api from '../../api/axios';
@@ -24,6 +24,70 @@ const ROLE_COLORS = {
   kitchen:        'bg-orange-100 text-orange-700',
 };
 
+const ROLE_OPTIONS = [
+  { value: 'merchant_admin', label: 'Admin' },
+  { value: 'manager',        label: 'Manager' },
+  { value: 'cashier',        label: 'Cashier' },
+  { value: 'kitchen',        label: 'Kitchen' },
+];
+
+const SORT_OPTIONS = [
+  { value: 'createdAt:desc', label: 'Newest first' },
+  { value: 'createdAt:asc',  label: 'Oldest first' },
+  { value: 'name:asc',       label: 'Name A→Z' },
+  { value: 'name:desc',      label: 'Name Z→A' },
+  { value: 'email:asc',      label: 'Email A→Z' },
+  { value: 'role:asc',       label: 'Role' },
+];
+
+function MultiSelectDropdown({ label, options, selected, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-sm bg-white hover:bg-gray-50 min-w-[130px] transition-colors ${selected.length ? 'border-brand-orange text-brand-orange' : 'border-gray-300 text-gray-700'}`}
+      >
+        <span className="flex-1 text-left truncate">
+          {selected.length === 0 ? label : `${label} (${selected.length})`}
+        </span>
+        <ChevronDown size={14} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-lg min-w-[170px] py-1">
+          {options.map((opt) => (
+            <label key={opt.value} className="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={selected.includes(opt.value)}
+                onChange={(e) =>
+                  onChange(e.target.checked ? [...selected, opt.value] : selected.filter((v) => v !== opt.value))
+                }
+                className="rounded accent-brand-orange"
+              />
+              {opt.label}
+            </label>
+          ))}
+          {selected.length > 0 && (
+            <div className="border-t border-gray-100 mt-1 pt-1 px-3 pb-1">
+              <button type="button" onClick={() => onChange([])} className="text-xs text-red-500 hover:underline">
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function UsersPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -39,7 +103,7 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [roleFilters, setRoleFilters] = useState([]);
   const [storeFilters, setStoreFilters] = useState([]);
-  const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
+  const { sort, order, toggleSort, sortParams, setSort, setOrder } = useListSort('createdAt', 'desc');
 
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [paymentStep, setPaymentStep] = useState('review');
@@ -95,7 +159,7 @@ export default function UsersPage() {
   const pendingUserReceipts = useMemo(() => {
     if (!subscriptionData?.receipts) return [];
     return subscriptionData.receipts.filter(
-      (r) => r.purchaseKind === 'user_license' && r.status === 'pending',
+      (r) => r.receiptKind === 'user_license' && r.status === 'pending',
     ).map((r) => {
       let payload = {};
       try { if (r.userLicensePayload) payload = JSON.parse(r.userLicensePayload); } catch { /* noop */ }
@@ -383,53 +447,58 @@ export default function UsersPage() {
           <ViewModeToggle mode={viewMode} setMode={(mode) => { setViewMode(mode); localStorage.setItem('view_mode_admin_users', mode); }} />
 
           <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
-            <div className="relative max-w-md">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                placeholder="Search by name or email…"
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[180px] max-w-sm">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  placeholder="Search by name or email…"
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+
+              <MultiSelectDropdown
+                label="Role"
+                options={ROLE_OPTIONS}
+                selected={roleFilters}
+                onChange={(v) => { setRoleFilters(v); setPage(1); }}
               />
-            </div>
-            <div className="flex flex-wrap gap-4">
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Roles</p>
-                <div className="flex flex-wrap gap-2">
-                  {['merchant_admin', 'manager', 'cashier', 'kitchen'].map((role) => (
-                    <label key={role} className="inline-flex items-center gap-1.5 text-xs text-gray-700 border border-gray-200 rounded-lg px-2 py-1">
-                      <input
-                        type="checkbox"
-                        checked={roleFilters.includes(role)}
-                        onChange={(e) => {
-                          setPage(1);
-                          setRoleFilters((prev) => (e.target.checked ? [...prev, role] : prev.filter((r) => r !== role)));
-                        }}
-                      />
-                      {role.replace('_', ' ')}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Stores</p>
-                <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
-                  {stores.map((s) => (
-                    <label key={s._id} className="inline-flex items-center gap-1.5 text-xs text-gray-700 border border-gray-200 rounded-lg px-2 py-1">
-                      <input
-                        type="checkbox"
-                        checked={storeFilters.includes(s._id)}
-                        onChange={(e) => {
-                          setPage(1);
-                          setStoreFilters((prev) => (e.target.checked ? [...prev, s._id] : prev.filter((id) => id !== s._id)));
-                        }}
-                      />
-                      {s.name}
-                    </label>
-                  ))}
-                </div>
-              </div>
+
+              {stores.length > 0 && (
+                <MultiSelectDropdown
+                  label="Store"
+                  options={stores.map((s) => ({ value: s._id, label: s.name }))}
+                  selected={storeFilters}
+                  onChange={(v) => { setStoreFilters(v); setPage(1); }}
+                />
+              )}
+
+              <select
+                value={`${sort}:${order}`}
+                onChange={(e) => {
+                  const [f, o] = e.target.value.split(':');
+                  setSort(f);
+                  setOrder(o);
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-700 hover:bg-gray-50 cursor-pointer"
+                title="Sort by"
+              >
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+
+              {(roleFilters.length > 0 || storeFilters.length > 0 || search) && (
+                <button
+                  type="button"
+                  onClick={() => { setRoleFilters([]); setStoreFilters([]); setSearch(''); setPage(1); }}
+                  className="text-xs text-red-500 hover:underline flex items-center gap-1"
+                >
+                  <X size={12} /> Clear filters
+                </button>
+              )}
             </div>
           </div>
 

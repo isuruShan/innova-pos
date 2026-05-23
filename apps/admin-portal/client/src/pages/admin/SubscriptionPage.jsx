@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Upload, Loader, CheckCircle, AlertTriangle, ExternalLink, ImageIcon, X, Search, Copy, Check, FileText } from 'lucide-react';
+import { Upload, Loader, CheckCircle, AlertTriangle, ExternalLink, ImageIcon, X, Search, Copy, Check, FileText, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 import { validateImageFile } from '../../components/billing/BankReceiptFields';
 import api from '../../api/axios';
 import PlanChangeModal from '../../components/subscription/PlanChangeModal';
@@ -30,6 +30,153 @@ function CopyableRef({ text }) {
   );
 }
 
+const RECEIPT_KIND_LABELS = {
+  subscription: 'Plan Renewal',
+  addon: 'Add-on',
+  user_license: 'User License',
+  store: 'Store Activation',
+};
+
+const STATUS_BADGES = {
+  pending:  'bg-yellow-100 text-yellow-800',
+  approved: 'bg-green-100 text-green-700',
+  rejected: 'bg-red-100 text-red-700',
+};
+
+function ReceiptDetailPopup({ receipt: r, onClose }) {
+  if (!r) return null;
+
+  let licensePayload = {};
+  try { if (r.userLicensePayload) licensePayload = typeof r.userLicensePayload === 'string' ? JSON.parse(r.userLicensePayload) : r.userLicensePayload; } catch {}
+
+  const plan = r.requestedPlanId;
+  const statusBadge = STATUS_BADGES[r.status] || 'bg-gray-100 text-gray-600';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div>
+            <h3 className="font-semibold text-gray-900">{RECEIPT_KIND_LABELS[r.receiptKind] || 'Payment'} Details</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge}`}>
+                {r.status?.charAt(0).toUpperCase() + r.status?.slice(1)}
+              </span>
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+          {/* Amount */}
+          <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+            <span className="text-sm text-gray-600">Amount paid</span>
+            <span className="text-xl font-bold text-gray-900">
+              {r.currency?.toUpperCase()} {Number(r.amount || 0).toFixed(2)}
+            </span>
+          </div>
+
+          {/* What was purchased */}
+          {r.receiptKind === 'subscription' && plan && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Plan</p>
+              <div className="bg-blue-50 rounded-xl px-4 py-3 space-y-1">
+                <p className="font-medium text-blue-900">{plan.name}</p>
+                {plan.code && <p className="text-xs text-blue-700">Code: {plan.code}</p>}
+                {plan.billingCycle && <p className="text-xs text-blue-700 capitalize">Billing: {plan.billingCycle}</p>}
+                {plan.durationDays && <p className="text-xs text-blue-700">Duration: {plan.durationDays} days</p>}
+              </div>
+            </div>
+          )}
+
+          {r.receiptKind === 'addon' && r.addonCode && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Add-on</p>
+              <div className="bg-purple-50 rounded-xl px-4 py-3">
+                <p className="font-medium text-purple-900 capitalize">{r.addonCode.replace(/_/g, ' ')}</p>
+              </div>
+            </div>
+          )}
+
+          {r.receiptKind === 'user_license' && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase mb-2">User License</p>
+              <div className="bg-orange-50 rounded-xl px-4 py-3 space-y-1">
+                {licensePayload.action && <p className="text-xs text-orange-800 capitalize">Action: {licensePayload.action.replace(/_/g, ' ')}</p>}
+                {licensePayload.seats && <p className="text-xs text-orange-800">Seats: {licensePayload.seats}</p>}
+                {licensePayload.role && <p className="text-xs text-orange-800 capitalize">Role: {licensePayload.role.replace(/_/g, ' ')}</p>}
+              </div>
+            </div>
+          )}
+
+          {/* Dates */}
+          <div className="grid grid-cols-2 gap-3">
+            {r.paymentDate && (
+              <div className="bg-gray-50 rounded-xl px-4 py-3">
+                <p className="text-xs text-gray-500 mb-0.5">Payment date</p>
+                <p className="text-sm font-medium text-gray-800">{new Date(r.paymentDate).toLocaleDateString()}</p>
+              </div>
+            )}
+            {r.verifiedAt && (
+              <div className="bg-green-50 rounded-xl px-4 py-3">
+                <p className="text-xs text-gray-500 mb-0.5">Verified at</p>
+                <p className="text-sm font-medium text-gray-800">{new Date(r.verifiedAt).toLocaleDateString()}</p>
+              </div>
+            )}
+            {r.extensionDays > 0 && (
+              <div className="bg-blue-50 rounded-xl px-4 py-3">
+                <p className="text-xs text-gray-500 mb-0.5">Extension days</p>
+                <p className="text-sm font-medium text-blue-800">+{r.extensionDays} days</p>
+              </div>
+            )}
+          </div>
+
+          {/* Bank reference */}
+          {r.bankReference && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Bank reference</p>
+              <CopyableRef text={r.bankReference} />
+            </div>
+          )}
+
+          {/* Notes */}
+          {r.notes && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Notes</p>
+              <p className="text-sm text-gray-700 bg-gray-50 rounded-xl px-4 py-3">{r.notes}</p>
+            </div>
+          )}
+
+          {/* Rejection reason */}
+          {r.status === 'rejected' && r.rejectionReason && (
+            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+              <p className="text-xs font-semibold text-red-600 uppercase mb-1">Rejection reason</p>
+              <p className="text-sm text-red-800">{r.rejectionReason}</p>
+            </div>
+          )}
+
+          {/* Receipt file */}
+          {r.receiptFileUrl && (
+            <a
+              href={r.receiptFileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-brand-orange hover:underline"
+            >
+              <FileText size={14} />
+              View uploaded receipt file
+              <ExternalLink size={12} />
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SubscriptionPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -42,6 +189,7 @@ export default function SubscriptionPage() {
   const [sortBy, setSortBy] = useState('newest');
 
   const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [popupReceipt, setPopupReceipt] = useState(null);
   const fileRef = useRef(null);
   const [form, setForm] = useState({ amount: '', bankReference: '', notes: '', planId: '' });
   const { isInternational, billingNote } = useMerchantBillingRegion();
@@ -897,6 +1045,14 @@ export default function SubscriptionPage() {
                           <ExternalLink size={12} /> View Receipt
                         </a>
                       )}
+
+                      <button
+                        type="button"
+                        onClick={() => setPopupReceipt(r)}
+                        className="text-xs text-gray-600 hover:text-brand-orange font-medium flex items-center gap-1 px-2 py-1 rounded border border-gray-200 hover:border-brand-orange hover:bg-orange-50 bg-white transition-colors"
+                      >
+                        <Eye size={12} /> Details
+                      </button>
                       
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize border flex items-center gap-1 ${
                         r.status === 'verified'
@@ -923,5 +1079,7 @@ export default function SubscriptionPage() {
         </div>
       )}
     </div>
+
+    {popupReceipt && <ReceiptDetailPopup receipt={popupReceipt} onClose={() => setPopupReceipt(null)} />}
   );
 }
