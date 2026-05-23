@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Plus, Minus, Trash2, Save, Link2, Hash, AlertTriangle, Tag, CheckCircle } from 'lucide-react';
+import { X, Plus, Minus, Trash2, Save, Link2, Hash, AlertTriangle, Tag, CheckCircle, Loader2 } from 'lucide-react';
 import api from '../api/axios';
 import { formatCurrency, formatDateTime as fmtDT } from '../utils/format';
 import SlideOver from './SlideOver';
@@ -139,7 +139,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
   const selectedStore =
     stores.find((s) => String(s._id) === String(selectedStoreId)) || stores.find((s) => s.isDefault) || null;
   const tableMgmt = selectedStore?.tableManagementEnabled === true;
-  const isEditable = order && EDITABLE_STATUSES.includes(order.status);
+  const isEditable = order && EDITABLE_STATUSES.includes(order.status) && order.orderType !== 'uber-eats';
 
   const [orderType, setOrderType] = useState(order?.orderType || 'dine-in');
   const [tableNumber, setTableNumber] = useState(order?.tableNumber || '');
@@ -150,6 +150,11 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
   const [error, setError] = useState('');
   const waiterDismissPostedRef = useRef(new Set());
 
+  // Uber Eats actions state
+  const [showUberDeny, setShowUberDeny] = useState(false);
+  const [uberPrepTime, setUberPrepTime] = useState('15');
+  const [uberDenyReason, setUberDenyReason] = useState('OUT_OF_ITEMS');
+
   useEffect(() => {
     if (order) {
       setOrderType(order.orderType || 'dine-in');
@@ -159,6 +164,9 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
       setItems(order.items || []);
       setDirty(false);
       setError('');
+      setShowUberDeny(false);
+      setUberPrepTime('15');
+      setUberDenyReason('OUT_OF_ITEMS');
     }
   }, [order?._id]);
 
@@ -230,6 +238,39 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
     mutationFn: (status) => api.put(`/orders/${encodeURIComponent(order._id)}/status`, { status }),
     onSuccess: () => { invalidateAll(); onClose(); },
     onError: (e) => setError(e.response?.data?.message || 'Failed to update status'),
+  });
+
+  const uberAcceptMutation = useMutation({
+    mutationFn: (prepTime) =>
+      api.put(`/uber/orders/${encodeURIComponent(order._id)}/uber-accept`, { prepTime }),
+    onSuccess: () => {
+      invalidateAll();
+      qc.invalidateQueries({ queryKey: ['uber-active-orders'] });
+      onClose();
+    },
+    onError: (err) => setError(err.response?.data?.message || 'Failed to accept order'),
+  });
+
+  const uberDenyMutation = useMutation({
+    mutationFn: (reason) =>
+      api.put(`/uber/orders/${encodeURIComponent(order._id)}/uber-deny`, { reason }),
+    onSuccess: () => {
+      invalidateAll();
+      qc.invalidateQueries({ queryKey: ['uber-active-orders'] });
+      onClose();
+    },
+    onError: (err) => setError(err.response?.data?.message || 'Failed to deny order'),
+  });
+
+  const uberReadyMutation = useMutation({
+    mutationFn: () =>
+      api.put(`/uber/orders/${encodeURIComponent(order._id)}/uber-ready`),
+    onSuccess: () => {
+      invalidateAll();
+      qc.invalidateQueries({ queryKey: ['uber-active-orders'] });
+      onClose();
+    },
+    onError: (err) => setError(err.response?.data?.message || 'Failed to mark ready'),
   });
 
   const changeQty = (index, delta) => {
@@ -316,6 +357,59 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
           <span>Placed by {order.createdBy?.name || 'Guest / cashier'}</span>
           <span>{formatDateTime(order.createdAt)}</span>
         </div>
+
+        {/* Uber Eats Details */}
+        {order.orderType === 'uber-eats' && order.uberDetails && (
+          <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/25 p-3.5 space-y-2 text-sm text-[var(--pos-text-primary)]">
+            <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2">
+              <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+                <span>🛵</span> Uber Eats Integration
+              </span>
+              {order.uberDetails.uberDisplayId && (
+                <span className="font-mono text-emerald-300 font-bold bg-emerald-950/50 px-2 py-0.5 rounded-lg border border-emerald-500/25 text-xs">
+                  ID: {order.uberDetails.uberDisplayId}
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="text-slate-400">Uber Status:</span>{' '}
+                <span className="font-semibold capitalize text-slate-200">{order.uberDetails.uberStatus || 'New'}</span>
+              </div>
+              <div>
+                <span className="text-slate-400">Est. Prep Time:</span>{' '}
+                <span className="font-semibold text-slate-200">{order.uberDetails.estimatedPrepTime} mins</span>
+              </div>
+              {order.uberDetails.denyReason && (
+                <div className="col-span-2 text-red-400">
+                  <span className="text-slate-400">Deny Reason:</span> {order.uberDetails.denyReason}
+                </div>
+              )}
+              {order.uberDetails.cancelReason && (
+                <div className="col-span-2 text-red-400">
+                  <span className="text-slate-400">Cancel Reason:</span> {order.uberDetails.cancelReason}
+                </div>
+              )}
+            </div>
+            {order.uberDetails.riderInfo && order.uberDetails.riderInfo.name && (
+              <div className="border-t border-emerald-500/20 pt-2 space-y-1 text-xs">
+                <p className="font-bold text-slate-300">Rider Information</p>
+                <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-400">
+                  <div>Name: <span className="text-slate-200 font-semibold">{order.uberDetails.riderInfo.name}</span></div>
+                  {order.uberDetails.riderInfo.phone && (
+                    <div>Phone: <span className="text-slate-200 font-semibold">{order.uberDetails.riderInfo.phone}</span></div>
+                  )}
+                  {order.uberDetails.riderInfo.vehicle && (
+                    <div>Vehicle: <span className="text-slate-200 font-semibold">{order.uberDetails.riderInfo.vehicle}</span></div>
+                  )}
+                  {order.uberDetails.riderInfo.eta && (
+                    <div>ETA: <span className="text-slate-200 font-semibold">{new Date(order.uberDetails.riderInfo.eta).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {order.paymentCollected === false && (
           <div className="rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-sm px-3 py-2">
@@ -500,7 +594,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
           )}
 
           {/* Cancel order */}
-          {canCancel && order.status !== 'completed' && order.status !== 'cancelled' && (
+          {canCancel && order.status !== 'completed' && order.status !== 'cancelled' && order.orderType !== 'uber-eats' && (
             <button
               onClick={() => { if (confirm('Cancel this order?')) statusMutation.mutate('cancelled'); }}
               disabled={statusMutation.isPending}
@@ -508,6 +602,98 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
             >
               {statusMutation.isPending ? 'Cancelling…' : '✕ Cancel Order'}
             </button>
+          )}
+
+          {/* Uber Eats Actions */}
+          {order.orderType === 'uber-eats' && (
+            <div className="space-y-3 p-3 bg-emerald-950/40 border border-emerald-500/20 rounded-xl mt-2">
+              <p className="text-xs font-semibold text-emerald-400">Uber Actions</p>
+              {order.status === 'pending' && (
+                <>
+                  {!showUberDeny ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-slate-400">Prep Time:</span>
+                        <select
+                          value={uberPrepTime}
+                          onChange={(e) => setUberPrepTime(e.target.value)}
+                          className="rounded-lg bg-[var(--pos-surface-inset)] border border-slate-700 text-sm text-[var(--pos-text-primary)] p-1.5 outline-none"
+                        >
+                          <option value="10">10 mins</option>
+                          <option value="15">15 mins</option>
+                          <option value="20">20 mins</option>
+                          <option value="30">30 mins</option>
+                        </select>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowUberDeny(true)}
+                          className="flex-1 py-2 rounded-xl border border-red-500/40 text-red-400 hover:bg-red-500/10 font-bold text-xs transition"
+                        >
+                          Deny Order
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => uberAcceptMutation.mutate(uberPrepTime)}
+                          disabled={uberAcceptMutation.isPending}
+                          className="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-450 text-white font-bold text-xs transition flex justify-center items-center gap-1.5"
+                        >
+                          {uberAcceptMutation.isPending && <Loader2 className="animate-spin" size={12} />}
+                          Accept Order
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="block text-[11px] font-semibold text-slate-400">Denial Reason:</label>
+                        <select
+                          value={uberDenyReason}
+                          onChange={(e) => setUberDenyReason(e.target.value)}
+                          className="w-full rounded-lg bg-[var(--pos-surface-inset)] border border-slate-700 text-xs text-[var(--pos-text-primary)] p-2 outline-none"
+                        >
+                          <option value="OUT_OF_ITEMS">Out of Items</option>
+                          <option value="KITCHEN_CLOSED">Kitchen Closed</option>
+                          <option value="TOO_BUSY">Store Too Busy</option>
+                          <option value="CUSTOMER_REQUEST">Customer Request</option>
+                        </select>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowUberDeny(false)}
+                          className="flex-1 py-2 rounded-xl border border-slate-700 text-slate-300 font-bold text-xs transition"
+                        >
+                          Back
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => uberDenyMutation.mutate(uberDenyReason)}
+                          disabled={uberDenyMutation.isPending}
+                          className="flex-1 py-2 rounded-xl bg-red-500 hover:bg-red-450 text-white font-bold text-xs transition flex justify-center items-center gap-1.5"
+                        >
+                          {uberDenyMutation.isPending && <Loader2 className="animate-spin" size={12} />}
+                          Confirm Deny
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {order.status === 'preparing' && (
+                <button
+                  type="button"
+                  onClick={() => uberReadyMutation.mutate()}
+                  disabled={uberReadyMutation.isPending}
+                  className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-450 text-white font-bold text-sm transition flex justify-center items-center gap-2"
+                >
+                  {uberReadyMutation.isPending && <Loader2 className="animate-spin" size={14} />}
+                  Mark Ready for Pickup
+                </button>
+              )}
+            </div>
           )}
 
           <button

@@ -17,9 +17,11 @@ import MerchantWorkspacePage from './pages/superadmin/MerchantWorkspacePage';
 import MerchantStoresPage from './pages/superadmin/MerchantStoresPage';
 import PaymentProviderSettingsPage from './pages/superadmin/PaymentProviderSettingsPage';
 import PaidAddonsPage from './pages/superadmin/PaidAddonsPage';
+import PlatformUberSettings from './pages/superadmin/PlatformUberSettings';
 import MerchantSubscriptionGate from './components/MerchantSubscriptionGate';
 
 // Merchant admin pages
+import UberConfigPanel from './pages/admin/UberConfigPanel';
 import DashboardPage from './pages/admin/DashboardPage';
 import AnalyticsPage from './pages/admin/AnalyticsPage';
 import BrandingPage from './pages/admin/BrandingPage';
@@ -95,6 +97,11 @@ export default function App() {
               <Layout><PaidAddonsPage /></Layout>
             </PrivateRoute>
           } />
+          <Route path="/uber-setup" element={
+            <PrivateRoute roles={['superadmin']}>
+              <Layout><PlatformUberSettings /></Layout>
+            </PrivateRoute>
+          } />
           <Route path="/merchants/:id/stores" element={
             <PrivateRoute roles={['superadmin']}>
               <Layout><MerchantStoresPage /></Layout>
@@ -135,6 +142,11 @@ export default function App() {
           <Route path="/addons" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><MerchantAddonsPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/uber-config" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><UberConfigPanel /></Layout>
             </PrivateRoute>
           } />
           <Route path="/stores" element={

@@ -2,7 +2,7 @@
 
 const express = require('express');
 const Tenant = require('../models/Tenant');
-const { isLoyaltyEffective, isQrOrderingEffective, isTableManagementEffective } = require('@innovapos/paid-addons');
+const { isLoyaltyEffective, isQrOrderingEffective, isTableManagementEffective, isUberEatsEffective } = require('@innovapos/paid-addons');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 
 const router = express.Router();
@@ -22,6 +22,7 @@ router.get(
         loyalty: isLoyaltyEffective(paidAddons),
         qrOrdering: isQrOrderingEffective(paidAddons),
         tableManagement: isTableManagementEffective(paidAddons),
+        uberEats: isUberEatsEffective(paidAddons),
       });
     } catch (err) {
       sendRouteError(res, err, { req });

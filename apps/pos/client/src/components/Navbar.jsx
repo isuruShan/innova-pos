@@ -12,6 +12,7 @@ import CashierSessionNavButton from './cashier/CashierSessionNavButton';
 import OfflineBanner from './OfflineBanner';
 import WaiterCallBar from './WaiterCallBar';
 import QrOrderUpdateBar from './QrOrderUpdateBar';
+import UberOrdersBar from './uber/UberOrdersBar';
 
 const ROLE_BADGE = {
   cashier: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
@@ -342,6 +343,7 @@ export default function Navbar({ links = [], groups: groupsProp }) {
     <OfflineBanner />
     <WaiterCallBar />
     <QrOrderUpdateBar />
+    <UberOrdersBar />
     <nav
       className="border-b px-4 py-2.5 flex items-center justify-between sticky top-0 z-50"
       style={{

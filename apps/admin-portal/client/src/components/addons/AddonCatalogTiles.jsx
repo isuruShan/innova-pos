@@ -52,6 +52,14 @@ export function AddonActionButton({
           </p>
         </div>
         <div className="flex flex-wrap gap-2 justify-end">
+          {row.code === 'uber_eats' && (
+            <Link
+              to="/uber-config"
+              className="px-4 py-2 rounded-lg bg-brand-teal text-white hover:bg-brand-teal/90 text-sm font-semibold text-center"
+            >
+              Configure
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => onView?.(row)}
@@ -83,13 +91,23 @@ export function AddonActionButton({
               Billing: <strong>{row.billingCycle === 'yearly' ? 'Yearly' : 'Monthly'}</strong>
             </p>
           )}
-          <button
-            type="button"
-            onClick={() => onView?.(row)}
-            className="px-4 py-2 rounded-lg border border-gray-300 text-gray-800 hover:bg-gray-50 text-sm font-semibold"
-          >
-            View
-          </button>
+          <div className="flex flex-wrap gap-2 justify-end">
+            {row.code === 'uber_eats' && (
+              <Link
+                to="/uber-config"
+                className="px-4 py-2 rounded-lg bg-brand-teal text-white hover:bg-brand-teal/90 text-sm font-semibold text-center"
+              >
+                Configure
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => onView?.(row)}
+              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-800 hover:bg-gray-50 text-sm font-semibold"
+            >
+              View
+            </button>
+          </div>
         </div>
       );
     }
@@ -101,6 +119,14 @@ export function AddonActionButton({
           </p>
         )}
         <div className="flex flex-wrap gap-2 justify-end">
+          {row.code === 'uber_eats' && (
+            <Link
+              to="/uber-config"
+              className="px-4 py-2 rounded-lg bg-brand-teal text-white hover:bg-brand-teal/90 text-sm font-semibold text-center"
+            >
+              Configure
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => onView?.(row)}

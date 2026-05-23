@@ -110,6 +110,8 @@ export default function FloorPlanEditorPage() {
   const [isDirty, setIsDirty] = useState(false);
   const [localPlan, setLocalPlan] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isAddMode, setIsAddMode] = useState(false);
+  const [nextTableNumber, setNextTableNumber] = useState(1);
 
   // Fetch floor plan
   const { data: floorPlan, isLoading } = useQuery({
@@ -159,6 +161,17 @@ export default function FloorPlanEditorPage() {
     }
   }, [isLoading, floorPlan, isStoreReady, localPlan]);
 
+  // Update next table number based on existing tables
+  useEffect(() => {
+    if (tables.length > 0) {
+      const maxNum = tables.reduce((max, t) => {
+        const match = t.label?.match(/Table\s*(\d+)/i);
+        return match ? Math.max(max, parseInt(match[1], 10)) : max;
+      }, 0);
+      setNextTableNumber(maxNum + 1);
+    }
+  }, [tables]);
+
   const plan = localPlan || floorPlan;
   const [errorMessage, setErrorMessage] = useState(null);
 
@@ -187,6 +200,42 @@ export default function FloorPlanEditorPage() {
     },
     onError: (err) => {
       const message = err.response?.data?.message || 'Failed to sync tables';
+      setErrorMessage(message);
+      setTimeout(() => setErrorMessage(null), 5000);
+    },
+  });
+
+  // Create new table mutation
+  const createTableMutation = useMutation({
+    mutationFn: (tableData) => api.post('/tables', tableData),
+    onSuccess: (response, variables) => {
+      const newTable = response.data;
+      qc.invalidateQueries({ queryKey: ['pos-tables'] });
+      
+      // Add the newly created table to the floor plan
+      if (localPlan && variables._tempPosition) {
+        const newTablePos = {
+          tableId: newTable._id,
+          label: newTable.label,
+          x: variables._tempPosition.x,
+          y: variables._tempPosition.y,
+          width: 2,
+          height: 2,
+          shape: selectedShape,
+          rotation: 0,
+          capacity: newTable.capacity || 4,
+        };
+        
+        setLocalPlan({
+          ...localPlan,
+          tables: [...(localPlan.tables || []), newTablePos],
+        });
+        setIsDirty(true);
+      }
+      setNextTableNumber((n) => n + 1);
+    },
+    onError: (err) => {
+      const message = err.response?.data?.message || 'Failed to create table';
       setErrorMessage(message);
       setTimeout(() => setErrorMessage(null), 5000);
     },
@@ -316,6 +365,34 @@ export default function FloorPlanEditorPage() {
       setIsDragOver(false);
     }
   }, []);
+
+  // Handle canvas click - create new table when in add mode
+  const handleCanvasClick = useCallback((e) => {
+    // If clicking on canvas background (not on a table), handle based on mode
+    if (isAddMode && localPlan) {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      const cellSize = 50 * zoom;
+      const x = Math.floor((e.clientX - rect.left) / cellSize);
+      const y = Math.floor((e.clientY - rect.top) / cellSize);
+
+      // Clamp to grid bounds
+      const gridX = Math.max(0, Math.min(x, (localPlan.gridWidth || 20) - 2));
+      const gridY = Math.max(0, Math.min(y, (localPlan.gridHeight || 15) - 2));
+
+      // Create a new table in the database and add to floor plan
+      createTableMutation.mutate({
+        label: `Table ${nextTableNumber}`,
+        capacity: 4,
+        sortOrder: tables.length,
+        _tempPosition: { x: gridX, y: gridY }, // Used in onSuccess to place on plan
+      });
+    } else {
+      // Deselect table when clicking on empty space
+      setSelectedTable(null);
+    }
+  }, [isAddMode, localPlan, zoom, nextTableNumber, tables.length, createTableMutation]);
 
   const handleTableSelect = useCallback((table) => {
     setSelectedTable(table);
@@ -461,6 +538,22 @@ export default function FloorPlanEditorPage() {
               <Users size={16} />
             </button>
 
+            <div className="h-6 w-px bg-slate-700" />
+
+            {/* Add Mode Toggle */}
+            <button
+              onClick={() => setIsAddMode(!isAddMode)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${
+                isAddMode
+                  ? 'bg-green-500 text-white ring-2 ring-green-400'
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+              title={isAddMode ? 'Exit add mode' : 'Click to add tables'}
+            >
+              <Plus size={16} />
+              {isAddMode ? 'Adding...' : 'Add Mode'}
+            </button>
+
             <div className="flex-1" />
 
             <button
@@ -491,7 +584,7 @@ export default function FloorPlanEditorPage() {
             ) : plan ? (
               <div
                 ref={canvasRef}
-                className={`relative transition-all ${isDragOver ? 'ring-2 ring-amber-400 ring-inset bg-amber-500/5' : ''}`}
+                className={`relative transition-all ${isDragOver ? 'ring-2 ring-amber-400 ring-inset bg-amber-500/5' : ''} ${isAddMode ? 'cursor-crosshair' : ''}`}
                 style={{
                   width: `${(plan.gridWidth || 20) * 50 * zoom}px`,
                   height: `${(plan.gridHeight || 15) * 50 * zoom}px`,
@@ -506,7 +599,7 @@ export default function FloorPlanEditorPage() {
                 onDragOver={handleCanvasDragOver}
                 onDragEnter={handleCanvasDragEnter}
                 onDragLeave={handleCanvasDragLeave}
-                onClick={() => setSelectedTable(null)}
+                onClick={handleCanvasClick}
               >
                 {/* Zones */}
                 {plan.zones?.map((zone) => (
@@ -517,12 +610,23 @@ export default function FloorPlanEditorPage() {
                 {planTablesWithLabels.length === 0 && !isDragOver && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="text-center text-slate-500">
-                      <Move size={48} className="mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Drag tables from the sidebar</p>
-                      <p className="text-xs">to place them on the floor plan</p>
+                      {isAddMode ? (
+                        <>
+                          <Plus size={48} className="mx-auto mb-2 opacity-50 text-amber-400" />
+                          <p className="text-sm text-amber-400">Click anywhere to add a table</p>
+                          <p className="text-xs">Tables will be created as "Table {nextTableNumber}"</p>
+                        </>
+                      ) : (
+                        <>
+                          <Move size={48} className="mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">Click "Add Mode" in the toolbar to create tables</p>
+                          <p className="text-xs">or drag existing tables from the sidebar</p>
+                        </>
+                      )}
                     </div>
                   </div>
-                )}
+                ))}
+
 
                 {/* Tables */}
                 {planTablesWithLabels.map((table) => (

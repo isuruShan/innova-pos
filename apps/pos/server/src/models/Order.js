@@ -103,6 +103,24 @@ const orderSchema = new mongoose.Schema(
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     /** Idempotency for offline POS sync — duplicate POST returns existing order */
     clientRequestId: { type: String, default: null },
+    uberDetails: {
+      uberOrderId: { type: String, default: null, index: true },
+      uberDisplayId: { type: String, default: null },
+      uberStatus: {
+        type: String,
+        enum: ['new', 'accepted', 'preparing', 'ready', 'picked_up', 'completed', 'denied', 'cancelled'],
+        default: null
+      },
+      estimatedPrepTime: { type: Number, default: 15 },
+      denyReason: { type: String, default: '' },
+      cancelReason: { type: String, default: '' },
+      riderInfo: {
+        name: { type: String, default: '' },
+        phone: { type: String, default: '' },
+        vehicle: { type: String, default: '' },
+        eta: { type: Date, default: null }
+      }
+    },
     totalReturnedAmount: { type: Number, default: 0, min: 0 },
     returns: [{
       returnedAt: { type: Date, default: Date.now },

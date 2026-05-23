@@ -485,6 +485,7 @@ router.put('/:id', protect, authorize('cashier', 'manager', 'merchant_admin'), t
 
     order.updatedBy = req.user.id;
     await order.save();
+
     res.json(order);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -637,6 +638,16 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
 
     order.updatedBy = req.user.id;
     await order.save();
+
+    // Auto-notify Uber if status changed to ready
+    if (order.status === 'ready' && order.orderType === 'uber-eats') {
+      try {
+        const { markReady } = require('../services/uberEatsService');
+        await markReady(order);
+      } catch (err) {
+        console.error(`[Uber API Auto-Ready Error] order ${order._id} failed:`, err.message);
+      }
+    }
 
     if (
       order.status === 'completed' &&

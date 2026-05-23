@@ -5,6 +5,7 @@ const ENTITLEMENT_BY_CODE = {
   qr_ordering: 'qrOrdering',
   loyalty: 'loyalty',
   table_management: 'tableManagement',
+  uber_eats: 'uberEats',
 };
 
 const KNOWN_ENTITLEMENT_KEYS = Object.values(ENTITLEMENT_BY_CODE);
@@ -65,6 +66,10 @@ function isTableManagementEffective(paidAddons) {
   return isPaidAddonEffective(paidAddons, 'tableManagement');
 }
 
+function isUberEatsEffective(paidAddons) {
+  return isPaidAddonEffective(paidAddons, 'uberEats');
+}
+
 module.exports = {
   ENTITLEMENT_BY_CODE,
   KNOWN_ENTITLEMENT_KEYS,
@@ -74,5 +79,6 @@ module.exports = {
   isQrOrderingEffective,
   isLoyaltyEffective,
   isTableManagementEffective,
+  isUberEatsEffective,
   isInTrialPeriod,
 };

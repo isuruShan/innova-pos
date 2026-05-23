@@ -24,6 +24,7 @@ const SUPERADMIN_NAV_GROUPS = [
       { label: 'Plans', icon: CreditCard, to: '/plans' },
       { label: 'Paid add-ons', icon: Tag, to: '/paid-addons' },
       { label: 'Payment setup', icon: Wallet, to: '/payment-setup' },
+      { label: 'Uber Eats Setup', icon: Sparkles, to: '/uber-setup' },
     ],
   },
 ];
@@ -53,6 +54,7 @@ const ADMIN_NAV_GROUPS = [
     items: [
       { label: 'Cashier sessions', icon: Wallet, to: '/cashier-sessions' },
       { label: 'Add-ons', icon: Sparkles, to: '/addons' },
+      { label: 'Uber Eats Config', icon: Sparkles, to: '/uber-config' },
       { label: 'Subscription', icon: CreditCard, to: '/subscription' },
     ],
   },

@@ -220,10 +220,54 @@ async function notifyCashiersQrOrderChange({ tenantId, storeId, tableLabel, orde
   return inserted;
 }
 
+async function notifyCashiersUberEatsOrder({ tenantId, storeId, order }) {
+  const tid = castTenantId(tenantId);
+  const roles = ['cashier', 'manager', 'merchant_admin'];
+  const users = await User.find({
+    tenantId: tid,
+    role: { $in: roles },
+    isActive: true,
+  })
+    .select('_id storeIds')
+    .lean();
+
+  const sid = storeId ? String(storeId) : '';
+  const targets = users.filter((u) => {
+    const ids = (u.storeIds || []).map(String);
+    if (!ids.length) return true;
+    return sid && ids.includes(sid);
+  });
+
+  if (!targets.length) return [];
+
+  const displayId = order.uberDetails?.uberDisplayId || '---';
+  const title = `New Uber Eats Order #${displayId}`;
+  const body = `Incoming Uber Eats order. Review now.`;
+
+  const docs = targets.map((u) => ({
+    tenantId: tid,
+    userId: u._id,
+    type: 'uber_order_new',
+    title,
+    body,
+    meta: {
+      resourceType: 'order',
+      resourceId: String(order._id),
+      storeId: sid,
+      uberDisplayId: displayId,
+    },
+  }));
+
+  const inserted = await Notification.insertMany(docs);
+  publishNotificationRefresh(tid, targets.map((u) => u._id));
+  return inserted;
+}
+
 module.exports = {
   createNotification,
   notifyMerchantAdmins,
   notifyPosStaffOrderStatusChange,
   notifyCashiersTableWaiterCall,
   notifyCashiersQrOrderChange,
+  notifyCashiersUberEatsOrder,
 };

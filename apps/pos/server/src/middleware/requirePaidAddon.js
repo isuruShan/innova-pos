@@ -10,6 +10,8 @@ const ADDON_MESSAGES = {
     'QR Ordering is not active for this business. Subscribe in the admin portal under Add-ons.',
   table_management:
     'The Table Management add-on is not active for this business. Subscribe in the admin portal under Add-ons.',
+  uber_eats:
+    'Uber Eats Integration is not active for this business. Subscribe in the admin portal under Add-ons.',
 };
 
 /**

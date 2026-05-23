@@ -95,6 +95,8 @@ app.use('/api/customers', require('./routes/customers'));
 app.use('/api/tenant', require('./routes/tenantAddons'));
 app.use('/api/loyalty', require('./routes/loyalty'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/uber', require('./routes/uber'));
+app.use('/api/uber', require('./routes/uberWebhook'));
 
 // Table Management add-on routes
 app.use('/api/floor-plan', require('./routes/floorPlan'));

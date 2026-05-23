@@ -992,7 +992,7 @@ export default function NewOrder() {
                   }}
                   className="w-full rounded-xl border border-slate-700 bg-[var(--pos-surface-inset)] px-3 py-2.5 text-sm font-medium text-[var(--pos-text-primary)] focus:outline-none focus:ring-2 focus:ring-amber-500/40"
                 >
-                  {ORDER_TYPES.map((type) => (
+                  {ORDER_TYPES.filter((type) => type.id !== 'uber-eats' || paidAddons?.uberEats).map((type) => (
                     <option key={type.id} value={type.id}>
                       {type.icon} {type.label}
                     </option>

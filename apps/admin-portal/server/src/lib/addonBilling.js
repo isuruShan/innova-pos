@@ -114,6 +114,17 @@ const DEFAULT_ADDONS = [
     isActive: true,
     sortOrder: 2,
   },
+  {
+    code: 'uber_eats',
+    name: 'Uber Eats Integration',
+    shortDescription: 'Connect your restaurant to Uber Eats. Manage orders and sync rider updates directly in the POS.',
+    longDescription:
+      'Receive Uber Eats orders directly into your kitchen and cashier queues. Keeps status updates, item availability, and rider tracking synced automatically. ' +
+      'Pricing follows your subscription billing period (monthly or yearly).',
+    screenshotUrls: [],
+    isActive: true,
+    sortOrder: 3,
+  },
 ];
 
 async function ensureDefaultPaidAddons() {
@@ -224,10 +235,12 @@ async function computeSubscriptionRenewalExpected(tenant) {
 
   const addons = [];
   let addonTotal = 0;
-  const { isQrOrderingEffective, isLoyaltyEffective } = require('./addonPeriod');
+  const { isQrOrderingEffective, isLoyaltyEffective, isTableManagementEffective, isUberEatsEffective } = require('./addonPeriod');
   const renewalRows = [
     { code: 'qr_ordering', label: 'QR Ordering', key: 'qrOrdering', check: isQrOrderingEffective },
     { code: 'loyalty', label: 'Loyalty program', key: 'loyalty', check: isLoyaltyEffective },
+    { code: 'table_management', label: 'Table Management', key: 'tableManagement', check: isTableManagementEffective },
+    { code: 'uber_eats', label: 'Uber Eats Integration', key: 'uberEats', check: isUberEatsEffective },
   ];
   for (const row of renewalRows) {
     if (!row.check(t.paidAddons)) continue;
