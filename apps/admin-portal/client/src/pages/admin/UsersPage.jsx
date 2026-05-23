@@ -15,6 +15,7 @@ import { BillingQuotePanel, formatMoney, LicenseQuoteBreakdown } from '../../com
 import BankReceiptFields from '../../components/billing/BankReceiptFields';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
 import { useTenantCurrency } from '../../context/TenantCurrencyContext';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 const ROLE_COLORS = {
   merchant_admin: 'bg-purple-100 text-purple-700',
@@ -53,6 +54,8 @@ export default function UsersPage() {
   const paypalContainerRef = useRef(null);
   const [paypalReady, setPaypalReady] = useState(false);
   const [activeTab, setActiveTab] = useState('active');
+  const [deactivateTarget, setDeactivateTarget] = useState(null);
+  const [resetTarget, setResetTarget] = useState(null);
 
   useEffect(() => { setPage(1); }, [sort, order]);
 

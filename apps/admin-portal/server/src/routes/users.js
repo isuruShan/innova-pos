@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const { authenticateJWT, authorize, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { childLogger } = require('@innovapos/logger');
-const { sendWelcomeEmail } = require('../utils/mailer');
+const { sendWelcomeEmail, sendAdminResetPasswordEmail } = require('../utils/mailer');
 const { presignObjectKey } = require('../utils/s3Runtime');
 const { parsePageQuery, paginated, parseSortQuery } = require('../lib/listPagination');
 const { quoteCreateUser, quoteAssignStores } = require('../lib/userLicenseQuote');
@@ -253,10 +253,10 @@ router.post('/:id/reset-password', authenticateJWT, authorize('merchant_admin', 
       : (process.env.POS_URL || 'http://localhost:5173');
 
     try {
-      await sendWelcomeEmail({ to: user.email, name: user.name, tempPassword, loginUrl });
+      await sendAdminResetPasswordEmail({ to: user.email, name: user.name, tempPassword, loginUrl });
       res.json({ message: 'Password reset and email sent', welcomeEmailSent: true });
     } catch (emailErr) {
-      logger.error('Welcome email failed after password reset', { error: emailErr.message, to: user.email });
+      logger.error('Password reset email failed', { error: emailErr.message, to: user.email });
       res.json({
         message:
           'Password was reset but the email could not be sent. Share the temporary password manually or fix mail configuration.',

@@ -90,10 +90,37 @@ const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
   });
 };
 
+const sendAdminResetPasswordEmail = async ({ to, name, tempPassword, loginUrl }) => {
+  await sendEmail({
+    to,
+    subject: '🔐 Temporary Password Reset — Cafinity',
+    html: `
+      ${emailHeading('Password Reset 🔑', 'Your password has been reset by an administrator')}
+      ${emailParagraph(`Hi <strong>${esc(name)}</strong>,`)}
+      ${emailParagraph('An administrator for your organization has initiated a password reset for your Cafinity account. A new temporary password has been generated for you.')}
+      ${emailPanel(`
+        <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#16213e;text-transform:uppercase;letter-spacing:0.05em">Temporary Credentials</p>
+        <div style="margin:0 0 16px">
+          <p style="margin:0 0 4px;font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase">Login URL</p>
+          <p style="margin:0"><a href="${esc(loginUrl)}" style="color:#ff6b35;font-weight:700;text-decoration:none;font-size:15px">${esc(loginUrl)}</a></p>
+        </div>
+        <div style="margin:0 0 14px;padding:12px 0;border-top:2px solid #e2e8f0">
+          <p style="margin:0 0 6px;font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase">Temporary Password</p>
+          <p style="margin:0;font-size:22px;font-weight:800;letter-spacing:3px;color:#ff6b35;font-family:monospace;background:#fff3ed;padding:14px;border-radius:8px;text-align:center">${esc(tempPassword)}</p>
+        </div>
+      `)}
+      ${emailAlert('<strong>🔒 Change Password:</strong> You will be prompted to change this temporary password immediately upon your first login for security.', 'warning')}
+      ${emailParagraph('<span style="color:#94a3b8;font-size:14px">If you did not request this change or believe this is an error, please contact your café or restaurant administrator immediately.</span>')}
+      ${emailButton(loginUrl, '🚀 Access Cafinity')}
+    `,
+  });
+};
+
 module.exports = {
   sendEmail,
   sendWelcomeEmail,
   sendRejectionEmail,
   sendPasswordResetEmail,
+  sendAdminResetPasswordEmail,
   getMailConfigurationIssue,
 };
