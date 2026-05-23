@@ -60,8 +60,26 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
     }
 
     const statusQ = String(req.query.status || '').trim().toLowerCase();
-    if (statusQ === 'active') baseFilter.isActive = true;
-    else if (statusQ === 'inactive') baseFilter.isActive = false;
+    if (statusQ) {
+      const statuses = statusQ.split(',').map((s) => s.trim());
+      if (statuses.includes('none')) {
+        baseFilter.isActive = null;
+      } else if (statuses.includes('active') && !statuses.includes('inactive')) {
+        baseFilter.isActive = true;
+      } else if (statuses.includes('inactive') && !statuses.includes('active')) {
+        baseFilter.isActive = false;
+      }
+    }
+
+    const payQ = String(req.query.paymentMethods || '').trim().toLowerCase();
+    if (payQ) {
+      const methods = payQ.split(',').map((m) => m.trim());
+      if (methods.includes('none')) {
+        baseFilter.paymentMethods = { $in: [] };
+      } else if (methods.length > 0) {
+        baseFilter.paymentMethods = { $in: methods };
+      }
+    }
 
     const total = await Store.countDocuments(baseFilter);
     const sort = parseSortQuery(req, STORE_SORT_FIELDS, { isActive: -1, isDefault: -1, name: 1 });

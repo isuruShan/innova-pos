@@ -509,25 +509,20 @@ export default function BrandingPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          {[
-            { label: 'Header bar', bg: 'headerBarColor', fg: 'headerBarTextColor' },
-            { label: 'Buttons', bg: 'buttonColor', fg: 'buttonTextColor' },
-            { label: 'Selection', bg: 'selectionHighlightColor', fg: 'selectionTextColor' },
-            { label: 'Body', bg: 'bodyColor', fg: 'bodyTextColor' },
-          ].map((row) => (
-            <div key={row.label} className="rounded-lg border border-gray-200 overflow-hidden">
-              <div className="h-8" style={{ backgroundColor: form[row.bg] || '#0B1220' }} />
-              <div className="px-2 py-1.5 bg-white">
-                <p className="font-medium text-gray-700">{row.label}</p>
-                <p className="font-mono text-gray-400 truncate">{form[row.bg]}</p>
-              </div>
+        <div className="flex flex-wrap gap-2.5">
+          {[...new Set([
+            form.headerBarColor,
+            form.buttonColor,
+            form.selectionHighlightColor,
+            form.bodyColor,
+            form.hoverColor
+          ].filter(Boolean))].map((color) => (
+            <div key={color} className="flex items-center gap-2 border border-gray-200 rounded-lg p-2 bg-white shadow-xs">
+              <div className="w-8 h-8 rounded-md border border-gray-150 shrink-0 shadow-inner" style={{ backgroundColor: color }} />
+              <span className="text-xs font-mono font-bold text-gray-700 uppercase tracking-wide pr-1">{color}</span>
             </div>
           ))}
         </div>
-        <p className="text-xs text-gray-500">
-          Hover color: <span className="font-mono">{form.hoverColor || '—'}</span>
-        </p>
       </div>
 
       {presetModalOpen && (

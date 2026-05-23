@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader, X, ArrowLeft, Plus, Search, Star, Trash2, Clock } from 'lucide-react';
+import { Loader, X, ArrowLeft, Plus, Search, Star, Trash2, Clock, ChevronDown, Check, Filter, ArrowUpDown } from 'lucide-react';
 import api from '../../api/axios';
 import { fieldAttrs, PLACEHOLDERS } from '../../utils/formFields';
 import { useAuth } from '../../context/AuthContext';
@@ -21,19 +21,185 @@ import MobilePhoneField, { validateMobileField, phoneValueFromField } from '../.
 import { parsePhoneForField } from '../../utils/phone';
 import { DEFAULT_COUNTRY_CODE } from '../../constants/countries';
 
-function StatusChip({ active, onClick, children }) {
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+];
+
+const PAYMENT_METHOD_OPTIONS = [
+  { value: 'cash', label: 'Cash' },
+  { value: 'card', label: 'Card' },
+  { value: 'bank_transfer', label: 'Bank Transfer' },
+  { value: 'mobile_wallet', label: 'Mobile Wallet' },
+];
+
+const SORT_OPTIONS = [
+  { label: 'Name (A-Z)', sort: 'name', order: 'asc' },
+  { label: 'Name (Z-A)', sort: 'name', order: 'desc' },
+  { label: 'Code (A-Z)', sort: 'code', order: 'asc' },
+  { label: 'Code (Z-A)', sort: 'code', order: 'desc' },
+  { label: 'Newest First', sort: 'createdAt', order: 'desc' },
+  { label: 'Oldest First', sort: 'createdAt', order: 'asc' },
+  { label: 'Active First', sort: 'status', order: 'asc' },
+  { label: 'Inactive First', sort: 'status', order: 'desc' },
+];
+
+function MultiSelectDropdown({ label, options, selected, onChange, icon: Icon }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleToggle = (value) => {
+    const isSelected = selected.includes(value);
+    const nextSelected = isSelected
+      ? selected.filter((v) => v !== value)
+      : [...selected, value];
+    onChange(nextSelected);
+  };
+
+  const displayText = selected.length === 0
+    ? 'None'
+    : selected.length === options.length
+      ? 'All'
+      : selected.map(val => options.find(o => o.value === val)?.label || val).join(', ');
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-        active ? 'bg-brand-orange text-white shadow-sm' : 'border border-gray-200 text-gray-600 bg-white hover:bg-gray-50'
-      }`}
-    >
-      {children}
-    </button>
+    <div ref={containerRef} className="relative inline-block text-left w-full sm:w-auto">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="inline-flex items-center justify-between w-full sm:w-auto min-w-[160px] gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange shadow-xs"
+      >
+        <span className="flex items-center gap-1.5 truncate">
+          {Icon && <Icon size={16} className="text-gray-400 shrink-0" />}
+          <span className="text-gray-450 font-normal">{label}:</span>{' '}
+          <span className="truncate font-semibold text-gray-800">{displayText}</span>
+        </span>
+        <ChevronDown size={14} className="text-gray-400 shrink-0" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 sm:left-0 z-25 mt-2 w-56 rounded-xl bg-white border border-gray-150 shadow-lg py-1.5 focus:outline-none animate-fade-in">
+          <div className="px-3 py-1.5 border-b border-gray-100 flex items-center justify-between">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">{label} Options</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => onChange(options.map(o => o.value))}
+                className="text-[10px] font-semibold text-brand-orange hover:underline"
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange([])}
+                className="text-[10px] font-semibold text-gray-400 hover:underline"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+          <div className="max-h-60 overflow-y-auto px-1 py-1 space-y-0.5">
+            {options.map((option) => {
+              const isChecked = selected.includes(option.value);
+              return (
+                <label
+                  key={option.value}
+                  className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-sm text-gray-750 hover:bg-gray-50 cursor-pointer select-none"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => handleToggle(option.value)}
+                    className="rounded border-gray-300 text-brand-orange focus:ring-brand-orange h-4 w-4"
+                  />
+                  <span className="truncate">{option.label}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
+
+function SortDropdown({ sort, order, onSortChange, options }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const activeOption = options.find((o) => o.sort === sort && o.order === order) || options[0];
+
+  return (
+    <div ref={containerRef} className="relative inline-block text-left w-full sm:w-auto">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="inline-flex items-center justify-between w-full sm:w-auto min-w-[160px] gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange shadow-xs"
+      >
+        <span className="flex items-center gap-1.5 truncate">
+          <ArrowUpDown size={16} className="text-gray-400 shrink-0" />
+          <span className="text-gray-450 font-normal">Sort:</span>{' '}
+          <span className="truncate font-semibold text-gray-800">{activeOption?.label}</span>
+        </span>
+        <ChevronDown size={14} className="text-gray-400 shrink-0" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 z-25 mt-2 w-56 rounded-xl bg-white border border-gray-150 shadow-lg py-1 focus:outline-none animate-fade-in">
+          <div className="px-3 py-1.5 border-b border-gray-100">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">Sort By</span>
+          </div>
+          <div className="py-1 px-1 space-y-0.5">
+            {options.map((option, idx) => {
+              const isActive = option.sort === sort && option.order === order;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    onSortChange(option.sort, option.order);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-2.5 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between ${
+                    isActive
+                      ? 'bg-brand-orange/5 text-brand-orange font-semibold'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <span>{option.label}</span>
+                  {isActive && <Check size={14} />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
 
 export default function StoresPage({ tenantIdOverride = null, workspaceMode = false, workspaceTitle = '' }) {
   const { isSuperAdmin, isMerchantAdmin } = useAuth();
@@ -55,8 +221,9 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_admin_stores') || 'table');
   const [storePage, setStorePage] = useState(1);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const { sort, order, toggleSort, sortParams } = useListSort('name', 'asc');
+  const [statusFilter, setStatusFilter] = useState(['active', 'inactive']);
+  const [paymentMethodsFilter, setPaymentMethodsFilter] = useState(['cash', 'card', 'bank_transfer', 'mobile_wallet']);
+  const { sort, order, toggleSort, sortParams, setSort, setOrder } = useListSort('name', 'asc');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [activeTab, setActiveTab] = useState('active');
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -135,12 +302,23 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
   };
 
   const { data: storeList = { items: [], page: 1, pages: 1, total: 0 }, isLoading, isFetching } = useQuery({
-    queryKey: ['admin-stores', tenantIdOverride, storePage, search, statusFilter, sortParams],
+    queryKey: ['admin-stores', tenantIdOverride, storePage, search, statusFilter, paymentMethodsFilter, sortParams],
     queryFn: async () => {
       const params = { page: storePage, limit: 20, sort, order };
       if (tenantIdOverride) params.tenantId = tenantIdOverride;
       if (search.trim()) params.search = search.trim();
-      if (statusFilter) params.status = statusFilter;
+      if (statusFilter && statusFilter.length > 0) {
+        params.status = statusFilter.join(',');
+      } else {
+        // If status filter is cleared, we filter for none
+        params.status = 'none';
+      }
+      if (paymentMethodsFilter && paymentMethodsFilter.length > 0) {
+        params.paymentMethods = paymentMethodsFilter.join(',');
+      } else {
+        // If payment method filter is cleared, filter for none
+        params.paymentMethods = 'none';
+      }
       const { data } = await api.get('/stores', { params });
       return unwrapPagedList(data);
     },
@@ -387,7 +565,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
     },
   });
 
-  useEffect(() => { setStorePage(1); }, [search, statusFilter, sort, order]);
+  useEffect(() => { setStorePage(1); }, [search, statusFilter, paymentMethodsFilter, sort, order]);
 
   const onCreate = (e) => {
     e.preventDefault();
@@ -427,6 +605,11 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
   const onViewModeChange = (mode) => {
     setViewMode(mode);
     localStorage.setItem('view_mode_admin_stores', mode);
+  };
+
+  const handleSortChange = (newSort, newOrder) => {
+    setSort(newSort);
+    setOrder(newOrder);
   };
 
   const storeUsers = (storeId) => {
@@ -560,10 +743,27 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                   className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
                 />
               </div>
-              <div className="flex flex-wrap gap-2">
-                <StatusChip active={!statusFilter} onClick={() => setStatusFilter('')}>All</StatusChip>
-                <StatusChip active={statusFilter === 'active'} onClick={() => setStatusFilter('active')}>Active</StatusChip>
-                <StatusChip active={statusFilter === 'inactive'} onClick={() => setStatusFilter('inactive')}>Inactive</StatusChip>
+              <div className="flex flex-wrap items-center gap-2">
+                <MultiSelectDropdown
+                  label="Status"
+                  options={STATUS_OPTIONS}
+                  selected={statusFilter}
+                  onChange={setStatusFilter}
+                  icon={Filter}
+                />
+                <MultiSelectDropdown
+                  label="Payment Methods"
+                  options={PAYMENT_METHOD_OPTIONS}
+                  selected={paymentMethodsFilter}
+                  onChange={setPaymentMethodsFilter}
+                  icon={Filter}
+                />
+                <SortDropdown
+                  sort={sort}
+                  order={order}
+                  onSortChange={handleSortChange}
+                  options={SORT_OPTIONS}
+                />
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">

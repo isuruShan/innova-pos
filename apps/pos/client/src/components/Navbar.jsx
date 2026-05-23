@@ -201,7 +201,7 @@ function StoreSwitcher({ stores, selectedStoreId, selectStore }) {
   );
 }
 
-function NavLogo({ branding }) {
+export function NavLogo({ branding }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     setFailed(false);

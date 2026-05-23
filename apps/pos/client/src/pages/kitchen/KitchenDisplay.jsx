@@ -10,7 +10,7 @@ import { resolveLiveOrder, useSyncOfflineOrderSelection } from '../../offline/or
 import { useAuth } from '../../context/AuthContext';
 import OrderTypeBadge from '../../components/OrderTypeBadge';
 import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
-import { AvatarMenu } from '../../components/Navbar';
+import { AvatarMenu, NavLogo } from '../../components/Navbar';
 import { useStoreContext } from '../../context/StoreContext';
 import { useBranding } from '../../context/BrandingContext';
 import { KitchenBoardSkeleton } from '../../components/StoreSkeletons';
@@ -421,10 +421,18 @@ export default function KitchenDisplay() {
     <div className="h-screen bg-[var(--pos-page-bg)] flex flex-col overflow-hidden">
       <OfflineBanner />
       {/* Header */}
-      <div className="bg-[#111827] border-b border-slate-700/50 px-4 py-2.5 flex items-center justify-between gap-4 flex-shrink-0">
+      <div
+        className="border-b px-4 py-2.5 flex items-center justify-between gap-4 flex-shrink-0"
+        style={{ backgroundColor: 'var(--color-sidebar)', borderColor: 'color-mix(in srgb, var(--color-header-text, var(--color-text)) 14%, transparent)' }}
+      >
         <div className="flex items-center gap-3">
-          <img src="/logo-1.png" alt="Cafinity" className="h-8 w-auto object-contain rounded-md" />
-          <span className="font-bold text-[var(--pos-text-primary)] text-sm tracking-wide hidden sm:block">Cafinity</span>
+          <NavLogo branding={branding} />
+          <span
+            className="font-bold text-sm hidden sm:block tracking-wide"
+            style={{ color: 'var(--color-header-text, var(--color-text))' }}
+          >
+            {branding.businessName || 'POS'}
+          </span>
           <div className="w-px h-5 bg-slate-700" />
           <ChefHat size={16} className="text-amber-400" />
           <h1 className="text-sm font-bold text-[var(--pos-text-primary)] tracking-widest uppercase">Kitchen</h1>

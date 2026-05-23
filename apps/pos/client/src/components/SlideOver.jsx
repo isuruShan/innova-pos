@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 export default function SlideOver({ open, onClose, title, children }) {
   useEffect(() => {
@@ -10,8 +11,8 @@ export default function SlideOver({ open, onClose, title, children }) {
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex">
+  return createPortal(
+    <div className="fixed inset-0 z-[500] flex">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -32,6 +33,7 @@ export default function SlideOver({ open, onClose, title, children }) {
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
