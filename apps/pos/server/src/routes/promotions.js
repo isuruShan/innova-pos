@@ -3,6 +3,7 @@ const Promotion = require('../models/Promotion');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
 const { createNotification, notifyMerchantAdmins } = require('../lib/notificationHelpers');
+const { parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
 
@@ -29,7 +30,13 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
     if (req.query.pending === 'true') {
       filter.approvalStatus = 'pending';
     }
-    const promotions = await Promotion.find(filter).sort({ createdAt: -1 });
+    const sort = parseSortQuery(req, {
+      name: 'name',
+      createdAt: 'createdAt',
+      endDate: 'endDate',
+      status: 'active',
+    }, { createdAt: -1 });
+    const promotions = await Promotion.find(filter).sort(sort);
     res.json(promotions);
   } catch (err) {
     sendRouteError(res, err, { req });

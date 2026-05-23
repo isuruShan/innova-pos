@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Search, Building2, Users, CheckCircle, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import api from '../../api/axios';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
+import SortableTh from '../../components/common/SortableTh';
+import { useListSort } from '../../hooks/useListSort';
 
 const STATUS_CONFIG = {
   active:    { label: 'Active',    class: 'bg-green-100 text-green-700',  icon: CheckCircle },
@@ -24,11 +26,14 @@ export default function MerchantsPage() {
   const [dueWithinDays, setDueWithinDays] = useState('');
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_merchants') || 'grid');
+  const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
+
+  useEffect(() => { setPage(1); }, [sort, order]);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['tenants', search, statusFilter, subscriptionFilter, dueWithinDays, page],
+    queryKey: ['tenants', search, statusFilter, subscriptionFilter, dueWithinDays, page, sortParams],
     queryFn: async () => {
-      const params = { page, limit: 20 };
+      const params = { page, limit: 20, sort, order };
       if (search) params.search = search;
       if (statusFilter) params.status = statusFilter;
       if (subscriptionFilter) params.subscriptionStatus = subscriptionFilter;
@@ -93,9 +98,13 @@ export default function MerchantsPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                {['Merchant', 'Status', 'Subscription', 'Due date', 'Assigned plan', 'Admins', 'Actions'].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                ))}
+                <SortableTh label="Merchant" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                <SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                <SortableTh label="Subscription" field="subscriptionStatus" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Due date</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Assigned plan</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Admins</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

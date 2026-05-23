@@ -125,6 +125,14 @@ const DEFAULT_ADDONS = [
     isActive: true,
     sortOrder: 3,
   },
+  {
+    code: 'accounting',
+    name: 'Advanced Accounting Module',
+    shortDescription: 'Double-entry bookkeeping, payroll management, creditors, debtors, and automated tax statements.',
+    longDescription: 'Automates accounting records directly from checkout sales. Configure custom tax rates, run staff payroll, track debtor/creditor balances, and instantly export P&L reports, Cash Flow sheets, and Balance Sheets.',
+    isActive: true,
+    sortOrder: 4,
+  },
 ];
 
 async function ensureDefaultPaidAddons() {
@@ -235,12 +243,13 @@ async function computeSubscriptionRenewalExpected(tenant) {
 
   const addons = [];
   let addonTotal = 0;
-  const { isQrOrderingEffective, isLoyaltyEffective, isTableManagementEffective, isUberEatsEffective } = require('./addonPeriod');
+  const { isQrOrderingEffective, isLoyaltyEffective, isTableManagementEffective, isUberEatsEffective, isAccountingEffective } = require('./addonPeriod');
   const renewalRows = [
     { code: 'qr_ordering', label: 'QR Ordering', key: 'qrOrdering', check: isQrOrderingEffective },
     { code: 'loyalty', label: 'Loyalty program', key: 'loyalty', check: isLoyaltyEffective },
     { code: 'table_management', label: 'Table Management', key: 'tableManagement', check: isTableManagementEffective },
     { code: 'uber_eats', label: 'Uber Eats Integration', key: 'uberEats', check: isUberEatsEffective },
+    { code: 'accounting', label: 'Advanced Accounting Module', key: 'accounting', check: isAccountingEffective },
   ];
   for (const row of renewalRows) {
     if (!row.check(t.paidAddons)) continue;

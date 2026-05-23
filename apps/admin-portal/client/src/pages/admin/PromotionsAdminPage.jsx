@@ -8,11 +8,14 @@ import api from '../../api/axios';
 import AdminDateField from '../../components/AdminDateField';
 import { useStoreContext } from '../../context/StoreContext';
 import ListPagination from '../../components/common/ListPagination';
+import SortableTh from '../../components/common/SortableTh';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
+import { useListSort } from '../../hooks/useListSort';
 import SideDrawer from '../../components/common/SideDrawer';
 import { useToast } from '../../context/ToastContext';
 import FormField, { inputClass } from '../../components/common/FormField';
 import PromotionTypeFields from '../../components/promotions/PromotionTypeFields';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 const EMPTY = {
   name: '',
   description: '',
@@ -55,11 +58,13 @@ export default function PromotionsAdminPage() {
   const [formError, setFormError] = useState('');
   const [rejectFor, setRejectFor] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [confirmDeletePromo, setConfirmDeletePromo] = useState(null);
   const [listPage, setListPage] = useState(1);
+  const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
 
   useEffect(() => {
     setListPage(1);
-  }, [search, approvalFilter, storeFilter, activeFilter]);
+  }, [search, approvalFilter, storeFilter, activeFilter, sort, order]);
 
   const listParams = () => {
     const p = {};
@@ -74,19 +79,19 @@ export default function PromotionsAdminPage() {
   };
 
   const { data: promoList = { items: [], page: 1, pages: 1, total: 0 }, isPending, isFetching } = useQuery({
-    queryKey: ['admin-promotions', search, approvalFilter, storeFilter, activeFilter, listPage],
+    queryKey: ['admin-promotions', search, approvalFilter, storeFilter, activeFilter, listPage, sortParams],
     queryFn: () =>
       api
-        .get('/promotions', { params: { ...listParams(), page: listPage, limit: 25 } })
+        .get('/promotions', { params: { ...listParams(), page: listPage, limit: 25, sort, order } })
         .then((r) => unwrapPagedList(r.data)),
   });
   const promotions = promoList.items || [];
 
   const { data: pendingList = { items: [] }, isPending: pendingListLoading } = useQuery({
-    queryKey: ['admin-promotions-pending'],
+    queryKey: ['admin-promotions-pending', sortParams],
     queryFn: () =>
       api
-        .get('/promotions', { params: { pending: true, page: 1, limit: 200 } })
+        .get('/promotions', { params: { pending: true, page: 1, limit: 200, sort, order } })
         .then((r) => unwrapPagedList(r.data)),
   });
   const pendingOnly = pendingList.items || [];
@@ -344,7 +349,7 @@ export default function PromotionsAdminPage() {
             <table className="min-w-full text-sm">
               <thead className="bg-amber-100/80 text-left">
                 <tr>
-                  <th className="px-3 py-2 font-medium">Name</th>
+                  <SortableTh label="Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} className="px-3 py-2" />
                   <th className="px-3 py-2 font-medium">Store</th>
                   <th className="px-3 py-2 font-medium">Type</th>
                   <th className="px-3 py-2 font-medium text-right">Actions</th>
@@ -440,11 +445,11 @@ export default function PromotionsAdminPage() {
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50 text-gray-700 text-left">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Name</th>
+                  <SortableTh label="Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                   <th className="px-4 py-3 font-medium">Scope</th>
                   <th className="px-4 py-3 font-medium">Type</th>
                   <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Live</th>
+                  <SortableTh label="Live" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                   <th className="px-4 py-3 font-medium text-right">Actions</th>
                 </tr>
               </thead>
@@ -486,9 +491,7 @@ export default function PromotionsAdminPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          if (window.confirm(`Delete promotion "${p.name}"?`)) deleteMut.mutate(p._id);
-                        }}
+                        onClick={() => setConfirmDeletePromo(p)}
                         className="text-red-600 text-xs inline-flex items-center gap-1"
                       >
                         <Trash2 size={12} />
@@ -685,6 +688,16 @@ export default function PromotionsAdminPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(confirmDeletePromo)}
+        variant="delete"
+        title="Delete promotion?"
+        message={`"${confirmDeletePromo?.name}" will be permanently deleted.`}
+        confirmLabel="Delete"
+        onConfirm={() => { deleteMut.mutate(confirmDeletePromo._id); setConfirmDeletePromo(null); }}
+        onCancel={() => setConfirmDeletePromo(null)}
+      />
     </div>
   );
 }

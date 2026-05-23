@@ -5,10 +5,13 @@ import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
 import RewardScopeCombobox from '../../components/RewardScopeCombobox';
 import ListPagination from '../../components/common/ListPagination';
+import SortableTh from '../../components/common/SortableTh';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
+import { useListSort } from '../../hooks/useListSort';
 import SideDrawer from '../../components/common/SideDrawer';
 import FormField, { inputClass } from '../../components/common/FormField';
 import { useToast } from '../../context/ToastContext';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 const emptyForm = {
   name: '',
@@ -39,12 +42,14 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
   const [editor, setEditor] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [rejectFor, setRejectFor] = useState(null);
+  const [confirmDeleteReward, setConfirmDeleteReward] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [listPage, setListPage] = useState(1);
+  const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
 
   useEffect(() => {
     setListPage(1);
-  }, [search, approvalFilter, storeFilter]);
+  }, [search, approvalFilter, storeFilter, sort, order]);
 
   useEffect(() => {
     if (!initialRewardId || editor !== null) return;
@@ -83,19 +88,19 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
   };
 
   const { data: rewardList = { items: [], page: 1, pages: 1, total: 0 }, isPending, isFetching } = useQuery({
-    queryKey: ['admin-loyalty-rewards-tab', search, approvalFilter, storeFilter, listPage],
+    queryKey: ['admin-loyalty-rewards-tab', search, approvalFilter, storeFilter, listPage, sortParams],
     queryFn: () =>
       api
-        .get('/loyalty/rewards', { params: { ...queryParams(), page: listPage, limit: 25 } })
+        .get('/loyalty/rewards', { params: { ...queryParams(), page: listPage, limit: 25, sort, order } })
         .then((r) => unwrapPagedList(r.data)),
   });
   const rows = rewardList.items || [];
 
   const { data: pendingQueueList = { items: [] } } = useQuery({
-    queryKey: ['admin-loyalty-rewards-pending-only'],
+    queryKey: ['admin-loyalty-rewards-pending-only', sortParams],
     queryFn: () =>
       api
-        .get('/loyalty/rewards', { params: { pending: true, page: 1, limit: 200 } })
+        .get('/loyalty/rewards', { params: { pending: true, page: 1, limit: 200, sort, order } })
         .then((r) => unwrapPagedList(r.data)),
   });
   const pendingQueue = pendingQueueList.items || [];
@@ -226,9 +231,9 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
             <table className="min-w-full text-sm">
               <thead className="bg-amber-100/80 text-left text-amber-950">
                 <tr>
-                  <th className="px-3 py-2 font-medium">Name</th>
+                  <SortableTh label="Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} className="px-3 py-2" />
                   <th className="px-3 py-2 font-medium">Store</th>
-                  <th className="px-3 py-2 font-medium">Pts</th>
+                  <SortableTh label="Pts" field="pointsCost" currentSort={sort} currentOrder={order} onSort={toggleSort} className="px-3 py-2" />
                   <th className="px-3 py-2 font-medium text-right">Actions</th>
                 </tr>
               </thead>
@@ -316,11 +321,11 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50 text-gray-700 text-left">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Name</th>
+                  <SortableTh label="Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                   <th className="px-4 py-3 font-medium">Scope</th>
-                  <th className="px-4 py-3 font-medium">Pts</th>
+                  <SortableTh label="Pts" field="pointsCost" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                   <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Active</th>
+                  <SortableTh label="Active" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                   <th className="px-4 py-3 font-medium text-right">Actions</th>
                 </tr>
               </thead>
@@ -363,9 +368,7 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          if (window.confirm(`Delete reward "${r.name}"?`)) del.mutate(r._id);
-                        }}
+                        onClick={() => setConfirmDeleteReward(r)}
                         className="text-red-600 text-xs"
                       >
                         <Trash2 size={12} className="inline" />
@@ -599,6 +602,16 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(confirmDeleteReward)}
+        variant="delete"
+        title="Delete reward?"
+        message={`"${confirmDeleteReward?.name}" will be permanently removed.`}
+        confirmLabel="Delete"
+        onConfirm={() => { del.mutate(confirmDeleteReward._id); setConfirmDeleteReward(null); }}
+        onCancel={() => setConfirmDeleteReward(null)}
+      />
     </div>
   );
 }

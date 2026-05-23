@@ -52,8 +52,16 @@ router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
+    const appSort = (() => {
+      const sortField = String(req.query.sort || req.query.sortBy || '').trim();
+      const orderRaw = String(req.query.order || req.query.sortOrder || 'desc').toLowerCase();
+      const dir = orderRaw === 'asc' ? 1 : -1;
+      const allowed = { createdAt: 'createdAt', status: 'status', businessName: 'business.name' };
+      if (sortField && allowed[sortField]) return { [allowed[sortField]]: dir };
+      return { createdAt: -1 };
+    })();
     const [applicationsRaw, total] = await Promise.all([
-      MerchantApplication.find(filter).sort({ createdAt: -1 }).skip(skip).limit(parseInt(limit))
+      MerchantApplication.find(filter).sort(appSort).skip(skip).limit(parseInt(limit))
         .populate('reviewedBy', 'name').lean(),
       MerchantApplication.countDocuments(filter),
     ]);

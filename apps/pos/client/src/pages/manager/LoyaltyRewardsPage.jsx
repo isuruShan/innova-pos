@@ -10,6 +10,8 @@ import LoyaltyAddonBanner from '../../components/LoyaltyAddonBanner';
 import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 import { useAuth } from '../../context/AuthContext';
 import { useStoreContext } from '../../context/StoreContext';
+import SortableTh from '../../components/SortableTh';
+import { useListSort } from '../../hooks/useListSort';
 
 const empty = {
   name: '',
@@ -33,13 +35,14 @@ export default function LoyaltyRewardsPage() {
   const [slide, setSlide] = useState(null);
   const [form, setForm] = useState(empty);
   const [formError, setFormError] = useState('');
+  const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
 
   const { data: paidAddons } = useTenantPaidAddons();
   const loyaltyAddonActive = paidAddons?.loyalty === true;
 
   const { data: rows = [], isPending } = useQuery({
-    queryKey: ['loyalty-rewards'],
-    queryFn: () => api.get('/loyalty/rewards').then((r) => r.data),
+    queryKey: ['loyalty-rewards', sortParams],
+    queryFn: () => api.get('/loyalty/rewards', { params: { sort, order } }).then((r) => r.data),
     enabled: loyaltyAddonActive,
   });
 
@@ -104,7 +107,6 @@ export default function LoyaltyRewardsPage() {
               setSlide({});
               setForm(empty);
               setFormError('');
-              setScopeSearch('');
             }}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-semibold text-sm disabled:opacity-50"
           >
@@ -127,9 +129,10 @@ export default function LoyaltyRewardsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-700/50 text-left text-slate-500 text-xs uppercase">
-                  <th className="px-4 py-3">Name</th>
+                  <SortableTh label="Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                   <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Points</th>
+                  <SortableTh label="Created" field="createdAt" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                  <SortableTh label="Points" field="pointsCost" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                   <th className="px-4 py-3">Approval</th>
                   <th className="px-4 py-3">Active</th>
                 </tr>
@@ -140,6 +143,9 @@ export default function LoyaltyRewardsPage() {
                     <td className="px-4 py-3 text-[var(--pos-text-primary)]">{r.name}</td>
                     <td className="px-4 py-3 text-slate-400 text-xs">
                       {r.redemptionType === 'automatic' ? 'Member perk' : 'Points'}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
+                      {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—'}
                     </td>
                     <td className="px-4 py-3 text-amber-400">{r.pointsCost}</td>
                     <td className="px-4 py-3">

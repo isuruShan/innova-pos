@@ -1,20 +1,38 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader, X, ArrowLeft, Plus } from 'lucide-react';
+import { Loader, X, ArrowLeft, Plus, Search, Star, Trash2 } from 'lucide-react';
 import api from '../../api/axios';
 import { fieldAttrs, PLACEHOLDERS } from '../../utils/formFields';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
 import ListPagination from '../../components/common/ListPagination';
+import SortableTh from '../../components/common/SortableTh';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
+import { useListSort } from '../../hooks/useListSort';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
 import { BillingQuotePanel, formatMoney } from '../../components/billing/ProrationBreakdown';
 import { useTenantCurrency } from '../../context/TenantCurrencyContext';
 import BankReceiptFields from '../../components/billing/BankReceiptFields';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
+import StoreCreateDrawer from '../../components/superadmin/StoreCreateDrawer';
 
-export default function StoresPage() {
+function StatusChip({ active, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+        active ? 'bg-brand-orange text-white shadow-sm' : 'border border-gray-200 text-gray-600 bg-white hover:bg-gray-50'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+export default function StoresPage({ tenantIdOverride = null, workspaceMode = false, workspaceTitle = '' }) {
   const { isSuperAdmin, isMerchantAdmin } = useAuth();
   const canCreateStore = isSuperAdmin || isMerchantAdmin;
   const queryClient = useQueryClient();
@@ -31,6 +49,11 @@ export default function StoresPage() {
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_admin_stores') || 'table');
   const [storePage, setStorePage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const { sort, order, toggleSort, sortParams } = useListSort('name', 'asc');
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [purchaseOpen, setPurchaseOpen] = useState(false);
   const [purchaseStep, setPurchaseStep] = useState('review');
   const [chosenMethod, setChosenMethod] = useState(null);
@@ -99,9 +122,13 @@ export default function StoresPage() {
   };
 
   const { data: storeList = { items: [], page: 1, pages: 1, total: 0 }, isLoading, isFetching } = useQuery({
-    queryKey: ['admin-stores', storePage],
+    queryKey: ['admin-stores', tenantIdOverride, storePage, search, statusFilter, sortParams],
     queryFn: async () => {
-      const { data } = await api.get('/stores', { params: { page: storePage, limit: 20 } });
+      const params = { page: storePage, limit: 20, sort, order };
+      if (tenantIdOverride) params.tenantId = tenantIdOverride;
+      if (search.trim()) params.search = search.trim();
+      if (statusFilter) params.status = statusFilter;
+      const { data } = await api.get('/stores', { params });
       return unwrapPagedList(data);
     },
   });
@@ -122,11 +149,13 @@ export default function StoresPage() {
   });
 
   const createStoreSuper = useMutation({
-    mutationFn: (payload) => api.post('/stores', payload),
+    mutationFn: (payload) => api.post('/stores', tenantIdOverride ? { ...payload, tenantId: tenantIdOverride } : payload),
     onSuccess: () => {
       setForm({ name: '', address: '', phone: '', paymentMethods: ['cash'] });
       setError('');
+      setDrawerOpen(false);
       queryClient.invalidateQueries({ queryKey: ['admin-stores'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-stores'] });
       queryClient.invalidateQueries({ queryKey: ['stores'] });
     },
     onError: (err) => setError(err.response?.data?.message || 'Failed to create store'),
@@ -307,6 +336,28 @@ export default function StoresPage() {
     onError: (err) => setError(err.response?.data?.message || 'Failed to update store access'),
   });
 
+  const deleteStore = useMutation({
+    mutationFn: (id) => api.delete(`/stores/${id}`, {
+      data: tenantIdOverride ? { tenantId: tenantIdOverride } : undefined,
+    }),
+    onSuccess: (res) => {
+      toast.success(res.data?.message || 'Store deleted.');
+      setDeleteTarget(null);
+      closeEditDrawer();
+      queryClient.invalidateQueries({ queryKey: ['admin-stores'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-stores'] });
+      queryClient.invalidateQueries({ queryKey: ['stores'] });
+      queryClient.invalidateQueries({ queryKey: ['users-for-store-access'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Failed to delete store');
+      setDeleteTarget(null);
+    },
+  });
+
+  useEffect(() => { setStorePage(1); }, [search, statusFilter, sort, order]);
+
   const onCreate = (e) => {
     e.preventDefault();
     if (!form.name.trim()) {
@@ -369,15 +420,19 @@ export default function StoresPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-gray-900">Stores</h2>
+        <h2 className="text-xl font-bold text-gray-900">
+          {workspaceMode ? `Stores — ${workspaceTitle || 'Merchant'}` : 'Stores'}
+        </h2>
         <p className="text-sm text-gray-500 mt-1">
-          {isSuperAdmin
-            ? 'Create and manage store branches for merchants.'
-            : isMerchantAdmin
-              ? 'Your first store is included in your plan. Additional locations require payment, then you can edit name and settings.'
-              : 'Edit details for stores assigned to your admin account.'}
+          {workspaceMode
+            ? 'Manage branches for this merchant. The default store is marked with a star and cannot be deleted.'
+            : isSuperAdmin
+              ? 'Create and manage store branches for merchants.'
+              : isMerchantAdmin
+                ? 'Your first store is included in your plan. Additional locations require payment, then you can edit name and settings.'
+                : 'Edit details for stores assigned to your admin account.'}
         </p>
-        {isMerchantAdmin && (
+        {isMerchantAdmin && !workspaceMode && (
           <button
             type="button"
             onClick={startCreateStore}
@@ -390,7 +445,7 @@ export default function StoresPage() {
         )}
       </div>
 
-      {isSuperAdmin && canCreateStore && (
+      {isSuperAdmin && canCreateStore && !workspaceMode && (
         <form onSubmit={onCreate} className="rounded-xl border border-gray-200 bg-white p-4 grid gap-3 md:grid-cols-2">
           <div className="md:col-span-2"><label className="block text-xs text-gray-500 mb-1">Store Name</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder={PLACEHOLDERS.storeName}
           maxLength={fieldAttrs('storeName').maxLength} value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} /></div>
@@ -427,8 +482,36 @@ export default function StoresPage() {
         </form>
       )}
 
-      <div className="flex justify-end">
-        <ViewModeToggle mode={viewMode} setMode={onViewModeChange} />
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 flex-1">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search stores…"
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <StatusChip active={!statusFilter} onClick={() => setStatusFilter('')}>All</StatusChip>
+            <StatusChip active={statusFilter === 'active'} onClick={() => setStatusFilter('active')}>Active</StatusChip>
+            <StatusChip active={statusFilter === 'inactive'} onClick={() => setStatusFilter('inactive')}>Inactive</StatusChip>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {workspaceMode && isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold"
+            >
+              <Plus size={16} /> New store
+            </button>
+          )}
+          <ViewModeToggle mode={viewMode} setMode={onViewModeChange} />
+        </div>
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
@@ -439,16 +522,28 @@ export default function StoresPage() {
               return (
               <div key={sid || store.code} className="rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors">
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <p className="font-semibold text-gray-900">{store.name}</p>
+                  <p className="font-semibold text-gray-900 flex items-center gap-1.5">
+                    {store.isDefault && (
+                      <Star size={14} className="text-amber-500 fill-amber-500 shrink-0" aria-label="Default store" title="Default store" />
+                    )}
+                    {store.name}
+                  </p>
                   {store.isActive === false && (
                     <span className="inline-block text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded">Inactive</span>
                   )}
                 </div>
                 <p className="text-xs text-gray-600">{store.address || 'No address'}</p>
                 <p className="text-xs text-gray-500 mt-1">{store.phone || 'No phone'}</p>
-                <button type="button" className="mt-3 text-xs px-3 py-1.5 rounded-lg border border-brand-orange text-brand-orange font-medium hover:bg-brand-orange hover:text-white transition-colors" onClick={() => openEdit(sid)}>
-                  Edit store
-                </button>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" className="text-xs px-3 py-1.5 rounded-lg border border-brand-orange text-brand-orange font-medium hover:bg-brand-orange hover:text-white transition-colors" onClick={() => openEdit(sid)}>
+                    Edit
+                  </button>
+                  {!store.isDefault && (isMerchantAdmin || isSuperAdmin) && (
+                    <button type="button" className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-600 font-medium hover:bg-red-50 transition-colors" onClick={() => setDeleteTarget(store)}>
+                      Delete
+                    </button>
+                  )}
+                </div>
                 {!isSuperAdmin && (
                   <div className="mt-4 border-t border-gray-200 pt-3">
                     <p className="text-xs font-semibold text-gray-600 mb-2">Store Access Users</p>
@@ -479,9 +574,12 @@ export default function StoresPage() {
           <table className="w-full text-sm min-w-[560px]">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              {['Store', 'Address', 'Phone', 'Status', 'Default', 'Action'].map((h) => (
-                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-              ))}
+              <SortableTh label="Store" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Address</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Phone</th>
+              <SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+              <SortableTh label="Created" field="createdAt" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -492,7 +590,14 @@ export default function StoresPage() {
               const sid = storeIdStr(store);
               return (
               <tr key={sid || store.code} className={store.isActive === false ? 'bg-gray-50/80' : ''}>
-                <td className="px-4 py-3 font-medium text-gray-900">{store.name}</td>
+                <td className="px-4 py-3 font-medium text-gray-900">
+                  <span className="inline-flex items-center gap-1.5">
+                    {store.isDefault && (
+                      <Star size={14} className="text-amber-500 fill-amber-500 shrink-0" aria-label="Default store" title="Default store" />
+                    )}
+                    {store.name}
+                  </span>
+                </td>
                 <td className="px-4 py-3 text-gray-600">{store.address || '-'}</td>
                 <td className="px-4 py-3 text-gray-600">{store.phone || '-'}</td>
                 <td className="px-4 py-3 text-gray-600">
@@ -502,11 +607,20 @@ export default function StoresPage() {
                     <span className="text-xs font-medium text-green-700">Active</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-gray-600">{store.isDefault ? 'Yes' : 'No'}</td>
+                <td className="px-4 py-3 text-gray-600 text-xs">
+                  {store.createdAt ? new Date(store.createdAt).toLocaleDateString() : '-'}
+                </td>
                 <td className="px-4 py-3">
-                  <button type="button" className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50" onClick={() => openEdit(sid)}>
-                    Edit
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50" onClick={() => openEdit(sid)}>
+                      Edit
+                    </button>
+                    {!store.isDefault && (isMerchantAdmin || isSuperAdmin) && (
+                      <button type="button" className="text-xs px-2.5 py-1 rounded-md border border-red-200 text-red-600 hover:bg-red-50" onClick={() => setDeleteTarget(store)}>
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             );
@@ -761,6 +875,30 @@ export default function StoresPage() {
             </div>
           </aside>
         </>
+      )}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete store permanently?"
+        message={
+          deleteTarget
+            ? `This will permanently delete "${deleteTarget.name}" and all its data. Store subscription charges and user assignments will be removed from your next billing cycle. This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Delete permanently"
+        variant="delete"
+        isLoading={deleteStore.isPending}
+        onConfirm={() => deleteStore.mutate(storeIdStr(deleteTarget))}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
+      {workspaceMode && (
+        <StoreCreateDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          onSubmit={(f) => createStoreSuper.mutate(f)}
+          isPending={createStoreSuper.isPending}
+        />
       )}
     </div>
   );

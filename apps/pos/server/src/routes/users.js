@@ -3,6 +3,7 @@ const User = require('../models/User');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, resolveWriteStoreId } = require('../middleware/storeScope');
 const { presignObjectKey } = require('../utils/s3Runtime');
+const { parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
 
@@ -38,9 +39,15 @@ router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), t
     if (req.user.role === 'manager') {
       filter.role = { $in: MANAGER_ROLES };
     }
+    const sort = parseSortQuery(req, {
+      name: 'name',
+      role: 'role',
+      createdAt: 'createdAt',
+      status: 'isActive',
+    }, { role: 1, name: 1 });
     let users = await User.find(filter)
       .select('-password -resetPasswordToken -resetPasswordExpires -managerApprovalPin')
-      .sort({ role: 1, name: 1 })
+      .sort(sort)
       .lean();
     users = await attachFreshProfileImages(users);
     res.json(users);

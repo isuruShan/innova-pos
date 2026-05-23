@@ -5,7 +5,7 @@ const { authenticateJWT, authorize, emitAudit, sendRouteError } = require('@inno
 const { childLogger } = require('@innovapos/logger');
 const { sendWelcomeEmail } = require('../utils/mailer');
 const { presignObjectKey } = require('../utils/s3Runtime');
-const { parsePageQuery, paginated } = require('../lib/listPagination');
+const { parsePageQuery, paginated, parseSortQuery } = require('../lib/listPagination');
 const { quoteCreateUser, quoteAssignStores } = require('../lib/userLicenseQuote');
 const {
   normalizeStoreAssignments,
@@ -56,11 +56,18 @@ router.get('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), asyn
     }
 
     const total = await User.countDocuments(filter);
+    const sort = parseSortQuery(req, {
+      name: 'name',
+      email: 'email',
+      role: 'role',
+      createdAt: 'createdAt',
+      status: 'isActive',
+    }, { role: 1, name: 1 });
     let users = await User.find(filter)
       .populate('storeIds', 'name code')
       .populate('defaultStoreId', 'name code')
       .select('-password -resetPasswordToken -resetPasswordExpires')
-      .sort({ role: 1, name: 1 })
+      .sort(sort)
       .skip(skip)
       .limit(limit)
       .lean();

@@ -18,6 +18,7 @@ import { useTenantCurrency } from '../../context/TenantCurrencyContext';
 import BankReceiptFields from '../../components/billing/BankReceiptFields';
 import { useToast } from '../../context/ToastContext';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 /**
  * Paid add-ons (e.g. QR Ordering): review first, then choose an admin-configured
@@ -94,6 +95,7 @@ export default function MerchantAddonsPage() {
   });
 
   const [unsubscribingCode, setUnsubscribingCode] = useState('');
+  const [confirmUnsubscribe, setConfirmUnsubscribe] = useState(null);
 
   const unsubscribeMutation = useMutation({
     mutationFn: (code) => api.post(`/paid-addons/${encodeURIComponent(code)}/unsubscribe`).then((r) => r.data),
@@ -131,11 +133,7 @@ export default function MerchantAddonsPage() {
   };
 
   const handleUnsubscribe = (row) => {
-    if (!window.confirm(
-      `Unsubscribe from ${row.name}? It will stay active until the end of your current paid period, then turn off.`,
-    )) return;
-    setUnsubscribingCode(row.code);
-    unsubscribeMutation.mutate(row.code);
+    setConfirmUnsubscribe(row);
   };
 
   const closeFlow = useCallback(() => {
@@ -557,5 +555,19 @@ export default function MerchantAddonsPage() {
         </div>
       )}
     </div>
+
+      <ConfirmDialog
+        open={Boolean(confirmUnsubscribe)}
+        variant="warning"
+        title={`Unsubscribe from ${confirmUnsubscribe?.name}?`}
+        message="It will stay active until the end of your current paid period, then turn off."
+        confirmLabel="Unsubscribe"
+        onConfirm={() => {
+          setUnsubscribingCode(confirmUnsubscribe.code);
+          unsubscribeMutation.mutate(confirmUnsubscribe.code);
+          setConfirmUnsubscribe(null);
+        }}
+        onCancel={() => setConfirmUnsubscribe(null)}
+      />
   );
 }

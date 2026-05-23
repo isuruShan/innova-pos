@@ -14,7 +14,7 @@ const { presignObjectKey } = require('../utils/s3Runtime');
 const { notifySuperAdmins, notifyMerchantAdmins } = require('../lib/notificationHelpers');
 const { notifySubscriptionEvent } = require('../lib/subscriptionNotify');
 const { resolveTenantPeriodEnd } = require('../lib/subscriptionDates');
-const { parsePageQuery, paginated } = require('../lib/listPagination');
+const { parsePageQuery, paginated, parseSortQuery } = require('../lib/listPagination');
 const {
   computeSubscriptionRenewalExpected,
   getAddonByCode,
@@ -132,8 +132,14 @@ router.get('/receipts', authenticateJWT, async (req, res) => {
 
     const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 100 });
     const total = await PaymentReceipt.countDocuments(filter);
+    const sort = parseSortQuery(req, {
+      createdAt: 'createdAt',
+      amount: 'amount',
+      status: 'status',
+      paymentDate: 'paymentDate',
+    }, { createdAt: -1 });
     let receipts = await PaymentReceipt.find(filter)
-      .sort({ createdAt: -1 })
+      .sort(sort)
       .skip(skip)
       .limit(limit)
       .populate('tenantId', 'businessName slug')

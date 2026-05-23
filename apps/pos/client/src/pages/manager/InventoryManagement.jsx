@@ -10,6 +10,8 @@ import Badge from '../../components/Badge';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { useStoreContext } from '../../context/StoreContext';
 import { InventoryTableSkeleton } from '../../components/StoreSkeletons';
+import SortableTh from '../../components/SortableTh';
+import { useListSort } from '../../hooks/useListSort';
 
 const EMPTY_FORM = { itemName: '', unit: 'pcs', quantity: '', minThreshold: '', suppliers: [] };
 
@@ -74,10 +76,11 @@ export default function InventoryManagement() {
   const [formError, setFormError] = useState('');
   const [filter, setFilter] = useState('all');
   const qc = useQueryClient();
+  const { sort, order, toggleSort, sortParams } = useListSort('name', 'asc');
 
   const { data: items = [], isPending: invPending } = useQuery({
-    queryKey: ['inventory', selectedStoreId],
-    queryFn: () => api.get('/inventory').then(r => r.data),
+    queryKey: ['inventory', selectedStoreId, sortParams],
+    queryFn: () => api.get('/inventory', { params: { sort, order } }).then(r => r.data),
     enabled: isStoreReady,
   });
 
@@ -206,9 +209,9 @@ export default function InventoryManagement() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-700/50">
-                    <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-5 py-3">Item Name</th>
+                    <SortableTh label="Item Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} className="px-5 py-3" />
                     <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Unit</th>
-                    <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Qty (click to edit)</th>
+                    <SortableTh label="Qty (click to edit)" field="quantity" currentSort={sort} currentOrder={order} onSort={toggleSort} className="px-4 py-3" />
                     <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Min Threshold</th>
                     <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Status</th>
                     <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Suppliers</th>

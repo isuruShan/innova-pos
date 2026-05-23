@@ -2,13 +2,19 @@ const express = require('express');
 const Inventory = require('../models/Inventory');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
+const { parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
 
 router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
+    const sort = parseSortQuery(req, {
+      name: 'itemName',
+      quantity: 'quantity',
+      createdAt: 'createdAt',
+    }, { itemName: 1 });
     const items = await Inventory.find({ tenantId: req.tenantId, ...buildStoreFilter(req) })
-      .sort({ itemName: 1 })
+      .sort(sort)
       .populate('suppliers', 'name phone email');
     res.json(items);
   } catch (err) {

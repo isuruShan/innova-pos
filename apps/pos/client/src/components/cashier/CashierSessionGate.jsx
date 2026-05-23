@@ -1,12 +1,14 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Wallet, X, BarChart2, CreditCard, DollarSign, ClipboardCheck } from 'lucide-react';
+import { Wallet, X, BarChart2, CreditCard, DollarSign, ClipboardCheck, FileText } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { useStoreContext } from '../../context/StoreContext';
+import { useBranding } from '../../context/BrandingContext';
 import { formatCurrency, formatDateTime, formatPaymentTypeLabel } from '../../utils/format';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { CashierSessionContext, CASHIER_SESSION_QUERY_KEY } from './cashierSessionContext';
+import { printDayEndReport } from '../../utils/printDayEndReport';
 
 export { CASHIER_SESSION_QUERY_KEY } from './cashierSessionContext';
 
@@ -137,6 +139,7 @@ function SessionBreakdownSummary({
 export default function CashierSessionGate({ children, requireSession = false }) {
   const { user } = useAuth();
   const { selectedStoreId, isStoreReady } = useStoreContext();
+  const branding = useBranding();
   const qc = useQueryClient();
   const online = useOnlineStatus();
   const role = String(user?.role || '').toLowerCase();
@@ -148,6 +151,7 @@ export default function CashierSessionGate({ children, requireSession = false })
   const [floatInput, setFloatInput] = useState('');
   const [notesInput, setNotesInput] = useState('');
   const [closeNoteError, setCloseNoteError] = useState('');
+  const [reportLoading, setReportLoading] = useState(false);
   const [cashMovementKind, setCashMovementKind] = useState(null);
   const [movementAmount, setMovementAmount] = useState('');
   const [movementNotes, setMovementNotes] = useState('');
@@ -309,6 +313,24 @@ export default function CashierSessionGate({ children, requireSession = false })
       amount: Math.round(amt * 100) / 100,
       notes: movementNotes.trim(),
     });
+  };
+
+  const handleGenerateReport = async () => {
+    setReportLoading(true);
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const { data: reportData } = await api.get(`/reports/day-end?date=${todayStr}`);
+      printDayEndReport(
+        reportData,
+        branding?.businessName || '',
+        todayStr,
+        branding?.currencySymbol || 'Rs.',
+      );
+    } catch {
+      // Silently ignore – print window will be empty or blocked
+    } finally {
+      setReportLoading(false);
+    }
   };
 
   return (
@@ -607,6 +629,17 @@ export default function CashierSessionGate({ children, requireSession = false })
                         {closeMutation.error?.response?.data?.message || 'Close failed'}
                       </p>
                     )}
+
+                    {/* Day-end report */}
+                    <button
+                      type="button"
+                      onClick={handleGenerateReport}
+                      disabled={reportLoading}
+                      className="w-full py-2.5 rounded-xl border border-slate-600/70 text-slate-400 hover:text-slate-200 hover:border-slate-500 text-sm font-medium flex items-center justify-center gap-2 transition disabled:opacity-50"
+                    >
+                      <FileText size={14} />
+                      {reportLoading ? 'Loading report…' : 'Generate day-end report (PDF)'}
+                    </button>
 
                     {/* Submit */}
                     <button

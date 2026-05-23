@@ -9,6 +9,7 @@ const { protect, authorize, tenantScope, sendRouteError } = require('../middlewa
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
 const { createNotification, notifyMerchantAdmins } = require('../lib/notificationHelpers');
 const { requirePaidAddon } = require('../middleware/requirePaidAddon');
+const { parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
 const requireLoyalty = requirePaidAddon('loyalty');
@@ -215,7 +216,13 @@ router.get('/rewards', authorize('cashier', 'manager', 'merchant_admin'), resolv
       filter.$or = [{ storeId: req.storeId }, { storeId: null }];
     }
     if (req.query.pending === 'true') filter.approvalStatus = 'pending';
-    const rows = await LoyaltyReward.find(filter).sort({ createdAt: -1 });
+    const sort = parseSortQuery(req, {
+      name: 'name',
+      createdAt: 'createdAt',
+      pointsCost: 'pointsCost',
+      status: 'active',
+    }, { createdAt: -1 });
+    const rows = await LoyaltyReward.find(filter).sort(sort);
     res.json(rows);
   } catch (err) {
     sendRouteError(res, err, { req });

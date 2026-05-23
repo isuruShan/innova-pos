@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Search, Filter, Eye, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import api from '../../api/axios';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
+import SortableTh from '../../components/common/SortableTh';
+import { useListSort } from '../../hooks/useListSort';
 
 const STATUS_STYLES = {
   pending:      'bg-yellow-100 text-yellow-700',
@@ -24,11 +26,14 @@ export default function ApplicationsPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_applications') || 'table');
+  const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
+
+  useEffect(() => { setPage(1); }, [sort, order]);
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['applications', statusFilter, search, page],
+    queryKey: ['applications', statusFilter, search, page, sortParams],
     queryFn: async () => {
-      const params = { page, limit: 20 };
+      const params = { page, limit: 20, sort, order };
       if (statusFilter) params.status = statusFilter;
       if (search) params.search = search;
       const { data } = await api.get('/applications', { params });
@@ -142,11 +147,12 @@ export default function ApplicationsPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  {['Applicant', 'Business', 'Status', 'Submitted', 'Reviewed by', 'Action'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {h}
-                    </th>
-                  ))}
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Applicant</th>
+                  <SortableTh label="Business" field="businessName" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                  <SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                  <SortableTh label="Submitted" field="createdAt" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Reviewed by</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">

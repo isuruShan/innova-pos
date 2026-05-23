@@ -8,6 +8,8 @@ const ADDON_MESSAGES = {
     'The Loyalty program add-on is not active for your account. Subscribe under Add-ons in this portal.',
   qr_ordering:
     'QR Ordering is not active for your account. Subscribe under Add-ons in this portal.',
+  accounting:
+    'The Advanced Accounting Module is not active for your account. Subscribe under Add-ons in this portal.',
 };
 
 function requirePaidAddon(addonCode) {

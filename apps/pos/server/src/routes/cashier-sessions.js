@@ -4,6 +4,7 @@ const CashierSession = require('../models/CashierSession');
 const Order = require('../models/Order');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter } = require('../middleware/storeScope');
+const { parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
 
@@ -431,6 +432,14 @@ router.post(
       session.varianceNotes = notes;
       await session.save();
 
+      // Sync drawer close / safe drop to accounting if enabled
+      try {
+        const { syncSessionClose } = require('../services/accountingSyncService');
+        await syncSessionClose(session._id);
+      } catch (err) {
+        console.error(`[Accounting Sync Auto-Session Close Error] session ${session._id} failed:`, err.message);
+      }
+
       const populated = await CashierSession.findById(session._id)
         .populate('cashierId', 'name email role')
         .lean();
@@ -466,9 +475,15 @@ router.get(
         if (until) filter.openedAt.$lte = new Date(until);
       }
 
+      const sort = parseSortQuery(req, {
+        openedAt: 'openedAt',
+        closedAt: 'closedAt',
+        status: 'status',
+        createdAt: 'createdAt',
+      }, { closedAt: -1, openedAt: -1 });
       const sessions = await CashierSession.find(filter)
         .populate('cashierId', 'name email role')
-        .sort({ closedAt: -1, openedAt: -1 })
+        .sort(sort)
         .limit(200)
         .lean();
 

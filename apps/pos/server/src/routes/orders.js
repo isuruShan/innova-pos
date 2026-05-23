@@ -23,6 +23,7 @@ const {
   recalculateOrderMoney,
 } = require('../utils/orderHelpers');
 const { applyOrderReturn } = require('../lib/orderReturns');
+const { parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
 
@@ -114,10 +115,16 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
       }
     }
 
+    const sort = parseSortQuery(req, {
+      createdAt: 'createdAt',
+      orderNumber: 'orderNumber',
+      status: 'status',
+      total: 'total',
+    }, { createdAt: -1 });
     const orders = await Order.find(filter)
       .populate('createdBy', 'name')
       .populate('customerId', 'name phone email')
-      .sort({ createdAt: -1 });
+      .sort(sort);
     res.json(orders);
   } catch (err) {
     sendRouteError(res, err, { req });
@@ -638,6 +645,16 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
 
     order.updatedBy = req.user.id;
     await order.save();
+
+    // Sync order to accounting if enabled
+    if (order.status === 'completed' && prevStatus !== 'completed') {
+      try {
+        const { syncOrder } = require('../services/accountingSyncService');
+        await syncOrder(order._id);
+      } catch (err) {
+        console.error(`[Accounting Sync Auto-Order Error] order ${order._id} failed:`, err.message);
+      }
+    }
 
     // Auto-notify Uber if status changed to ready
     if (order.status === 'ready' && order.orderType === 'uber-eats') {

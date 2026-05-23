@@ -4,27 +4,42 @@ import { ContactRound, Plus, Search, Pencil, Trash2 } from 'lucide-react';
 import api from '../../api/axios';
 import AdminDateField from '../../components/AdminDateField';
 import ListPagination from '../../components/common/ListPagination';
+import SortableTh from '../../components/common/SortableTh';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
+import { useListSort } from '../../hooks/useListSort';
 import LoyaltyAddonSubscribeBanner from '../../components/addons/LoyaltyAddonSubscribeBanner';
+import MobilePhoneField, { validateMobileField, phoneValueFromField } from '../../components/MobilePhoneField';
+import { validateEmail } from '../../utils/formFields';
+import { parsePhoneForField } from '../../utils/phone';
+import { useTenantCurrency } from '../../context/TenantCurrencyContext';
+import { DEFAULT_COUNTRY_CODE } from '../../constants/countries';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 const emptyForm = {
-  name: '', mobile: '', email: '', birthday: '', notes: '',
+  name: '', email: '', birthday: '', notes: '',
   lifetimePoints: '0', pointsNote: '',
 };
+const emptyPhone = (iso) => ({ countryIso: iso || DEFAULT_COUNTRY_CODE, nationalDigits: '' });
 
 export default function CustomersAdminPage() {
   const qc = useQueryClient();
+  const { countryIso: tenantCountryIso } = useTenantCurrency();
+  const defaultIso = tenantCountryIso || DEFAULT_COUNTRY_CODE;
   const [search, setSearch] = useState('');
   const [editor, setEditor] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [phoneField, setPhoneField] = useState(emptyPhone(defaultIso));
+  const [formErrors, setFormErrors] = useState({});
   const [page, setPage] = useState(1);
+  const [confirmDeleteCustomer, setConfirmDeleteCustomer] = useState(null);
+  const { sort, order, toggleSort, sortParams } = useListSort('updatedAt', 'desc');
 
   useEffect(() => {
     setPage(1);
-  }, [search]);
+  }, [search, sort, order]);
 
   const { data: list = { items: [], page: 1, pages: 1, total: 0 }, isPending, isFetching } = useQuery({
-    queryKey: ['admin-customers', search, page],
+    queryKey: ['admin-customers', search, page, sortParams],
     queryFn: () =>
       api
         .get('/customers', {
@@ -32,6 +47,8 @@ export default function CustomersAdminPage() {
             ...(search.trim() ? { search: search.trim() } : {}),
             page,
             limit: 25,
+            sort,
+            order,
           },
         })
         .then((r) => unwrapPagedList(r.data)),
@@ -48,10 +65,19 @@ export default function CustomersAdminPage() {
   const saveCustomer = useMutation({
     mutationFn: async () => {
       if (!editor) throw new Error('No editor');
+      const phoneErr = validateMobileField(phoneField.countryIso, phoneField.nationalDigits);
+      const emailStr = form.email.trim();
+      const emailRes = emailStr ? validateEmail(emailStr, { required: false }) : { ok: true };
+      if (phoneErr || !emailRes.ok) {
+        setFormErrors({ mobile: phoneErr, email: emailRes.ok ? '' : emailRes.error });
+        throw new Error('validation');
+      }
+      setFormErrors({});
+      const mobile = phoneValueFromField(phoneField.countryIso, phoneField.nationalDigits);
       const payload = {
         name: form.name.trim(),
-        mobile: form.mobile.trim(),
-        email: form.email.trim(),
+        mobile,
+        email: emailStr,
         notes: form.notes.trim(),
         ...(form.birthday ? { birthday: new Date(form.birthday).toISOString() } : { birthday: null }),
       };
@@ -74,9 +100,13 @@ export default function CustomersAdminPage() {
       qc.invalidateQueries({ queryKey: ['notifications-unread-count'] });
       setEditor(null);
       setForm(emptyForm);
+      setPhoneField(emptyPhone(defaultIso));
+      setFormErrors({});
     },
     onError: (err) => {
-      window.alert(err.response?.data?.message || 'Save failed');
+      if (err.message !== 'validation') {
+        window.alert(err.response?.data?.message || 'Save failed');
+      }
     },
   });
 
@@ -88,13 +118,17 @@ export default function CustomersAdminPage() {
   const openNew = () => {
     setEditor({});
     setForm(emptyForm);
+    setPhoneField(emptyPhone(defaultIso));
+    setFormErrors({});
   };
 
   const openEdit = (c) => {
     setEditor(c);
+    setFormErrors({});
+    const parsed = parsePhoneForField(c.mobile, c.countryIso || defaultIso);
+    setPhoneField({ countryIso: parsed.countryIso, nationalDigits: parsed.nationalDigits });
     setForm({
       name: c.name || '',
-      mobile: c.mobile || '',
       email: c.email || '',
       birthday: c.birthday ? String(c.birthday).slice(0, 10) : '',
       notes: c.notes || '',
@@ -154,8 +188,8 @@ export default function CustomersAdminPage() {
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50 text-gray-700 text-left">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Customer</th>
-                  <th className="px-4 py-3 font-medium">Points</th>
+                  <SortableTh label="Customer" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                  <SortableTh label="Points" field="points" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                   <th className="px-4 py-3 font-medium text-right w-36">Actions</th>
                 </tr>
               </thead>
@@ -177,11 +211,7 @@ export default function CustomersAdminPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          if (window.confirm(`Delete customer "${row.name || row.email || 'this record'}"?`)) {
-                            deleteCustomer.mutate(row._id);
-                          }
-                        }}
+                        onClick={() => setConfirmDeleteCustomer(row)}
                         className="text-red-600 text-xs inline-flex items-center gap-1"
                       >
                         <Trash2 size={12} /> Delete
@@ -224,16 +254,32 @@ export default function CustomersAdminPage() {
               {editor._id ? 'Edit customer' : 'New customer'}
             </h3>
             <form onSubmit={submitProfile} className="space-y-3">
-              {['name', 'mobile', 'email'].map((k) => (
-                <label key={k} className="block text-xs text-gray-600 capitalize">
-                  {k}
-                  <input
-                    value={form[k]}
-                    onChange={(e) => setForm((f) => ({ ...f, [k]: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </label>
-              ))}
+              <label className="block text-xs text-gray-600">
+                Name
+                <input
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                />
+              </label>
+              <MobilePhoneField
+                countryIso={phoneField.countryIso}
+                nationalDigits={phoneField.nationalDigits}
+                onCountryIsoChange={(iso) => setPhoneField((p) => ({ ...p, countryIso: iso }))}
+                onNationalDigitsChange={(d) => { setPhoneField((p) => ({ ...p, nationalDigits: d })); setFormErrors((e) => ({ ...e, mobile: '' })); }}
+                error={formErrors.mobile}
+                label="Mobile"
+              />
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => { setForm((f) => ({ ...f, email: e.target.value })); setFormErrors((e) => ({ ...e, email: '' })); }}
+                  className={`w-full rounded-lg border px-3 py-2 text-sm ${formErrors.email ? 'border-red-400' : 'border-gray-300'}`}
+                />
+                {formErrors.email && <p className="text-xs text-red-500 mt-0.5">{formErrors.email}</p>}
+              </div>
               <label className="block text-xs text-gray-600">
                 Birthday
                 <AdminDateField
@@ -307,6 +353,16 @@ export default function CustomersAdminPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(confirmDeleteCustomer)}
+        variant="delete"
+        title="Delete customer?"
+        message={`"${confirmDeleteCustomer?.name || confirmDeleteCustomer?.email || 'this record'}" will be permanently removed.`}
+        confirmLabel="Delete"
+        onConfirm={() => { deleteCustomer.mutate(confirmDeleteCustomer._id); setConfirmDeleteCustomer(null); }}
+        onCancel={() => setConfirmDeleteCustomer(null)}
+      />
     </div>
   );
 }

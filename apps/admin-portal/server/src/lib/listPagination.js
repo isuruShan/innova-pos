@@ -12,4 +12,21 @@ function paginated(items, total, page, limit) {
   return { items, total, page, pages, limit };
 }
 
-module.exports = { parsePageQuery, paginated };
+/**
+ * Parse sort query params with a whitelist of allowed fields.
+ * @param {import('express').Request} req
+ * @param {Record<string, string>} allowedFields map of client field -> mongo field
+ * @param {Record<string, number>} [defaultSort]
+ */
+function parseSortQuery(req, allowedFields, defaultSort = { createdAt: -1 }) {
+  const sortField = String(req.query.sort || req.query.sortBy || '').trim();
+  const orderRaw = String(req.query.order || req.query.sortOrder || 'desc').toLowerCase();
+  const dir = orderRaw === 'asc' ? 1 : -1;
+
+  if (sortField && allowedFields[sortField]) {
+    return { [allowedFields[sortField]]: dir };
+  }
+  return defaultSort;
+}
+
+module.exports = { parsePageQuery, paginated, parseSortQuery };

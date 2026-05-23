@@ -6,7 +6,9 @@ import { useToast } from '../../context/ToastContext';
 import api from '../../api/axios';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
 import ListPagination from '../../components/common/ListPagination';
+import SortableTh from '../../components/common/SortableTh';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
+import { useListSort } from '../../hooks/useListSort';
 import { fieldAttrs, validateEmail, validatePersonName } from '../../utils/formFields';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
 import { BillingQuotePanel, formatMoney, LicenseQuoteBreakdown } from '../../components/billing/ProrationBreakdown';
@@ -36,6 +38,7 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [roleFilters, setRoleFilters] = useState([]);
   const [storeFilters, setStoreFilters] = useState([]);
+  const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
 
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [paymentStep, setPaymentStep] = useState('review');
@@ -50,10 +53,12 @@ export default function UsersPage() {
   const paypalContainerRef = useRef(null);
   const [paypalReady, setPaypalReady] = useState(false);
 
+  useEffect(() => { setPage(1); }, [sort, order]);
+
   const { data: usersPage, isLoading, isFetching } = useQuery({
-    queryKey: ['users', page, search, roleFilters, storeFilters],
+    queryKey: ['users', page, search, roleFilters, storeFilters, sortParams],
     queryFn: async () => {
-      const params = { page, limit: 25 };
+      const params = { page, limit: 25, sort, order };
       if (search.trim()) params.search = search.trim();
       if (roleFilters.length) params.role = roleFilters.join(',');
       if (storeFilters.length) params.storeIds = storeFilters.join(',');
@@ -450,9 +455,11 @@ export default function UsersPage() {
           <table className="w-full text-sm min-w-[600px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                {['Name', 'Email', 'Role', 'Status', 'Actions'].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                ))}
+                <SortableTh label="Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                <SortableTh label="Email" field="email" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                <SortableTh label="Role" field="role" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                <SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

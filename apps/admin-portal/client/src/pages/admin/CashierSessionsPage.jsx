@@ -4,7 +4,9 @@ import { RefreshCw, Wallet, Search, X } from 'lucide-react';
 import api from '../../api/axios';
 import AdminDateField from '../../components/AdminDateField';
 import ListPagination from '../../components/common/ListPagination';
+import SortableTh from '../../components/common/SortableTh';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
+import { useListSort } from '../../hooks/useListSort';
 import { useStoreContext } from '../../context/StoreContext';
 import { formatCurrency } from '../../utils/format';
 
@@ -53,6 +55,7 @@ export default function CashierSessionsPage() {
   const [statusFilter, setStatusFilter] = useState(['closed', 'open']);
   const [nameSearch, setNameSearch] = useState('');
   const [page, setPage] = useState(1);
+  const { sort, order, toggleSort, sortParams } = useListSort('openedAt', 'desc');
 
   const { fromDate, toDate } = useMemo(() => {
     const today = todayStr();
@@ -65,7 +68,7 @@ export default function CashierSessionsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [fromDate, toDate, statusFilter.join(','), selectedStoreId, nameSearch]);
+  }, [fromDate, toDate, statusFilter.join(','), selectedStoreId, nameSearch, sort, order]);
 
   const params = useMemo(() => {
     const p = {};
@@ -78,9 +81,9 @@ export default function CashierSessionsPage() {
   }, [fromDate, toDate, statusFilter]);
 
   const { data: sessionList = { items: [], page: 1, pages: 1, total: 0 }, isPending, refetch, isFetching } = useQuery({
-    queryKey: ['admin-cashier-sessions', selectedStoreId, params, page],
+    queryKey: ['admin-cashier-sessions', selectedStoreId, params, page, sortParams],
     queryFn: async () => {
-      const { data } = await api.get('/cashier-sessions', { params: { ...params, page, limit: 25 } });
+      const { data } = await api.get('/cashier-sessions', { params: { ...params, page, limit: 25, sort, order } });
       return unwrapPagedList(data);
     },
     enabled: Boolean(stores.length),
@@ -229,11 +232,17 @@ export default function CashierSessionsPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                {['Store', 'Cashier', 'Opened', 'Closed', 'Opening', 'Cash sales', 'Expected', 'Counted', 'Variance', 'Notes', 'Status'].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                    {h}
-                  </th>
-                ))}
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Store</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Cashier</th>
+                <SortableTh label="Opened" field="openedAt" currentSort={sort} currentOrder={order} onSort={toggleSort} className="whitespace-nowrap" />
+                <SortableTh label="Closed" field="closedAt" currentSort={sort} currentOrder={order} onSort={toggleSort} className="whitespace-nowrap" />
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Opening</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Cash sales</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Expected</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Counted</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Variance</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Notes</th>
+                <SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} className="whitespace-nowrap" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Plus, Edit2, Trash2, Users, ChefHat, ShoppingCart, Eye, EyeOff,
+  Plus, Edit2, Trash2, Users, ChefHat, ShoppingCart, Eye, EyeOff, ArrowDown, ArrowUp,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -9,6 +9,13 @@ import SlideOver from '../../components/SlideOver';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { useStoreContext } from '../../context/StoreContext';
 import { StaffListSkeleton } from '../../components/StoreSkeletons';
+import { useListSort } from '../../hooks/useListSort';
+
+const USER_SORT_OPTIONS = [
+  { value: 'name', label: 'Name' },
+  { value: 'role', label: 'Role' },
+  { value: 'status', label: 'Status' },
+];
 
 const ROLE_CONFIG = {
   cashier: {
@@ -86,10 +93,11 @@ export default function UserManagement() {
   const [showPw, setShowPw] = useState(false);
   const [filterRole, setFilterRole] = useState('all');
   const qc = useQueryClient();
+  const { sort, order, toggleSort, sortParams, setSort, setOrder } = useListSort('name', 'asc');
 
   const { data: users = [], isPending } = useQuery({
-    queryKey: ['staff-users', selectedStoreId],
-    queryFn: () => api.get('/users').then(r => r.data),
+    queryKey: ['staff-users', selectedStoreId, sortParams],
+    queryFn: () => api.get('/users', { params: { sort, order } }).then(r => r.data),
     enabled: isStoreReady,
   });
 
@@ -180,21 +188,51 @@ export default function UserManagement() {
         </div>
 
         {/* Filter tabs */}
-        <div className="flex gap-2 mb-5">
-          {[
-            { key: 'all', label: 'All' },
-            { key: 'cashier', label: 'Cashiers' },
-            { key: 'kitchen', label: 'Kitchen' },
-          ].map(f => (
-            <button key={f.key} onClick={() => setFilterRole(f.key)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
-                filterRole === f.key
-                  ? 'bg-amber-500 text-[var(--pos-selection-text)]'
-                  : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700'
-              }`}>
-              {f.label}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
+          <div className="flex gap-2">
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'cashier', label: 'Cashiers' },
+              { key: 'kitchen', label: 'Kitchen' },
+            ].map(f => (
+              <button key={f.key} onClick={() => setFilterRole(f.key)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
+                  filterRole === f.key
+                    ? 'bg-amber-500 text-[var(--pos-selection-text)]'
+                    : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700'
+                }`}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 sm:ml-auto">
+            <label htmlFor="user-sort" className="text-xs text-slate-500">Sort by</label>
+            <select
+              id="user-sort"
+              value={sort}
+              onChange={(e) => {
+                const next = e.target.value;
+                if (next === sort) toggleSort(next);
+                else {
+                  setSort(next);
+                  setOrder('asc');
+                }
+              }}
+              className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-1.5"
+            >
+              {USER_SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
+              className="p-2 rounded-xl bg-[var(--pos-panel)] border border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]"
+              title={order === 'asc' ? 'Ascending' : 'Descending'}
+            >
+              {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
             </button>
-          ))}
+          </div>
         </div>
 
         {!isStoreReady || isPending ? (

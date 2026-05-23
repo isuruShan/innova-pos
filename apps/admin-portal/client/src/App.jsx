@@ -32,6 +32,7 @@ import ProfilePage from './pages/admin/ProfilePage';
 import StoresPage from './pages/admin/StoresPage';
 import CashierSessionsPage from './pages/admin/CashierSessionsPage';
 import LoyaltyProgramPage from './pages/admin/LoyaltyProgramPage';
+import AccountingPage from './pages/admin/AccountingPage';
 import CustomersAdminPage from './pages/admin/CustomersAdminPage';
 import PromotionsAdminPage from './pages/admin/PromotionsAdminPage';
 import NotificationsPage from './pages/admin/NotificationsPage';
@@ -162,6 +163,11 @@ export default function App() {
           <Route path="/loyalty" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><LoyaltyProgramPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/accounting" element={
+            <PrivateRoute roles={['merchant_admin', 'manager']}>
+              <Layout><AccountingPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/customers" element={

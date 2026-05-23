@@ -7,7 +7,7 @@ const { requirePaidAddon } = require('../middleware/requirePaidAddon');
 const requireLoyalty = requirePaidAddon('loyalty');
 const { notifyMerchantAdmins } = require('../lib/notificationHelpers');
 const { emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
-const { parsePageQuery, paginated } = require('../lib/listPagination');
+const { parsePageQuery, paginated, parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
 
@@ -25,7 +25,13 @@ router.get('/', protect, authorize('merchant_admin'), tenantScope, async (req, r
     }
     const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 100 });
     const total = await Customer.countDocuments(filter);
-    const rows = await Customer.find(filter).sort({ updatedAt: -1 }).skip(skip).limit(limit).lean();
+    const sort = parseSortQuery(req, {
+      name: 'name',
+      updatedAt: 'updatedAt',
+      createdAt: 'createdAt',
+      points: 'lifetimePoints',
+    }, { updatedAt: -1 });
+    const rows = await Customer.find(filter).sort(sort).skip(skip).limit(limit).lean();
     res.json(paginated(rows, total, page, limit));
   } catch (err) {
     sendRouteError(res, err, { req });

@@ -8,6 +8,8 @@ import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { formatCurrency, formatDateTime } from '../../utils/format';
 import { useStoreContext } from '../../context/StoreContext';
 import PosDateField from '../../components/PosDateField';
+import SortableTh from '../../components/SortableTh';
+import { useListSort } from '../../hooks/useListSort';
 
 function todayStr() {
   const x = new Date();
@@ -46,6 +48,7 @@ export default function CashierSessionsPage() {
   const [customTo, setCustomTo] = useState(todayStr);
   const [statusFilter, setStatusFilter] = useState(['closed', 'open']);
   const [nameSearch, setNameSearch] = useState('');
+  const { sort, order, toggleSort, sortParams } = useListSort('openedAt', 'desc');
 
   const { fromDate, toDate } = useMemo(() => {
     const today = todayStr();
@@ -63,11 +66,13 @@ export default function CashierSessionsPage() {
     if (statusFilter.length > 0 && statusFilter.length < 2) {
       p.status = statusFilter.join(',');
     }
+    p.sort = sort;
+    p.order = order;
     return p;
-  }, [fromDate, toDate, statusFilter]);
+  }, [fromDate, toDate, statusFilter, sort, order]);
 
   const { data: sessions = [], isPending, refetch, isFetching } = useQuery({
-    queryKey: ['cashier-sessions-list', selectedStoreId, params],
+    queryKey: ['cashier-sessions-list', selectedStoreId, params, sortParams],
     queryFn: () => api.get('/cashier-sessions', { params }).then((r) => r.data),
     enabled: isStoreReady,
     staleTime: 15_000,
@@ -212,8 +217,8 @@ export default function CashierSessionsPage() {
               <thead>
                 <tr className="border-b border-slate-700/80 text-left text-slate-400">
                   <th className="px-4 py-3 font-semibold">Cashier</th>
-                  <th className="px-4 py-3 font-semibold">Opened</th>
-                  <th className="px-4 py-3 font-semibold">Closed</th>
+                  <SortableTh label="Opened" field="openedAt" currentSort={sort} currentOrder={order} onSort={toggleSort} className="whitespace-nowrap" />
+                  <SortableTh label="Closed" field="closedAt" currentSort={sort} currentOrder={order} onSort={toggleSort} className="whitespace-nowrap" />
                   <th className="px-4 py-3 font-semibold text-right">Opening</th>
                   <th className="px-4 py-3 font-semibold text-right">Cash sales</th>
                   <th className="px-4 py-3 font-semibold text-right">Discounts</th>
@@ -222,7 +227,7 @@ export default function CashierSessionsPage() {
                   <th className="px-4 py-3 font-semibold text-right">Counted</th>
                   <th className="px-4 py-3 font-semibold text-right">Variance</th>
                   <th className="px-4 py-3 font-semibold">Notes</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
+                  <SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} className="whitespace-nowrap" />
                 </tr>
               </thead>
               <tbody>

@@ -110,6 +110,8 @@ app.use('/api/categories', require('./routes/categories'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/orders', require('./routes/orders'));
+app.use('/api/accounting', require('./routes/accounting'));
+
 
 app.get('/api/health', (_req, res) =>
   res.json({ status: 'ok', service: 'admin-portal-server', ts: new Date().toISOString() })

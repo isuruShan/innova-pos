@@ -3,7 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Search, SlidersHorizontal, RefreshCw, ChevronDown, X,
+  ArrowDown, ArrowUp, ArrowUpDown,
 } from 'lucide-react';
+import { useListSort } from '../../hooks/useListSort';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import Badge from '../../components/Badge';
@@ -50,6 +52,24 @@ function sevenDaysAgo() {
 
 const PAYMENT_LABELS = { cash: 'Cash', card: 'Card', online: 'Online', bank_transfer: 'Bank transfer' };
 
+function SortableGridLabel({ label, field, currentSort, currentOrder, onSort, className = '' }) {
+  const active = currentSort === field;
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(field)}
+      className={`inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wider hover:text-gray-200 transition-colors ${active ? 'text-brand-orange' : 'text-slate-500'} ${className}`}
+    >
+      <span>{label}</span>
+      {active ? (
+        currentOrder === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+      ) : (
+        <ArrowUpDown size={12} className="opacity-40" />
+      )}
+    </button>
+  );
+}
+
 export default function OrdersView() {
   const { selectedStoreId, isStoreReady, stores } = useStoreContext();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -63,6 +83,7 @@ export default function OrdersView() {
   const [statusFilter, setStatusFilter]     = useState([]);
   const [orderTypeFilter, setOrderTypeFilter] = useState([]);
   const [paymentTypeFilter, setPaymentTypeFilter] = useState([]);
+  const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
 
   const selectedStore = useMemo(
     () => stores.find((s) => normalizeStoreId(s._id) === normalizeStoreId(selectedStoreId)),
@@ -87,11 +108,13 @@ export default function OrdersView() {
     if (orderTypeFilter.length) p.orderType = orderTypeFilter.join(',');
     if (paymentTypeFilter.length) p.paymentType = paymentTypeFilter.join(',');
     if (search.trim()) p.search = search.trim();
+    p.sort = sort;
+    p.order = order;
     return p;
-  }, [fromDate, toDate, statusFilter, orderTypeFilter, paymentTypeFilter, search]);
+  }, [fromDate, toDate, statusFilter, orderTypeFilter, paymentTypeFilter, search, sort, order]);
 
   const { data: orders = [], isPending, refetch, isFetching } = useQuery({
-    queryKey: ['manager-orders', selectedStoreId, params],
+    queryKey: ['manager-orders', selectedStoreId, params, sortParams],
     queryFn: () => api.get('/orders', { params }).then(r => r.data),
     enabled: isStoreReady,
     staleTime: 30_000,
@@ -359,9 +382,15 @@ export default function OrdersView() {
           <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-2xl overflow-hidden">
             {/* Table header */}
             <div className="hidden md:grid grid-cols-[56px_72px_76px_96px_minmax(0,1fr)_88px_80px_92px_28px] gap-3 px-4 py-3 border-b border-slate-700/50 bg-slate-800/30">
-              {['Order #', 'Type', 'Pay', 'Status', 'Items', 'Total', 'Discount', 'Time', ''].map(h => (
-                <span key={h} className="text-xs font-medium text-slate-500 uppercase tracking-wider">{h}</span>
-              ))}
+              <SortableGridLabel label="Order #" field="orderNumber" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Type</span>
+              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Pay</span>
+              <SortableGridLabel label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Items</span>
+              <SortableGridLabel label="Total" field="total" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Discount</span>
+              <SortableGridLabel label="Time" field="createdAt" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+              <span />
             </div>
 
             <div className="divide-y divide-slate-700/30">

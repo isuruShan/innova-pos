@@ -7,6 +7,7 @@ const { requirePaidAddon } = require('../middleware/requirePaidAddon');
 const requireLoyalty = requirePaidAddon('loyalty');
 const { notifyMerchantAdmins } = require('../lib/notificationHelpers');
 const { emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
+const { parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
 
@@ -61,7 +62,13 @@ router.get('/', protect, authorize('cashier', 'manager', 'merchant_admin'), tena
         { mobile: new RegExp(q, 'i') },
       ];
     }
-    const rows = await Customer.find(filter).sort({ updatedAt: -1 }).limit(500);
+    const sort = parseSortQuery(req, {
+      name: 'name',
+      updatedAt: 'updatedAt',
+      createdAt: 'createdAt',
+      points: 'lifetimePoints',
+    }, { updatedAt: -1 });
+    const rows = await Customer.find(filter).sort(sort).limit(500);
     res.json(rows);
   } catch (err) {
     sendRouteError(res, err, { req });

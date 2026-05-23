@@ -8,9 +8,13 @@ import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import LoyaltyAddonBanner from '../../components/LoyaltyAddonBanner';
 import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 import { useBranding } from '../../context/BrandingContext';
-import { validateMobile, validateEmail } from '../../utils/customerValidation';
+import { validateEmail } from '../../utils/customerValidation';
+import PosPhoneField, { validatePosPhoneField, phoneDisplayFromParts, parseStoredPhone } from '../../components/PosPhoneField';
+import SortableTh from '../../components/SortableTh';
+import { useListSort } from '../../hooks/useListSort';
 
-const empty = { name: '', mobile: '', email: '', birthday: '', notes: '' };
+const empty = { name: '', email: '', birthday: '', notes: '' };
+const emptyPhone = (defaultIso) => ({ countryIso: defaultIso || 'LK', nationalDigits: '' });
 
 export default function CustomersPage() {
   const qc = useQueryClient();
@@ -20,14 +24,22 @@ export default function CustomersPage() {
   const [search, setSearch] = useState('');
   const [slide, setSlide] = useState(null);
   const [form, setForm] = useState(empty);
-  const [formError, setFormError] = useState('');
+  const [phoneField, setPhoneField] = useState(emptyPhone(branding.countryIso));
+  const [formErrors, setFormErrors] = useState({});
   const [pointsOpen, setPointsOpen] = useState(false);
   const [pointsForm, setPointsForm] = useState({ lifetimePoints: '', note: '' });
+  const { sort, order, toggleSort, sortParams } = useListSort('updatedAt', 'desc');
 
   const { data: rows = [], isPending } = useQuery({
-    queryKey: ['customers', search],
+    queryKey: ['customers', search, sortParams],
     queryFn: () =>
-      api.get('/customers', { params: search.trim() ? { search: search.trim() } : {} }).then((r) => r.data),
+      api.get('/customers', {
+        params: {
+          ...(search.trim() ? { search: search.trim() } : {}),
+          sort,
+          order,
+        },
+      }).then((r) => r.data),
   });
 
   const save = useMutation({
@@ -39,6 +51,8 @@ export default function CustomersPage() {
       qc.invalidateQueries({ queryKey: ['customers'] });
       setSlide(null);
       setForm(empty);
+      setPhoneField(emptyPhone(branding.countryIso));
+      setFormErrors({});
     },
   });
 
@@ -57,35 +71,36 @@ export default function CustomersPage() {
   const openNew = () => {
     setSlide({});
     setForm(empty);
-    setFormError('');
+    setPhoneField(emptyPhone(branding.countryIso));
+    setFormErrors({});
   };
 
   const openEdit = (c) => {
-    setFormError('');
+    setFormErrors({});
     setSlide(c);
     setForm({
       name: c.name || '',
-      mobile: c.mobile || '',
       email: c.email || '',
       birthday: c.birthday ? String(c.birthday).slice(0, 10) : '',
       notes: c.notes || '',
     });
+    setPhoneField(parseStoredPhone(c.mobile, branding.countryIso || 'LK'));
   };
 
   const submit = (e) => {
     e.preventDefault();
-    const mobile = form.mobile.trim();
     const email = form.email.trim();
-    const mobileErr = validateMobile(mobile, branding.countryIso || 'LK');
-    const emailErr = validateEmail(email);
-    if (mobileErr || emailErr) {
-      setFormError(mobileErr || emailErr);
+    const phoneErr = validatePosPhoneField(phoneField.countryIso, phoneField.nationalDigits);
+    const emailErr = email ? validateEmail(email) : '';
+    if (phoneErr || emailErr) {
+      setFormErrors({ mobile: phoneErr, email: emailErr });
       return;
     }
-    setFormError('');
+    setFormErrors({});
+    const mobileDisplay = phoneDisplayFromParts(phoneField.countryIso, phoneField.nationalDigits);
     const payload = {
       name: form.name.trim(),
-      mobile,
+      mobile: mobileDisplay,
       email,
       notes: form.notes.trim(),
       ...(form.birthday ? { birthday: new Date(form.birthday).toISOString() } : { birthday: null }),
@@ -144,10 +159,11 @@ export default function CustomersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-700/50 text-left text-slate-500 text-xs uppercase">
-                  <th className="px-4 py-3">Name</th>
+                  <SortableTh label="Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                   <th className="px-4 py-3">Mobile</th>
                   <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Points</th>
+                  <SortableTh label="Updated" field="updatedAt" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                  <SortableTh label="Points" field="points" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                 </tr>
               </thead>
               <tbody>
@@ -160,6 +176,9 @@ export default function CustomersPage() {
                     <td className="px-4 py-3 text-[var(--pos-text-primary)] font-medium">{c.name || '—'}</td>
                     <td className="px-4 py-3 text-slate-400">{c.mobile || '—'}</td>
                     <td className="px-4 py-3 text-slate-400 truncate max-w-[180px]">{c.email || '—'}</td>
+                    <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
+                      {c.updatedAt ? new Date(c.updatedAt).toLocaleDateString() : '—'}
+                    </td>
                     <td className="px-4 py-3 text-amber-400 font-semibold">{c.lifetimePoints ?? 0}</td>
                   </tr>
                 ))}
@@ -208,30 +227,36 @@ export default function CustomersPage() {
           ) : null}
           {[
             { key: 'name', type: 'text', label: 'Name' },
-            { key: 'mobile', type: 'tel', label: `Mobile (${branding.countryIso || 'LK'})` },
-            { key: 'email', type: 'email', label: 'Email' },
-          ].map(({ key, type, label }) => {
-            const hasErr = !!formError && (
-              (key === 'mobile' && formError.toLowerCase().includes('mobile')) ||
-              (key === 'email' && formError.toLowerCase().includes('email'))
-            );
-            return (
-              <div key={key}>
-                <label className="block text-xs text-slate-400 mb-1">{label}</label>
-                <input
-                  type={type}
-                  value={form[key]}
-                  onChange={(e) => { setForm((f) => ({ ...f, [key]: e.target.value })); setFormError(''); }}
-                  className={`w-full bg-[var(--pos-surface-inset)] border rounded-xl px-3 py-2 text-[var(--pos-text-primary)] text-sm ${
-                    hasErr ? 'border-red-500' : 'border-slate-700'
-                  }`}
-                />
-              </div>
-            );
-          })}
-          {formError && (
-            <p className="text-xs text-red-400 leading-snug -mt-1">{formError}</p>
-          )}
+          ].map(({ key, type, label }) => (
+            <div key={key}>
+              <label className="block text-xs text-slate-400 mb-1">{label}</label>
+              <input
+                type={type}
+                value={form[key]}
+                onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-3 py-2 text-[var(--pos-text-primary)] text-sm"
+              />
+            </div>
+          ))}
+          <PosPhoneField
+            countryIso={phoneField.countryIso}
+            nationalDigits={phoneField.nationalDigits}
+            onCountryIsoChange={(iso) => setPhoneField((p) => ({ ...p, countryIso: iso }))}
+            onNationalDigitsChange={(d) => { setPhoneField((p) => ({ ...p, nationalDigits: d })); setFormErrors((e) => ({ ...e, mobile: '' })); }}
+            error={formErrors.mobile}
+          />
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Email</label>
+            <input
+              type="email"
+              value={form.email || ''}
+              onChange={(e) => { setForm((f) => ({ ...f, email: e.target.value })); setFormErrors((err) => ({ ...err, email: '' })); }}
+              className={`w-full bg-[var(--pos-surface-inset)] border rounded-xl px-3 py-2 text-[var(--pos-text-primary)] text-sm ${
+                formErrors.email ? 'border-red-500' : 'border-slate-700'
+              }`}
+            />
+            {formErrors.email && <p className="text-xs text-red-400 mt-1">{formErrors.email}</p>}
+          </div>
           <div>
             <label className="block text-xs text-slate-400 mb-1">Birthday</label>
             <input

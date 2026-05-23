@@ -2,12 +2,19 @@ import { useState, useMemo, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CalendarDays, Clock, Users, Phone, Mail, Search, Plus,
-  Check, X, AlertCircle, ChevronLeft, ChevronRight, Filter, MoreVertical,
+  Check, X, AlertCircle, ChevronLeft, ChevronRight, MoreVertical, ArrowDown, ArrowUp,
 } from 'lucide-react';
 import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
 import Navbar from '../../components/Navbar';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
+import { useListSort } from '../../hooks/useListSort';
+
+const RESERVATION_SORT_OPTIONS = [
+  { value: 'reservationTime', label: 'Time' },
+  { value: 'status', label: 'Status' },
+  { value: 'partySize', label: 'Party size' },
+];
 
 const STATUS_STYLES = {
   pending: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', label: 'Pending' },
@@ -500,13 +507,14 @@ export default function ReservationsPage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingReservation, setEditingReservation] = useState(null);
+  const { sort, order, toggleSort, sortParams, setSort, setOrder } = useListSort('reservationTime', 'asc');
 
   const dateStr = selectedDate.toISOString().split('T')[0];
 
   // Fetch reservations
   const { data: reservationsData, isLoading } = useQuery({
-    queryKey: ['reservations', selectedStoreId, dateStr],
-    queryFn: () => api.get(`/reservations?date=${dateStr}`).then((r) => r.data),
+    queryKey: ['reservations', selectedStoreId, dateStr, sortParams],
+    queryFn: () => api.get('/reservations', { params: { date: dateStr, sort, order } }).then((r) => r.data),
     enabled: isStoreReady,
   });
   const reservations = reservationsData?.items || [];
@@ -580,22 +588,20 @@ export default function ReservationsPage() {
   };
 
   const filteredReservations = useMemo(() => {
-    return reservations
-      .filter((r) => {
-        if (filterStatus !== 'all' && r.status !== filterStatus) return false;
-        if (searchTerm) {
-          const term = searchTerm.toLowerCase();
-          if (
-            !(r.guestName || '').toLowerCase().includes(term) &&
-            !(r.guestPhone || '').includes(term) &&
-            !(r.guestEmail || '').toLowerCase().includes(term)
-          ) {
-            return false;
-          }
+    return reservations.filter((r) => {
+      if (filterStatus !== 'all' && r.status !== filterStatus) return false;
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        if (
+          !(r.guestName || '').toLowerCase().includes(term) &&
+          !(r.guestPhone || '').includes(term) &&
+          !(r.guestEmail || '').toLowerCase().includes(term)
+        ) {
+          return false;
         }
-        return true;
-      })
-      .sort((a, b) => new Date(a.reservationTime) - new Date(b.reservationTime));
+      }
+      return true;
+    });
   }, [reservations, filterStatus, searchTerm]);
 
   // Stats
@@ -714,6 +720,35 @@ export default function ReservationsPage() {
                 {opt.label}
               </button>
             ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="reservation-sort" className="text-xs text-slate-500">Sort by</label>
+            <select
+              id="reservation-sort"
+              value={sort}
+              onChange={(e) => {
+                const next = e.target.value;
+                if (next === sort) toggleSort(next);
+                else {
+                  setSort(next);
+                  setOrder('asc');
+                }
+              }}
+              className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-1.5"
+            >
+              {RESERVATION_SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
+              className="p-2 rounded-xl bg-[var(--pos-panel)] border border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]"
+              title={order === 'asc' ? 'Ascending' : 'Descending'}
+            >
+              {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+            </button>
           </div>
         </div>
 

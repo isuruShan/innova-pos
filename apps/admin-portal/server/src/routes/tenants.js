@@ -10,6 +10,7 @@ const { sendEmail } = require('../utils/mailer');
 const { notifySuperAdmins, notifyMerchantAdmins } = require('../lib/notificationHelpers');
 const { notifySubscriptionEvent } = require('../lib/subscriptionNotify');
 const { resolveTenantPeriodEnd } = require('../lib/subscriptionDates');
+const { parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
 
@@ -54,9 +55,15 @@ router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
+    const tenantSort = parseSortQuery(req, {
+      name: 'businessName',
+      createdAt: 'createdAt',
+      status: 'status',
+      subscriptionStatus: 'subscriptionStatus',
+    }, { createdAt: -1 });
     const [tenantsRaw, total] = await Promise.all([
       Tenant.find(filter)
-        .sort({ createdAt: -1 })
+        .sort(tenantSort)
         .skip(skip)
         .limit(parseInt(limit))
         .populate('assignedPlanId', 'name code amount currency billingCycle durationDays isActive')

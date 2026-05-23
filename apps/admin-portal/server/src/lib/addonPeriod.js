@@ -8,6 +8,7 @@ const {
   isLoyaltyEffective,
   isTableManagementEffective,
   isUberEatsEffective,
+  isAccountingEffective,
 } = require('@innovapos/paid-addons');
 
 /**
@@ -43,6 +44,7 @@ async function applyPaidAddonExpiryIfNeeded(tenant) {
   t = await applyAddonExpiryIfNeeded(t, 'loyalty');
   t = await applyAddonExpiryIfNeeded(t, 'tableManagement');
   t = await applyAddonExpiryIfNeeded(t, 'uberEats');
+  t = await applyAddonExpiryIfNeeded(t, 'accounting');
   return t;
 }
 
@@ -59,6 +61,7 @@ module.exports = {
   isLoyaltyEffective,
   isTableManagementEffective,
   isUberEatsEffective,
+  isAccountingEffective,
   applyAddonExpiryIfNeeded,
   applyPaidAddonExpiryIfNeeded,
   applyQrOrderingExpiryIfNeeded,

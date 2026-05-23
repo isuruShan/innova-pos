@@ -8,7 +8,7 @@ const { getEffectiveTier, tierFromPoints, lowestTier } = require('../lib/loyalty
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, resolveWriteStoreId } = require('../middleware/storeScope');
 const { createNotification, notifyMerchantAdmins } = require('../lib/notificationHelpers');
-const { parsePageQuery, paginated } = require('../lib/listPagination');
+const { parsePageQuery, paginated, parseSortQuery } = require('../lib/listPagination');
 const { requirePaidAddon } = require('../middleware/requirePaidAddon');
 
 const router = express.Router();
@@ -118,7 +118,13 @@ router.get('/retention/pending', authorize('merchant_admin'), async (req, res) =
     const baseFilter = { tenantId: req.tenantId, retentionStatus: 'pending_review' };
     const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 100 });
     const total = await Customer.countDocuments(baseFilter);
-    const rows = await Customer.find(baseFilter).sort({ updatedAt: -1 }).skip(skip).limit(limit).lean();
+    const sort = parseSortQuery(req, {
+      name: 'name',
+      updatedAt: 'updatedAt',
+      createdAt: 'createdAt',
+      points: 'lifetimePoints',
+    }, { updatedAt: -1 });
+    const rows = await Customer.find(baseFilter).sort(sort).skip(skip).limit(limit).lean();
     const tiers = await LoyaltyTier.find({ tenantId: req.tenantId }).sort({ minLifetimePoints: 1 }).lean();
     const low = lowestTier(tiers);
     const enriched = rows.map((c) => ({
@@ -238,7 +244,13 @@ router.get('/rewards', authorize('merchant_admin'), async (req, res) => {
     }
     const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 100 });
     const total = await LoyaltyReward.countDocuments(filter);
-    const rows = await LoyaltyReward.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+    const sort = parseSortQuery(req, {
+      name: 'name',
+      createdAt: 'createdAt',
+      pointsCost: 'pointsCost',
+      status: 'active',
+    }, { createdAt: -1 });
+    const rows = await LoyaltyReward.find(filter).sort(sort).skip(skip).limit(limit).lean();
     res.json(paginated(rows, total, page, limit));
   } catch (err) {
     sendRouteError(res, err, { req });

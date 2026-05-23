@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { getPosUrl } from '@innovapos/app-urls';
 import {
   LayoutDashboard, Users, Palette, CreditCard, Building2,
-  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3, Sparkles,
+  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3, Sparkles, Landmark,
 } from 'lucide-react';
 import NotificationBell from '../NotificationBell';
 import SubscriptionDueBanner from '../SubscriptionDueBanner';
@@ -47,6 +47,12 @@ const ADMIN_NAV_GROUPS = [
       { label: 'Loyalty admin', icon: Award, to: '/loyalty' },
       { label: 'Customers', icon: ContactRound, to: '/customers' },
       { label: 'Promotions', icon: Tag, to: '/promotions' },
+    ],
+  },
+  {
+    title: 'Finance',
+    items: [
+      { label: 'Accounting', icon: Landmark, to: '/accounting' },
     ],
   },
   {

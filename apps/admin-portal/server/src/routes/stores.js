@@ -2,11 +2,19 @@ const express = require('express');
 const Store = require('../models/Store');
 const User = require('../models/User');
 const { authenticateJWT, authorize, tenantScope, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
-const { parsePageQuery, paginated } = require('../lib/listPagination');
+const { parsePageQuery, paginated, parseSortQuery } = require('../lib/listPagination');
 const { getStoreCreateQuote } = require('../lib/storeCreateQuote');
 const { createDefaultStoreForTenant } = require('../lib/storePurchase');
+const { permanentlyDeleteStore } = require('../lib/storeDelete');
 
 const router = express.Router();
+
+const STORE_SORT_FIELDS = {
+  name: 'name',
+  code: 'code',
+  createdAt: 'createdAt',
+  status: 'isActive',
+};
 
 const resolveTenantId = (req, tenantIdFromBody) => (
   req.user.role === 'superadmin' ? (tenantIdFromBody || req.query.tenantId || req.tenantId) : req.tenantId
@@ -40,15 +48,25 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
     if (!tenantId) return res.status(400).json({ message: 'tenantId required' });
 
     const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 50, maxLimit: 200 });
-    const total = await Store.countDocuments({
+    const baseFilter = {
       tenantId,
       ...(await assignedStoreFilter(req, tenantId)),
-    });
-    const stores = await Store.find({
-      tenantId,
-      ...(await assignedStoreFilter(req, tenantId)),
-    })
-      .sort({ isActive: -1, isDefault: -1, name: 1 })
+    };
+
+    const search = String(req.query.search || req.query.q || '').trim();
+    if (search) {
+      const re = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      baseFilter.$or = [{ name: re }, { code: re }, { address: re }];
+    }
+
+    const statusQ = String(req.query.status || '').trim().toLowerCase();
+    if (statusQ === 'active') baseFilter.isActive = true;
+    else if (statusQ === 'inactive') baseFilter.isActive = false;
+
+    const total = await Store.countDocuments(baseFilter);
+    const sort = parseSortQuery(req, STORE_SORT_FIELDS, { isActive: -1, isDefault: -1, name: 1 });
+    const stores = await Store.find(baseFilter)
+      .sort(sort)
       .skip(skip)
       .limit(limit)
       .lean();
@@ -216,6 +234,38 @@ router.put('/:id/default', authenticateJWT, authorize('superadmin'), tenantScope
     res.json(store);
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+});
+
+router.delete('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
+  try {
+    const storeId = String(req.params.id || '').trim();
+    if (!storeId) return res.status(400).json({ message: 'Store id is required' });
+
+    const tenantId = resolveTenantId(req, req.body?.tenantId);
+    if (!tenantId) return res.status(400).json({ message: 'tenantId required' });
+
+    const store = await Store.findOne({
+      _id: storeId,
+      tenantId,
+      ...(await assignedStoreFilter(req, tenantId)),
+    });
+    if (!store) return res.status(404).json({ message: 'Store not found' });
+
+    const result = await permanentlyDeleteStore({
+      tenantId,
+      storeId,
+      deletedBy: req.user.id,
+    });
+
+    await emitAudit({ req, action: 'STORE_DELETED', resource: 'Store', resourceId: storeId });
+    res.json({
+      message: `Store "${result.name}" permanently deleted. Subscription billing will reflect the change on your next cycle.`,
+      ...result,
+    });
+  } catch (err) {
+    const status = err.status || 400;
+    res.status(status).json({ message: err.message });
   }
 });
 

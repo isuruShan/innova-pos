@@ -2,15 +2,17 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  CheckCircle, XCircle, ExternalLink, RefreshCw, Loader, Receipt,
-  Search, Eye, BarChart2, List, Filter, X, CalendarDays,
+  ExternalLink, RefreshCw, Loader, Receipt,
+  Search, Eye, BarChart2, Filter, X, CalendarDays,
 } from 'lucide-react';
 import api from '../../api/axios';
 import ListPagination from '../../components/common/ListPagination';
+import SortableTh from '../../components/common/SortableTh';
 import PaymentReceiptDetailModal from '../../components/payments/PaymentReceiptDetailModal';
 import MerchantPaymentDrawer from '../../components/payments/MerchantPaymentDrawer';
 import PaymentAnalyticsDashboard from '../../components/payments/PaymentAnalyticsDashboard';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
+import { useListSort } from '../../hooks/useListSort';
 import { formatMoney } from '../../components/billing/ProrationBreakdown';
 
 const STATUS_STYLES = {
@@ -79,18 +81,16 @@ export default function PaymentsPage() {
   const [search, setSearch]             = useState('');
   const [page, setPage]                 = useState(1);
   const [showFilters, setShowFilters]   = useState(false);
+  const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
 
   // Detail modal / actions
   const [detailReceiptId, setDetailReceiptId] = useState(null);
-  const [verifyingId, setVerifyingId]         = useState(null);
-  const [rejectingId, setRejectingId]         = useState(null);
-  const [rejectionReason, setRejectionReason] = useState('');
 
   // Merchant drawer
   const [merchantDrawer, setMerchantDrawer] = useState(null); // { tenantId, name }
 
   // Reset page when filters change
-  useEffect(() => { setPage(1); }, [statusFilter, kindFilter, methodFilter, dateFrom, dateTo, search]);
+  useEffect(() => { setPage(1); }, [statusFilter, kindFilter, methodFilter, dateFrom, dateTo, search, sort, order]);
 
   // Handle deep-link highlight
   useEffect(() => {
@@ -112,7 +112,7 @@ export default function PaymentsPage() {
   };
 
   // Build query params
-  const queryParams = { page, limit: 25 };
+  const queryParams = { page, limit: 25, sort, order };
   if (statusFilter)  queryParams.status  = statusFilter;
   if (kindFilter)    queryParams.kind    = kindFilter;
   if (methodFilter)  queryParams.method  = methodFilter;
@@ -121,7 +121,7 @@ export default function PaymentsPage() {
   if (search.trim()) queryParams.search  = search.trim();
 
   const { data: receiptList = { items: [], page: 1, pages: 1, total: 0 }, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['receipts', queryParams],
+    queryKey: ['receipts', queryParams, sortParams],
     queryFn: async () => {
       const { data } = await api.get('/subscriptions/receipts', { params: queryParams });
       return unwrapPagedList(data);
@@ -136,16 +136,13 @@ export default function PaymentsPage() {
       queryClient.invalidateQueries({ queryKey: ['receipts'] });
       queryClient.invalidateQueries({ queryKey: ['payment-receipt-detail'] });
       queryClient.invalidateQueries({ queryKey: ['payment-analytics'] });
-      setVerifyingId(null);
-      setRejectingId(null);
-      setRejectionReason('');
       closeDetail();
     },
   });
 
   const handleVerify = (id) => mutation.mutate({ id, payload: { action: 'verify' } });
-  const handleReject = (id) => {
-    if (!rejectionReason.trim()) return;
+  const handleReject = (id, rejectionReason) => {
+    if (!rejectionReason?.trim()) return;
     mutation.mutate({ id, payload: { action: 'reject', rejectionReason } });
   };
 
@@ -331,11 +328,15 @@ export default function PaymentsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {['Merchant', 'Item purchased', 'Type', 'Amount', 'Method', 'Reference', 'Date', 'Status', 'Actions'].map((h) => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
-                        {h}
-                      </th>
-                    ))}
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Merchant</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Item purchased</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Type</th>
+                    <SortableTh label="Amount" field="amount" currentSort={sort} currentOrder={order} onSort={toggleSort} className="whitespace-nowrap" />
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Method</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Reference</th>
+                    <SortableTh label="Date" field="paymentDate" currentSort={sort} currentOrder={order} onSort={toggleSort} className="whitespace-nowrap" />
+                    <SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} className="whitespace-nowrap" />
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -387,41 +388,33 @@ export default function PaymentsPage() {
                         {/* Actions */}
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openDetail(r._id)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50"
-                            >
-                              <Eye size={12} /> View
-                            </button>
                             {r.receiptFileUrl && (
                               <a
                                 href={r.receiptFileUrl}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-50"
+                                title="View receipt file"
                               >
                                 <ExternalLink size={12} />
                               </a>
                             )}
-                            {r.status === 'pending' && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => handleVerify(r._id)}
-                                  disabled={mutation.isPending}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 disabled:opacity-60"
-                                >
-                                  <CheckCircle size={11} /> Verify
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => { openDetail(r._id); setRejectingId(r._id); }}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700"
-                                >
-                                  <XCircle size={11} /> Reject
-                                </button>
-                              </>
+                            {r.status === 'pending' ? (
+                              <button
+                                type="button"
+                                onClick={() => openDetail(r._id)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600"
+                              >
+                                <Eye size={12} /> Verify
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => openDetail(r._id)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50"
+                              >
+                                <Eye size={12} /> View
+                              </button>
                             )}
                             {r.status === 'verified' && r.extensionDays > 0 && (
                               <span className="text-xs text-green-700 bg-green-50 px-2.5 py-1 rounded-lg">
@@ -463,9 +456,9 @@ export default function PaymentsPage() {
           receiptId={detailReceiptId}
           onClose={closeDetail}
           onVerify={(receipt) => handleVerify(receipt._id)}
-          onReject={() => { setRejectingId(detailReceiptId); closeDetail(); }}
+          onReject={(receipt, reason) => handleReject(receipt._id, reason)}
         />
-      )}
+      )}  
 
       {/* Merchant history drawer */}
       {merchantDrawer && (

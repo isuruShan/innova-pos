@@ -452,42 +452,26 @@ export default function BrandingPage() {
         <p className="text-sm text-gray-500">
           ISO code and symbol used on receipts and price labels. Defaults are set from your region when the account is created; you can override them here.
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
-            <select
-              value={form.currency || 'LKR'}
-              onChange={(e) => {
-                const opt = CURRENCY_OPTIONS.find((c) => c.code === e.target.value);
-                setForm((f) => ({
-                  ...f,
-                  currency: e.target.value,
-                  currencySymbol: opt?.symbol || f.currencySymbol,
-                }));
-              }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
-            >
-              {CURRENCY_OPTIONS.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.code} — {c.symbol}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Currency symbol</label>
-            <select
-              value={form.currencySymbol || 'Rs.'}
-              onChange={(e) => set('currencySymbol')(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
-            >
-              {[...new Set(CURRENCY_OPTIONS.map((c) => c.symbol))].map((sym) => (
-                <option key={sym} value={sym}>
-                  {sym}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="max-w-xs">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+          <select
+            value={form.currency || 'LKR'}
+            onChange={(e) => {
+              const opt = CURRENCY_OPTIONS.find((c) => c.code === e.target.value);
+              setForm((f) => ({
+                ...f,
+                currency: e.target.value,
+                currencySymbol: opt?.symbol || f.currencySymbol,
+              }));
+            }}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+          >
+            {CURRENCY_OPTIONS.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.code} — {c.symbol}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 

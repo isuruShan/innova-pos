@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, Tag, ToggleRight, ToggleLeft,
   Gift, Package, Percent, Minus as MinusIcon, Hash,
-  Search, X,
+  Search, X, ArrowDown, ArrowUp,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -13,6 +13,14 @@ import { formatCurrency } from '../../utils/format';
 import { useStoreContext } from '../../context/StoreContext';
 import { PromoListSkeleton } from '../../components/StoreSkeletons';
 import PosDateField from '../../components/PosDateField';
+import { useListSort } from '../../hooks/useListSort';
+
+const PROMO_SORT_OPTIONS = [
+  { value: 'name', label: 'Name' },
+  { value: 'createdAt', label: 'Created' },
+  { value: 'endDate', label: 'End date' },
+  { value: 'status', label: 'Status' },
+];
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -289,10 +297,11 @@ export default function Promotions() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
+  const { sort, order, toggleSort, sortParams, setSort, setOrder } = useListSort('createdAt', 'desc');
 
   const { data: promotions = [], isPending: promosPending } = useQuery({
-    queryKey: ['promotions', selectedStoreId],
-    queryFn: () => api.get('/promotions').then(r => r.data),
+    queryKey: ['promotions', selectedStoreId, sortParams],
+    queryFn: () => api.get('/promotions', { params: { sort, order } }).then(r => r.data),
     enabled: isStoreReady,
   });
 
@@ -465,7 +474,7 @@ export default function Promotions() {
         </div>
 
         {/* Promotion type legend */}
-        <div className="flex flex-wrap gap-2 mb-5">
+        <div className="flex flex-wrap items-center gap-2 mb-5">
           {PROMO_TYPES.map(t => {
             const Icon = t.icon;
             return (
@@ -474,6 +483,34 @@ export default function Promotions() {
               </span>
             );
           })}
+          <div className="flex items-center gap-2 ml-auto w-full sm:w-auto mt-2 sm:mt-0">
+            <label htmlFor="promo-sort" className="text-xs text-slate-500">Sort by</label>
+            <select
+              id="promo-sort"
+              value={sort}
+              onChange={(e) => {
+                const next = e.target.value;
+                if (next === sort) toggleSort(next);
+                else {
+                  setSort(next);
+                  setOrder('asc');
+                }
+              }}
+              className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-1.5"
+            >
+              {PROMO_SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
+              className="p-2 rounded-xl bg-[var(--pos-panel)] border border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]"
+              title={order === 'asc' ? 'Ascending' : 'Descending'}
+            >
+              {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+            </button>
+          </div>
         </div>
 
         {/* List */}

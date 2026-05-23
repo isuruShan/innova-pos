@@ -9,6 +9,7 @@ const Customer = require('../models/Customer');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, resolveWriteStoreId } = require('../middleware/storeScope');
 const { requirePaidAddon } = require('../middleware/requirePaidAddon');
+const { parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
 const requireTableMgmt = requirePaidAddon('table_management');
@@ -44,9 +45,15 @@ router.get('/', resolveSelectedStore, async (req, res) => {
     }
 
     const skip = (Number(page) - 1) * Number(limit);
+    const sort = parseSortQuery(req, {
+      reservationTime: 'reservationTime',
+      createdAt: 'createdAt',
+      status: 'status',
+      partySize: 'partySize',
+    }, { reservationTime: 1 });
     const [items, total] = await Promise.all([
       Reservation.find(filter)
-        .sort({ reservationTime: 1 })
+        .sort(sort)
         .skip(skip)
         .limit(Number(limit))
         .populate('tableId', 'label capacity')

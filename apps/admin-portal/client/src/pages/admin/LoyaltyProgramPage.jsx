@@ -8,6 +8,7 @@ import LoyaltyRewardsAdminTab from './LoyaltyRewardsAdminTab';
 import LoyaltyAddonSubscribeBanner from '../../components/addons/LoyaltyAddonSubscribeBanner';
 import ListPagination from '../../components/common/ListPagination';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 const emptyTier = { name: '', level: '1', minLifetimePoints: '0', description: '' };
 
@@ -17,6 +18,7 @@ export default function LoyaltyProgramPage() {
   const [mainTab, setMainTab] = useState('program');
   const [tierModal, setTierModal] = useState(null);
   const [tierForm, setTierForm] = useState(emptyTier);
+  const [confirmDeleteTier, setConfirmDeleteTier] = useState(null);
   const { data: addonCatalog = [] } = useQuery({
     queryKey: ['merchant-addon-catalog'],
     queryFn: () => api.get('/paid-addons/merchant-catalog').then((r) => r.data),
@@ -280,9 +282,7 @@ export default function LoyaltyProgramPage() {
                     <button
                       type="button"
                       className="text-red-600 text-xs"
-                      onClick={() => {
-                        if (window.confirm(`Delete tier "${t.name}"?`)) deleteTier.mutate(t._id);
-                      }}
+                      onClick={() => setConfirmDeleteTier(t)}
                     >
                       <Trash2 size={14} className="inline" />
                     </button>
@@ -365,6 +365,16 @@ export default function LoyaltyProgramPage() {
 
         </>
       ) : null}
+
+      <ConfirmDialog
+        open={Boolean(confirmDeleteTier)}
+        variant="delete"
+        title="Delete tier?"
+        message={`"${confirmDeleteTier?.name}" will be permanently deleted.`}
+        confirmLabel="Delete"
+        onConfirm={() => { deleteTier.mutate(confirmDeleteTier._id); setConfirmDeleteTier(null); }}
+        onCancel={() => setConfirmDeleteTier(null)}
+      />
     </div>
   );
 }

@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const CashierSession = require('../models/CashierSession');
 const User = require('../models/User');
 const { authenticateJWT, authorize, tenantScope, sendRouteError } = require('@innovapos/shared-middleware');
-const { parsePageQuery, paginated } = require('../lib/listPagination');
+const { parsePageQuery, paginated, parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
 
@@ -50,13 +50,19 @@ router.get('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
     }
 
     const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 200 });
+    const sessionSort = parseSortQuery(req, {
+      openedAt: 'openedAt',
+      closedAt: 'closedAt',
+      status: 'status',
+      createdAt: 'createdAt',
+    }, { closedAt: -1, openedAt: -1 });
 
     if (req.user.role === 'superadmin') {
       const total = await CashierSession.countDocuments(filter);
       const sessions = await CashierSession.find(filter)
         .populate('cashierId', 'name email role')
         .populate('storeId', 'name code')
-        .sort({ closedAt: -1, openedAt: -1 })
+        .sort(sessionSort)
         .skip(skip)
         .limit(limit)
         .lean();
@@ -82,7 +88,7 @@ router.get('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
     const sessions = await CashierSession.find(filter)
       .populate('cashierId', 'name email role')
       .populate('storeId', 'name code')
-      .sort({ closedAt: -1, openedAt: -1 })
+      .sort(sessionSort)
       .skip(skip)
       .limit(limit)
       .lean();
