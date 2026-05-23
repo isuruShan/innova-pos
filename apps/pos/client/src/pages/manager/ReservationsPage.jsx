@@ -578,8 +578,6 @@ export default function ReservationsPage() {
       editMutation.mutate({ id: editingReservation._id, data });
     }
   };
-    statusMutation.mutate({ id, action });
-  };
 
   const filteredReservations = useMemo(() => {
     return reservations
