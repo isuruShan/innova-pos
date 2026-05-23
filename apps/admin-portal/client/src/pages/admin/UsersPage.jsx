@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Loader, UserCheck, UserX, Key, X, Pencil, Search, ArrowLeft, Clock } from 'lucide-react';
+import { Plus, Loader, UserCheck, UserX, Key, X, Pencil, Search, ArrowLeft, Clock, AlertTriangle } from 'lucide-react';
 import TooltipWrap from '../../components/common/TooltipWrap';
 import { useToast } from '../../context/ToastContext';
 import api from '../../api/axios';
@@ -52,6 +52,7 @@ export default function UsersPage() {
   const bankFileRef = useRef(null);
   const paypalContainerRef = useRef(null);
   const [paypalReady, setPaypalReady] = useState(false);
+  const [activeTab, setActiveTab] = useState('active');
 
   useEffect(() => { setPage(1); }, [sort, order]);
 
@@ -98,6 +99,16 @@ export default function UsersPage() {
       return { ...r, _parsedPayload: payload };
     });
   }, [subscriptionData]);
+
+  const originalStoreIds = useMemo(() => {
+    if (!editingUser?.storeIds) return [];
+    return editingUser.storeIds.map((s) => s._id || s);
+  }, [editingUser]);
+
+  const hasRemovedOriginalStores = useMemo(() => {
+    if (!editingUser) return false;
+    return originalStoreIds.some((id) => !form.storeIds.includes(String(id)));
+  }, [editingUser, originalStoreIds, form.storeIds]);
 
   const invalidateUsers = () => {
     queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -334,179 +345,224 @@ export default function UsersPage() {
           Add user
         </button>
       </div>
-      <ViewModeToggle mode={viewMode} setMode={(mode) => { setViewMode(mode); localStorage.setItem('view_mode_admin_users', mode); }} />
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
-        <div className="relative max-w-md">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search by name or email…"
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
-          />
-        </div>
-        <div className="flex flex-wrap gap-4">
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Roles</p>
-            <div className="flex flex-wrap gap-2">
-              {['merchant_admin', 'manager', 'cashier', 'kitchen'].map((role) => (
-                <label key={role} className="inline-flex items-center gap-1.5 text-xs text-gray-700 border border-gray-200 rounded-lg px-2 py-1">
-                  <input
-                    type="checkbox"
-                    checked={roleFilters.includes(role)}
-                    onChange={(e) => {
-                      setPage(1);
-                      setRoleFilters((prev) => (e.target.checked ? [...prev, role] : prev.filter((r) => r !== role)));
-                    }}
-                  />
-                  {role.replace('_', ' ')}
-                </label>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Stores</p>
-            <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
-              {stores.map((s) => (
-                <label key={s._id} className="inline-flex items-center gap-1.5 text-xs text-gray-700 border border-gray-200 rounded-lg px-2 py-1">
-                  <input
-                    type="checkbox"
-                    checked={storeFilters.includes(s._id)}
-                    onChange={(e) => {
-                      setPage(1);
-                      setStoreFilters((prev) => (e.target.checked ? [...prev, s._id] : prev.filter((id) => id !== s._id)));
-                    }}
-                  />
-                  {s.name}
-                </label>
-              ))}
-            </div>
-          </div>
-        </div>
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('active')}
+          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'active'
+              ? 'border-brand-orange text-brand-orange'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Active Users ({pageMeta.total || users?.length || 0})
+        </button>
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${
+            activeTab === 'pending'
+              ? 'border-brand-orange text-brand-orange'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Pending Approval
+          {pendingUserReceipts.length > 0 && (
+            <span className="bg-amber-100 text-amber-800 text-xs font-semibold px-2 py-0.5 rounded-full">
+              {pendingUserReceipts.length}
+            </span>
+          )}
+        </button>
       </div>
 
-      {pendingUserReceipts.length > 0 && (
-        <div className="bg-amber-50 rounded-xl border border-amber-200 overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-200">
-            <Clock size={14} className="text-amber-600 shrink-0" />
-            <h3 className="text-sm font-semibold text-amber-900">Pending approval</h3>
-            <span className="ml-auto text-xs bg-amber-200 text-amber-800 font-semibold px-2 py-0.5 rounded-full">{pendingUserReceipts.length}</span>
-          </div>
-          <div className="divide-y divide-amber-100">
-            {pendingUserReceipts.map((r) => {
-              const p = r._parsedPayload;
-              return (
-                <div key={r._id} className="flex items-center justify-between gap-3 px-4 py-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-gray-900 text-sm">{p.name || '—'}</span>
-                      {p.role && (
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${ROLE_COLORS[p.role] || 'bg-gray-100 text-gray-700'}`}>
-                          {p.role.replace('_', ' ')}
-                        </span>
-                      )}
-                    </div>
-                    {p.email && <p className="text-xs text-gray-500 mt-0.5">{p.email}</p>}
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      Submitted {new Date(r.createdAt).toLocaleDateString()} · Ref: {r.bankReference}
-                    </p>
-                  </div>
-                  <span className="shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 flex items-center gap-1">
-                    <Clock size={10} /> Pending review
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {activeTab === 'active' ? (
+        <>
+          <ViewModeToggle mode={viewMode} setMode={(mode) => { setViewMode(mode); localStorage.setItem('view_mode_admin_users', mode); }} />
 
-      {isLoading ? (
-        <div className="text-center py-12 text-gray-400">Loading users...</div>
-      ) : viewMode === 'grid' ? (        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {users?.map((u) => (
-            <div key={u._id} className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-gray-900">{u.name}</p>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                  {u.isActive ? 'Active' : 'Inactive'}
-                </span>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+            <div className="relative max-w-md">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                placeholder="Search by name or email…"
+                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Roles</p>
+                <div className="flex flex-wrap gap-2">
+                  {['merchant_admin', 'manager', 'cashier', 'kitchen'].map((role) => (
+                    <label key={role} className="inline-flex items-center gap-1.5 text-xs text-gray-700 border border-gray-200 rounded-lg px-2 py-1">
+                      <input
+                        type="checkbox"
+                        checked={roleFilters.includes(role)}
+                        onChange={(e) => {
+                          setPage(1);
+                          setRoleFilters((prev) => (e.target.checked ? [...prev, role] : prev.filter((r) => r !== role)));
+                        }}
+                      />
+                      {role.replace('_', ' ')}
+                    </label>
+                  ))}
+                </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">{u.email}</p>
-              <p className="text-xs text-gray-600 mt-2 capitalize">{u.role.replace('_', ' ')}</p>
-              {Array.isArray(u.storeIds) && u.storeIds.length > 0 && (
-                <p className="mt-1 text-xs text-gray-500">
-                  {u.storeIds.map((s) => s?.name || s?.code || 'Unknown').join(', ')}
-                </p>
-              )}
-              <div className="mt-4 flex items-center gap-2">
-                <TooltipWrap title={u.isActive ? 'Deactivate user' : 'Activate user'}><button type="button" onClick={() => toggleMutation.mutate({ id: u._id, isActive: !u.isActive })} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">{u.isActive ? <UserX size={14} /> : <UserCheck size={14} />}</button></TooltipWrap>
-                <TooltipWrap title="Send password reset email"><button type="button" onClick={() => resetMutation.mutate(u._id)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"><Key size={14} /></button></TooltipWrap>
-                <TooltipWrap title="Edit user"><button type="button" onClick={() => openEdit(u)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"><Pencil size={14} /></button></TooltipWrap>
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Stores</p>
+                <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
+                  {stores.map((s) => (
+                    <label key={s._id} className="inline-flex items-center gap-1.5 text-xs text-gray-700 border border-gray-200 rounded-lg px-2 py-1">
+                      <input
+                        type="checkbox"
+                        checked={storeFilters.includes(s._id)}
+                        onChange={(e) => {
+                          setPage(1);
+                          setStoreFilters((prev) => (e.target.checked ? [...prev, s._id] : prev.filter((id) => id !== s._id)));
+                        }}
+                      />
+                      {s.name}
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[600px]">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <SortableTh label="Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} />
-                <SortableTh label="Email" field="email" currentSort={sort} currentOrder={order} onSort={toggleSort} />
-                <SortableTh label="Role" field="role" currentSort={sort} currentOrder={order} onSort={toggleSort} />
-                <SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} />
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {users?.map(u => (
-                <tr key={u._id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white ${u.isActive ? 'bg-brand-brown-deep' : 'bg-gray-400'}`}>
-                        {u.name?.[0]?.toUpperCase()}
-                      </div>
-                      <span className="font-medium text-gray-900">{u.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500">{u.email}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${ROLE_COLORS[u.role] || 'bg-gray-100 text-gray-700'}`}>
-                      {u.role.replace('_', ' ')}
-                    </span>
-                    {Array.isArray(u.storeIds) && u.storeIds.length > 0 && (
-                      <p className="mt-1 text-xs text-gray-500">
-                        Stores: {u.storeIds.map((s) => s?.name || s?.code || 'Unknown').join(', ')}
-                      </p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+          </div>
+
+          {isLoading ? (
+            <div className="text-center py-12 text-gray-400">Loading users...</div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {users?.map((u) => (
+                <div key={u._id} className="bg-white rounded-xl border border-gray-200 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-gray-900">{u.name}</p>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {u.isActive ? 'Active' : 'Inactive'}
                     </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <button type="button" onClick={() => toggleMutation.mutate({ id: u._id, isActive: !u.isActive })} title={u.isActive ? 'Deactivate' : 'Activate'} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"><UserX size={14} /></button>
-                      <button type="button" onClick={() => resetMutation.mutate(u._id)} title="Reset password" className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"><Key size={14} /></button>
-                      <button type="button" onClick={() => openEdit(u)} title="Edit user" className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"><Pencil size={14} /></button>
-                    </div>
-                  </td>
-                </tr>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">{u.email}</p>
+                  <p className="text-xs text-gray-600 mt-2 capitalize">{u.role.replace('_', ' ')}</p>
+                  {Array.isArray(u.storeIds) && u.storeIds.length > 0 && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {u.storeIds.map((s) => s?.name || s?.code || 'Unknown').join(', ')}
+                    </p>
+                  )}
+                  <div className="mt-4 flex items-center gap-2">
+                    <button type="button" onClick={() => toggleMutation.mutate({ id: u._id, isActive: !u.isActive })} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border border-gray-200 rounded-lg text-xs font-semibold hover:bg-gray-50 text-gray-600 transition">
+                      {u.isActive ? <><UserX size={12} /> Deactivate</> : <><UserCheck size={12} /> Activate</>}
+                    </button>
+                    <button type="button" onClick={() => resetMutation.mutate(u._id)} className="px-3 py-2 border border-gray-200 rounded-lg text-xs font-semibold hover:bg-gray-50 text-gray-600 transition" title="Reset password"><Key size={12} /></button>
+                    <button type="button" onClick={() => openEdit(u)} className="px-3 py-2 border border-gray-200 rounded-lg text-xs font-semibold bg-gray-50 hover:bg-gray-100 text-gray-700 transition"><Pencil size={12} /></button>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-          </div>
-          {!users?.length && <div className="text-center py-12 text-gray-400">No users found</div>}
-        </div>
-      )}
+              {!users?.length && <div className="col-span-full text-center py-12 text-gray-400">No users found</div>}
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-gray-600 border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
+                      <th className="px-4 py-3"><SortableTh label="Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
+                      <th className="px-4 py-3"><SortableTh label="Email" field="email" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
+                      <th className="px-4 py-3"><SortableTh label="Role" field="role" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
+                      <th className="px-4 py-3 text-gray-500 font-semibold select-none">Store access</th>
+                      <th className="px-4 py-3"><SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
+                      <th className="px-4 py-3 text-gray-500 font-semibold select-none">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {users?.map((u) => (
+                      <tr key={u._id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
+                        <td className="px-4 py-3">{u.email}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${ROLE_COLORS[u.role] || 'bg-gray-100 text-gray-700'}`}>
+                            {u.role.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="truncate max-w-[12rem] block" title={Array.isArray(u.storeIds) ? u.storeIds.map(s => s?.name || s?.code || 'Unknown').join(', ') : ''}>
+                            {Array.isArray(u.storeIds) && u.storeIds.length > 0
+                              ? u.storeIds.map(s => s?.name || s?.code || 'Unknown').join(', ')
+                              : 'None'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${u.isActive ? 'bg-green-150 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {u.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <button type="button" onClick={() => toggleMutation.mutate({ id: u._id, isActive: !u.isActive })} title={u.isActive ? 'Deactivate' : 'Activate'} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"><UserX size={14} /></button>
+                            <button type="button" onClick={() => resetMutation.mutate(u._id)} title="Reset password" className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"><Key size={14} /></button>
+                            <button type="button" onClick={() => openEdit(u)} title="Edit user" className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"><Pencil size={14} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {!users?.length && <div className="text-center py-12 text-gray-400">No users found</div>}
+            </div>
+          )}
 
-      {!isLoading && (
-        <ListPagination page={pageMeta.page} pages={pageMeta.pages} total={pageMeta.total} onPageChange={setPage} isFetching={isFetching} />
+          {!isLoading && (
+            <ListPagination page={pageMeta.page} pages={pageMeta.pages} total={pageMeta.total} onPageChange={setPage} isFetching={isFetching} />
+          )}
+        </>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+          <div className="flex items-center gap-2 pb-4 border-b border-gray-100">
+            <Clock className="text-amber-500" size={20} />
+            <div>
+              <h3 className="font-semibold text-gray-900">Users Pending Approval</h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                These user licenses will be automatically activated once your payment receipt is verified by our team.
+              </p>
+            </div>
+          </div>
+          {pendingUserReceipts.length === 0 ? (
+            <div className="text-center py-12 text-gray-400 text-sm">
+              No user requests pending approval.
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden bg-gray-50/20">
+              {pendingUserReceipts.map((r) => {
+                const p = r._parsedPayload;
+                return (
+                  <div key={r._id} className="flex items-center justify-between gap-4 p-4 hover:bg-gray-50/50 transition-colors">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-gray-900 text-sm">{p.name || '—'}</span>
+                        {p.role && (
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${ROLE_COLORS[p.role] || 'bg-gray-100 text-gray-700'}`}>
+                            {p.role.replace('_', ' ')}
+                          </span>
+                        )}
+                      </div>
+                      {p.email && <p className="text-xs text-gray-500 mt-1">{p.email}</p>}
+                      <p className="text-xs text-gray-400 mt-1">
+                        Submitted: {new Date(r.createdAt).toLocaleDateString()} · Bank Ref: <span className="font-mono text-gray-600">{r.bankReference}</span>
+                        {r.notes ? ` · Note: "${r.notes}"` : ''}
+                      </p>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100 flex items-center gap-1">
+                        <Clock size={11} /> Pending review
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {showModal && (
@@ -555,7 +611,8 @@ export default function UsersPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                 <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                  disabled={Boolean(editingUser)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed">
                   <option value="cashier">Cashier</option>
                   <option value="manager">Manager</option>
                   <option value="kitchen">Kitchen</option>
@@ -593,6 +650,14 @@ export default function UsersPage() {
                       ))}
                     </div>
                     {errors.storeIds && <p className="text-xs text-red-500 mt-1">{errors.storeIds}</p>}
+                    {hasRemovedOriginalStores && (
+                      <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 flex items-start gap-2 animate-fade-in">
+                        <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                        <span>
+                          Note: You are removing already subscribed store assignments. This change will reflect in your next subscription billing cycle.
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Default store</label>

@@ -156,8 +156,10 @@ router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), a
     if (isActive !== undefined) user.isActive = isActive;
 
     if (role && role !== user.role) {
-      const allowedRoles =
-        req.user.role === 'superadmin' ? [...STAFF_ROLES, 'merchant_admin'] : [...STAFF_ROLES, 'merchant_admin'];
+      if (req.user.role !== 'superadmin') {
+        return res.status(400).json({ message: 'Role changes are not allowed for existing users.' });
+      }
+      const allowedRoles = [...STAFF_ROLES, 'merchant_admin'];
       if (!allowedRoles.includes(role)) {
         return res.status(400).json({ message: `Role ${role} not allowed` });
       }
@@ -185,7 +187,7 @@ router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), a
       user.storeIds = normalizedStoreIds;
       user.defaultStoreId = normalizedDefaultStoreId;
       if (user.role !== 'merchant_admin') {
-        user.licensedStoreSlots = Math.max(user.licensedStoreSlots || 1, normalizedStoreIds.length);
+        user.licensedStoreSlots = Math.max(1, normalizedStoreIds.length);
       }
     } else if (defaultStoreId !== undefined) {
       const { normalizedStoreIds, normalizedDefaultStoreId } = await normalizeStoreAssignments({

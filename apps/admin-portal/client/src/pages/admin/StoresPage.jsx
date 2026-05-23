@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader, X, ArrowLeft, Plus, Search, Star, Trash2 } from 'lucide-react';
+import { Loader, X, ArrowLeft, Plus, Search, Star, Trash2, Clock } from 'lucide-react';
 import api from '../../api/axios';
 import { fieldAttrs, PLACEHOLDERS } from '../../utils/formFields';
 import { useAuth } from '../../context/AuthContext';
@@ -58,6 +58,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
   const [statusFilter, setStatusFilter] = useState('');
   const { sort, order, toggleSort, sortParams } = useListSort('name', 'asc');
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [activeTab, setActiveTab] = useState('active');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [purchaseOpen, setPurchaseOpen] = useState(false);
   const [purchaseStep, setPurchaseStep] = useState('review');
@@ -159,6 +160,20 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
       return unwrapPagedList(data).items;
     },
   });
+
+  const { data: subscriptionData } = useQuery({
+    queryKey: ['my-subscription'],
+    queryFn: () => api.get('/subscriptions/my').then((r) => r.data),
+    enabled: isMerchantAdmin && !workspaceMode,
+    staleTime: 60_000,
+  });
+
+  const pendingStoreReceipts = useMemo(() => {
+    if (!subscriptionData?.receipts) return [];
+    return subscriptionData.receipts.filter(
+      (r) => r.receiptKind === 'store' && r.status === 'pending'
+    );
+  }, [subscriptionData]);
 
   const createStoreSuper = useMutation({
     mutationFn: (payload) => api.post('/stores', tenantIdOverride ? { ...payload, tenantId: tenantIdOverride } : payload),
@@ -502,165 +517,215 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
         </form>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-        <div className="flex flex-col sm:flex-row gap-3 flex-1">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search stores…"
-              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <StatusChip active={!statusFilter} onClick={() => setStatusFilter('')}>All</StatusChip>
-            <StatusChip active={statusFilter === 'active'} onClick={() => setStatusFilter('active')}>Active</StatusChip>
-            <StatusChip active={statusFilter === 'inactive'} onClick={() => setStatusFilter('inactive')}>Inactive</StatusChip>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {workspaceMode && isSuperAdmin && (
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold"
-            >
-              <Plus size={16} /> New store
-            </button>
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('active')}
+          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'active'
+              ? 'border-brand-orange text-brand-orange'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          All Stores ({stores.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${
+            activeTab === 'pending'
+              ? 'border-brand-orange text-brand-orange'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Pending Verification
+          {pendingStoreReceipts.length > 0 && (
+            <span className="bg-amber-100 text-amber-800 text-xs font-semibold px-2 py-0.5 rounded-full">
+              {pendingStoreReceipts.length}
+            </span>
           )}
-          <ViewModeToggle mode={viewMode} setMode={onViewModeChange} />
-        </div>
+        </button>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-        {viewMode === 'grid' ? (
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {stores.map((store) => {
-              const sid = storeIdStr(store);
-              return (
-              <div key={sid || store.code} className="rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <p className="font-semibold text-gray-900 flex items-center gap-1.5">
-                    {store.isDefault && (
-                      <Star size={14} className="text-amber-500 fill-amber-500 shrink-0" aria-label="Default store" title="Default store" />
-                    )}
-                    {store.name}
-                  </p>
-                  {store.isActive === false && (
-                    <span className="inline-block text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded">Inactive</span>
-                  )}
-                </div>
-                <p className="text-xs text-gray-600">{store.address || 'No address'}</p>
-                <p className="text-xs text-gray-500 mt-1">{store.phone || 'No phone'}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" className="text-xs px-3 py-1.5 rounded-lg border border-brand-orange text-brand-orange font-medium hover:bg-brand-orange hover:text-white transition-colors" onClick={() => openEdit(sid)}>
-                    Edit
-                  </button>
-                  {!store.isDefault && (isMerchantAdmin || isSuperAdmin) && (
-                    <button type="button" className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-600 font-medium hover:bg-red-50 transition-colors" onClick={() => setDeleteTarget(store)}>
-                      Delete
-                    </button>
-                  )}
-                </div>
-                {!isSuperAdmin && (
-                  <div className="mt-4 border-t border-gray-200 pt-3">
-                    <p className="text-xs font-semibold text-gray-600 mb-2">Store Access Users</p>
-                    <div className="space-y-1 max-h-32 overflow-auto">
-                      {users.map((u) => {
-                        const assigned = storeUsers(sid).some((su) => su._id === u._id);
-                        return (
-                          <label key={u._id} className="flex items-center gap-2 text-xs text-gray-700">
-                            <input
-                              type="checkbox"
-                              checked={assigned}
-                              onChange={(e) => toggleUserStoreAccess(u, sid, e.target.checked)}
-                            />
-                            <span>{u.name} ({u.role?.replace('_', ' ')})</span>
-                          </label>
-                        );
-                      })}
+      {activeTab === 'active' ? (
+        <>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+            <div className="flex flex-col sm:flex-row gap-3 flex-1">
+              <div className="relative flex-1 min-w-[200px] max-w-md">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search stores…"
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <StatusChip active={!statusFilter} onClick={() => setStatusFilter('')}>All</StatusChip>
+                <StatusChip active={statusFilter === 'active'} onClick={() => setStatusFilter('active')}>Active</StatusChip>
+                <StatusChip active={statusFilter === 'inactive'} onClick={() => setStatusFilter('inactive')}>Inactive</StatusChip>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {workspaceMode && isSuperAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setDrawerOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold"
+                >
+                  <Plus size={16} /> New store
+                </button>
+              )}
+              <ViewModeToggle mode={viewMode} setMode={onViewModeChange} />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+            {viewMode === 'grid' ? (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {stores.map((store) => {
+                  const sid = storeIdStr(store);
+                  return (
+                    <div key={sid || store.code} className="rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <p className="font-semibold text-gray-900 flex items-center gap-1.5">
+                          {store.isDefault && (
+                            <Star size={14} className="text-amber-500 fill-amber-500 shrink-0" aria-label="Default store" title="Default store" />
+                          )}
+                          {store.name}
+                        </p>
+                        {store.isActive === false && (
+                          <span className="inline-block text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded">Inactive</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-600">{store.address || 'No address'}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Code: {store.code} · Phone: {store.phone || '-'}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Payments: {Array.isArray(store.paymentMethods) ? store.paymentMethods.map(m => m.replace('_', ' ')).join(', ') : 'cash'}</p>
+                      <div className="mt-4 flex flex-wrap gap-2 pt-3 border-t border-gray-150">
+                        <button type="button" className="text-xs px-2.5 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 flex-1" onClick={() => openEdit(sid)}>
+                          Edit details
+                        </button>
+                        {!store.isDefault && (isMerchantAdmin || isSuperAdmin) && (
+                          <button type="button" className="text-xs px-2.5 py-1.5 rounded-md border border-red-200 text-red-600 hover:bg-red-50" onClick={() => setDeleteTarget(store)}>
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  );
+                })}
+                {!isLoading && !stores.length && (
+                  <div className="col-span-full text-center py-12 text-gray-400">No stores yet</div>
                 )}
               </div>
-            );
-            })}
-            {!stores.length && <p className="text-sm text-gray-500">No stores yet.</p>}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[560px]">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <SortableTh label="Store" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} />
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Address</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Phone</th>
-              <SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} />
-              <SortableTh label="Created" field="createdAt" currentSort={sort} currentOrder={order} onSort={toggleSort} />
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {isLoading && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">Loading stores...</td></tr>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-gray-600 border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
+                      <th className="px-4 py-3"><SortableTh label="Store Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
+                      <th className="px-4 py-3"><SortableTh label="Code" field="code" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
+                      <th className="px-4 py-3 text-gray-500 font-semibold select-none">Phone</th>
+                      <th className="px-4 py-3"><SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
+                      <th className="px-4 py-3"><SortableTh label="Created" field="createdAt" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
+                      <th className="px-4 py-3 text-gray-500 font-semibold select-none">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {stores.map((store) => {
+                      const sid = storeIdStr(store);
+                      return (
+                        <tr key={sid || store.code} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-4 py-3 font-medium text-gray-900 flex items-center gap-1.5">
+                            {store.isDefault && (
+                              <Star size={14} className="text-amber-500 fill-amber-500 shrink-0" aria-label="Default store" title="Default store" />
+                            )}
+                            {store.name}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs">{store.code}</td>
+                          <td className="px-4 py-3">{store.phone || '-'}</td>
+                          <td className="px-4 py-3">
+                            {store.isActive === false ? (
+                              <span className="text-xs font-medium text-red-600">Inactive</span>
+                            ) : (
+                              <span className="text-xs font-medium text-green-700">Active</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 text-xs">
+                            {store.createdAt ? new Date(store.createdAt).toLocaleDateString() : '-'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-wrap gap-2">
+                              <button type="button" className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50" onClick={() => openEdit(sid)}>
+                                Edit
+                              </button>
+                              {!store.isDefault && (isMerchantAdmin || isSuperAdmin) && (
+                                <button type="button" className="text-xs px-2.5 py-1 rounded-md border border-red-200 text-red-600 hover:bg-red-50" onClick={() => setDeleteTarget(store)}>
+                                  Delete
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {!isLoading && !stores.length && (
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No stores yet</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             )}
-            {!isLoading && stores.map((store) => {
-              const sid = storeIdStr(store);
-              return (
-              <tr key={sid || store.code} className={store.isActive === false ? 'bg-gray-50/80' : ''}>
-                <td className="px-4 py-3 font-medium text-gray-900">
-                  <span className="inline-flex items-center gap-1.5">
-                    {store.isDefault && (
-                      <Star size={14} className="text-amber-500 fill-amber-500 shrink-0" aria-label="Default store" title="Default store" />
-                    )}
-                    {store.name}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-gray-600">{store.address || '-'}</td>
-                <td className="px-4 py-3 text-gray-600">{store.phone || '-'}</td>
-                <td className="px-4 py-3 text-gray-600">
-                  {store.isActive === false ? (
-                    <span className="text-xs font-medium text-red-600">Inactive</span>
-                  ) : (
-                    <span className="text-xs font-medium text-green-700">Active</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-gray-600 text-xs">
-                  {store.createdAt ? new Date(store.createdAt).toLocaleDateString() : '-'}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50" onClick={() => openEdit(sid)}>
-                      Edit
-                    </button>
-                    {!store.isDefault && (isMerchantAdmin || isSuperAdmin) && (
-                      <button type="button" className="text-xs px-2.5 py-1 rounded-md border border-red-200 text-red-600 hover:bg-red-50" onClick={() => setDeleteTarget(store)}>
-                        Delete
-                      </button>
-                    )}
+            <ListPagination
+              page={storeList.page}
+              pages={storeList.pages}
+              total={storeList.total}
+              onPageChange={setStorePage}
+              isFetching={isFetching}
+              className="px-4"
+            />
+          </div>
+        </>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+          <div className="flex items-center gap-2 pb-4 border-b border-gray-100">
+            <Clock className="text-amber-500" size={20} />
+            <div>
+              <h3 className="font-semibold text-gray-900">Stores Pending Verification</h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                These store locations will be automatically initialized once your payment receipt is verified by our team.
+              </p>
+            </div>
+          </div>
+          {pendingStoreReceipts.length === 0 ? (
+            <div className="text-center py-12 text-gray-400 text-sm">
+              No store requests pending verification.
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden bg-gray-50/20">
+              {pendingStoreReceipts.map((r) => (
+                <div key={r._id} className="flex items-center justify-between gap-4 p-4 hover:bg-gray-50/50 transition-colors">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-800 text-sm">Additional Store Location</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Submitted: {new Date(r.createdAt).toLocaleDateString()} at {new Date(r.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Bank Ref: <span className="font-mono text-gray-600">{r.bankReference}</span>
+                      {r.notes ? ` · Note: "${r.notes}"` : ''}
+                    </p>
                   </div>
-                </td>
-              </tr>
-            );
-            })}
-            {!isLoading && !stores.length && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No stores yet</td></tr>
-            )}
-          </tbody>
-          </table>
-          </div>
-        )}
-        <ListPagination
-          page={storeList.page}
-          pages={storeList.pages}
-          total={storeList.total}
-          onPageChange={setStorePage}
-          isFetching={isFetching}
-          className="px-4"
-        />
-      </div>
+                  <div className="shrink-0 flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100 flex items-center gap-1">
+                      <Clock size={11} /> Pending review
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {purchaseOpen && purchaseQuote && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
