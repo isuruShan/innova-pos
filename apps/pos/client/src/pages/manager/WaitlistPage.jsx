@@ -60,7 +60,7 @@ function WaitlistCard({ entry, onAction, onMoveUp, onMoveDown, tables, isFirst, 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
             <h4 className="font-semibold text-[var(--pos-text-primary)] truncate">
-              {entry.guest.name}
+              {entry.guestName}
             </h4>
             <StatusBadge status={entry.status} />
           </div>
@@ -74,10 +74,10 @@ function WaitlistCard({ entry, onAction, onMoveUp, onMoveDown, tables, isFirst, 
               <Clock size={14} className="text-amber-400" />
               {waitMinutes}m waiting
             </div>
-            {entry.guest.phone && (
+            {entry.guestPhone && (
               <div className="flex items-center gap-1.5">
                 <Phone size={14} />
-                {entry.guest.phone}
+                {entry.guestPhone}
               </div>
             )}
             {entry.estimatedWaitMinutes && (
@@ -149,10 +149,8 @@ function AddToWaitlistModal({ isOpen, onClose, onSubmit, isPending }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit({
-      guest: {
-        name: form.guestName,
-        phone: form.guestPhone,
-      },
+      guestName: form.guestName,
+      guestPhone: form.guestPhone,
       partySize: form.partySize,
       notes: form.notes,
     });

@@ -101,24 +101,32 @@ function HourlyHeatmap({ data }) {
 }
 
 function TableBreakdownRow({ table, maxRevenue }) {
-  const revenueWidth = maxRevenue > 0 ? ((table.totalRevenue || 0) / maxRevenue) * 100 : 0;
+  // Guard against undefined table
+  if (!table) return null;
+  
+  const totalRevenue = table.totalRevenue ?? 0;
+  const sessions = table.sessions ?? 0;
+  const avgDuration = table.avgDuration ?? 0;
+  const turnoversPerDay = table.turnoversPerDay ?? 0;
+  
+  const revenueWidth = maxRevenue > 0 ? (totalRevenue / maxRevenue) * 100 : 0;
   // Calculate revenue per hour based on sessions and average duration
-  const totalHours = ((table.sessions || 0) * (table.avgDuration || 60)) / 60;
-  const revenuePerHour = totalHours > 0 ? (table.totalRevenue || 0) / totalHours : 0;
+  const totalHours = (sessions * (avgDuration || 60)) / 60;
+  const revenuePerHour = totalHours > 0 ? totalRevenue / totalHours : 0;
 
   return (
     <div className="flex items-center gap-4 py-2 border-b border-slate-700/30 last:border-b-0">
-      <div className="w-16 font-medium text-[var(--pos-text-primary)]">{table.tableLabel}</div>
+      <div className="w-16 font-medium text-[var(--pos-text-primary)]">{table.tableLabel || 'Unknown'}</div>
       <div className="flex-1">
         <div className="flex items-center gap-2 text-sm text-slate-400">
           <span className="flex items-center gap-1">
-            <Users size={12} /> {table.sessions || 0}
+            <Users size={12} /> {sessions}
           </span>
           <span className="flex items-center gap-1">
-            <Clock size={12} /> {table.avgDuration || 0}m
+            <Clock size={12} /> {avgDuration}m
           </span>
           <span className="flex items-center gap-1">
-            <RefreshCw size={12} /> {(table.turnoversPerDay || 0).toFixed(1)}x
+            <RefreshCw size={12} /> {turnoversPerDay.toFixed(1)}x
           </span>
         </div>
         <div className="mt-1 h-2 bg-slate-700/50 rounded-full overflow-hidden">
@@ -130,7 +138,7 @@ function TableBreakdownRow({ table, maxRevenue }) {
       </div>
       <div className="text-right min-w-[80px]">
         <p className="font-semibold text-[var(--pos-text-primary)]">
-          ${(table.totalRevenue || 0).toFixed(0)}
+          ${totalRevenue.toFixed(0)}
         </p>
         <p className="text-xs text-slate-500">${revenuePerHour.toFixed(0)}/hr</p>
       </div>

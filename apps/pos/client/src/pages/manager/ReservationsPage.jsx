@@ -37,7 +37,7 @@ function ReservationCard({ reservation, onAction, tables }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
             <h4 className="font-semibold text-[var(--pos-text-primary)] truncate">
-              {reservation.guest.name}
+              {reservation.guestName}
             </h4>
             <StatusBadge status={reservation.status} />
           </div>
@@ -51,10 +51,10 @@ function ReservationCard({ reservation, onAction, tables }) {
               <Users size={14} className="text-amber-400" />
               {reservation.partySize} guests
             </div>
-            {reservation.guest.phone && (
+            {reservation.guestPhone && (
               <div className="flex items-center gap-1.5">
                 <Phone size={14} />
-                {reservation.guest.phone}
+                {reservation.guestPhone}
               </div>
             )}
             {tableLabel && (
@@ -107,7 +107,7 @@ function ReservationCard({ reservation, onAction, tables }) {
   );
 }
 
-function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending }) {
+function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, error }) {
   const [form, setForm] = useState({
     guestName: '',
     guestPhone: '',
@@ -125,11 +125,9 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending }) {
     e.preventDefault();
     const dateTime = new Date(`${form.reservationDate}T${form.reservationTime}`);
     onSubmit({
-      guest: {
-        name: form.guestName,
-        phone: form.guestPhone,
-        email: form.guestEmail,
-      },
+      guestName: form.guestName,
+      guestPhone: form.guestPhone,
+      guestEmail: form.guestEmail,
       partySize: form.partySize,
       reservationTime: dateTime.toISOString(),
       tableId: form.tableId || undefined,
@@ -260,6 +258,12 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending }) {
             />
           </div>
 
+          {error && (
+            <div className="p-3 rounded-lg bg-red-500/20 border border-red-500/50 text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
@@ -309,18 +313,33 @@ export default function ReservationsPage() {
   });
 
   // Create reservation
+  const [createError, setCreateError] = useState(null);
   const createMutation = useMutation({
     mutationFn: (data) => api.post('/reservations', data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['reservations'] });
       setShowNewModal(false);
+      setCreateError(null);
+    },
+    onError: (err) => {
+      const message = err.response?.data?.message || 'Failed to create reservation';
+      setCreateError(message);
     },
   });
 
   // Update status
+  const [statusError, setStatusError] = useState(null);
   const statusMutation = useMutation({
     mutationFn: ({ id, action }) => api.patch(`/reservations/${id}/status`, { status: action === 'confirm' ? 'confirmed' : action === 'seat' ? 'seated' : 'cancelled' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['reservations'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reservations'] });
+      setStatusError(null);
+    },
+    onError: (err) => {
+      const message = err.response?.data?.message || 'Failed to update reservation';
+      setStatusError(message);
+      setTimeout(() => setStatusError(null), 4000);
+    },
   });
 
   const handleAction = (id, action) => {
@@ -334,9 +353,9 @@ export default function ReservationsPage() {
         if (searchTerm) {
           const term = searchTerm.toLowerCase();
           if (
-            !r.guest.name.toLowerCase().includes(term) &&
-            !r.guest.phone?.includes(term) &&
-            !r.guest.email?.toLowerCase().includes(term)
+            !(r.guestName || '').toLowerCase().includes(term) &&
+            !(r.guestPhone || '').includes(term) &&
+            !(r.guestEmail || '').toLowerCase().includes(term)
           ) {
             return false;
           }
@@ -492,11 +511,22 @@ export default function ReservationsPage() {
 
       <NewReservationModal
         isOpen={showNewModal}
-        onClose={() => setShowNewModal(false)}
+        onClose={() => {
+          setShowNewModal(false);
+          setCreateError(null);
+        }}
         tables={tables}
         onSubmit={createMutation.mutate}
         isPending={createMutation.isPending}
+        error={createError}
       />
+
+      {/* Status Error Toast */}
+      {statusError && (
+        <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50">
+          {statusError}
+        </div>
+      )}
     </div>
   );
 }

@@ -140,6 +140,7 @@ export default function FloorPlanEditorPage() {
   }, [floorPlan, localPlan]);
 
   const plan = localPlan || floorPlan;
+  const [errorMessage, setErrorMessage] = useState(null);
 
   // Save mutation
   const saveMutation = useMutation({
@@ -147,6 +148,12 @@ export default function FloorPlanEditorPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['floor-plan'] });
       setIsDirty(false);
+      setErrorMessage(null);
+    },
+    onError: (err) => {
+      const message = err.response?.data?.message || 'Failed to save floor plan';
+      setErrorMessage(message);
+      setTimeout(() => setErrorMessage(null), 5000);
     },
   });
 
@@ -154,8 +161,14 @@ export default function FloorPlanEditorPage() {
   const syncMutation = useMutation({
     mutationFn: () => api.post('/floor-plan/sync-tables'),
     onSuccess: (data) => {
-      setLocalPlan(data.plan);
+      setLocalPlan(data.data?.plan || data.plan);
       qc.invalidateQueries({ queryKey: ['floor-plan'] });
+      setErrorMessage(null);
+    },
+    onError: (err) => {
+      const message = err.response?.data?.message || 'Failed to sync tables';
+      setErrorMessage(message);
+      setTimeout(() => setErrorMessage(null), 5000);
     },
   });
 
@@ -182,27 +195,41 @@ export default function FloorPlanEditorPage() {
       const newTableId = e.dataTransfer.getData('newTableId');
 
       const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect || !localPlan) return;
+      if (!rect || !localPlan) {
+        console.warn('Floor plan drop failed: missing rect or localPlan', { rect: !!rect, localPlan: !!localPlan });
+        return;
+      }
+
+      // Ensure tables array exists
+      const currentTables = localPlan.tables || [];
 
       // Cell size in pixels (accounting for zoom)
       const cellSize = 50 * zoom;
       const x = Math.floor((e.clientX - rect.left) / cellSize);
       const y = Math.floor((e.clientY - rect.top) / cellSize);
 
+      console.log('Drop event:', { newTableId, tableId, x, y, zoom, cellSize });
+
       if (newTableId) {
         // Adding a new table from sidebar
         const table = tables.find((t) => String(t._id) === newTableId);
-        if (!table) return;
+        if (!table) {
+          console.warn('Table not found:', newTableId);
+          return;
+        }
 
         // Check if already on plan
-        const exists = localPlan.tables.some((t) => String(t.tableId) === newTableId);
-        if (exists) return;
+        const exists = currentTables.some((t) => String(t.tableId) === newTableId);
+        if (exists) {
+          console.warn('Table already on floor plan:', newTableId);
+          return;
+        }
 
         const newTablePos = {
           tableId: table._id,
           label: table.label,
-          x: Math.max(0, Math.min(x, localPlan.gridWidth - 2)),
-          y: Math.max(0, Math.min(y, localPlan.gridHeight - 2)),
+          x: Math.max(0, Math.min(x, (localPlan.gridWidth || 20) - 2)),
+          y: Math.max(0, Math.min(y, (localPlan.gridHeight || 15) - 2)),
           width: 2,
           height: 2,
           shape: selectedShape,
@@ -210,19 +237,21 @@ export default function FloorPlanEditorPage() {
           capacity: table.capacity || 4,
         };
 
+        console.log('Adding table to floor plan:', newTablePos);
+
         setLocalPlan({
           ...localPlan,
-          tables: [...localPlan.tables, newTablePos],
+          tables: [...currentTables, newTablePos],
         });
         setIsDirty(true);
       } else if (tableId) {
         // Moving existing table
-        const updatedTables = localPlan.tables.map((t) => {
+        const updatedTables = currentTables.map((t) => {
           if (String(t.tableId) === tableId) {
             return {
               ...t,
-              x: Math.max(0, Math.min(x, localPlan.gridWidth - t.width)),
-              y: Math.max(0, Math.min(y, localPlan.gridHeight - t.height)),
+              x: Math.max(0, Math.min(x, (localPlan.gridWidth || 20) - t.width)),
+              y: Math.max(0, Math.min(y, (localPlan.gridHeight || 15) - t.height)),
             };
           }
           return t;
@@ -286,15 +315,17 @@ export default function FloorPlanEditorPage() {
   // Tables not yet on the floor plan
   const unplacedTables = useMemo(() => {
     if (!plan) return tables;
-    const placedIds = new Set(plan.tables.map((t) => String(t.tableId)));
+    const planTables = plan.tables || [];
+    const placedIds = new Set(planTables.map((t) => String(t.tableId)));
     return tables.filter((t) => !placedIds.has(String(t._id)));
   }, [tables, plan]);
 
   // Merge table labels into plan tables
   const planTablesWithLabels = useMemo(() => {
     if (!plan) return [];
+    const planTables = plan.tables || [];
     const tableMap = new Map(tables.map((t) => [String(t._id), t]));
-    return plan.tables.map((pt) => ({
+    return planTables.map((pt) => ({
       ...pt,
       label: tableMap.get(String(pt.tableId))?.label || pt.label || 'T',
     }));
@@ -587,6 +618,13 @@ export default function FloorPlanEditorPage() {
           </div>
         </div>
       </div>
+
+      {/* Error Toast */}
+      {errorMessage && (
+        <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 max-w-md">
+          {errorMessage}
+        </div>
+      )}
     </div>
   );
 }
