@@ -109,6 +109,7 @@ export default function FloorPlanEditorPage() {
   const [showCapacity, setShowCapacity] = useState(true);
   const [isDirty, setIsDirty] = useState(false);
   const [localPlan, setLocalPlan] = useState(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // Fetch floor plan
   const { data: floorPlan, isLoading } = useQuery({
@@ -135,9 +136,28 @@ export default function FloorPlanEditorPage() {
   // Initialize local plan when data loads
   useEffect(() => {
     if (floorPlan && !localPlan) {
-      setLocalPlan(floorPlan);
+      // Ensure tables array exists
+      setLocalPlan({
+        ...floorPlan,
+        tables: floorPlan.tables || [],
+        zones: floorPlan.zones || [],
+      });
     }
   }, [floorPlan, localPlan]);
+
+  // Create default plan structure if none exists after loading
+  useEffect(() => {
+    if (!isLoading && !floorPlan && isStoreReady && !localPlan) {
+      // Create a temporary local plan while the API creates one
+      setLocalPlan({
+        name: 'Main Floor',
+        gridWidth: 20,
+        gridHeight: 15,
+        tables: [],
+        zones: [],
+      });
+    }
+  }, [isLoading, floorPlan, isStoreReady, localPlan]);
 
   const plan = localPlan || floorPlan;
   const [errorMessage, setErrorMessage] = useState(null);
@@ -191,12 +211,24 @@ export default function FloorPlanEditorPage() {
   const handleCanvasDrop = useCallback(
     (e) => {
       e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+      
       const tableId = e.dataTransfer.getData('tableId');
       const newTableId = e.dataTransfer.getData('newTableId');
 
       const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect || !localPlan) {
-        console.warn('Floor plan drop failed: missing rect or localPlan', { rect: !!rect, localPlan: !!localPlan });
+      if (!rect) {
+        console.warn('Floor plan drop failed: missing canvas rect');
+        setErrorMessage('Drop failed: Canvas not ready');
+        setTimeout(() => setErrorMessage(null), 3000);
+        return;
+      }
+      
+      if (!localPlan) {
+        console.warn('Floor plan drop failed: no local plan');
+        setErrorMessage('Drop failed: Floor plan not loaded');
+        setTimeout(() => setErrorMessage(null), 3000);
         return;
       }
 
@@ -266,7 +298,23 @@ export default function FloorPlanEditorPage() {
 
   const handleCanvasDragOver = useCallback((e) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleCanvasDragEnter = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleCanvasDragLeave = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set to false if leaving the canvas (not a child element)
+    if (!canvasRef.current?.contains(e.relatedTarget)) {
+      setIsDragOver(false);
+    }
   }, []);
 
   const handleTableSelect = useCallback((table) => {
@@ -435,7 +483,7 @@ export default function FloorPlanEditorPage() {
           </div>
 
           {/* Canvas */}
-          <div className="flex-1 bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl overflow-auto">
+          <div className="flex-1 bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl overflow-auto min-h-[400px]">
             {isLoading ? (
               <div className="flex items-center justify-center h-full text-slate-400">
                 Loading floor plan...
@@ -443,10 +491,12 @@ export default function FloorPlanEditorPage() {
             ) : plan ? (
               <div
                 ref={canvasRef}
-                className="relative"
+                className={`relative transition-all ${isDragOver ? 'ring-2 ring-amber-400 ring-inset bg-amber-500/5' : ''}`}
                 style={{
-                  width: `${plan.gridWidth * 50 * zoom}px`,
-                  height: `${plan.gridHeight * 50 * zoom}px`,
+                  width: `${(plan.gridWidth || 20) * 50 * zoom}px`,
+                  height: `${(plan.gridHeight || 15) * 50 * zoom}px`,
+                  minWidth: '600px',
+                  minHeight: '400px',
                   backgroundImage: showGrid
                     ? 'linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)'
                     : 'none',
@@ -454,12 +504,25 @@ export default function FloorPlanEditorPage() {
                 }}
                 onDrop={handleCanvasDrop}
                 onDragOver={handleCanvasDragOver}
+                onDragEnter={handleCanvasDragEnter}
+                onDragLeave={handleCanvasDragLeave}
                 onClick={() => setSelectedTable(null)}
               >
                 {/* Zones */}
                 {plan.zones?.map((zone) => (
                   <Zone key={zone._id || zone.name} zone={zone} zoom={zoom} />
                 ))}
+
+                {/* Empty state helper */}
+                {planTablesWithLabels.length === 0 && !isDragOver && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="text-center text-slate-500">
+                      <Move size={48} className="mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Drag tables from the sidebar</p>
+                      <p className="text-xs">to place them on the floor plan</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Tables */}
                 {planTablesWithLabels.map((table) => (

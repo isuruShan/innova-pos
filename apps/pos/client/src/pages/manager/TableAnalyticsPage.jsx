@@ -155,8 +155,9 @@ function DayPartChart({ data }) {
     );
   }
 
-  const maxSessions = Math.max(...data.map((d) => d.sessions), 1);
+  const maxSessions = Math.max(...data.map((d) => d.sessions || 0), 1);
   const colors = {
+    breakfast: 'bg-yellow-500',
     morning: 'bg-yellow-500',
     lunch: 'bg-orange-500',
     afternoon: 'bg-amber-500',
@@ -167,19 +168,22 @@ function DayPartChart({ data }) {
   return (
     <div className="flex items-end gap-3 h-40">
       {data.map((part) => {
-        const height = (part.sessions / maxSessions) * 100;
+        if (!part || !part.dayPart) return null;
+        const sessions = part.sessions || 0;
+        const avgRevenue = part.avgRevenuePerCover ?? part.avgRevenue ?? 0;
+        const height = (sessions / maxSessions) * 100;
         return (
           <div key={part.dayPart} className="flex-1 flex flex-col items-center gap-2">
             <div
               className={`w-full rounded-t-lg ${colors[part.dayPart] || 'bg-slate-500'}`}
               style={{ height: `${Math.max(height, 5)}%` }}
-              title={`${part.sessions} sessions, $${part.avgRevenue.toFixed(0)} avg`}
+              title={`${sessions} sessions, $${avgRevenue.toFixed(0)} avg`}
             />
             <div className="text-center">
               <p className="text-xs font-medium text-[var(--pos-text-primary)] capitalize">
                 {part.dayPart.replace('_', ' ')}
               </p>
-              <p className="text-[10px] text-slate-500">{part.sessions}</p>
+              <p className="text-[10px] text-slate-500">{sessions}</p>
             </div>
           </div>
         );
