@@ -13,6 +13,7 @@ const SUPERADMIN_NAV_GROUPS = [
   {
     title: 'Platform',
     items: [
+      { label: 'Dashboard', icon: LayoutDashboard, to: '/superadmin/dashboard' },
       { label: 'Merchants', icon: Building2, to: '/merchants' },
       { label: 'Applications', icon: ClipboardList, to: '/applications' },
     ],

@@ -134,6 +134,57 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
                 </div>
               )}
 
+              {receipt.receiptKind === 'user_license' && receipt.userLicensePayload && (
+                <div className="rounded-lg bg-violet-50/50 border border-violet-100 p-4 text-sm space-y-3 animate-fade-in">
+                  <div className="flex items-center justify-between border-b border-violet-100 pb-2">
+                    <p className="font-semibold text-violet-900 text-xs sm:text-sm">
+                      Action: {receipt.userLicenseAction === 'create_user' ? 'Add New User Seat' : 'Adjust Store Assignments'}
+                    </p>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-violet-100 text-violet-800 uppercase tracking-wide border border-violet-200">
+                      User Add-on
+                    </span>
+                  </div>
+
+                  {receipt.userLicenseAction === 'create_user' && (
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">New User Details</p>
+                      <p className="text-sm font-semibold text-gray-900">{receipt.userLicensePayload?.name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {receipt.userLicensePayload?.email} · <span className="capitalize font-medium text-violet-700">{receipt.userLicensePayload?.role}</span>
+                      </p>
+                    </div>
+                  )}
+
+                  {receipt.userLicenseAction === 'assign_stores' && data?.userMeta && (
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Target User Details</p>
+                      <p className="text-sm font-semibold text-gray-900">{data.userMeta.name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {data.userMeta.email} · <span className="capitalize font-medium text-violet-700">{data.userMeta.role}</span>
+                      </p>
+                    </div>
+                  )}
+
+                  {data?.storesMeta && data.storesMeta.length > 0 && (
+                    <div className="space-y-1.5 pt-2.5 border-t border-violet-100">
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Assigned Store Locations ({data.storesMeta.length})</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {data.storesMeta.map((s, i) => (
+                          <span key={i} className="px-2 py-0.5 bg-white border border-gray-200 rounded text-xs text-gray-700 font-medium">
+                            {s.name} ({s.code})
+                          </span>
+                        ))}
+                      </div>
+                      {receipt.userLicensePayload?.slotsToAdd > 0 && (
+                        <p className="text-[11px] text-brand-orange font-bold mt-2">
+                          * Adding {receipt.userLicensePayload.slotsToAdd} extra store {receipt.userLicensePayload.slotsToAdd === 1 ? 'slot' : 'slots'} for this user.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {data?.billingBreakdown?.plan && (
                 <BillingBreakdownPanel breakdown={data.billingBreakdown} />
               )}

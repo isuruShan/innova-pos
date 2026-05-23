@@ -341,6 +341,47 @@ router.get('/receipts/by-tenant/:tenantId', authenticateJWT, authorize('superadm
   }
 });
 
+// GET /subscriptions/superadmin/dashboard-stats — superadmin dashboard metrics
+router.get('/superadmin/dashboard-stats', authenticateJWT, authorize('superadmin'), async (req, res) => {
+  try {
+    const MerchantApplication = require('../models/MerchantApplication');
+    const Store = require('../models/Store');
+
+    const pendingAppsCount = await MerchantApplication.countDocuments({ status: 'pending' });
+    const pendingPaymentsCount = await PaymentReceipt.countDocuments({ status: 'pending' });
+    const totalMerchants = await Tenant.countDocuments({ status: 'active' });
+    const totalStores = await Store.countDocuments({ isActive: true });
+
+    const revenue = await PaymentReceipt.aggregate([
+      { $match: { status: 'verified' } },
+      { $group: { _id: '$currency', total: { $sum: '$amount' } } }
+    ]);
+    const revenueMap = Object.fromEntries(revenue.map(r => [r._id, r.total]));
+
+    const recentApps = await MerchantApplication.find({ status: 'pending' })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean();
+
+    const recentPayments = await PaymentReceipt.find({ status: 'pending' })
+      .populate('tenantId', 'businessName')
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean();
+
+    res.json({
+      pendingAppsCount,
+      pendingPaymentsCount,
+      totalMerchants,
+      totalStores,
+      revenue: revenueMap,
+      recentApps,
+      recentPayments,
+    });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
 
 // GET /subscriptions/receipts/:id — superadmin payment detail
 router.get('/receipts/:id', authenticateJWT, authorize('superadmin'), async (req, res) => {
@@ -360,6 +401,8 @@ router.get('/receipts/:id', authenticateJWT, authorize('superadmin'), async (req
     let billingBreakdown = null;
     let addonMeta = null;
     let storeMeta = null;
+    let userMeta = null;
+    let storesMeta = null;
 
     if (receipt.receiptKind === 'subscription' || (!receipt.receiptKind && !receipt.addonCode)) {
       billingBreakdown = await computeSubscriptionRenewalExpected(tenant);
@@ -373,12 +416,28 @@ router.get('/receipts/:id', authenticateJWT, authorize('superadmin'), async (req
     if (receipt.receiptKind === 'store') {
       storeMeta = { label: 'Additional store location', description: 'Creates one store with default settings after verification.' };
     }
+    if (receipt.receiptKind === 'user_license' && receipt.userLicensePayload) {
+      const User = require('../models/User');
+      const Store = require('../models/Store');
+      const payload = receipt.userLicensePayload;
+      if (payload.userId) {
+        const u = await User.findById(payload.userId).select('name email role').lean();
+        userMeta = u || { name: 'Unknown User', email: '' };
+      }
+      const storeIds = payload.storeIds || payload.targetStoreIds || [];
+      if (storeIds.length > 0) {
+        const docs = await Store.find({ _id: { $in: storeIds } }).select('name code').lean();
+        storesMeta = docs.map(s => ({ name: s.name, code: s.code }));
+      }
+    }
 
     res.json({
       receipt,
       billingBreakdown,
       addonMeta,
       storeMeta,
+      userMeta,
+      storesMeta,
       receiptKindLabel:
         receipt.receiptKind === 'user_license'
           ? 'User license'

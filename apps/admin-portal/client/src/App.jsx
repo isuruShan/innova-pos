@@ -8,6 +8,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import Layout from './components/layout/Layout';
 
 // Superadmin pages
+import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import MerchantsPage from './pages/superadmin/MerchantsPage';
 import ApplicationsPage from './pages/superadmin/ApplicationsPage';
 import ApplicationDetailPage from './pages/superadmin/ApplicationDetailPage';
@@ -46,7 +47,7 @@ const PrivateRoute = ({ children, roles }) => {
 const RootRedirect = () => {
   const { user, isSuperAdmin } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (isSuperAdmin) return <Navigate to="/merchants" replace />;
+  if (isSuperAdmin) return <Navigate to="/superadmin/dashboard" replace />;
   return <Navigate to="/dashboard" replace />;
 };
 
@@ -63,6 +64,11 @@ export default function App() {
           <Route path="/" element={<RootRedirect />} />
 
           {/* Superadmin routes */}
+          <Route path="/superadmin/dashboard" element={
+            <PrivateRoute roles={['superadmin']}>
+              <Layout><SuperAdminDashboard /></Layout>
+            </PrivateRoute>
+          } />
           <Route path="/merchants" element={
             <PrivateRoute roles={['superadmin']}>
               <Layout><MerchantsPage /></Layout>
