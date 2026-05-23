@@ -615,6 +615,7 @@ export default function ReservationsPage() {
     setSelectedDate(newDate);
   };
 
+
   if (!isStoreReady) {
     return (
       <div className="min-h-screen flex flex-col bg-[var(--pos-page-bg)]">
