@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import {
   Clock, ChevronRight, ChevronLeft, RefreshCw,
-  Link2, Eye,
+  Link2, Eye, CalendarDays,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -22,6 +22,20 @@ import { formatCurrency } from '../../utils/format';
 import { KanbanSkeleton } from '../../components/StoreSkeletons';
 import { printReceipt } from '../../utils/receiptPrint';
 import { shouldPrintReceiptForUpdatedOrder } from '../../utils/receiptPolicy';
+import PosDateField from '../../components/PosDateField';
+
+function todayStr() {
+  const x = new Date();
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+}
+function sevenDaysAgo() {
+  const d = new Date(); d.setDate(d.getDate() - 6);
+  return d.toISOString().split('T')[0];
+}
+function thirtyDaysAgo() {
+  const d = new Date(); d.setDate(d.getDate() - 29);
+  return d.toISOString().split('T')[0];
+}
 
 const STATUSES = ['pending', 'preparing', 'ready', 'completed', 'cancelled'];
 
@@ -259,10 +273,31 @@ export default function OrderBoard() {
   const cashierSession = useCashierSession();
   const sessionSince = fohr.orderBoardScopeSession ? cashierSession?.session?.openedAt : undefined;
 
+  // Date filter — only for manager/register mode (cashier uses session scoping)
+  const [datePreset, setDatePreset] = useState('today');
+  const [customFrom, setCustomFrom] = useState(todayStr);
+  const [customTo, setCustomTo] = useState(todayStr);
+
+  const { boardFrom, boardTo } = useMemo(() => {
+    if (!fohr.isRegister) return {};
+    const today = todayStr();
+    if (datePreset === 'today') return { boardFrom: today, boardTo: today };
+    if (datePreset === '7days') return { boardFrom: sevenDaysAgo(), boardTo: today };
+    if (datePreset === '30days') return { boardFrom: thirtyDaysAgo(), boardTo: today };
+    if (datePreset === 'custom') return { boardFrom: customFrom || today, boardTo: customTo || today };
+    return { boardFrom: today, boardTo: today };
+  }, [fohr.isRegister, datePreset, customFrom, customTo]);
+
   const { data: orders = [], isPending, refetch, isFetching } = useQuery({
-    queryKey: ['order-board', selectedStoreId, sessionSince],
+    queryKey: ['order-board', selectedStoreId, sessionSince, boardFrom, boardTo],
     queryFn: async () => {
-      const params = sessionSince ? { since: new Date(sessionSince).toISOString() } : {};
+      const params = {};
+      if (sessionSince) {
+        params.since = new Date(sessionSince).toISOString();
+      } else if (fohr.isRegister && boardFrom) {
+        params.since = `${boardFrom}T00:00:00`;
+        if (boardTo) params.until = `${boardTo}T23:59:59`;
+      }
       const remote = await api.get('/orders', { params }).then((r) => r.data);
       const pendingLocal = await listPendingOrders();
       return mergeOrderLists(remote, pendingLocal, selectedStoreId);
@@ -399,6 +434,49 @@ export default function OrderBoard() {
             Refresh
           </button>
         </div>
+
+        {/* Date filter — manager/register mode only */}
+        {fohr.isRegister && (
+          <div className="flex flex-wrap items-center gap-2 mb-4 p-3 rounded-2xl bg-[var(--pos-panel)] border border-slate-700/50 flex-shrink-0">
+            <CalendarDays size={15} className="text-slate-500 shrink-0" />
+            {[
+              { key: 'today', label: 'Today' },
+              { key: '7days', label: 'Last 7 days' },
+              { key: '30days', label: 'Last 30 days' },
+              { key: 'custom', label: 'Custom' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setDatePreset(key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+                  datePreset === key
+                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                    : 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-[var(--pos-text-primary)]'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+            {datePreset === 'custom' && (
+              <div className="flex items-center gap-2 ml-1">
+                <PosDateField
+                  value={customFrom}
+                  onChange={setCustomFrom}
+                  max={customTo}
+                  className="w-[140px] bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                />
+                <span className="text-slate-500 text-xs">to</span>
+                <PosDateField
+                  value={customTo}
+                  onChange={setCustomTo}
+                  min={customFrom}
+                  className="w-[140px] bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {!isStoreReady || isPending ? (
           <div className="flex-1 flex flex-col min-h-0 py-2">

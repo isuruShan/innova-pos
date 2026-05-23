@@ -35,6 +35,8 @@ export default function BankReceiptFields({
   onFileChange,
   fileInputRef,
   error,
+  bankReferenceError,
+  fileError,
   submitLabel = 'Submit receipt',
   isPending = false,
   onSubmit,
@@ -73,10 +75,11 @@ export default function BankReceiptFields({
           type="text"
           value={bankReference}
           onChange={(e) => onBankReferenceChange(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+          className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${bankReferenceError ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
           maxLength={64}
           placeholder="e.g. TXN-2026-001234"
         />
+        {bankReferenceError && <p className="text-xs text-red-500 mt-1">{bankReferenceError}</p>}
       </div>
 
       {/* Receipt image upload */}
@@ -127,6 +130,9 @@ export default function BankReceiptFields({
         )}
         {file?._validationError && (
           <p className="text-xs text-red-500 mt-1">{file._validationError}</p>
+        )}
+        {!file?._validationError && fileError && (
+          <p className="text-xs text-red-500 mt-1">{fileError}</p>
         )}
       </div>
 

@@ -97,7 +97,7 @@ export function AvatarMenu({ user, onLogout }) {
               <div className="border-t border-slate-700/40 pt-1 mt-1">
                 <button
                   onClick={() => { setOpen(false); onLogout(); }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:text-red-200 hover:bg-red-600/25 rounded-lg transition"
                 >
                   <LogOut size={15} />
                   Sign Out
@@ -278,7 +278,7 @@ function NavDropdown({
         style={
           active
             ? {
-                backgroundColor: 'color-mix(in srgb, var(--color-accent) 22%, transparent)',
+                backgroundColor: 'color-mix(in srgb, var(--color-selection) 72%, transparent)',
                 color: navTabActiveFg,
               }
             : { color: 'color-mix(in srgb, var(--color-text) 55%, transparent)' }

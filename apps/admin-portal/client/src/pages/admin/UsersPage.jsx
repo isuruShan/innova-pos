@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Loader, UserCheck, UserX, Key, X, Pencil, Search, ArrowLeft } from 'lucide-react';
+import { Plus, Loader, UserCheck, UserX, Key, X, Pencil, Search, ArrowLeft, Clock } from 'lucide-react';
 import TooltipWrap from '../../components/common/TooltipWrap';
 import { useToast } from '../../context/ToastContext';
 import api from '../../api/axios';
@@ -42,6 +42,7 @@ export default function UsersPage() {
   const [paymentAction, setPaymentAction] = useState('create_user');
   const [paymentQuote, setPaymentQuote] = useState(null);
   const [paymentError, setPaymentError] = useState('');
+  const [bankFieldErrors, setBankFieldErrors] = useState({});
   const [chosenMethod, setChosenMethod] = useState(null);
   const [bankForm, setBankForm] = useState({ bankReference: '', notes: '' });
   const [bankFile, setBankFile] = useState(null);
@@ -76,6 +77,23 @@ export default function UsersPage() {
     queryFn: () => api.get('/platform-payments/merchant-options').then((r) => r.data),
   });
 
+  const { data: subscriptionData } = useQuery({
+    queryKey: ['my-subscription'],
+    queryFn: () => api.get('/subscriptions/my').then((r) => r.data),
+    staleTime: 60_000,
+  });
+
+  const pendingUserReceipts = useMemo(() => {
+    if (!subscriptionData?.receipts) return [];
+    return subscriptionData.receipts.filter(
+      (r) => r.purchaseKind === 'user_license' && r.status === 'pending',
+    ).map((r) => {
+      let payload = {};
+      try { if (r.userLicensePayload) payload = JSON.parse(r.userLicensePayload); } catch { /* noop */ }
+      return { ...r, _parsedPayload: payload };
+    });
+  }, [subscriptionData]);
+
   const invalidateUsers = () => {
     queryClient.invalidateQueries({ queryKey: ['users'] });
     queryClient.invalidateQueries({ queryKey: ['my-users-total'] });
@@ -96,6 +114,7 @@ export default function UsersPage() {
     setPaymentStep('review');
     setPaymentQuote(null);
     setPaymentError('');
+    setBankFieldErrors({});
     setChosenMethod(null);
     setBankForm({ bankReference: '', notes: '' });
     setBankFile(null);
@@ -251,15 +270,12 @@ export default function UsersPage() {
   const handleBankSubmit = (e) => {
     e.preventDefault();
     setPaymentError('');
+    setBankFieldErrors({});
     if (!paymentQuote?.priced?.amount) return;
-    if (!bankForm.bankReference.trim()) {
-      setPaymentError('Bank reference is required.');
-      return;
-    }
-    if (!bankFile || bankFile._validationError) {
-      setPaymentError(bankFile?._validationError || 'Receipt photo is required.');
-      return;
-    }
+    const fieldErrs = {};
+    if (!bankForm.bankReference.trim()) fieldErrs.bankReference = 'Bank reference is required';
+    if (!bankFile || bankFile._validationError) fieldErrs.file = bankFile?._validationError || 'Receipt photo is required';
+    if (Object.keys(fieldErrs).length) { setBankFieldErrors(fieldErrs); return; }
     const fd = new FormData();
     fd.append('purchaseKind', 'user_license');
     fd.append('userLicenseAction', paymentAction);
@@ -366,10 +382,45 @@ export default function UsersPage() {
         </div>
       </div>
 
+      {pendingUserReceipts.length > 0 && (
+        <div className="bg-amber-50 rounded-xl border border-amber-200 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-200">
+            <Clock size={14} className="text-amber-600 shrink-0" />
+            <h3 className="text-sm font-semibold text-amber-900">Pending approval</h3>
+            <span className="ml-auto text-xs bg-amber-200 text-amber-800 font-semibold px-2 py-0.5 rounded-full">{pendingUserReceipts.length}</span>
+          </div>
+          <div className="divide-y divide-amber-100">
+            {pendingUserReceipts.map((r) => {
+              const p = r._parsedPayload;
+              return (
+                <div key={r._id} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-gray-900 text-sm">{p.name || '—'}</span>
+                      {p.role && (
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${ROLE_COLORS[p.role] || 'bg-gray-100 text-gray-700'}`}>
+                          {p.role.replace('_', ' ')}
+                        </span>
+                      )}
+                    </div>
+                    {p.email && <p className="text-xs text-gray-500 mt-0.5">{p.email}</p>}
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Submitted {new Date(r.createdAt).toLocaleDateString()} · Ref: {r.bankReference}
+                    </p>
+                  </div>
+                  <span className="shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 flex items-center gap-1">
+                    <Clock size={10} /> Pending review
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="text-center py-12 text-gray-400">Loading users...</div>
-      ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      ) : viewMode === 'grid' ? (        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {users?.map((u) => (
             <div key={u._id} className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-center justify-between">
@@ -635,7 +686,7 @@ export default function UsersPage() {
                     </p>
                     {paymentOptions.bankAccounts.map((b) => (
                       <div key={b._id}>
-                        <p className="font-medium">{b.label} — {b.bankName}</p>
+                        <p className="font-medium">{b.bankName}</p>
                         <p className="text-xs">{b.accountName} · {b.accountNumber}{b.branch ? ` · ${b.branch}` : ''}</p>
                         {b.instructions && <p className="text-xs text-gray-500 mt-0.5">{b.instructions}</p>}
                       </div>
@@ -651,6 +702,8 @@ export default function UsersPage() {
                   onFileChange={setBankFile}
                   fileInputRef={bankFileRef}
                   error={paymentError}
+                  bankReferenceError={bankFieldErrors.bankReference}
+                  fileError={bankFieldErrors.file}
                   isPending={bankReceiptMutation.isPending}
                   onSubmit={handleBankSubmit}
                 />

@@ -249,7 +249,19 @@ export default function SubscriptionPage() {
       </p>
 
       {/* Current status */}
-      {tenant && (
+      {!data ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4 animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-1/3" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="space-y-2">
+                <div className="h-3 bg-gray-100 rounded w-1/2" />
+                <div className="h-4 bg-gray-200 rounded w-2/3" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : tenant ? (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="font-semibold text-gray-900 mb-4">
             {tenant.subscriptionStatus === 'trial' ? 'Account status' : 'Current Plan'}
@@ -331,7 +343,7 @@ export default function SubscriptionPage() {
             </div>
           )}
         </div>
-      )}
+      ) : null}
 
       {tenant?.pendingPlanId && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-900">
@@ -442,7 +454,7 @@ export default function SubscriptionPage() {
                 <p className="font-medium text-gray-900">Transfer to:</p>
                 {paymentOptions.bankAccounts.map((b) => (
                   <div key={b._id}>
-                    <p className="font-medium">{b.label} — {b.bankName}</p>
+                    <p className="font-medium">{b.bankName}</p>
                     <p>{b.accountName} · {b.accountNumber}{b.branch ? ` · ${b.branch}` : ''}</p>
                     {b.instructions && <p className="text-xs text-gray-500 mt-0.5">{b.instructions}</p>}
                   </div>

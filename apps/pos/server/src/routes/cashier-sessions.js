@@ -185,17 +185,31 @@ router.get(
         status: 'closed',
       })
         .sort({ closedAt: -1 })
-        .select('floatAmount closedAt')
+        .select('floatAmount closingCountedCash closedAt')
         .lean();
 
-      if (!lastSession || lastSession.floatAmount == null) {
+      if (!lastSession) {
+        return res.json({ suggestedOpening: 0, hasLastSession: false });
+      }
+
+      // Prefer the designated float (money left in the drawer).
+      // Fall back to closing counted cash if no float was recorded.
+      const suggestedOpening =
+        lastSession.floatAmount != null
+          ? round2(lastSession.floatAmount)
+          : lastSession.closingCountedCash != null
+            ? round2(lastSession.closingCountedCash)
+            : null;
+
+      if (suggestedOpening == null) {
         return res.json({ suggestedOpening: 0, hasLastSession: false });
       }
 
       return res.json({
-        suggestedOpening: round2(lastSession.floatAmount),
+        suggestedOpening,
         hasLastSession: true,
         lastSessionClosedAt: lastSession.closedAt,
+        source: lastSession.floatAmount != null ? 'float' : 'closing_balance',
       });
     } catch (err) {
       sendRouteError(res, err, { req });

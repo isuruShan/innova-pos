@@ -613,7 +613,7 @@ export default function StoresPage() {
                   <p className="font-medium">Transfer exactly {formatMoney(purchaseQuote.priced.currency, purchaseQuote.priced.amount, merchantSymbol)} to:</p>
                   {paymentOptions.bankAccounts.map((b) => (
                     <div key={b._id} className="mt-2">
-                      <p className="font-medium">{b.label} — {b.bankName}</p>
+                      <p className="font-medium">{b.bankName}</p>
                       <p className="text-xs">{b.accountName} · {b.accountNumber}</p>
                     </div>
                   ))}

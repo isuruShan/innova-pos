@@ -42,6 +42,7 @@ export default function MerchantAddonsPage() {
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [addonFile, setAddonFile] = useState(null);
   const [addonApiError, setAddonApiError] = useState('');
+  const [addonBankFieldErrors, setAddonBankFieldErrors] = useState({});
   const addonFileRef = useRef(null);
   const addonPaypalContainerRef = useRef(null);
 
@@ -145,6 +146,7 @@ export default function MerchantAddonsPage() {
     setAddonForm({ bankReference: '', notes: '' });
     setAddonFile(null);
     setAddonApiError('');
+    setAddonBankFieldErrors({});
     setSearchParams((prev) => {
       const n = new URLSearchParams(prev);
       n.delete('code');
@@ -267,6 +269,7 @@ export default function MerchantAddonsPage() {
   const handleAddonBankSubmit = (e) => {
     e.preventDefault();
     setAddonApiError('');
+    setAddonBankFieldErrors({});
     if (!selectedAddon?.priced?.amount) {
       setAddonApiError('Invalid add-on.');
       return;
@@ -276,14 +279,10 @@ export default function MerchantAddonsPage() {
       setAddonApiError('No plan on file. Contact support.');
       return;
     }
-    if (!addonForm.bankReference.trim()) {
-      setAddonApiError('Bank reference is required.');
-      return;
-    }
-    if (!addonFile) {
-      setAddonApiError('Receipt upload is required.');
-      return;
-    }
+    const fieldErrs = {};
+    if (!addonForm.bankReference.trim()) fieldErrs.bankReference = 'Bank reference is required';
+    if (!addonFile || addonFile._validationError) fieldErrs.file = addonFile?._validationError || 'Receipt photo is required';
+    if (Object.keys(fieldErrs).length) { setAddonBankFieldErrors(fieldErrs); return; }
     const fd = new FormData();
     fd.append('addonCode', selectedAddon.code);
     fd.append('amount', String(selectedAddon.priced.amount));
@@ -367,7 +366,11 @@ export default function MerchantAddonsPage() {
                   </div>
                 ) : null}
                 {quoteLoading ? (
-                  <p className="text-sm text-gray-500 flex items-center gap-2"><Loader size={14} className="animate-spin" /> Loading pricing…</p>
+                  <div className="space-y-3 animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-3/4" />
+                    <div className="h-4 bg-gray-200 rounded w-1/2" />
+                    <div className="h-16 bg-gray-100 rounded-xl border border-gray-200" />
+                  </div>
                 ) : (
                   <BillingQuotePanel
                     recurringRates={selectedAddon.recurringRates}
@@ -472,7 +475,7 @@ export default function MerchantAddonsPage() {
                       </p>
                       {paymentOptions.bankAccounts.map((b) => (
                         <div key={b._id}>
-                          <p className="font-medium">{b.label} — {b.bankName}</p>
+                          <p className="font-medium">{b.bankName}</p>
                           <p>{b.accountName} · {b.accountNumber}{b.branch ? ` · ${b.branch}` : ''}</p>
                           {b.instructions ? <p className="text-xs text-gray-500 mt-0.5">{b.instructions}</p> : null}
                         </div>
@@ -487,6 +490,8 @@ export default function MerchantAddonsPage() {
                       onFileChange={setAddonFile}
                       fileInputRef={addonFileRef}
                       error={addonApiError}
+                      bankReferenceError={addonBankFieldErrors.bankReference}
+                      fileError={addonBankFieldErrors.file}
                       isPending={addonUploadMutation.isPending}
                       onSubmit={handleAddonBankSubmit}
                     />

@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Wallet, X } from 'lucide-react';
+import { Wallet, X, BarChart2, CreditCard, DollarSign, ClipboardCheck } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { useStoreContext } from '../../context/StoreContext';
@@ -35,107 +35,100 @@ function SessionBreakdownSummary({
   });
 
   return (
-    <div className="rounded-xl border border-slate-600/60 bg-[var(--pos-surface-inset)]/50 p-4 mb-4 max-h-[min(50vh,22rem)] overflow-y-auto text-sm space-y-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Session summary</p>
+    <div className="space-y-3 mb-5">
+      {/* Sales breakdown */}
+      <div className="rounded-xl border border-slate-700/70 bg-[var(--pos-surface-inset)] overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-700/60 bg-slate-800/40">
+          <BarChart2 size={13} className="text-slate-400" />
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Sales summary</p>
+        </div>
+        <div className="p-4 space-y-2 text-sm">
+          <div className="flex justify-between gap-2">
+            <span className="text-slate-500">Opening cash</span>
+            <span className="tabular-nums font-medium text-[var(--pos-text-primary)]">
+              {formatCurrency(openingCashBalance ?? 0)}
+            </span>
+          </div>
+          <div className="flex justify-between gap-2">
+            <span className="text-slate-500">Cash sales</span>
+            <span className="tabular-nums font-semibold text-amber-400">{formatCurrency(breakdown.cashSales ?? 0)}</span>
+          </div>
+          <div className="flex justify-between gap-2">
+            <span className="text-slate-500">Card sales</span>
+            <span className="tabular-nums font-medium text-[var(--pos-text-primary)]">
+              {formatCurrency(breakdown.cardSales ?? 0)}
+            </span>
+          </div>
+          {breakdown.otherSales > 0 && (
+            <div className="flex justify-between gap-2">
+              <span className="text-slate-500">Other sales</span>
+              <span className="tabular-nums font-medium text-[var(--pos-text-primary)]">
+                {formatCurrency(breakdown.otherSales ?? 0)}
+              </span>
+            </div>
+          )}
+          {otherRows.length > 0 && (
+            <ul className="pl-3 border-l border-slate-600/80 space-y-1 text-xs text-slate-400">
+              {otherRows.map((row) => (
+                <li key={row.paymentType} className="flex justify-between gap-2">
+                  <span>{formatPaymentTypeLabel(row.paymentType)}</span>
+                  <span className="tabular-nums shrink-0">{formatCurrency(row.revenue ?? 0)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex justify-between gap-2 pt-1.5 border-t border-slate-700/50">
+            <span className="text-slate-500">Discounts given</span>
+            <span className="tabular-nums font-medium text-rose-300/90">
+              − {formatCurrency(breakdown.totalDiscounts ?? 0)}
+            </span>
+          </div>
+        </div>
+      </div>
 
-      <div className="space-y-1.5 text-slate-300">
-        <div className="flex justify-between gap-2">
-          <span className="text-slate-500">Opening cash</span>
-          <span className="tabular-nums font-medium text-[var(--pos-text-primary)]">
-            {formatCurrency(openingCashBalance ?? 0)}
-          </span>
-        </div>
-        <div className="flex justify-between gap-2">
-          <span className="text-slate-500">Cash sales</span>
-          <span className="tabular-nums font-semibold text-amber-400">{formatCurrency(breakdown.cashSales ?? 0)}</span>
-        </div>
-        <div className="flex justify-between gap-2">
-          <span className="text-slate-500">Card sales</span>
-          <span className="tabular-nums font-medium text-[var(--pos-text-primary)]">
-            {formatCurrency(breakdown.cardSales ?? 0)}
-          </span>
-        </div>
-        <div className="flex justify-between gap-2">
-          <span className="text-slate-500">Other sales</span>
-          <span className="tabular-nums font-medium text-[var(--pos-text-primary)]">
-            {formatCurrency(breakdown.otherSales ?? 0)}
-          </span>
-        </div>
-        {otherRows.length > 0 && (
-          <ul className="pl-3 border-l border-slate-600/80 space-y-1 text-xs text-slate-400">
-            {otherRows.map((row) => (
-              <li key={row.paymentType} className="flex justify-between gap-2">
-                <span>{formatPaymentTypeLabel(row.paymentType)}</span>
-                <span className="tabular-nums shrink-0">{formatCurrency(row.revenue ?? 0)}</span>
-              </li>
+      {/* Cash movements */}
+      {(cashInTotal > 0 || cashOutTotal > 0) && (
+        <div className="rounded-xl border border-slate-700/70 bg-[var(--pos-surface-inset)] overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-700/60 bg-slate-800/40">
+            <CreditCard size={13} className="text-slate-400" />
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Cash movements</p>
+          </div>
+          <div className="p-3 space-y-2 max-h-36 overflow-y-auto">
+            {movements.filter((m) => m.kind === 'cash_in').map((m, idx) => (
+              <div key={`in-${idx}`} className="flex items-start justify-between gap-2 text-xs rounded-lg bg-emerald-500/8 border border-emerald-500/20 px-3 py-2">
+                <div>
+                  <span className="text-emerald-400 font-semibold">+{formatCurrency(m.amount)}</span>
+                  {m.notes && <p className="text-slate-400 mt-0.5">{m.notes}</p>}
+                </div>
+                <span className="text-slate-500 shrink-0">{formatDateTime(m.createdAt)}</span>
+              </div>
             ))}
-          </ul>
-        )}
-        <div className="flex justify-between gap-2 pt-1 border-t border-slate-600/50">
-          <span className="text-slate-500">Discounts given</span>
-          <span className="tabular-nums font-medium text-rose-300/90">
-            {formatCurrency(breakdown.totalDiscounts ?? 0)}
-          </span>
+            {movements.filter((m) => m.kind === 'cash_out').map((m, idx) => (
+              <div key={`out-${idx}`} className="flex items-start justify-between gap-2 text-xs rounded-lg bg-amber-500/8 border border-amber-500/20 px-3 py-2">
+                <div>
+                  <span className="text-amber-300 font-semibold">− {formatCurrency(m.amount)}</span>
+                  {m.notes && <p className="text-slate-400 mt-0.5">{m.notes}</p>}
+                </div>
+                <span className="text-slate-500 shrink-0">{formatDateTime(m.createdAt)}</span>
+              </div>
+            ))}
+            <div className="flex justify-between gap-2 text-xs pt-1 border-t border-slate-700/50">
+              <span className="text-slate-500">Net cash in / out</span>
+              <span className={`tabular-nums font-semibold ${(netCashMovements ?? 0) >= 0 ? 'text-emerald-400' : 'text-amber-300'}`}>
+                {(netCashMovements ?? 0) >= 0 ? '+' : ''}{formatCurrency(netCashMovements ?? 0)}
+              </span>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div>
-        <p className="text-xs font-semibold text-slate-400 mb-2">Cash in ({formatCurrency(cashInTotal ?? 0)})</p>
-        {movements.filter((m) => m.kind === 'cash_in').length === 0 ? (
-          <p className="text-xs text-slate-500">No cash in entries.</p>
-        ) : (
-          <ul className="space-y-2 text-xs">
-            {movements
-              .filter((m) => m.kind === 'cash_in')
-              .map((m, idx) => (
-                <li key={`in-${idx}-${m.createdAt}`} className="rounded-lg bg-slate-800/40 px-2 py-1.5 border border-slate-700/50">
-                  <div className="flex justify-between gap-2 text-[var(--pos-text-primary)]">
-                    <span className="text-emerald-400 font-semibold tabular-nums">+{formatCurrency(m.amount)}</span>
-                    <span className="text-slate-500 shrink-0">{formatDateTime(m.createdAt)}</span>
-                  </div>
-                  {m.notes ? <p className="text-slate-400 mt-1 leading-snug">{m.notes}</p> : null}
-                </li>
-              ))}
-          </ul>
-        )}
-      </div>
-
-      <div>
-        <p className="text-xs font-semibold text-slate-400 mb-2">Cash out ({formatCurrency(cashOutTotal ?? 0)})</p>
-        {movements.filter((m) => m.kind === 'cash_out').length === 0 ? (
-          <p className="text-xs text-slate-500">No cash out entries.</p>
-        ) : (
-          <ul className="space-y-2 text-xs">
-            {movements
-              .filter((m) => m.kind === 'cash_out')
-              .map((m, idx) => (
-                <li key={`out-${idx}-${m.createdAt}`} className="rounded-lg bg-slate-800/40 px-2 py-1.5 border border-slate-700/50">
-                  <div className="flex justify-between gap-2 text-[var(--pos-text-primary)]">
-                    <span className="text-amber-300 font-semibold tabular-nums">−{formatCurrency(m.amount)}</span>
-                    <span className="text-slate-500 shrink-0">{formatDateTime(m.createdAt)}</span>
-                  </div>
-                  {m.notes ? <p className="text-slate-400 mt-1 leading-snug">{m.notes}</p> : null}
-                </li>
-              ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="flex justify-between gap-2 text-xs border-t border-slate-600/50 pt-2">
-        <span className="text-slate-500">Net cash in / out</span>
-        <span
-          className={`tabular-nums font-semibold ${
-            (netCashMovements ?? 0) >= 0 ? 'text-emerald-400' : 'text-amber-300'
-          }`}
-        >
-          {(netCashMovements ?? 0) >= 0 ? '+' : ''}
-          {formatCurrency(netCashMovements ?? 0)}
-        </span>
-      </div>
-
-      <div className="flex justify-between gap-2 pt-1 border-t border-amber-500/25">
-        <span className="text-slate-400 font-medium">Expected in drawer</span>
-        <span className="tabular-nums font-bold text-amber-400">{formatCurrency(expectedCashInDrawer ?? 0)}</span>
+      {/* Expected drawer total */}
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/8 px-4 py-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <DollarSign size={15} className="text-amber-400 shrink-0" />
+          <span className="text-sm font-medium text-slate-300">Expected in drawer</span>
+        </div>
+        <span className="tabular-nums font-bold text-amber-400 text-lg">{formatCurrency(expectedCashInDrawer ?? 0)}</span>
       </div>
     </div>
   );
@@ -365,9 +358,19 @@ export default function CashierSessionGate({ children, requireSession = false })
                 Opening cash balance
               </label>
               {suggestedOpeningData?.hasLastSession && (
-                <p className="text-xs text-emerald-400 mb-2">
-                  💡 Suggested: {formatCurrency(suggestedOpeningData.suggestedOpening || 0)} (float from last session)
-                </p>
+                <button
+                  type="button"
+                  className="w-full mb-2 flex items-center justify-between gap-2 text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 rounded-lg px-3 py-2 hover:bg-emerald-500/15 transition text-left"
+                  onClick={() => {
+                    const input = document.getElementById('opening-cash');
+                    if (input) { input.value = suggestedOpeningData.suggestedOpening || 0; }
+                  }}
+                >
+                  <span>
+                    💡 Suggested from last session ({suggestedOpeningData.source === 'float' ? 'drawer float' : 'closing balance'})
+                  </span>
+                  <span className="font-semibold tabular-nums shrink-0">{formatCurrency(suggestedOpeningData.suggestedOpening || 0)} ↵</span>
+                </button>
               )}
               <input
                 id="opening-cash"
@@ -469,106 +472,153 @@ export default function CashierSessionGate({ children, requireSession = false })
         )}
 
         {closeOpen && session && (
-          <div className="fixed inset-0 z-[301] flex items-center justify-center bg-black/70 p-4">
-            <div className="bg-[var(--pos-panel)] border border-slate-600 rounded-2xl p-6 max-w-lg w-full shadow-2xl relative max-h-[min(92vh,40rem)] flex flex-col">
-              <button
-                type="button"
-                aria-label="Close"
-                onClick={() => {
-                  if (closeMutation.isPending) return;
-                  setCloseOpen(false);
-                  setCloseNoteError('');
-                }}
-                className="absolute top-4 right-4 text-slate-400 hover:text-white z-10"
-              >
-                <X size={20} />
-              </button>
-              <h3 className="text-lg font-bold text-[var(--pos-text-primary)] pr-8 mb-1 shrink-0">Close session</h3>
-              <p className="text-sm text-slate-400 mb-3 shrink-0">
-                Review the session totals, then count the cash. Add a note if the physical count does not match the
-                expected amount ({formatCurrency(expected ?? 0)}).
-              </p>
-              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-                <SessionBreakdownSummary
-                  openingCashBalance={session.openingCashBalance}
-                  breakdown={breakdown}
-                  cashMovements={session.cashMovements}
-                  cashInTotal={cashInTotal}
-                  cashOutTotal={cashOutTotal}
-                  netCashMovements={netCashMovements}
-                  expectedCashInDrawer={expected}
-                />
-                <form onSubmit={submitClose} className="space-y-4 pb-1">
-                  <div>
-                    <label htmlFor="counted-cash" className="block text-sm text-slate-300 mb-1">
-                      Physical cash counted
-                    </label>
-                    <input
-                      id="counted-cash"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      required
-                      value={countInput}
-                      onChange={(e) => {
-                        setCountInput(e.target.value);
-                        setCloseNoteError('');
-                      }}
-                      className="w-full px-4 py-3 rounded-xl bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] text-lg font-semibold tabular-nums"
-                    />
+          <div className="fixed inset-0 z-[301] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+            <div className="bg-[var(--pos-panel)] border border-slate-600/80 rounded-2xl max-w-lg w-full shadow-2xl shadow-black/60 relative max-h-[min(94vh,44rem)] flex flex-col overflow-hidden">
+              {/* Modal header */}
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-700/60 bg-slate-800/50 shrink-0">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/30">
+                  <Wallet size={18} className="text-emerald-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-bold text-[var(--pos-text-primary)] leading-tight">Close drawer session</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Expected: <span className="text-amber-400 font-semibold tabular-nums">{formatCurrency(expected ?? 0)}</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close"
+                  onClick={() => {
+                    if (closeMutation.isPending) return;
+                    setCloseOpen(false);
+                    setCloseNoteError('');
+                  }}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/60 transition shrink-0"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Scrollable body */}
+              <div className="min-h-0 flex-1 overflow-y-auto p-5 space-y-5">
+                {/* Section 1: Session summary */}
+                <section>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-700 text-[10px] font-bold text-slate-300 shrink-0">1</span>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Session summary</h4>
                   </div>
-                  <div>
-                    <label htmlFor="float-amount" className="block text-sm text-slate-300 mb-1">
-                      Float to keep for next session
-                      <span className="text-xs text-slate-500 ml-2">(optional, default: 0)</span>
-                    </label>
-                    <input
-                      id="float-amount"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={floatInput}
-                      onChange={(e) => {
-                        setFloatInput(e.target.value);
-                        setCloseNoteError('');
-                      }}
-                      placeholder="0.00"
-                      className="w-full px-4 py-3 rounded-xl bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] text-lg font-semibold tabular-nums"
-                    />
-                    <p className="text-xs text-slate-400 mt-1">
-                      Amount to remain in drawer as opening balance for next session
-                    </p>
+                  <SessionBreakdownSummary
+                    openingCashBalance={session.openingCashBalance}
+                    breakdown={breakdown}
+                    cashMovements={session.cashMovements}
+                    cashInTotal={cashInTotal}
+                    cashOutTotal={cashOutTotal}
+                    netCashMovements={netCashMovements}
+                    expectedCashInDrawer={expected}
+                  />
+                </section>
+
+                {/* Divider */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-700/60" />
                   </div>
-                  <div>
-                    <label htmlFor="variance-notes" className="block text-sm text-slate-300 mb-1">
-                      Notes (shortage, overage, explanation)
-                    </label>
-                    <textarea
-                      id="variance-notes"
-                      rows={3}
-                      value={notesInput}
-                      onChange={(e) => {
-                        setNotesInput(e.target.value);
-                        setCloseNoteError('');
-                      }}
-                      placeholder="Required if counted cash ≠ expected"
-                      className="w-full px-4 py-3 rounded-xl bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] text-sm resize-none"
-                    />
+                </div>
+
+                {/* Section 2: Cash count & float */}
+                <section>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-700 text-[10px] font-bold text-slate-300 shrink-0">2</span>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Cash count</h4>
                   </div>
-                  {closeNoteError && (
-                    <p className="text-amber-400 text-sm">{closeNoteError}</p>
-                  )}
-                  {closeMutation.isError && (
-                    <p className="text-red-400 text-sm">{closeMutation.error?.response?.data?.message || 'Close failed'}</p>
-                  )}
-                  <button
-                    type="submit"
-                    disabled={closeMutation.isPending}
-                    className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold disabled:opacity-50"
-                  >
-                    {closeMutation.isPending ? 'Closing…' : 'Confirm close'}
-                  </button>
-                </form>
+                  <form onSubmit={submitClose} className="space-y-4">
+                    <div className="rounded-xl border border-slate-700/60 bg-[var(--pos-surface-inset)] p-4 space-y-4">
+                      <div>
+                        <label htmlFor="counted-cash" className="block text-sm font-medium text-slate-300 mb-1.5">
+                          Physical cash counted
+                        </label>
+                        <input
+                          id="counted-cash"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          required
+                          value={countInput}
+                          onChange={(e) => {
+                            setCountInput(e.target.value);
+                            setCloseNoteError('');
+                          }}
+                          className="w-full px-4 py-3 rounded-xl bg-[var(--pos-panel)] border border-slate-600 text-[var(--pos-text-primary)] text-xl font-bold tabular-nums focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="float-amount" className="block text-sm font-medium text-slate-300 mb-1.5">
+                          Float for next session
+                          <span className="text-xs text-slate-500 ml-2 font-normal">(optional)</span>
+                        </label>
+                        <input
+                          id="float-amount"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={floatInput}
+                          onChange={(e) => {
+                            setFloatInput(e.target.value);
+                            setCloseNoteError('');
+                          }}
+                          placeholder="0.00"
+                          className="w-full px-4 py-3 rounded-xl bg-[var(--pos-panel)] border border-slate-600 text-[var(--pos-text-primary)] text-lg font-semibold tabular-nums placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                        />
+                        <p className="text-xs text-slate-500 mt-1.5">Stays in drawer as opening balance for next session</p>
+                      </div>
+                    </div>
+
+                    {/* Section 3: Notes */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-700 text-[10px] font-bold text-slate-300 shrink-0">3</span>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Notes</h4>
+                      </div>
+                      <div className="rounded-xl border border-slate-700/60 bg-[var(--pos-surface-inset)] p-4">
+                        <label htmlFor="variance-notes" className="block text-sm font-medium text-slate-300 mb-1.5">
+                          Variance / closure notes
+                        </label>
+                        <textarea
+                          id="variance-notes"
+                          rows={3}
+                          value={notesInput}
+                          onChange={(e) => {
+                            setNotesInput(e.target.value);
+                            setCloseNoteError('');
+                          }}
+                          placeholder="Required if counted cash ≠ expected"
+                          className="w-full px-3 py-2.5 rounded-xl bg-[var(--pos-panel)] border border-slate-600 text-[var(--pos-text-primary)] text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-500/40 placeholder-slate-600"
+                        />
+                      </div>
+                    </div>
+
+                    {closeNoteError && (
+                      <p className="flex items-center gap-2 text-amber-400 text-sm bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2">
+                        {closeNoteError}
+                      </p>
+                    )}
+                    {closeMutation.isError && (
+                      <p className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/25 rounded-lg px-3 py-2">
+                        {closeMutation.error?.response?.data?.message || 'Close failed'}
+                      </p>
+                    )}
+
+                    {/* Submit */}
+                    <button
+                      type="submit"
+                      disabled={closeMutation.isPending}
+                      className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      <ClipboardCheck size={16} />
+                      {closeMutation.isPending ? 'Closing…' : 'Confirm & close session'}
+                    </button>
+                  </form>
+                </section>
               </div>
             </div>
           </div>
