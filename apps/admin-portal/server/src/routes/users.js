@@ -221,12 +221,12 @@ router.delete('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin')
     if (!user) return res.status(404).json({ message: 'User not found' });
     if (String(user._id) === String(req.user.id)) return res.status(400).json({ message: 'Cannot delete your own account' });
 
-    user.isActive = false;
-    user.updatedBy = req.user.id;
-    await user.save();
+    await emitAudit({ req, action: 'USER_DELETED', resource: 'User', resourceId: user._id,
+      changes: { before: { name: user.name, email: user.email, role: user.role } } });
 
-    await emitAudit({ req, action: 'USER_DEACTIVATED', resource: 'User', resourceId: user._id });
-    res.json({ message: 'User deactivated' });
+    await User.deleteOne({ _id: user._id });
+
+    res.json({ message: 'User deleted' });
   } catch (err) {
     sendRouteError(res, err, { req });
   }

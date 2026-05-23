@@ -98,6 +98,7 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
       if (since || until) {
         filter.createdAt = dateFilter;
       }
+    }
     if (orderType) {
       const types = orderType.split(',').map(s => s.trim()).filter(Boolean);
       filter.orderType = types.length === 1 ? types[0] : { $in: types };

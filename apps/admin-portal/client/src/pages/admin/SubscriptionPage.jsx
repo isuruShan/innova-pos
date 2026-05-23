@@ -9,6 +9,7 @@ import BillingBreakdownPanel from '../../components/billing/BillingBreakdownPane
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
 import { useToast } from '../../context/ToastContext';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
+import { formatMoney } from '../../components/billing/ProrationBreakdown';
 
 function CopyableRef({ text }) {
   const [copied, setCopied] = useState(false);
@@ -75,7 +76,7 @@ function ReceiptDetailPopup({ receipt: r, onClose }) {
           <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
             <span className="text-sm text-gray-600">Amount paid</span>
             <span className="text-xl font-bold text-gray-900">
-              {r.currency?.toUpperCase()} {Number(r.amount || 0).toFixed(2)}
+              {formatMoney(r.currency || 'LKR', r.amount)}
             </span>
           </div>
 
@@ -1003,20 +1004,31 @@ export default function SubscriptionPage() {
             <div className="divide-y divide-gray-100">
               {filteredReceipts.map((r) => {
                 const isAddon = r.receiptKind === 'addon' || r.addonCode || r.receiptKind === 'store';
+                const isUserLicense = r.receiptKind === 'user_license';
+                let licenseInfo = {};
+                try { if (r.userLicensePayload) licenseInfo = typeof r.userLicensePayload === 'string' ? JSON.parse(r.userLicensePayload) : r.userLicensePayload; } catch {}
+                const componentLabel = isUserLicense
+                  ? (licenseInfo.name ? `${licenseInfo.name} (${licenseInfo.role?.replace('_', ' ') || 'user'})` : (licenseInfo.role?.replace('_', ' ') || 'User license'))
+                  : isAddon
+                  ? (r.addonCode ? r.addonCode.replace(/_/g, ' ') : 'Add-on / Store')
+                  : (r.requestedPlanId?.name || 'Plan Subscription');
                 return (
                   <div key={r._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-gray-50/50 transition-colors">
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-gray-900 text-sm">
-                          {r.currency || 'LKR'} {Number(r.amount ?? 0).toLocaleString()}
+                          {formatMoney(r.currency || 'LKR', r.amount)}
                         </span>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide border ${
-                          isAddon
+                          isUserLicense
+                            ? 'bg-orange-50 text-orange-700 border-orange-100'
+                            : isAddon
                             ? 'bg-violet-50 text-violet-700 border-violet-100'
                             : 'bg-indigo-50 text-indigo-700 border-indigo-100'
                         }`}>
-                          {isAddon ? 'Add-on License' : 'Plan Subscription'}
+                          {isUserLicense ? 'User License' : isAddon ? 'Add-on / Store' : 'Plan Subscription'}
                         </span>
+                        <span className="text-xs text-gray-600 font-medium capitalize">{componentLabel}</span>
                       </div>
                       
                       <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500">

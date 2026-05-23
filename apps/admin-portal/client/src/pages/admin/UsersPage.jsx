@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Loader, UserCheck, UserX, Key, X, Pencil, Search, ArrowLeft, Clock, AlertTriangle, ChevronDown } from 'lucide-react';
+import { Plus, Loader, UserCheck, UserX, Key, X, Pencil, Search, ArrowLeft, Clock, AlertTriangle, ChevronDown, Trash2 } from 'lucide-react';
 import TooltipWrap from '../../components/common/TooltipWrap';
 import { useToast } from '../../context/ToastContext';
 import api from '../../api/axios';
@@ -119,6 +119,8 @@ export default function UsersPage() {
   const [paypalReady, setPaypalReady] = useState(false);
   const [activeTab, setActiveTab] = useState('active');
   const [deactivateTarget, setDeactivateTarget] = useState(null);
+  const [activateTarget, setActivateTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [resetTarget, setResetTarget] = useState(null);
 
   useEffect(() => { setPage(1); }, [sort, order]);
@@ -193,6 +195,18 @@ export default function UsersPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id) => api.delete(`/users/${id}`),
+    onSuccess: () => {
+      invalidateUsers();
+      toast.success('User deleted successfully');
+      setDeleteTarget(null);
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Failed to delete user');
+    },
+  });
+
   const resetMutation = useMutation({
     mutationFn: (id) => api.post(`/users/${id}/reset-password`),
     onSuccess: () => toast.success('Password reset email sent'),
@@ -205,7 +219,7 @@ export default function UsersPage() {
     if (user.isActive) {
       setDeactivateTarget(user);
     } else {
-      toggleMutation.mutate({ id: user._id, isActive: true });
+      setActivateTarget(user);
     }
   };
 
@@ -213,11 +227,16 @@ export default function UsersPage() {
     if (deactivateTarget) {
       toggleMutation.mutate(
         { id: deactivateTarget._id, isActive: false },
-        {
-          onSuccess: () => {
-            setDeactivateTarget(null);
-          },
-        }
+        { onSuccess: () => setDeactivateTarget(null) }
+      );
+    }
+  };
+
+  const handleActivateConfirm = () => {
+    if (activateTarget) {
+      toggleMutation.mutate(
+        { id: activateTarget._id, isActive: true },
+        { onSuccess: () => setActivateTarget(null) }
       );
     }
   };
@@ -326,7 +345,12 @@ export default function UsersPage() {
         setSubmitting(false);
         return;
       }
-      setErrors({ api: err.response?.data?.message || 'Failed to save user' });
+      const msg = err.response?.data?.message || 'Failed to save user';
+      if (msg.toLowerCase().includes('email')) {
+        setErrors({ email: msg });
+      } else {
+        setErrors({ api: msg });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -566,14 +590,17 @@ export default function UsersPage() {
                     </p>
                   )}
                   <div className="mt-4 flex flex-wrap gap-2 pt-3 border-t border-gray-150">
-                    <button type="button" onClick={() => openEdit(u)} className="text-xs px-2.5 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium flex-1">
+                    <button type="button" onClick={() => openEdit(u)} disabled={!u.isActive} title={!u.isActive ? 'Reactivate user to edit' : undefined} className="text-xs px-2.5 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium flex-1 disabled:opacity-40 disabled:cursor-not-allowed">
                       Edit details
                     </button>
-                    <button type="button" onClick={() => handleResetPasswordClick(u)} className="text-xs px-2.5 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium">
+                    <button type="button" onClick={() => handleResetPasswordClick(u)} disabled={!u.isActive} title={!u.isActive ? 'Cannot reset password for an inactive user' : undefined} className="text-xs px-2.5 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed">
                       Reset Password
                     </button>
                     <button type="button" onClick={() => handleToggleActiveClick(u)} className={`text-xs px-2.5 py-1.5 rounded-md border font-medium ${u.isActive ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-green-200 text-green-700 hover:bg-green-50'}`}>
                       {u.isActive ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button type="button" onClick={() => setDeleteTarget(u)} className="text-xs px-2.5 py-1.5 rounded-md border border-red-200 text-red-600 hover:bg-red-50 font-medium">
+                      <Trash2 size={12} />
                     </button>
                   </div>
                 </div>
@@ -618,14 +645,17 @@ export default function UsersPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-2">
-                            <button type="button" onClick={() => openEdit(u)} className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium">
+                            <button type="button" onClick={() => openEdit(u)} disabled={!u.isActive} title={!u.isActive ? 'Reactivate user to edit' : undefined} className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed">
                               Edit
                             </button>
-                            <button type="button" onClick={() => handleResetPasswordClick(u)} className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium">
+                            <button type="button" onClick={() => handleResetPasswordClick(u)} disabled={!u.isActive} title={!u.isActive ? 'Cannot reset password for an inactive user' : undefined} className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed">
                               Reset Password
                             </button>
                             <button type="button" onClick={() => handleToggleActiveClick(u)} className={`text-xs px-2.5 py-1 rounded-md border font-medium ${u.isActive ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-green-200 text-green-700 hover:bg-green-50'}`}>
                               {u.isActive ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button type="button" onClick={() => setDeleteTarget(u)} title="Delete user" className="text-xs px-2 py-1 rounded-md border border-red-200 text-red-500 hover:bg-red-50 font-medium">
+                              <Trash2 size={12} />
                             </button>
                           </div>
                         </td>
@@ -658,34 +688,52 @@ export default function UsersPage() {
               No user requests pending approval.
             </div>
           ) : (
-            <div className="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden bg-gray-50/20">
-              {pendingUserReceipts.map((r) => {
-                const p = r._parsedPayload;
-                return (
-                  <div key={r._id} className="flex items-center justify-between gap-4 p-4 hover:bg-gray-50/50 transition-colors">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-gray-900 text-sm">{p.name || '—'}</span>
-                        {p.role && (
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${ROLE_COLORS[p.role] || 'bg-gray-100 text-gray-700'}`}>
-                            {p.role.replace('_', ' ')}
+            <div className="overflow-x-auto rounded-xl border border-gray-100">
+              <table className="w-full text-left text-sm text-gray-600 border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase border-b border-gray-200">
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Email</th>
+                    <th className="px-4 py-3">Role</th>
+                    <th className="px-4 py-3">Amount</th>
+                    <th className="px-4 py-3">Submitted</th>
+                    <th className="px-4 py-3">Bank Ref</th>
+                    <th className="px-4 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {pendingUserReceipts.map((r) => {
+                    const p = r._parsedPayload;
+                    return (
+                      <tr key={r._id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-gray-900">{p.name || '—'}</td>
+                        <td className="px-4 py-3 text-gray-600">{p.email || '—'}</td>
+                        <td className="px-4 py-3">
+                          {p.role ? (
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${ROLE_COLORS[p.role] || 'bg-gray-100 text-gray-700'}`}>
+                              {p.role.replace('_', ' ')}
+                            </span>
+                          ) : '—'}
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-gray-900 tabular-nums whitespace-nowrap">
+                          {r.currency || 'LKR'} {Number(r.amount ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                          {new Date(r.paymentDate || r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-xs text-gray-600">{r.bankReference || '—'}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100 flex items-center gap-1 w-fit">
+                            <Clock size={11} /> Pending review
                           </span>
-                        )}
-                      </div>
-                      {p.email && <p className="text-xs text-gray-500 mt-1">{p.email}</p>}
-                      <p className="text-xs text-gray-400 mt-1">
-                        Submitted: {new Date(r.createdAt).toLocaleDateString()} · Bank Ref: <span className="font-mono text-gray-600">{r.bankReference}</span>
-                        {r.notes ? ` · Note: "${r.notes}"` : ''}
-                      </p>
-                    </div>
-                    <div className="shrink-0 flex items-center gap-2">
-                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100 flex items-center gap-1">
-                        <Clock size={11} /> Pending review
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
@@ -723,13 +771,20 @@ export default function UsersPage() {
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
               {[
                 { label: 'Full name', key: 'name', ...fieldAttrs('staffName') },
-                { label: 'Email', key: 'email', type: 'email', ...fieldAttrs('email') },
+                { label: 'Email address', key: 'email', type: 'email', ...fieldAttrs('email') },
               ].map(f => (
                 <div key={f.key}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
                   <input type={f.type || 'text'} value={form[f.key]} placeholder={f.placeholder} maxLength={f.maxLength}
+                    disabled={f.key === 'email' && Boolean(editingUser)}
                     onChange={e => { setForm(p => ({ ...p, [f.key]: e.target.value })); setErrors(e2 => ({ ...e2, [f.key]: '' })); }}
-                    className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${errors[f.key] ? 'border-red-400' : 'border-gray-300'}`} />
+                    className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-500 ${errors[f.key] ? 'border-red-400' : 'border-gray-300'}`} />
+                  {f.key === 'email' && Boolean(editingUser) && (
+                    <p className="text-xs text-gray-400 mt-0.5">Email address cannot be changed after account creation.</p>
+                  )}
+                  {f.key === 'email' && !editingUser && (
+                    <p className="text-xs text-gray-400 mt-0.5">Must be unique — users with an existing account cannot be added again.</p>
+                  )}
                   {errors[f.key] && <p className="text-xs text-red-500 mt-0.5">{errors[f.key]}</p>}
                 </div>
               ))}
@@ -912,11 +967,26 @@ export default function UsersPage() {
       )}
 
       <ConfirmDialog
+        open={Boolean(activateTarget)}
+        title="Activate user?"
+        message={
+          activateTarget
+            ? `Activate "${activateTarget.name}"? They will regain access to the POS and Admin portal.`
+            : ''
+        }
+        confirmLabel="Activate"
+        variant="success"
+        isLoading={toggleMutation.isPending}
+        onConfirm={handleActivateConfirm}
+        onCancel={() => setActivateTarget(null)}
+      />
+
+      <ConfirmDialog
         open={Boolean(deactivateTarget)}
         title="Deactivate user?"
         message={
           deactivateTarget
-            ? `Are you sure you want to deactivate "${deactivateTarget.name}"? This user will no longer be able to log in to the POS or Admin portal.`
+            ? `Deactivate "${deactivateTarget.name}"? They will no longer be able to log in.\n\nNote: Deactivating a user does not remove their subscription cost from your billing — the license fee will continue to be charged each cycle until the user is deleted.`
             : ''
         }
         confirmLabel="Deactivate"
@@ -927,11 +997,26 @@ export default function UsersPage() {
       />
 
       <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete user permanently?"
+        message={
+          deleteTarget
+            ? `Delete "${deleteTarget.name}" (${deleteTarget.email})? This cannot be undone and they will immediately lose all access.\n\nThe subscription cost associated with this user license will be removed from your next billing cycle.`
+            : ''
+        }
+        confirmLabel="Delete user"
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget._id)}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmDialog
         open={Boolean(resetTarget)}
         title="Reset password?"
         message={
           resetTarget
-            ? `Are you sure you want to reset the password for "${resetTarget.name}"? An email containing a temporary password will be sent to ${resetTarget.email}.`
+            ? `Reset the password for "${resetTarget.name}"? An email with a temporary password will be sent to ${resetTarget.email}.`
             : ''
         }
         confirmLabel="Reset password"

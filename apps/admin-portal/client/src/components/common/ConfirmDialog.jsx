@@ -52,7 +52,7 @@ export default function ConfirmDialog({
             <Icon size={22} className={iconClass} />
           </div>
           <h3 className="text-base font-bold text-gray-900">{title}</h3>
-          {message && <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">{message}</p>}
+          {message && <p className="text-sm text-gray-600 mt-1.5 leading-relaxed whitespace-pre-line">{message}</p>}
           {children && <div className="mt-4">{children}</div>}
         </div>
 
