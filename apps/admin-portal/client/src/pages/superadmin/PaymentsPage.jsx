@@ -457,6 +457,8 @@ export default function PaymentsPage() {
           onClose={closeDetail}
           onVerify={(receipt) => handleVerify(receipt._id)}
           onReject={(receipt, reason) => handleReject(receipt._id, reason)}
+          isMutating={mutation.isPending}
+          mutationError={mutation.isError ? (mutation.error?.response?.data?.message || 'Action failed') : null}
         />
       )}  
 

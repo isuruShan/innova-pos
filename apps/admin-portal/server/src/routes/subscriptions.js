@@ -519,7 +519,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
         createdBy: req.user.id,
       });
 
-      await notifyPaymentSubmitted(receipt, tenant);
+      notifyPaymentSubmitted(receipt, tenant).catch(() => {}); // fire-and-forget
       return res.status(201).json(receipt);
     }
 
@@ -564,7 +564,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
         createdBy: req.user.id,
       });
 
-      await notifyPaymentSubmitted(receipt, tenant);
+      notifyPaymentSubmitted(receipt, tenant).catch(() => {}); // fire-and-forget
 
       return res.status(201).json(receipt);
     }
@@ -625,7 +625,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
         createdBy: req.user.id,
       });
 
-      await notifyPaymentSubmitted(receipt, tenant);
+      notifyPaymentSubmitted(receipt, tenant).catch(() => {}); // fire-and-forget
 
       return res.status(201).json(receipt);
     }
@@ -677,7 +677,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       createdBy: req.user.id,
     });
 
-    await notifyPaymentSubmitted(receipt, tenant);
+    notifyPaymentSubmitted(receipt, tenant).catch(() => {}); // fire-and-forget
 
     res.status(201).json(receipt);
   } catch (err) {
@@ -710,7 +710,8 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
       await receipt.save();
 
       const tenantId = receipt.tenantId?._id || receipt.tenantId;
-      await notifySubscriptionEvent(tenantId, {
+      // Fire-and-forget — do not block the response on email delivery
+      notifySubscriptionEvent(tenantId, {
         type: 'payment_receipt_rejected',
         title: 'Payment not accepted',
         body: `Your payment receipt was rejected: ${rejectionReason}`,
@@ -746,29 +747,24 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
 
       const result = await processVerifiedUserLicenseReceipt(receipt, req);
 
-      await emitAudit({
-        req,
-        action: 'USER_LICENSE_PAYMENT_VERIFIED',
-        resource: 'PaymentReceipt',
-        resourceId: receipt._id,
-        changes: { after: { action: receipt.userLicenseAction, userId: result.user?._id } },
-      });
-
-      try {
-        await notifyMerchantAdmins(tenantId, {
+      // Fire-and-forget audit + notifications — do not block the response
+      const _receiptObj1 = receipt.toObject ? receipt.toObject() : receipt;
+      Promise.all([
+        emitAudit({
+          req,
+          action: 'USER_LICENSE_PAYMENT_VERIFIED',
+          resource: 'PaymentReceipt',
+          resourceId: receipt._id,
+          changes: { after: { action: receipt.userLicenseAction, userId: result.user?._id } },
+        }),
+        notifyMerchantAdmins(tenantId, {
           type: 'subscription_approved',
-          title:
-            receipt.userLicenseAction === 'create_user' ? 'User created' : 'Store access updated',
-          body:
-            receipt.userLicenseAction === 'create_user'
-              ? 'Your new user account is ready.'
-              : 'Additional store access has been applied.',
+          title: receipt.userLicenseAction === 'create_user' ? 'User created' : 'Store access updated',
+          body: receipt.userLicenseAction === 'create_user' ? 'Your new user account is ready.' : 'Additional store access has been applied.',
           meta: { resourceType: 'tenant', resourceId: String(tenantId), receiptId: String(receipt._id) },
-        }).catch(() => {});
-      } catch (_) {}
-
-      const tenantDoc = await Tenant.findById(tenantId).lean();
-      await notifyPaymentVerified(receipt.toObject ? receipt.toObject() : receipt, tenantDoc);
+        }),
+        Tenant.findById(tenantId).lean().then((doc) => notifyPaymentVerified(_receiptObj1, doc)),
+      ]).catch(() => {});
 
       return res.json({ message: 'User license applied', receipt, user: result.user });
     }
@@ -785,25 +781,24 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
       receipt.updatedBy = req.user.id;
       await receipt.save();
 
-      await emitAudit({
-        req,
-        action: 'STORE_PAYMENT_VERIFIED',
-        resource: 'PaymentReceipt',
-        resourceId: receipt._id,
-        changes: { after: { storeId: store._id, storeCode: store.code } },
-      });
-
-      try {
-        await notifyMerchantAdmins(tenantId, {
+      // Fire-and-forget audit + notifications — do not block the response
+      const _receiptObj2 = receipt.toObject ? receipt.toObject() : receipt;
+      Promise.all([
+        emitAudit({
+          req,
+          action: 'STORE_PAYMENT_VERIFIED',
+          resource: 'PaymentReceipt',
+          resourceId: receipt._id,
+          changes: { after: { storeId: store._id, storeCode: store.code } },
+        }),
+        notifyMerchantAdmins(tenantId, {
           type: 'subscription_approved',
           title: 'Store created',
           body: `Your additional store (${store.code}) is ready. Open Stores to edit name and settings.`,
           meta: { resourceType: 'tenant', resourceId: String(tenantId), receiptId: String(receipt._id) },
-        }).catch(() => {});
-      } catch (_) {}
-
-      const tenantDoc = await Tenant.findById(tenantId).lean();
-      await notifyPaymentVerified(receipt.toObject ? receipt.toObject() : receipt, tenantDoc);
+        }),
+        Tenant.findById(tenantId).lean().then((doc) => notifyPaymentVerified(_receiptObj2, doc)),
+      ]).catch(() => {});
 
       return res.json({ message: 'Store created', receipt, store });
     }
@@ -827,25 +822,24 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
       receipt.updatedBy = req.user.id;
       await receipt.save();
 
-      await emitAudit({
-        req,
-        action: 'ADDON_PAYMENT_VERIFIED',
-        resource: 'PaymentReceipt',
-        resourceId: receipt._id,
-        changes: { after: { addonCode: receipt.addonCode } },
-      });
-
-      try {
-        await notifyMerchantAdmins(tenantId, {
+      // Fire-and-forget audit + notifications — do not block the response
+      const _receiptObj3 = receipt.toObject ? receipt.toObject() : receipt;
+      Promise.all([
+        emitAudit({
+          req,
+          action: 'ADDON_PAYMENT_VERIFIED',
+          resource: 'PaymentReceipt',
+          resourceId: receipt._id,
+          changes: { after: { addonCode: receipt.addonCode } },
+        }),
+        notifyMerchantAdmins(tenantId, {
           type: 'subscription_approved',
           title: 'Add-on activated',
           body: `Your paid add-on "${receipt.addonCode}" is now active.`,
           meta: { resourceType: 'tenant', resourceId: String(tenantId), receiptId: String(receipt._id) },
-        }).catch(() => {});
-      } catch (_) {}
-
-      const tenantDoc = await Tenant.findById(tenantId).lean();
-      await notifyPaymentVerified(receipt.toObject ? receipt.toObject() : receipt, tenantDoc);
+        }),
+        Tenant.findById(tenantId).lean().then((doc) => notifyPaymentVerified(_receiptObj3, doc)),
+      ]).catch(() => {});
 
       return res.json({ message: 'Add-on activated', receipt });
     }
@@ -884,19 +878,20 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
     receipt.updatedBy = req.user.id;
     await receipt.save();
 
-    await emitAudit({
-      req,
-      action: 'PAYMENT_VERIFIED',
-      resource: 'PaymentReceipt',
-      resourceId: receipt._id,
-      changes: { after: { subscriptionExtendedTo: newEnd, extensionDays: plan.durationDays, convertedFromTrial } },
-    });
-
-    await notifySubscriptionActivated(tenant, newEnd, { pendingMatch, convertedFromTrial });
-
+    // Fire-and-forget audit + notifications — do not block the response
     const receiptLean = receipt.toObject ? receipt.toObject() : receipt;
     receiptLean.extensionDays = plan.durationDays;
-    await notifyPaymentVerified(receiptLean, tenant);
+    Promise.all([
+      emitAudit({
+        req,
+        action: 'PAYMENT_VERIFIED',
+        resource: 'PaymentReceipt',
+        resourceId: receipt._id,
+        changes: { after: { subscriptionExtendedTo: newEnd, extensionDays: plan.durationDays, convertedFromTrial } },
+      }),
+      notifySubscriptionActivated(tenant, newEnd, { pendingMatch, convertedFromTrial }),
+      notifyPaymentVerified(receiptLean, tenant),
+    ]).catch(() => {});
 
     const message = convertedFromTrial
       ? `Trial ended — subscription active until ${newEnd.toDateString()}`

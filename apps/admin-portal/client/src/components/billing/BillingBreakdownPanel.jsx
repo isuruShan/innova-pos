@@ -13,7 +13,10 @@ export default function BillingBreakdownPanel({ breakdown }) {
   const [storesExpanded, setStoresExpanded] = useState(false);
 
   const otherAddons = addons.filter(
-    (a) => !a.code?.startsWith('user_license_') && a.code !== 'additional_store'
+    (a) =>
+      !a.code?.startsWith('user_license_') &&
+      !a.code?.startsWith('user_extra_stores_') &&
+      a.code !== 'additional_store'
   );
 
   const totalUsersCost = usersDetail.reduce((sum, u) => sum + (u.cost || 0), 0);
@@ -88,7 +91,15 @@ export default function BillingBreakdownPanel({ breakdown }) {
                     <User size={12} className="text-gray-400 mt-0.5 shrink-0" />
                     <div className="min-w-0">
                       <p className="font-medium text-gray-800 truncate">{u.name}</p>
-                      <p className="text-[10px] text-gray-400 truncate">{u.email} · {formatRole(u.role)}</p>
+                      <p className="text-[10px] text-gray-400 truncate">
+                        {u.email} · {formatRole(u.role)}
+                        {u.extraStoreSlots > 0 ? ` · ${u.extraStoreSlots} extra ${u.extraStoreSlots === 1 ? 'store' : 'stores'}` : ''}
+                      </p>
+                      {u.extraStoreSlots > 0 && (
+                        <p className="text-[9px] text-gray-400 mt-0.5">
+                          Seat: {u.seatCost > 0 ? `${currency} ${u.seatCost.toLocaleString()}` : 'Included'} · Stores: {currency} {u.extraStoreSlotsCost.toLocaleString()}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <span className="tabular-nums shrink-0 font-medium text-gray-700">

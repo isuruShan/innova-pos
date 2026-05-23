@@ -114,13 +114,13 @@ router.post('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), asy
       { createdBy: req.user.id },
     );
 
-    await emitAudit({
+    emitAudit({
       req,
       action: 'USER_CREATED',
       resource: 'User',
       resourceId: user._id,
       changes: { after: { name: user.name, email: user.email, role: user.role, tenantId } },
-    });
+    }).catch(() => {}); // fire-and-forget
 
     res.status(201).json({
       id: user._id,

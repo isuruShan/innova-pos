@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import api from '../../api/axios';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
-import AddonCatalogTiles from '../../components/addons/AddonCatalogTiles';
+import AddonCatalogTiles, { AddonActionButton } from '../../components/addons/AddonCatalogTiles';
 import { BillingQuotePanel, formatMoney } from '../../components/billing/ProrationBreakdown';
 import { useTenantCurrency } from '../../context/TenantCurrencyContext';
 import BankReceiptFields from '../../components/billing/BankReceiptFields';
@@ -316,7 +316,7 @@ export default function MerchantAddonsPage() {
       )}
 
       <AddonCatalogTiles
-        catalog={catalog}
+        catalog={catalog.filter((a) => a.code !== 'qr_ordering' && a.code !== 'table_management')}
         isLoading={catalogPending}
         variant="list"
         onReview={openAddon}
@@ -327,6 +327,96 @@ export default function MerchantAddonsPage() {
         onStartTrial={handleStartTrial}
         trialStartPending={trialStartingCode}
       />
+
+      {/* Table Management Suite — groups table_management + qr_ordering */}
+      {catalog.some((a) => a.code === 'table_management' || a.code === 'qr_ordering') && (() => {
+        const tableRow = catalog.find((a) => a.code === 'table_management');
+        const qrRow = catalog.find((a) => a.code === 'qr_ordering');
+        const tableActive = tableRow?.alreadyActive || tableRow?.isInTrial;
+        return (
+          <div className="rounded-2xl border-2 border-brand-orange/20 bg-brand-orange/5 p-5 space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-orange bg-brand-orange/10 px-2.5 py-1 rounded-full">
+                Table Management Suite
+              </span>
+            </div>
+            <p className="text-sm text-gray-600">
+              Enable table management for your floor plan, then optionally add QR ordering for self-service at tables.
+              QR ordering requires table management to be active.
+            </p>
+            {tableRow && (
+              <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex gap-3 min-w-0">
+                  <div className="shrink-0 w-10 h-10 rounded-lg bg-brand-orange/10 flex items-center justify-center text-brand-orange text-lg">🪑</div>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-gray-900">{tableRow.name}</h3>
+                    <p className="text-sm text-gray-600 mt-1">{tableRow.shortDescription}</p>
+                    <p className="text-xs text-gray-400 mt-1">{tableRow.billingLabel}</p>
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  <AddonActionButton
+                    row={tableRow}
+                    onReview={openAddon}
+                    onView={openViewAddon}
+                    onUnsubscribe={handleUnsubscribe}
+                    unsubscribePending={unsubscribeMutation.isPending}
+                    unsubscribingCode={unsubscribingCode}
+                    onStartTrial={handleStartTrial}
+                    trialStartPending={trialStartingCode}
+                  />
+                </div>
+              </div>
+            )}
+            {qrRow && (
+              <div className={`bg-white rounded-xl border p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 transition-opacity ${!tableActive ? 'opacity-60' : 'border-gray-200'}`}>
+                <div className="flex gap-3 min-w-0">
+                  <div className="shrink-0 w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center text-violet-600 text-lg">📱</div>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                      {qrRow.name}
+                      {!tableActive && (
+                        <span className="text-xs font-medium bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                          Requires table management
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">{qrRow.shortDescription}</p>
+                    <p className="text-xs text-gray-400 mt-1">{qrRow.billingLabel}</p>
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  {tableActive ? (
+                    <AddonActionButton
+                      row={qrRow}
+                      onReview={openAddon}
+                      onView={openViewAddon}
+                      onUnsubscribe={handleUnsubscribe}
+                      unsubscribePending={unsubscribeMutation.isPending}
+                      unsubscribingCode={unsubscribingCode}
+                      onStartTrial={handleStartTrial}
+                      trialStartPending={trialStartingCode}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-end gap-1.5">
+                      <p className="text-xs text-amber-700 text-right max-w-[180px]">
+                        Activate <strong>Table Management</strong> first to unlock QR Ordering.
+                      </p>
+                      <button
+                        type="button"
+                        disabled
+                        className="px-4 py-2 rounded-lg bg-gray-100 text-gray-400 text-sm font-semibold cursor-not-allowed"
+                      >
+                        Subscribe
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {selectedAddon && flowStep && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">

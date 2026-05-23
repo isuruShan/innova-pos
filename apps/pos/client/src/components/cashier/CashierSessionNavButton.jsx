@@ -77,7 +77,7 @@ export default function CashierSessionNavButton() {
   }
 
   return (
-    <div ref={ref} className="relative shrink-0 z-[60]">
+    <div ref={ref} className="relative shrink-0">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -100,7 +100,7 @@ export default function CashierSessionNavButton() {
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-1.5 z-[130] w-[min(calc(100vw-1.5rem),19rem)] rounded-xl border border-slate-600/80 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-hidden py-2 px-3"
+          className="absolute right-0 top-full mt-1.5 z-[120] w-[min(calc(100vw-1.5rem),19rem)] rounded-xl border border-slate-600/80 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-hidden py-2 px-3"
           role="dialog"
           aria-label="Cashier session details"
         >

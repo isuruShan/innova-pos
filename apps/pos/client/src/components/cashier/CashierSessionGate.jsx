@@ -8,7 +8,7 @@ import { useBranding } from '../../context/BrandingContext';
 import { formatCurrency, formatDateTime, formatPaymentTypeLabel } from '../../utils/format';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { CashierSessionContext, CASHIER_SESSION_QUERY_KEY } from './cashierSessionContext';
-import { printDayEndReport } from '../../utils/printDayEndReport';
+import { printDayEndReport, printSessionReport } from '../../utils/printDayEndReport';
 
 export { CASHIER_SESSION_QUERY_KEY } from './cashierSessionContext';
 
@@ -155,6 +155,7 @@ export default function CashierSessionGate({ children, requireSession = false })
   const [cashMovementKind, setCashMovementKind] = useState(null);
   const [movementAmount, setMovementAmount] = useState('');
   const [movementNotes, setMovementNotes] = useState('');
+  const [closedSession, setClosedSession] = useState(null); // holds session data after close
 
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: [CASHIER_SESSION_QUERY_KEY, selectedStoreId],
@@ -190,12 +191,23 @@ export default function CashierSessionGate({ children, requireSession = false })
     onSuccess: () => qc.invalidateQueries({ queryKey: [CASHIER_SESSION_QUERY_KEY] }),
   });
 
+  // Query active orders when close modal is open to block close if orders pending
+  const { data: ongoingOrdersData } = useQuery({
+    queryKey: ['cashier-ongoing-orders', session?._id],
+    queryFn: () => api.get('/orders', { params: { status: 'pending,preparing,ready' } }).then((r) => r.data),
+    enabled: Boolean(closeOpen && session?._id && !closedSession),
+    staleTime: 10_000,
+    refetchInterval: 30_000,
+  });
+  const ongoingCount = Array.isArray(ongoingOrdersData) ? ongoingOrdersData.length : 0;
+
   const closeMutation = useMutation({
     mutationFn: ({ id, closingCountedCash, floatAmount, varianceNotes }) =>
       api.post(`/cashier-sessions/${id}/close`, { closingCountedCash, floatAmount, varianceNotes }),
-    onSuccess: () => {
+    onSuccess: (responseData) => {
       qc.invalidateQueries({ queryKey: [CASHIER_SESSION_QUERY_KEY] });
-      setCloseOpen(false);
+      const sessionData = responseData?.data?.session || responseData?.session;
+      setClosedSession(sessionData || { _closed: true });
       setCountInput('');
       setFloatInput('');
       setNotesInput('');
@@ -315,22 +327,38 @@ export default function CashierSessionGate({ children, requireSession = false })
     });
   };
 
-  const handleGenerateReport = async () => {
+  const handleGenerateReport = async (sessionForReport) => {
     setReportLoading(true);
     try {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const { data: reportData } = await api.get(`/reports/day-end?date=${todayStr}`);
-      printDayEndReport(
-        reportData,
-        branding?.businessName || '',
-        todayStr,
-        branding?.currencySymbol || 'Rs.',
-      );
+      const src = sessionForReport || closedSession;
+      if (src && !src._closed) {
+        // Use session close data for richer report
+        printSessionReport(
+          src,
+          branding?.businessName || '',
+          branding?.currencySymbol || 'Rs.',
+        );
+      } else {
+        // Fallback: day-end summary for today
+        const todayStr = new Date().toISOString().split('T')[0];
+        const { data: reportData } = await api.get(`/reports/day-end?date=${todayStr}`);
+        printDayEndReport(
+          reportData,
+          branding?.businessName || '',
+          todayStr,
+          branding?.currencySymbol || 'Rs.',
+        );
+      }
     } catch {
       // Silently ignore – print window will be empty or blocked
     } finally {
       setReportLoading(false);
     }
+  };
+
+  const handleDoneAfterClose = () => {
+    setCloseOpen(false);
+    setClosedSession(null);
   };
 
   return (
@@ -493,7 +521,79 @@ export default function CashierSessionGate({ children, requireSession = false })
           </div>
         )}
 
-        {closeOpen && session && (
+        {closeOpen && closedSession && (
+          <div className="fixed inset-0 z-[301] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+            <div className="bg-[var(--pos-panel)] border border-slate-600/80 rounded-2xl max-w-lg w-full shadow-2xl shadow-black/60 overflow-hidden">
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-700/60 bg-slate-800/50">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/30">
+                  <ClipboardCheck size={18} className="text-emerald-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-bold text-[var(--pos-text-primary)] leading-tight">Session closed</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Your cashier session has been closed successfully.</p>
+                </div>
+              </div>
+              <div className="p-5 space-y-4">
+                {closedSession.sessionCloseBreakdown && (
+                  <div className="rounded-xl border border-slate-700/60 bg-[var(--pos-surface-inset)] p-4 space-y-2 text-sm">
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">Cashier</span>
+                      <span className="text-[var(--pos-text-primary)] font-medium">{closedSession.cashierId?.name || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">Opened</span>
+                      <span className="text-[var(--pos-text-primary)] tabular-nums">{formatDateTime(closedSession.openedAt)}</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-slate-500">Closed</span>
+                      <span className="text-[var(--pos-text-primary)] tabular-nums">{formatDateTime(closedSession.closedAt)}</span>
+                    </div>
+                    <div className="border-t border-slate-700/50 pt-2 mt-2 space-y-2">
+                      <div className="flex justify-between gap-2">
+                        <span className="text-slate-500">Total orders</span>
+                        <span className="font-semibold text-[var(--pos-text-primary)]">{closedSession.sessionCloseBreakdown.orderCount ?? 0}</span>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <span className="text-slate-500">Cash sales</span>
+                        <span className="font-semibold text-amber-400">{formatCurrency(closedSession.sessionCloseBreakdown.cashSales ?? 0)}</span>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <span className="text-slate-500">Card sales</span>
+                        <span className="font-medium text-[var(--pos-text-primary)]">{formatCurrency(closedSession.sessionCloseBreakdown.cardSales ?? 0)}</span>
+                      </div>
+                      {closedSession.varianceAmount != null && closedSession.varianceAmount !== 0 && (
+                        <div className="flex justify-between gap-2">
+                          <span className="text-slate-500">Variance</span>
+                          <span className={`font-semibold ${closedSession.varianceAmount > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {closedSession.varianceAmount > 0 ? '+' : ''}{formatCurrency(closedSession.varianceAmount)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleGenerateReport(closedSession)}
+                  disabled={reportLoading}
+                  className="w-full py-2.5 rounded-xl border border-slate-600/70 text-slate-300 hover:text-white hover:border-slate-500 text-sm font-medium flex items-center justify-center gap-2 transition disabled:opacity-50"
+                >
+                  <FileText size={14} />
+                  {reportLoading ? 'Preparing report…' : 'Print session report (PDF)'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDoneAfterClose}
+                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {closeOpen && session && !closedSession && (
           <div className="fixed inset-0 z-[301] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
             <div className="bg-[var(--pos-panel)] border border-slate-600/80 rounded-2xl max-w-lg w-full shadow-2xl shadow-black/60 relative max-h-[min(94vh,44rem)] flex flex-col overflow-hidden">
               {/* Modal header */}
@@ -619,6 +719,18 @@ export default function CashierSessionGate({ children, requireSession = false })
                       </div>
                     </div>
 
+                    {/* Ongoing orders warning */}
+                    {ongoingCount > 0 && (
+                      <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 mb-1">
+                        <p className="text-amber-400 text-sm font-semibold">
+                          ⚠️ {ongoingCount} ongoing order{ongoingCount > 1 ? 's' : ''} in queue
+                        </p>
+                        <p className="text-amber-300/70 text-xs mt-1">
+                          All orders must be completed or cancelled before closing the session.
+                        </p>
+                      </div>
+                    )}
+
                     {closeNoteError && (
                       <p className="flex items-center gap-2 text-amber-400 text-sm bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2">
                         {closeNoteError}
@@ -644,11 +756,11 @@ export default function CashierSessionGate({ children, requireSession = false })
                     {/* Submit */}
                     <button
                       type="submit"
-                      disabled={closeMutation.isPending}
+                      disabled={closeMutation.isPending || ongoingCount > 0}
                       className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       <ClipboardCheck size={16} />
-                      {closeMutation.isPending ? 'Closing…' : 'Confirm & close session'}
+                      {closeMutation.isPending ? 'Closing…' : ongoingCount > 0 ? `${ongoingCount} order${ongoingCount > 1 ? 's' : ''} pending` : 'Confirm & close session'}
                     </button>
                   </form>
                 </section>

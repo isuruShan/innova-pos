@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useContext } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, RotateCcw, Loader, Eye } from 'lucide-react';
 import api from '../../api/axios';
@@ -6,9 +6,11 @@ import Navbar from '../../components/Navbar';
 import CashierSessionGate from '../../components/cashier/CashierSessionGate';
 import { useFohrMode } from '../../hooks/useFohrMode';
 import { useStoreContext } from '../../context/StoreContext';
+import { useAuth } from '../../context/AuthContext';
 import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
 import ReturnApprovalModal from '../../components/cashier/ReturnApprovalModal';
 import { limitedInputProps } from '@innovapos/form-validation/react';
+import { CashierSessionContext } from '../../components/cashier/cashierSessionContext';
 
 function remainingQty(order, item) {
   const lineId = String(item._id);
@@ -24,9 +26,17 @@ function remainingQty(order, item) {
 export default function CashierOrderHistory() {
   const fohr = useFohrMode();
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const sessionCtx = useContext(CashierSessionContext);
+  const isCashier = String(user?.role || '').toLowerCase() === 'cashier';
+  // For cashiers, restrict orders to their current session window
+  const sessionSince = isCashier && sessionCtx?.session?.openedAt
+    ? new Date(sessionCtx.session.openedAt).toISOString()
+    : null;
   const [msg, setMsg] = useState('');
   const { isStoreReady } = useStoreContext();
   const [search, setSearch] = useState('');
+  // Cashiers only see completed orders by default; lock status to completed for cashiers
   const [statusFilter, setStatusFilter] = useState('completed');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [returnOrder, setReturnOrder] = useState(null);
@@ -45,8 +55,10 @@ export default function CashierOrderHistory() {
     const p = {};
     if (statusFilter) p.status = statusFilter;
     if (search.trim()) p.search = search.trim();
+    // Cashiers: scope to their current session window
+    if (sessionSince) p.since = sessionSince;
     return p;
-  }, [search, statusFilter]);
+  }, [search, statusFilter, sessionSince]);
 
   const { data: orders = [], isPending, refetch, isFetching } = useQuery({
     queryKey: ['cashier-order-history', searchParams],

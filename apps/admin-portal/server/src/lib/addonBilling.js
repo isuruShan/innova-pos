@@ -284,12 +284,29 @@ async function computeSubscriptionRenewalExpected(tenant) {
 
   const usersDetail = [];
   if (activeUsers.length > 0) {
+    const cycle = plan.billingCycle || 'monthly';
+
+    // First user is free for seat, but check if they have extra store slots
+    let firstUserExtraStoreSlots = 0;
+    let firstUserExtraStoreCost = 0;
+    if (activeUsers[0].role !== 'merchant_admin') {
+      firstUserExtraStoreSlots = Math.max(0, (activeUsers[0].licensedStoreSlots || 1) - 1);
+      if (firstUserExtraStoreSlots > 0) {
+        const storePricing = await getRolePricing(activeUsers[0].role, t.countryIso, 'extraStore');
+        const extraStoreUnit = cycle === 'yearly' ? storePricing.yearlyAmount : storePricing.monthlyAmount;
+        firstUserExtraStoreCost = extraStoreUnit * firstUserExtraStoreSlots;
+      }
+    }
+
     usersDetail.push({
       name: activeUsers[0].name,
       email: activeUsers[0].email,
       role: activeUsers[0].role,
-      cost: 0,
-      isFree: true,
+      cost: firstUserExtraStoreCost,
+      isFree: firstUserExtraStoreCost <= 0,
+      seatCost: 0,
+      extraStoreSlots: firstUserExtraStoreSlots,
+      extraStoreSlotsCost: firstUserExtraStoreCost,
     });
 
     if (activeUsers.length > 1) {
@@ -302,7 +319,6 @@ async function computeSubscriptionRenewalExpected(tenant) {
 
       for (const [role, count] of Object.entries(usersByRole)) {
         const pricing = await getRolePricing(role, t.countryIso, 'userSeat');
-        const cycle = plan.billingCycle || 'monthly';
         const unit = cycle === 'yearly' ? pricing.yearlyAmount : pricing.monthlyAmount;
         if (unit > 0) {
           const totalAmount = unit * count;
@@ -325,15 +341,61 @@ async function computeSubscriptionRenewalExpected(tenant) {
 
       for (const u of billableUsers) {
         const pricing = await getRolePricing(u.role, t.countryIso, 'userSeat');
-        const cycle = plan.billingCycle || 'monthly';
-        const unit = cycle === 'yearly' ? pricing.yearlyAmount : pricing.monthlyAmount;
+        const seatUnit = cycle === 'yearly' ? pricing.yearlyAmount : pricing.monthlyAmount;
+        
+        let extraStoreUnit = 0;
+        let extraStoreSlots = 0;
+        if (u.role !== 'merchant_admin') {
+          extraStoreSlots = Math.max(0, (u.licensedStoreSlots || 1) - 1);
+          if (extraStoreSlots > 0) {
+            const storePricing = await getRolePricing(u.role, t.countryIso, 'extraStore');
+            extraStoreUnit = cycle === 'yearly' ? storePricing.yearlyAmount : storePricing.monthlyAmount;
+          }
+        }
+        const userTotalCost = seatUnit + (extraStoreSlots * extraStoreUnit);
+
         usersDetail.push({
           name: u.name,
           email: u.email,
           role: u.role,
-          cost: unit,
-          isFree: unit <= 0,
+          cost: userTotalCost,
+          isFree: userTotalCost <= 0,
+          seatCost: seatUnit,
+          extraStoreSlots,
+          extraStoreSlotsCost: extraStoreSlots * extraStoreUnit,
         });
+      }
+    }
+
+    // Now calculate and add extra store slots for all active users to addons list
+    const extraStoreSlotsByRole = {};
+    for (const u of activeUsers) {
+      if (u.role === 'merchant_admin') continue;
+      const extraSlots = Math.max(0, (u.licensedStoreSlots || 1) - 1);
+      if (extraSlots > 0) {
+        extraStoreSlotsByRole[u.role] = (extraStoreSlotsByRole[u.role] || 0) + extraSlots;
+      }
+    }
+
+    for (const [role, count] of Object.entries(extraStoreSlotsByRole)) {
+      const pricing = await getRolePricing(role, t.countryIso, 'extraStore');
+      const unit = cycle === 'yearly' ? pricing.yearlyAmount : pricing.monthlyAmount;
+      if (unit > 0) {
+        const totalAmount = unit * count;
+        const roleLabel = role
+          .split('_')
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ');
+        
+        addons.push({
+          code: `user_extra_stores_${role}`,
+          label: count === 1 ? `${roleLabel} Extra Store Slot` : `${roleLabel} Extra Store Slots`,
+          amount: totalAmount,
+          quantity: count,
+          unitAmount: unit,
+          currency: pricing.currency,
+        });
+        addonTotal += totalAmount;
       }
     }
   }

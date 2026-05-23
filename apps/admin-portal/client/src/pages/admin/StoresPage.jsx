@@ -17,6 +17,9 @@ import { useTenantCurrency } from '../../context/TenantCurrencyContext';
 import BankReceiptFields from '../../components/billing/BankReceiptFields';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
 import StoreCreateDrawer from '../../components/superadmin/StoreCreateDrawer';
+import MobilePhoneField, { validateMobileField, phoneValueFromField } from '../../components/MobilePhoneField';
+import { parsePhoneForField } from '../../utils/phone';
+import { DEFAULT_COUNTRY_CODE } from '../../constants/countries';
 
 function StatusChip({ active, onClick, children }) {
   return (
@@ -40,9 +43,11 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
   const [editingStoreId, setEditingStoreId] = useState('');
   const [editingStore, setEditingStore] = useState(null);
   const [editForm, setEditForm] = useState({
-    name: '', address: '', phone: '', paymentMethods: ['cash'], isActive: true,
+    name: '', address: '', paymentMethods: ['cash'], isActive: true,
   });
   const [editMeta, setEditMeta] = useState({ deactivatedBySuperadmin: false });
+  const [editPhoneCountryIso, setEditPhoneCountryIso] = useState(DEFAULT_COUNTRY_CODE);
+  const [editPhoneNationalDigits, setEditPhoneNationalDigits] = useState('');
   const toast = useToast();
   const { isInternational } = useMerchantBillingRegion();
   const { currencySymbol: merchantSymbol } = useTenantCurrency();
@@ -65,6 +70,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
   const paypalContainerRef = useRef(null);
   const editingStoreIdRef = useRef('');
   const [paypalReady, setPaypalReady] = useState(false);
+  const [startCreateLoading, setStartCreateLoading] = useState(false);
 
   const storeIdStr = (store) => {
     const raw = store?._id ?? store?.id;
@@ -80,18 +86,24 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
     return String(raw);
   };
 
-  const buildEditFormFromStore = (store) => ({
-    name: store.name || '',
-    address: store.address || '',
-    phone: store.phone || '',
-    paymentMethods: store.paymentMethods?.length ? [...store.paymentMethods] : ['cash'],
-    isActive: store.isActive !== false,
-  });
+  const buildEditFormFromStore = (store) => {
+    const parsed = parsePhoneForField(store.phone, DEFAULT_COUNTRY_CODE);
+    setEditPhoneCountryIso(parsed.countryIso);
+    setEditPhoneNationalDigits(parsed.nationalDigits);
+    return {
+      name: store.name || '',
+      address: store.address || '',
+      paymentMethods: store.paymentMethods?.length ? [...store.paymentMethods] : ['cash'],
+      isActive: store.isActive !== false,
+    };
+  };
 
   const closeEditDrawer = () => {
     editingStoreIdRef.current = '';
     setEditingStoreId('');
     setEditingStore(null);
+    setEditPhoneCountryIso(DEFAULT_COUNTRY_CODE);
+    setEditPhoneNationalDigits('');
     setError('');
   };
 
@@ -214,6 +226,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
 
   const startCreateStore = async () => {
     setPurchaseError('');
+    setStartCreateLoading(true);
     try {
       const { data: quote } = await api.get('/stores/create-quote');
       if (quote.error) {
@@ -222,6 +235,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
       }
       if (!quote.requiresPayment) {
         createIncludedStore.mutate();
+        setStartCreateLoading(false);
         return;
       }
       setPurchaseQuote(quote);
@@ -229,6 +243,8 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
       setPurchaseStep('review');
     } catch (err) {
       setError(err.response?.data?.message || 'Could not load store pricing');
+    } finally {
+      setStartCreateLoading(false);
     }
   };
 
@@ -318,7 +334,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
       toast.success('Store saved.');
       closeEditDrawer();
       setEditForm({
-        name: '', address: '', phone: '', paymentMethods: ['cash'], isActive: true,
+        name: '', address: '', paymentMethods: ['cash'], isActive: true,
       });
       setEditMeta({ deactivatedBySuperadmin: false });
       queryClient.invalidateQueries({ queryKey: ['admin-stores'] });
@@ -378,12 +394,16 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
       setError('Store not found');
       return;
     }
+    const phoneErr = validateMobileField(editPhoneCountryIso, editPhoneNationalDigits);
+    if (phoneErr) { setError(phoneErr); return; }
+    const phone = phoneValueFromField(editPhoneCountryIso, editPhoneNationalDigits);
     updateStore.mutate({
       id,
       payload: {
+        ...(tenantIdOverride ? { tenantId: tenantIdOverride } : {}),
         name: editForm.name.trim(),
         address: editForm.address.trim(),
-        phone: editForm.phone.trim(),
+        phone,
         paymentMethods: [...editForm.paymentMethods],
         isActive: editForm.isActive,
       },
@@ -436,11 +456,11 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
           <button
             type="button"
             onClick={startCreateStore}
-            disabled={createIncludedStore.isPending}
+            disabled={startCreateLoading || createIncludedStore.isPending}
             className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60"
           >
-            {createIncludedStore.isPending ? <Loader size={14} className="animate-spin" /> : <Plus size={16} />}
-            Create store
+            {(startCreateLoading || createIncludedStore.isPending) ? <Loader size={14} className="animate-spin" /> : <Plus size={16} />}
+            {startCreateLoading ? 'Checking pricing…' : createIncludedStore.isPending ? 'Creating…' : 'Create store'}
           </button>
         )}
       </div>
@@ -795,19 +815,18 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                 <input 
                   className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" 
                   placeholder="Store address" 
+                  maxLength={fieldAttrs('addressLine1').maxLength}
                   value={editForm.address} 
                   onChange={(e) => setEditForm((p) => ({ ...p, address: e.target.value }))} 
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
-                <input 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" 
-                  placeholder="Phone number" 
-                  value={editForm.phone} 
-                  onChange={(e) => setEditForm((p) => ({ ...p, phone: e.target.value }))} 
-                />
-              </div>
+              <MobilePhoneField
+                countryIso={editPhoneCountryIso}
+                nationalDigits={editPhoneNationalDigits}
+                onCountryIsoChange={(iso) => setEditPhoneCountryIso(iso)}
+                onNationalDigitsChange={(d) => setEditPhoneNationalDigits(d)}
+                label="Phone"
+              />
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Payment Methods</label>
                 <p className="text-xs text-gray-500 mb-3">Cash is always required. Select additional payment types accepted at this location.</p>

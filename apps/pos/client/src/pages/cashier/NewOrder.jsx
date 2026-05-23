@@ -1003,7 +1003,7 @@ export default function NewOrder() {
               {/* Customer + table / delivery ref (takeaway: full-width customer line only) */}
               <div className="px-4 pb-3 space-y-2 border-b border-slate-700/40">
                 <div className={orderType === 'takeaway' ? 'space-y-2' : 'grid grid-cols-1 sm:grid-cols-2 gap-3 items-start'}>
-                  <div className="min-w-0 relative z-[70]">
+                  <div className="min-w-0 relative">
                     <label className="block text-xs font-medium text-slate-400 mb-1.5">Customer (optional)</label>
                     <div
                       className={`flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 px-3 py-2 transition ${
@@ -1024,7 +1024,7 @@ export default function NewOrder() {
                       />
                     </div>
                 {searchQ.length >= 2 && customerHits.length > 0 && !selectedCustomer && (
-                  <ul className="absolute left-0 right-0 top-full mt-1 z-[90] max-h-40 overflow-y-auto rounded-xl border border-slate-700 bg-[var(--pos-panel)] shadow-xl sm:left-0 sm:right-auto sm:w-[min(100%,18rem)]">
+                  <ul className="absolute left-0 right-0 top-full mt-1 z-30 max-h-40 overflow-y-auto rounded-xl border border-slate-700 bg-[var(--pos-panel)] shadow-xl sm:left-0 sm:right-auto sm:w-[min(100%,18rem)]">
                     {customerHits.slice(0, 8).map((c) => (
                       <li key={c._id}>
                         <button

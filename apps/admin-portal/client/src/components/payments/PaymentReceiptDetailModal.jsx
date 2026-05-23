@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, ExternalLink, Loader, XCircle } from 'lucide-react';
+import { X, ExternalLink, Loader, XCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 import api from '../../api/axios';
 import BillingBreakdownPanel from '../billing/BillingBreakdownPanel';
 import { formatMoney } from '../billing/ProrationBreakdown';
@@ -15,7 +15,7 @@ function DetailRow({ label, children }) {
   );
 }
 
-export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify, onReject }) {
+export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify, onReject, isMutating = false, mutationError = null }) {
   const [confirmVerify, setConfirmVerify] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -138,6 +138,49 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
                 <BillingBreakdownPanel breakdown={data.billingBreakdown} />
               )}
 
+              {/* Payment amount breakdown — for all receipt types */}
+              {!data?.billingBreakdown?.plan && (
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Payment summary</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between gap-2">
+                      <span className="text-gray-600">Amount paid</span>
+                      <span className="font-bold text-gray-900">{formatMoney(receipt.currency, receipt.amount)}</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-gray-600">Expected amount</span>
+                      <span className="font-medium text-gray-700">{formatMoney(receipt.currency, receipt.expectedAmount)}</span>
+                    </div>
+                    <div className="flex justify-between gap-2 pt-1 border-t border-gray-200">
+                      <span className="text-gray-600">Match</span>
+                      <span className={`font-semibold text-xs flex items-center gap-1 ${receipt.amountMatchesExpected ? 'text-green-700' : 'text-red-600'}`}>
+                        {receipt.amountMatchesExpected
+                          ? <><CheckCircle2 size={13} /> Matches expected</>
+                          : <><AlertTriangle size={13} /> Amount mismatch</>}
+                      </span>
+                    </div>
+                    {data?.addonMeta && (
+                      <div className="flex justify-between gap-2 pt-1 border-t border-gray-200">
+                        <span className="text-gray-600">Add-on</span>
+                        <span className="font-medium text-violet-700">{data.addonMeta.name}</span>
+                      </div>
+                    )}
+                    {receipt.requestedPlanId && typeof receipt.requestedPlanId === 'object' && (
+                      <div className="flex justify-between gap-2 pt-1 border-t border-gray-200">
+                        <span className="text-gray-600">Plan</span>
+                        <span className="font-medium text-gray-900">{receipt.requestedPlanId.name}</span>
+                      </div>
+                    )}
+                    {receipt.extensionDays > 0 && (
+                      <div className="flex justify-between gap-2">
+                        <span className="text-gray-600">Extension</span>
+                        <span className="font-medium text-green-700">+{receipt.extensionDays} days</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {receipt.receiptFileUrl && (
                 <a
                   href={receipt.receiptFileUrl}
@@ -164,25 +207,33 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
                         placeholder="Reason for rejection (required)…"
                         className="w-full border border-red-300 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-300"
                         autoFocus
+                        disabled={isMutating}
                       />
                       <div className="flex gap-2">
                         <button
                           type="button"
                           onClick={() => { setRejectOpen(false); setRejectionReason(''); }}
-                          className="flex-1 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
+                          disabled={isMutating}
+                          className="flex-1 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                         >
                           Cancel
                         </button>
                         <button
                           type="button"
                           onClick={handleRejectSubmit}
-                          disabled={!rejectionReason.trim()}
-                          className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50"
+                          disabled={!rejectionReason.trim() || isMutating}
+                          className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
                         >
-                          Confirm rejection
+                          {isMutating ? <><Loader size={14} className="animate-spin" /> Rejecting…</> : 'Confirm rejection'}
                         </button>
                       </div>
                     </div>
+                  )}
+
+                  {mutationError && (
+                    <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                      {mutationError}
+                    </p>
                   )}
 
                   {!rejectOpen && (onVerify || onReject) && (
@@ -191,16 +242,19 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
                         <button
                           type="button"
                           onClick={() => setConfirmVerify(true)}
-                          className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700"
+                          disabled={isMutating}
+                          className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
                         >
-                          Verify payment
+                          {isMutating ? <Loader size={14} className="animate-spin" /> : null}
+                          {isMutating ? 'Processing…' : 'Verify payment'}
                         </button>
                       )}
                       {onReject && (
                         <button
                           type="button"
                           onClick={() => setRejectOpen(true)}
-                          className="px-4 py-2 rounded-lg border border-red-300 text-red-700 text-sm font-semibold hover:bg-red-50"
+                          disabled={isMutating}
+                          className="px-4 py-2 rounded-lg border border-red-300 text-red-700 text-sm font-semibold hover:bg-red-50 disabled:opacity-50"
                         >
                           Reject
                         </button>
