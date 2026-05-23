@@ -294,11 +294,12 @@ export default function ReservationsPage() {
   const dateStr = selectedDate.toISOString().split('T')[0];
 
   // Fetch reservations
-  const { data: reservations = [], isLoading } = useQuery({
+  const { data: reservationsData, isLoading } = useQuery({
     queryKey: ['reservations', selectedStoreId, dateStr],
     queryFn: () => api.get(`/reservations?date=${dateStr}`).then((r) => r.data),
     enabled: isStoreReady,
   });
+  const reservations = reservationsData?.items || [];
 
   // Fetch tables
   const { data: tables = [] } = useQuery({

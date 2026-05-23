@@ -55,13 +55,26 @@ function HourlyHeatmap({ data }) {
     );
   }
 
-  const maxOccupancy = Math.max(...data.map((d) => d.avgOccupancy || 0), 1);
+  // Aggregate by hour (data comes as 7 days x 24 hours, we want just 24 hours)
+  const hourlyAgg = {};
+  for (let h = 0; h < 24; h++) {
+    hourlyAgg[h] = { hour: h, sessions: 0, revenue: 0 };
+  }
+  data.forEach((d) => {
+    const h = d.hourOfDay ?? d.hour;
+    if (h !== undefined && hourlyAgg[h]) {
+      hourlyAgg[h].sessions += d.sessions || 0;
+      hourlyAgg[h].revenue += d.revenue || 0;
+    }
+  });
+  const hourly = Object.values(hourlyAgg);
+  const maxSessions = Math.max(...hourly.map((h) => h.sessions), 1);
 
   return (
     <div className="overflow-x-auto">
       <div className="flex gap-1 min-w-[600px]">
-        {data.map((hour) => {
-          const intensity = (hour.avgOccupancy || 0) / maxOccupancy;
+        {hourly.map((hour) => {
+          const intensity = hour.sessions / maxSessions;
           const bgOpacity = Math.max(0.1, intensity);
           return (
             <div
@@ -74,9 +87,9 @@ function HourlyHeatmap({ data }) {
                   backgroundColor: `rgba(245, 158, 11, ${bgOpacity})`,
                   color: intensity > 0.5 ? '#1e293b' : '#94a3b8',
                 }}
-                title={`${hour.sessions} sessions, ${Math.round(hour.avgOccupancy * 100)}% occupancy`}
+                title={`${hour.sessions} sessions`}
               >
-                {Math.round(hour.avgOccupancy * 100)}%
+                {hour.sessions}
               </div>
               <span className="text-[10px] text-slate-500">{hour.hour}:00</span>
             </div>
@@ -88,7 +101,10 @@ function HourlyHeatmap({ data }) {
 }
 
 function TableBreakdownRow({ table, maxRevenue }) {
-  const revenueWidth = maxRevenue > 0 ? (table.totalRevenue / maxRevenue) * 100 : 0;
+  const revenueWidth = maxRevenue > 0 ? ((table.totalRevenue || 0) / maxRevenue) * 100 : 0;
+  // Calculate revenue per hour based on sessions and average duration
+  const totalHours = ((table.sessions || 0) * (table.avgDuration || 60)) / 60;
+  const revenuePerHour = totalHours > 0 ? (table.totalRevenue || 0) / totalHours : 0;
 
   return (
     <div className="flex items-center gap-4 py-2 border-b border-slate-700/30 last:border-b-0">
@@ -96,13 +112,13 @@ function TableBreakdownRow({ table, maxRevenue }) {
       <div className="flex-1">
         <div className="flex items-center gap-2 text-sm text-slate-400">
           <span className="flex items-center gap-1">
-            <Users size={12} /> {table.sessions}
+            <Users size={12} /> {table.sessions || 0}
           </span>
           <span className="flex items-center gap-1">
-            <Clock size={12} /> {table.avgDuration}m
+            <Clock size={12} /> {table.avgDuration || 0}m
           </span>
           <span className="flex items-center gap-1">
-            <RefreshCw size={12} /> {table.turnoverRate.toFixed(1)}x
+            <RefreshCw size={12} /> {(table.turnoversPerDay || 0).toFixed(1)}x
           </span>
         </div>
         <div className="mt-1 h-2 bg-slate-700/50 rounded-full overflow-hidden">
@@ -114,9 +130,9 @@ function TableBreakdownRow({ table, maxRevenue }) {
       </div>
       <div className="text-right min-w-[80px]">
         <p className="font-semibold text-[var(--pos-text-primary)]">
-          ${table.totalRevenue.toFixed(0)}
+          ${(table.totalRevenue || 0).toFixed(0)}
         </p>
-        <p className="text-xs text-slate-500">${table.revenuePerHour.toFixed(0)}/hr</p>
+        <p className="text-xs text-slate-500">${revenuePerHour.toFixed(0)}/hr</p>
       </div>
     </div>
   );
@@ -184,7 +200,7 @@ export default function TableAnalyticsPage() {
   });
 
   // Fetch by-table breakdown
-  const { data: byTable = [], isLoading: byTableLoading } = useQuery({
+  const { data: byTableData, isLoading: byTableLoading } = useQuery({
     queryKey: ['table-analytics-by-table', selectedStoreId, dateRange],
     queryFn: () =>
       api
@@ -192,26 +208,29 @@ export default function TableAnalyticsPage() {
         .then((r) => r.data),
     enabled: isStoreReady,
   });
+  const byTable = byTableData?.tables || [];
 
   // Fetch hourly heatmap
-  const { data: hourly = [] } = useQuery({
+  const { data: hourlyData } = useQuery({
     queryKey: ['table-analytics-hourly', selectedStoreId, dateRange],
     queryFn: () =>
       api
-        .get(`/table-analytics/hourly?startDate=${dateRange.start}&endDate=${dateRange.end}`)
+        .get(`/table-analytics/by-hour?startDate=${dateRange.start}&endDate=${dateRange.end}`)
         .then((r) => r.data),
     enabled: isStoreReady,
   });
+  const hourly = hourlyData?.heatmap || [];
 
   // Fetch day part breakdown
-  const { data: dayParts = [] } = useQuery({
+  const { data: dayPartsData } = useQuery({
     queryKey: ['table-analytics-day-parts', selectedStoreId, dateRange],
     queryFn: () =>
       api
-        .get(`/table-analytics/day-parts?startDate=${dateRange.start}&endDate=${dateRange.end}`)
+        .get(`/table-analytics/by-day-part?startDate=${dateRange.start}&endDate=${dateRange.end}`)
         .then((r) => r.data),
     enabled: isStoreReady,
   });
+  const dayParts = dayPartsData?.breakdown || [];
 
   const maxRevenue = useMemo(() => {
     return Math.max(...byTable.map((t) => t.totalRevenue || 0), 1);
@@ -316,21 +335,21 @@ export default function TableAnalyticsPage() {
           <KPICard
             icon={Clock}
             label="Avg Duration"
-            value={summary?.avgDuration || 0}
+            value={Math.round(summary?.avgDuration || 0)}
             unit="min"
             color="teal"
           />
           <KPICard
             icon={RefreshCw}
             label="Avg Turnover"
-            value={(summary?.avgTurnoverRate || 0).toFixed(1)}
+            value={(summary?.turnoversPerDay || 0).toFixed(1)}
             unit="x/day"
             color="purple"
           />
           <KPICard
             icon={DollarSign}
-            label="Revenue/Hour"
-            value={`$${(summary?.revenuePerHour || 0).toFixed(0)}`}
+            label="Avg Rev/Cover"
+            value={`$${(summary?.avgRevenuePerCover || 0).toFixed(0)}`}
             color="green"
           />
         </div>
@@ -392,15 +411,15 @@ export default function TableAnalyticsPage() {
             </p>
           </div>
           <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4">
-            <h4 className="text-sm text-slate-400 mb-2">Avg Covers/Session</h4>
+            <h4 className="text-sm text-slate-400 mb-2">Avg Party Size</h4>
             <p className="text-2xl font-bold text-[var(--pos-text-primary)]">
-              {(summary?.avgCovers || 0).toFixed(1)}
+              {(summary?.avgPartySize || 0).toFixed(1)}
             </p>
           </div>
           <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4">
-            <h4 className="text-sm text-slate-400 mb-2">Peak Hour</h4>
+            <h4 className="text-sm text-slate-400 mb-2">Total Covers</h4>
             <p className="text-2xl font-bold text-[var(--pos-text-primary)]">
-              {summary?.peakHour !== undefined ? `${summary.peakHour}:00` : '-'}
+              {summary?.totalCovers || 0}
             </p>
           </div>
         </div>

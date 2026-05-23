@@ -29,14 +29,15 @@ const STATUS_COLORS = {
   reserved: 'ring-2 ring-yellow-500',
 };
 
-function TableShape({ table, isSelected, onClick, onDragStart, tableStatus, showCapacity }) {
+function TableShape({ table, isSelected, onClick, onDragStart, tableStatus, showCapacity, zoom = 1 }) {
   const status = tableStatus?.[String(table.tableId)] || {};
   const statusClass = status.status ? STATUS_COLORS[status.status] || '' : '';
+  const cellSize = 50 * zoom;
 
   return (
     <div
       className={`
-        absolute cursor-move flex items-center justify-center text-white font-bold text-xs
+        absolute cursor-move flex items-center justify-center text-white font-bold
         transition-all duration-150 select-none
         ${SHAPE_COLORS[table.shape] || SHAPE_COLORS.rectangle}
         ${table.shape === 'round' ? 'rounded-full' : 'rounded-lg'}
@@ -44,11 +45,12 @@ function TableShape({ table, isSelected, onClick, onDragStart, tableStatus, show
         ${statusClass}
       `}
       style={{
-        left: `${table.x * 50}px`,
-        top: `${table.y * 50}px`,
-        width: `${table.width * 50 - 4}px`,
-        height: `${table.height * 50 - 4}px`,
+        left: `${table.x * cellSize}px`,
+        top: `${table.y * cellSize}px`,
+        width: `${table.width * cellSize - 4}px`,
+        height: `${table.height * cellSize - 4}px`,
         transform: `rotate(${table.rotation || 0}deg)`,
+        fontSize: `${Math.max(10, 12 * zoom)}px`,
       }}
       onClick={(e) => {
         e.stopPropagation();
@@ -60,13 +62,13 @@ function TableShape({ table, isSelected, onClick, onDragStart, tableStatus, show
       <div className="flex flex-col items-center">
         <span className="truncate max-w-full px-1">{table.label || 'T'}</span>
         {showCapacity && (
-          <span className="text-[10px] opacity-75 flex items-center gap-0.5">
-            <Users size={10} /> {table.capacity}
+          <span style={{ fontSize: `${Math.max(8, 10 * zoom)}px` }} className="opacity-75 flex items-center gap-0.5">
+            <Users size={Math.max(8, 10 * zoom)} /> {table.capacity}
           </span>
         )}
       </div>
       {status.status === 'occupied' && status.seatedMinutes && (
-        <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] bg-red-600 px-1 rounded">
+        <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-red-600 px-1 rounded" style={{ fontSize: `${Math.max(8, 10 * zoom)}px` }}>
           {status.seatedMinutes}m
         </div>
       )}
@@ -74,19 +76,20 @@ function TableShape({ table, isSelected, onClick, onDragStart, tableStatus, show
   );
 }
 
-function Zone({ zone }) {
+function Zone({ zone, zoom = 1 }) {
+  const cellSize = 50 * zoom;
   return (
     <div
       className="absolute rounded-lg opacity-30 pointer-events-none"
       style={{
-        left: `${zone.x * 50}px`,
-        top: `${zone.y * 50}px`,
-        width: `${zone.width * 50}px`,
-        height: `${zone.height * 50}px`,
+        left: `${zone.x * cellSize}px`,
+        top: `${zone.y * cellSize}px`,
+        width: `${zone.width * cellSize}px`,
+        height: `${zone.height * cellSize}px`,
         backgroundColor: zone.color || '#3b82f6',
       }}
     >
-      <span className="absolute top-1 left-2 text-xs font-medium text-white/80">
+      <span className="absolute top-1 left-2 font-medium text-white/80" style={{ fontSize: `${Math.max(10, 12 * zoom)}px` }}>
         {zone.name}
       </span>
     </div>
@@ -181,8 +184,10 @@ export default function FloorPlanEditorPage() {
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect || !localPlan) return;
 
-      const x = Math.floor((e.clientX - rect.left) / (50 * zoom));
-      const y = Math.floor((e.clientY - rect.top) / (50 * zoom));
+      // Cell size in pixels (accounting for zoom)
+      const cellSize = 50 * zoom;
+      const x = Math.floor((e.clientX - rect.left) / cellSize);
+      const y = Math.floor((e.clientY - rect.top) / cellSize);
 
       if (newTableId) {
         // Adding a new table from sidebar
@@ -411,12 +416,10 @@ export default function FloorPlanEditorPage() {
                 style={{
                   width: `${plan.gridWidth * 50 * zoom}px`,
                   height: `${plan.gridHeight * 50 * zoom}px`,
-                  transform: `scale(${zoom})`,
-                  transformOrigin: 'top left',
                   backgroundImage: showGrid
                     ? 'linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)'
                     : 'none',
-                  backgroundSize: '50px 50px',
+                  backgroundSize: `${50 * zoom}px ${50 * zoom}px`,
                 }}
                 onDrop={handleCanvasDrop}
                 onDragOver={handleCanvasDragOver}
@@ -424,7 +427,7 @@ export default function FloorPlanEditorPage() {
               >
                 {/* Zones */}
                 {plan.zones?.map((zone) => (
-                  <Zone key={zone._id || zone.name} zone={zone} />
+                  <Zone key={zone._id || zone.name} zone={zone} zoom={zoom} />
                 ))}
 
                 {/* Tables */}
@@ -437,6 +440,7 @@ export default function FloorPlanEditorPage() {
                     onDragStart={handleTableDragStart}
                     tableStatus={tableStatus}
                     showCapacity={showCapacity}
+                    zoom={zoom}
                   />
                 ))}
               </div>
