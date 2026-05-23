@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { BrandingProvider } from './context/BrandingContext';
 import { StoreProvider } from './context/StoreContext';
 import PosNotificationStream from './components/PosNotificationStream';
@@ -65,10 +66,11 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrandingProvider>
-          <StoreProvider>
-            <PosNotificationStream />
-            <BrowserRouter>
+        <ThemeProvider>
+          <BrandingProvider>
+            <StoreProvider>
+              <PosNotificationStream />
+              <BrowserRouter>
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -216,7 +218,8 @@ export default function App() {
             </BrowserRouter>
           </StoreProvider>
         </BrandingProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+      </ThemeProvider>
+    </AuthProvider>
+  </QueryClientProvider>
   );
 }

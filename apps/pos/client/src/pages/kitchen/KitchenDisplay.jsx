@@ -193,7 +193,7 @@ function KitchenCard({
       {/* Item summary — lines marked delivered are excluded */}
       <div className="px-3 py-2.5 flex-1 space-y-1.5">
         {prepItems.length === 0 ? (
-          <p className="text-xs text-slate-500 italic">
+          <p className="text-xs text-[var(--pos-text-muted)] italic">
             {order.status === 'preparing' || order.status === 'ready'
               ? 'New lines are in Pending adds → Preparing adds until acknowledged'
               : 'All items marked delivered to table'}
@@ -203,25 +203,25 @@ function KitchenCard({
           <div key={i} className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
               {item.isCombo && <Link2 size={10} className="text-amber-400 flex-shrink-0" />}
-              <span className={`text-sm truncate ${item.isCombo ? 'text-amber-300 font-medium' : 'text-slate-200'}`}>
+              <span className={`text-sm truncate ${item.isCombo ? 'text-amber-300 font-medium' : 'text-[var(--pos-text-primary)]'}`}>
                 {item.name}
               </span>
             </div>
-            <span className="text-xs font-bold text-slate-500 bg-slate-800 rounded-full px-1.5 py-0.5 flex-shrink-0">
+            <span className="text-xs font-bold text-[var(--pos-text-muted)] bg-[var(--pos-surface-inset)] rounded-full px-1.5 py-0.5 flex-shrink-0">
               ×{item.qty}
             </span>
           </div>
         ))}
         {overflow > 0 && (
-          <p className="text-xs text-slate-600 italic">+{overflow} more item{overflow > 1 ? 's' : ''} — tap to see all</p>
+          <p className="text-xs text-[var(--pos-text-muted)] italic">+{overflow} more item{overflow > 1 ? 's' : ''} — tap to see all</p>
         )}
       </div>
 
       {/* Footer: total qty + advance button */}
       <div className="px-3 pb-3 pt-1 space-y-2">
-        <div className="flex items-center justify-between text-xs text-slate-600">
+        <div className="flex items-center justify-between text-xs text-[var(--pos-text-muted)]">
           <span>{totalQty} item{totalQty !== 1 ? 's' : ''} total</span>
-          <span className="text-slate-700 text-xs group-hover:text-slate-500 transition">tap for details →</span>
+          <span className="text-[var(--pos-text-muted)] text-xs group-hover:text-[var(--pos-text-secondary)] transition">tap for details →</span>
         </div>
         {showPrimary && primaryLabel && (
           <button
@@ -433,7 +433,7 @@ export default function KitchenDisplay() {
           >
             {branding.businessName || 'POS'}
           </span>
-          <div className="w-px h-5 bg-slate-700" />
+          <div className="w-px h-5 bg-[color-mix(in_srgb,var(--color-header-text,var(--color-text))_20%,transparent)]" />
           <ChefHat size={16} className="text-amber-400" />
           <h1 className="text-sm font-bold text-[var(--pos-text-primary)] tracking-widest uppercase">Kitchen</h1>
           {hasBoardContent && (
@@ -444,7 +444,7 @@ export default function KitchenDisplay() {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-xs text-slate-600">
+          <div className="flex items-center gap-1.5 text-xs text-[var(--pos-text-muted)]">
             <RefreshCw size={11} className={isFetching ? 'animate-spin text-amber-400' : ''} />
             <span className="hidden sm:block">Auto-refresh · {lastUpdated}</span>
           </div>
@@ -459,7 +459,7 @@ export default function KitchenDisplay() {
             <KitchenBoardSkeleton />
           </div>
         ) : !hasBoardContent ? (
-          <div className="flex flex-col items-center justify-center h-full text-slate-700">
+          <div className="flex flex-col items-center justify-center h-full text-[var(--pos-text-muted)]">
             <ChefHat size={56} className="mb-4 opacity-20" />
             <p className="text-2xl font-bold">All caught up!</p>
             <p className="text-sm mt-1 opacity-60">No active orders right now</p>
