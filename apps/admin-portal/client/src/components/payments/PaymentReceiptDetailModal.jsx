@@ -76,14 +76,7 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
                 <DetailRow label="Amount">
                   <strong>{formatMoney(receipt.currency, receipt.amount)}</strong>
                 </DetailRow>
-                <DetailRow label="Expected">
-                  {formatMoney(receipt.currency, receipt.expectedAmount)}
-                  {receipt.amountMatchesExpected ? (
-                    <span className="ml-2 text-green-700 text-xs">(matches)</span>
-                  ) : (
-                    <span className="ml-2 text-red-600 text-xs">(mismatch)</span>
-                  )}
-                </DetailRow>
+
                 <DetailRow label="Payment method">{receipt.paymentMethod || '—'}</DetailRow>
                 <DetailRow label="Bank reference">{receipt.bankReference || '—'}</DetailRow>
                 <DetailRow label="Submitted">{new Date(receipt.paymentDate || receipt.createdAt).toLocaleString()}</DetailRow>
@@ -198,18 +191,7 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
                       <span className="text-gray-600">Amount paid</span>
                       <span className="font-bold text-gray-900">{formatMoney(receipt.currency, receipt.amount)}</span>
                     </div>
-                    <div className="flex justify-between gap-2">
-                      <span className="text-gray-600">Expected amount</span>
-                      <span className="font-medium text-gray-700">{formatMoney(receipt.currency, receipt.expectedAmount)}</span>
-                    </div>
-                    <div className="flex justify-between gap-2 pt-1 border-t border-gray-200">
-                      <span className="text-gray-600">Match</span>
-                      <span className={`font-semibold text-xs flex items-center gap-1 ${receipt.amountMatchesExpected ? 'text-green-700' : 'text-red-600'}`}>
-                        {receipt.amountMatchesExpected
-                          ? <><CheckCircle2 size={13} /> Matches expected</>
-                          : <><AlertTriangle size={13} /> Amount mismatch</>}
-                      </span>
-                    </div>
+
                     {data?.addonMeta && (
                       <div className="flex justify-between gap-2 pt-1 border-t border-gray-200">
                         <span className="text-gray-600">Add-on</span>

@@ -45,7 +45,6 @@ function buildPaymentReceiptEmailHtml(receipt, tenant, ctx) {
     emailLabelValue('Merchant', `<strong>${esc(merchant)}</strong>`),
     emailLabelValue('Payment type', esc(kind)),
     emailLabelValue('Amount', `<strong>${esc(formatMoney(receipt.amount, receipt.currency))}</strong>`),
-    emailLabelValue('Expected amount', esc(formatMoney(receipt.expectedAmount, receipt.currency))),
     emailLabelValue('Payment method', esc(receipt.paymentMethod || 'bank_transfer')),
     emailLabelValue('Bank reference', esc(receipt.bankReference || '—')),
   ];
