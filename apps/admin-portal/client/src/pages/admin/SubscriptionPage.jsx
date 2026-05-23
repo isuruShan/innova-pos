@@ -1078,8 +1078,7 @@ export default function SubscriptionPage() {
           )}
         </div>
       )}
+      {popupReceipt && <ReceiptDetailPopup receipt={popupReceipt} onClose={() => setPopupReceipt(null)} />}
     </div>
-
-    {popupReceipt && <ReceiptDetailPopup receipt={popupReceipt} onClose={() => setPopupReceipt(null)} />}
   );
 }

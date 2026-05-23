@@ -77,10 +77,27 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
     const { status, orderType, paymentType, since, until, search } = req.query;
     const filter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
 
-    if (status) {
-      const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
-      filter.status = statuses.length === 1 ? statuses[0] : { $in: statuses };
+    let dateFilter = {};
+    if (since || until) {
+      if (since) dateFilter.$gte = new Date(since);
+      if (until) dateFilter.$lte = new Date(until);
     }
+
+    if (req.query.board === 'true') {
+      const activeQuery = { status: { $in: ['pending', 'preparing', 'ready'] } };
+      const inactiveQuery = {
+        status: { $in: ['completed', 'cancelled'] },
+        ...(since || until ? { createdAt: dateFilter } : {})
+      };
+      filter.$or = [activeQuery, inactiveQuery];
+    } else {
+      if (status) {
+        const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
+        filter.status = statuses.length === 1 ? statuses[0] : { $in: statuses };
+      }
+      if (since || until) {
+        filter.createdAt = dateFilter;
+      }
     if (orderType) {
       const types = orderType.split(',').map(s => s.trim()).filter(Boolean);
       filter.orderType = types.length === 1 ? types[0] : { $in: types };
@@ -88,11 +105,6 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
     if (paymentType) {
       const pmts = paymentType.split(',').map(s => s.trim()).filter(Boolean);
       filter.paymentType = pmts.length === 1 ? pmts[0] : { $in: pmts };
-    }
-    if (since || until) {
-      filter.createdAt = {};
-      if (since) filter.createdAt.$gte = new Date(since);
-      if (until) filter.createdAt.$lte = new Date(until);
     }
     if (search) {
       const term = String(search).trim();

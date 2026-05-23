@@ -184,13 +184,57 @@ export default function UsersPage() {
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, isActive }) => api.put(`/users/${id}`, { isActive }),
-    onSuccess: invalidateUsers,
+    onSuccess: (_, variables) => {
+      invalidateUsers();
+      toast.success(`User ${variables.isActive ? 'activated' : 'deactivated'} successfully`);
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Failed to update user status');
+    },
   });
 
   const resetMutation = useMutation({
     mutationFn: (id) => api.post(`/users/${id}/reset-password`),
     onSuccess: () => toast.success('Password reset email sent'),
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Failed to reset password');
+    },
   });
+
+  const handleToggleActiveClick = (user) => {
+    if (user.isActive) {
+      setDeactivateTarget(user);
+    } else {
+      toggleMutation.mutate({ id: user._id, isActive: true });
+    }
+  };
+
+  const handleToggleActiveConfirm = () => {
+    if (deactivateTarget) {
+      toggleMutation.mutate(
+        { id: deactivateTarget._id, isActive: false },
+        {
+          onSuccess: () => {
+            setDeactivateTarget(null);
+          },
+        }
+      );
+    }
+  };
+
+  const handleResetPasswordClick = (user) => {
+    setResetTarget(user);
+  };
+
+  const handleResetPasswordConfirm = () => {
+    if (resetTarget) {
+      resetMutation.mutate(resetTarget._id, {
+        onSuccess: () => {
+          setResetTarget(null);
+        },
+      });
+    }
+  };
 
   const closePayment = useCallback(() => {
     setPaymentOpen(false);
@@ -521,12 +565,16 @@ export default function UsersPage() {
                       {u.storeIds.map((s) => s?.name || s?.code || 'Unknown').join(', ')}
                     </p>
                   )}
-                  <div className="mt-4 flex items-center gap-2">
-                    <button type="button" onClick={() => toggleMutation.mutate({ id: u._id, isActive: !u.isActive })} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border border-gray-200 rounded-lg text-xs font-semibold hover:bg-gray-50 text-gray-600 transition">
-                      {u.isActive ? <><UserX size={12} /> Deactivate</> : <><UserCheck size={12} /> Activate</>}
+                  <div className="mt-4 flex flex-wrap gap-2 pt-3 border-t border-gray-150">
+                    <button type="button" onClick={() => openEdit(u)} className="text-xs px-2.5 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium flex-1">
+                      Edit details
                     </button>
-                    <button type="button" onClick={() => resetMutation.mutate(u._id)} className="px-3 py-2 border border-gray-200 rounded-lg text-xs font-semibold hover:bg-gray-50 text-gray-600 transition" title="Reset password"><Key size={12} /></button>
-                    <button type="button" onClick={() => openEdit(u)} className="px-3 py-2 border border-gray-200 rounded-lg text-xs font-semibold bg-gray-50 hover:bg-gray-100 text-gray-700 transition"><Pencil size={12} /></button>
+                    <button type="button" onClick={() => handleResetPasswordClick(u)} className="text-xs px-2.5 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium">
+                      Reset Password
+                    </button>
+                    <button type="button" onClick={() => handleToggleActiveClick(u)} className={`text-xs px-2.5 py-1.5 rounded-md border font-medium ${u.isActive ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-green-200 text-green-700 hover:bg-green-50'}`}>
+                      {u.isActive ? 'Deactivate' : 'Activate'}
+                    </button>
                   </div>
                 </div>
               ))}
@@ -569,10 +617,16 @@ export default function UsersPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-1.5">
-                            <button type="button" onClick={() => toggleMutation.mutate({ id: u._id, isActive: !u.isActive })} title={u.isActive ? 'Deactivate' : 'Activate'} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"><UserX size={14} /></button>
-                            <button type="button" onClick={() => resetMutation.mutate(u._id)} title="Reset password" className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"><Key size={14} /></button>
-                            <button type="button" onClick={() => openEdit(u)} title="Edit user" className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"><Pencil size={14} /></button>
+                          <div className="flex flex-wrap gap-2">
+                            <button type="button" onClick={() => openEdit(u)} className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium">
+                              Edit
+                            </button>
+                            <button type="button" onClick={() => handleResetPasswordClick(u)} className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium">
+                              Reset Password
+                            </button>
+                            <button type="button" onClick={() => handleToggleActiveClick(u)} className={`text-xs px-2.5 py-1 rounded-md border font-medium ${u.isActive ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-green-200 text-green-700 hover:bg-green-50'}`}>
+                              {u.isActive ? 'Deactivate' : 'Activate'}
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -825,7 +879,7 @@ export default function UsersPage() {
                   <div className="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
                     <p className="font-medium text-gray-900">
                       Transfer exactly{' '}
-                      {formatMoney(paymentQuote.priced?.currency || tenantCurrency, paymentQuote.priced?.amount, merchantSymbol)}{' '}
+                      {formatMoney(paymentQuote.priced?.amount, merchantSymbol)}{' '}
                       to:
                     </p>
                     {paymentOptions.bankAccounts.map((b) => (
@@ -856,6 +910,36 @@ export default function UsersPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(deactivateTarget)}
+        title="Deactivate user?"
+        message={
+          deactivateTarget
+            ? `Are you sure you want to deactivate "${deactivateTarget.name}"? This user will no longer be able to log in to the POS or Admin portal.`
+            : ''
+        }
+        confirmLabel="Deactivate"
+        variant="danger"
+        isLoading={toggleMutation.isPending}
+        onConfirm={handleToggleActiveConfirm}
+        onCancel={() => setDeactivateTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(resetTarget)}
+        title="Reset password?"
+        message={
+          resetTarget
+            ? `Are you sure you want to reset the password for "${resetTarget.name}"? An email containing a temporary password will be sent to ${resetTarget.email}.`
+            : ''
+        }
+        confirmLabel="Reset password"
+        variant="warning"
+        isLoading={resetMutation.isPending}
+        onConfirm={handleResetPasswordConfirm}
+        onCancel={() => setResetTarget(null)}
+      />
     </div>
   );
 }

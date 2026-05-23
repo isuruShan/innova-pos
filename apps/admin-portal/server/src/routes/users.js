@@ -252,8 +252,20 @@ router.post('/:id/reset-password', authenticateJWT, authorize('merchant_admin', 
       ? (process.env.ADMIN_URL || 'http://localhost:5174')
       : (process.env.POS_URL || 'http://localhost:5173');
 
+    const Tenant = require('../models/Tenant');
+    const tenant = await Tenant.findById(user.tenantId).select('businessName').lean();
+    const businessName = tenant ? tenant.businessName : '';
+    const adminName = req.user.role === 'superadmin' ? 'A platform administrator' : (req.user.name || 'An administrator');
+
     try {
-      await sendAdminResetPasswordEmail({ to: user.email, name: user.name, tempPassword, loginUrl });
+      await sendAdminResetPasswordEmail({
+        to: user.email,
+        name: user.name,
+        tempPassword,
+        loginUrl,
+        adminName,
+        businessName,
+      });
       res.json({ message: 'Password reset and email sent', welcomeEmailSent: true });
     } catch (emailErr) {
       logger.error('Password reset email failed', { error: emailErr.message, to: user.email });

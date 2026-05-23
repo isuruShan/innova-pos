@@ -291,7 +291,7 @@ export default function OrderBoard() {
   const { data: orders = [], isPending, refetch, isFetching } = useQuery({
     queryKey: ['order-board', selectedStoreId, sessionSince, boardFrom, boardTo],
     queryFn: async () => {
-      const params = {};
+      const params = { board: 'true' };
       if (sessionSince) {
         params.since = new Date(sessionSince).toISOString();
       } else if (fohr.isRegister && boardFrom) {
