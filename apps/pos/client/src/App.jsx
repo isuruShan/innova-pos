@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { BrandingProvider } from './context/BrandingContext';
 import { StoreProvider } from './context/StoreContext';
+import { CashierDraftOrdersProvider } from './context/CashierDraftOrdersContext';
 import PosNotificationStream from './components/PosNotificationStream';
 import ForcePasswordResetGate from './components/auth/ForcePasswordResetGate';
 
@@ -70,6 +71,7 @@ export default function App() {
         <ThemeProvider>
           <BrandingProvider>
             <StoreProvider>
+              <CashierDraftOrdersProvider>
               <PosNotificationStream />
               <BrowserRouter>
               <Routes>
@@ -217,6 +219,7 @@ export default function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </BrowserRouter>
+              </CashierDraftOrdersProvider>
           </StoreProvider>
         </BrandingProvider>
       </ThemeProvider>

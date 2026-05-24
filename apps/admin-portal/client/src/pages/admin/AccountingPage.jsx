@@ -264,50 +264,6 @@ export default function AccountingPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Main Navigation Tabs */}
-          <div className="flex border-b border-gray-200 gap-6">
-            <button
-              onClick={() => setActiveTab('coa')}
-              className={`pb-3 text-sm font-semibold border-b-2 transition-all ${
-                activeTab === 'coa' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              Chart of Accounts
-            </button>
-            <button
-              onClick={() => setActiveTab('ledger')}
-              className={`pb-3 text-sm font-semibold border-b-2 transition-all ${
-                activeTab === 'ledger' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              General Ledger
-            </button>
-            <button
-              onClick={() => setActiveTab('contacts')}
-              className={`pb-3 text-sm font-semibold border-b-2 transition-all ${
-                activeTab === 'contacts' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              Debtors & Creditors
-            </button>
-            <button
-              onClick={() => setActiveTab('payroll')}
-              className={`pb-3 text-sm font-semibold border-b-2 transition-all ${
-                activeTab === 'payroll' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              Payroll
-            </button>
-            <button
-              onClick={() => setActiveTab('reports')}
-              className={`pb-3 text-sm font-semibold border-b-2 transition-all ${
-                activeTab === 'reports' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              Financial Statements
-            </button>
-          </div>
-
           {/* TAB CONTENT: Chart of Accounts */}
           {activeTab === 'coa' && (
             <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm space-y-4">

@@ -391,45 +391,6 @@ export default function SubscriptionPage() {
         <Link to="/addons" className="text-brand-orange font-semibold hover:underline">Add-ons</Link> page.
       </p>
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
-            activeTab === 'overview'
-              ? 'border-brand-orange text-brand-orange'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Overview & Renewal
-        </button>
-        <button
-          onClick={() => setActiveTab('breakdown')}
-          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
-            activeTab === 'breakdown'
-              ? 'border-brand-orange text-brand-orange'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Billing Breakdown
-        </button>
-        <button
-          onClick={() => setActiveTab('payments')}
-          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${
-            activeTab === 'payments'
-              ? 'border-brand-orange text-brand-orange'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Payment History
-          {pendingReceiptsCount > 0 ? (
-            <span className="bg-amber-100 text-amber-800 text-[10px] font-semibold px-2 py-0.5 rounded-full">
-              {pendingReceiptsCount} pending
-            </span>
-          ) : null}
-        </button>
-      </div>
-
       {activeTab === 'overview' && (
         <div className="space-y-6 animate-fade-in">
           {/* Current status */}

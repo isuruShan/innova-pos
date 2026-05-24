@@ -10,6 +10,8 @@ import Navbar from '../../components/Navbar';
 import OfflineBanner from '../../components/OfflineBanner';
 import CashierSessionGate from '../../components/cashier/CashierSessionGate';
 import CollectPaymentModal from '../../components/cashier/CollectPaymentModal';
+import CashierDraftTabs from '../../components/cashier/CashierDraftTabs';
+import { useCashierDraftOrders } from '../../context/CashierDraftOrdersContext';
 import { useFohrMode } from '../../hooks/useFohrMode';
 import { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/cashierSessionContext';
 import OrderTypeBadge, { ORDER_TYPES, ORDER_TYPE_MAP } from '../../components/OrderTypeBadge';
@@ -489,29 +491,16 @@ export default function NewOrder() {
   const fohr = useFohrMode();
   const [activeCategory, setActiveCategory] = useState('All');
   const [menuSearch, setMenuSearch] = useState('');
-  const [cart, setCart] = useState([]);
   const [variantSelectionItem, setVariantSelectionItem] = useState(null);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
-  const [orderType, setOrderType] = useState('dine-in');
-  const [tableNumber, setTableNumber] = useState('');
-  const [selectedTableId, setSelectedTableId] = useState('');
-  const [reference, setReference] = useState('');
   const [showOrderTypePicker, setShowOrderTypePicker] = useState(false);
   const [showTablePicker, setShowTablePicker] = useState(false);
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-
-  // Promotion state
-  const [autoApply, setAutoApply] = useState(true);
-  const [selectedPromoIds, setSelectedPromoIds] = useState([]);
   const [showPromoList, setShowPromoList] = useState(false);
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
-
-  const [customerSearch, setCustomerSearch] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [selectedLoyaltyRewardId, setSelectedLoyaltyRewardId] = useState('');
   const [readySlideOrder, setReadySlideOrder] = useState(null);
 
   const qc = useQueryClient();
@@ -520,6 +509,59 @@ export default function NewOrder() {
   const online = useOnlineStatus();
   const selectedStore =
     stores.find((s) => String(s._id) === String(selectedStoreId)) || stores.find((s) => s.isDefault) || null;
+
+  const {
+    activeDraft,
+    patchActiveDraft,
+    drafts,
+    activeDraftId,
+    selectDraft,
+    addDraft,
+    removeDraft,
+    clearActiveDraftAfterSubmit,
+  } = useCashierDraftOrders(selectedStoreId);
+
+  const cart = activeDraft.cart;
+  const orderType = activeDraft.orderType;
+  const tableNumber = activeDraft.tableNumber;
+  const selectedTableId = activeDraft.selectedTableId;
+  const reference = activeDraft.reference;
+  const selectedCustomer = activeDraft.selectedCustomer;
+  const customerSearch = activeDraft.customerSearch;
+  const selectedPromoIds = activeDraft.selectedPromoIds;
+  const autoApply = activeDraft.autoApply;
+  const selectedLoyaltyRewardId = activeDraft.selectedLoyaltyRewardId;
+
+  const patchField = useCallback((field, value) => {
+    patchActiveDraft((d) => ({
+      [field]: typeof value === 'function' ? value(d[field]) : value,
+    }));
+  }, [patchActiveDraft]);
+
+  const setCart = useCallback((value) => patchField('cart', value), [patchField]);
+  const setOrderType = useCallback((value) => patchField('orderType', value), [patchField]);
+  const setTableNumber = useCallback((value) => patchField('tableNumber', value), [patchField]);
+  const setSelectedTableId = useCallback((value) => patchField('selectedTableId', value), [patchField]);
+  const setReference = useCallback((value) => patchField('reference', value), [patchField]);
+  const setSelectedCustomer = useCallback((value) => patchField('selectedCustomer', value), [patchField]);
+  const setCustomerSearch = useCallback((value) => patchField('customerSearch', value), [patchField]);
+  const setSelectedPromoIds = useCallback((value) => patchField('selectedPromoIds', value), [patchField]);
+  const setAutoApply = useCallback((value) => patchField('autoApply', value), [patchField]);
+  const setSelectedLoyaltyRewardId = useCallback((value) => patchField('selectedLoyaltyRewardId', value), [patchField]);
+
+  const clearCurrentDraft = useCallback(() => {
+    patchActiveDraft({
+      cart: [],
+      tableNumber: '',
+      selectedTableId: '',
+      reference: '',
+      selectedCustomer: null,
+      customerSearch: '',
+      selectedPromoIds: [],
+      selectedLoyaltyRewardId: '',
+    });
+  }, [patchActiveDraft]);
+
   const tableMgmt = selectedStore?.tableManagementEnabled === true;
   const posMenuLayout = selectedStore?.posMenuLayout || 'default';
   const isCompact = posMenuLayout === 'compact';
@@ -533,16 +575,9 @@ export default function NewOrder() {
   const prevStoreRef = useRef(selectedStoreId);
   useEffect(() => {
     if (prevStoreRef.current && prevStoreRef.current !== selectedStoreId) {
-      setCart([]);
-      setSelectedPromoIds([]);
       setShowPromoList(false);
       setActiveCategory('All');
       setMenuSearch('');
-      setSelectedCustomer(null);
-      setCustomerSearch('');
-      setSelectedLoyaltyRewardId('');
-      setTableNumber('');
-      setSelectedTableId('');
       setReadySlideOrder(null);
     }
     prevStoreRef.current = selectedStoreId;
@@ -747,15 +782,8 @@ export default function NewOrder() {
       qc.invalidateQueries({ queryKey: ['customer-loyalty'] });
       qc.invalidateQueries({ queryKey: ['customers-search'] });
       
-      // Reset form state
-      setCart([]);
-      setTableNumber('');
-      setReference('');
-      setSelectedPromoIds([]);
+      clearActiveDraftAfterSubmit();
       setShowPromoList(false);
-      setSelectedCustomer(null);
-      setCustomerSearch('');
-      setSelectedLoyaltyRewardId('');
       
       // Show success message
       const msg = isOfflineOrder 
@@ -1019,6 +1047,22 @@ export default function NewOrder() {
     });
   };
 
+  const tableLabelByDraftId = useMemo(() => {
+    const map = {};
+    for (const draft of drafts) {
+      if (draft.selectedTableId) {
+        const table = cafeTables.find((t) => String(t._id) === String(draft.selectedTableId));
+        if (table?.label) map[draft.id] = table.label;
+      }
+    }
+    return map;
+  }, [drafts, cafeTables]);
+
+  useEffect(() => {
+    setPaymentModalOpen(false);
+    setShowPromoList(false);
+  }, [activeDraftId]);
+
   return (
     <CashierSessionGate requireSession={fohr.requireCashierSession}>
     <div className="h-screen flex flex-col bg-[var(--pos-surface-inset)]">
@@ -1174,6 +1218,15 @@ export default function NewOrder() {
               </span>
             )}
           </div>
+
+          <CashierDraftTabs
+            drafts={drafts}
+            activeDraftId={activeDraftId}
+            onSelect={selectDraft}
+            onAdd={addDraft}
+            onRemove={removeDraft}
+            tableLabelByDraftId={tableLabelByDraftId}
+          />
 
           <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
@@ -1547,7 +1600,7 @@ export default function NewOrder() {
               {cart.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => setCart([])}
+                  onClick={() => clearCurrentDraft()}
                   className="w-full flex items-center justify-center gap-1.5 text-slate-500 hover:text-red-400 text-xs py-2 rounded-lg hover:bg-red-500/10 transition"
                 >
                   <Trash2 size={13} /> Cancel order

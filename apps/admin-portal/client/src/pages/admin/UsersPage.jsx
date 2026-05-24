@@ -494,35 +494,6 @@ export default function UsersPage() {
         </button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab('active')}
-          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
-            activeTab === 'active'
-              ? 'border-brand-orange text-brand-orange'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Active Users ({pageMeta.total || users?.length || 0})
-        </button>
-        <button
-          onClick={() => setActiveTab('pending')}
-          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${
-            activeTab === 'pending'
-              ? 'border-brand-orange text-brand-orange'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Pending Approval
-          {pendingUserReceipts.length > 0 && (
-            <span className="bg-amber-100 text-amber-800 text-xs font-semibold px-2 py-0.5 rounded-full">
-              {pendingUserReceipts.length}
-            </span>
-          )}
-        </button>
-      </div>
-
       {activeTab === 'active' ? (
         <>
           <ViewModeToggle mode={viewMode} setMode={(mode) => { setViewMode(mode); localStorage.setItem('view_mode_admin_users', mode); }} />

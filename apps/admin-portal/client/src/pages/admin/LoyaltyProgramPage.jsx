@@ -120,33 +120,6 @@ export default function LoyaltyProgramPage() {
         </p>
       ) : null}
 
-      <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-3">
-        <button
-          type="button"
-          onClick={() => setMainTab('program')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            mainTab === 'program'
-              ? 'bg-brand-teal text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          <Award size={16} />
-          Program & tiers
-        </button>
-        <button
-          type="button"
-          onClick={() => setMainTab('rewards')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            mainTab === 'rewards'
-              ? 'bg-brand-teal text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          <Gift size={16} />
-          Rewards
-        </button>
-      </div>
-
       {mainTab === 'rewards' ? (
         loyaltyAddonActive ? (
           <LoyaltyRewardsAdminTab initialRewardId={rewardIdFromUrl} />

@@ -808,35 +808,6 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
         </form>
       )}
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab('active')}
-          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
-            activeTab === 'active'
-              ? 'border-brand-orange text-brand-orange'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          All Stores ({stores.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('pending')}
-          className={`py-2.5 px-4 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${
-            activeTab === 'pending'
-              ? 'border-brand-orange text-brand-orange'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Pending Approval
-          {pendingStoreReceipts.length > 0 && (
-            <span className="bg-amber-100 text-amber-800 text-xs font-semibold px-2 py-0.5 rounded-full">
-              {pendingStoreReceipts.length}
-            </span>
-          )}
-        </button>
-      </div>
-
       {activeTab === 'active' ? (
         <>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
