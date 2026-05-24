@@ -14,13 +14,20 @@ import {
   X,
   Eye,
   Trash2,
+  Search,
 } from 'lucide-react';
+import {
+  buildCategorySortMap,
+  buildCategoryTabs,
+  resolveMenuDisplayItems,
+} from '../utils/menuItemUtils';
 
 function apiBase() {
   return (import.meta.env.VITE_QR_ORDER_API_URL || '').replace(/\/$/, '');
 }
 
-const MENU_PAGE = 60;
+const MENU_PAGE = 120;
+const MENU_FETCH_LIMIT = 500;
 
 function sessionPath(tenantId, storeId, tableId, query = {}) {
   const base = apiBase();
@@ -178,6 +185,7 @@ export default function TableOrderApp() {
   const [tab, setTab] = useState('menu');
   const [cart, setCart] = useState([]);
   const [activeCat, setActiveCat] = useState('All');
+  const [menuSearch, setMenuSearch] = useState('');
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -258,16 +266,30 @@ export default function TableOrderApp() {
       if (!tenantId || !storeId || !tableId) return;
       try {
         const menuSkip = appendMenu ? menuLenRef.current : 0;
+        const menuLimit = appendMenu ? MENU_PAGE : MENU_FETCH_LIMIT;
         const { data } = await axios.get(
-          sessionPath(tenantId, storeId, tableId, { menuSkip, menuLimit: MENU_PAGE }),
+          sessionPath(tenantId, storeId, tableId, { menuSkip, menuLimit }),
         );
         if (appendMenu) {
           setPayload((prev) => ({
             ...data,
             menuItems: [...(prev?.menuItems || []), ...(data.menuItems || [])],
+            categories: data.categories?.length ? data.categories : prev?.categories,
           }));
         } else {
           setPayload(data);
+          const total = data.menuTotal != null ? Number(data.menuTotal) : (data.menuItems || []).length;
+          if (total > (data.menuItems || []).length && total <= MENU_FETCH_LIMIT) {
+            const full = await axios.get(
+              sessionPath(tenantId, storeId, tableId, { menuSkip: 0, menuLimit: total }),
+            );
+            setPayload((prev) => ({
+              ...full.data,
+              categories: full.data.categories?.length ? full.data.categories : prev?.categories,
+            }));
+            menuLenRef.current = (full.data.menuItems || []).length;
+            return;
+          }
         }
         const chunkLen = (data.menuItems || []).length;
         menuLenRef.current = appendMenu ? menuLenRef.current + chunkLen : chunkLen;
@@ -295,15 +317,26 @@ export default function TableOrderApp() {
 
   const menuItems = payload?.menuItems || [];
   const menuTotal = payload?.menuTotal != null ? Number(payload.menuTotal) : menuItems.length;
-  const categories = useMemo(() => {
-    const c = [...new Set(menuItems.map((m) => m.category).filter(Boolean))].sort();
-    return ['All', ...c];
-  }, [menuItems]);
+  const categoryRows = payload?.categories || [];
 
-  const filteredMenu = useMemo(() => {
-    if (activeCat === 'All') return menuItems;
-    return menuItems.filter((m) => m.category === activeCat);
-  }, [menuItems, activeCat]);
+  const categorySortMap = useMemo(
+    () => buildCategorySortMap(categoryRows),
+    [categoryRows],
+  );
+
+  const categories = useMemo(
+    () => buildCategoryTabs(categoryRows, menuItems),
+    [categoryRows, menuItems],
+  );
+
+  const filteredMenu = useMemo(
+    () => resolveMenuDisplayItems(menuItems, {
+      activeCategory: activeCat,
+      menuSearch,
+      categorySortMap,
+    }),
+    [menuItems, activeCat, menuSearch, categorySortMap],
+  );
 
   const order = payload?.order;
 
@@ -495,7 +528,7 @@ export default function TableOrderApp() {
 
         {tab === 'menu' && (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <div className="shrink-0 px-3 pt-3 pb-2 bg-[var(--qr-panel)] border-b border-slate-700/80">
+            <div className="shrink-0 px-3 pt-3 pb-2 bg-[var(--qr-panel)] border-b border-slate-700/80 space-y-2">
               <div className="flex gap-2 overflow-x-auto pb-1 touch-pan-x max-w-lg mx-auto w-full">
                 {categories.map((c) => (
                   <button
@@ -517,10 +550,35 @@ export default function TableOrderApp() {
                   </button>
                 ))}
               </div>
+              <div className="relative max-w-lg mx-auto w-full">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  value={menuSearch}
+                  onChange={(e) => setMenuSearch(e.target.value)}
+                  placeholder="Search menu…"
+                  className="w-full bg-slate-900/60 border border-slate-600 text-slate-100 rounded-xl pl-9 pr-9 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/60 placeholder-slate-500"
+                />
+                {menuSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setMenuSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    aria-label="Clear search"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-3 py-3">
               <div className="max-w-lg mx-auto w-full space-y-3 pb-[calc(8rem+env(safe-area-inset-bottom))]">
+                {filteredMenu.length === 0 && (
+                  <p className="text-center text-slate-500 text-sm py-12">
+                    {menuSearch.trim() ? 'No items match your search' : 'No items in this category'}
+                  </p>
+                )}
                 {filteredMenu.map((item) => {
                   const photos = itemPhotoUrls(item);
                   const thumb = photos[0];

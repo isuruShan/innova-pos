@@ -17,7 +17,7 @@ import { useListSort } from '../../hooks/useListSort';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { formatCurrency } from '../../utils/format';
-import { filterMenuItems, compareSortValues } from '../../utils/menuItemSearch';
+import { compareSortValues, buildCategorySortMap, scopeMenuItemsByCategory, sortMenuItemsForDisplay } from '../../utils/menuItemSearch';
 import { useStoreContext } from '../../context/StoreContext';
 import { MenuGridSkeleton } from '../../components/StoreSkeletons';
 
@@ -320,24 +320,24 @@ export default function MenuManagement() {
     else createMutation.mutate(payload);
   };
 
-  const categoryFiltered = useMemo(() => {
-    const list = activeCategory === 'All'
-      ? items
-      : items.filter((i) => i.category === activeCategory);
-    return filterMenuItems(list, menuSearch);
-  }, [items, activeCategory, menuSearch]);
+  const categorySortMap = useMemo(
+    () => buildCategorySortMap(activeCategories),
+    [activeCategories],
+  );
 
-  const orderedBySortOrder = useMemo(() => {
-    return [...categoryFiltered].sort((a, b) => {
-      if (activeCategory === 'All') {
-        const byCat = a.category.localeCompare(b.category);
-        if (byCat !== 0) return byCat;
-      }
-      const byOrder = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
-      if (byOrder !== 0) return byOrder;
-      return a.name.localeCompare(b.name);
-    });
-  }, [categoryFiltered, activeCategory]);
+  const categoryFiltered = useMemo(
+    () => scopeMenuItemsByCategory(items, activeCategory, menuSearch),
+    [items, activeCategory, menuSearch],
+  );
+
+  const orderedBySortOrder = useMemo(
+    () => sortMenuItemsForDisplay(categoryFiltered, {
+      activeCategory,
+      categorySortMap,
+      menuSearch,
+    }),
+    [categoryFiltered, activeCategory, categorySortMap, menuSearch],
+  );
 
   const displayed = useMemo(() => {
     if (viewMode === 'grid') return orderedBySortOrder;

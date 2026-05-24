@@ -1,4 +1,4 @@
-/** Filter menu items by name, category, or description. */
+/** Filter menu items by name, category, or description (QR guest app). */
 export function filterMenuItems(items, query) {
   const q = query.trim().toLowerCase();
   if (!q) return items;
@@ -10,43 +10,33 @@ export function filterMenuItems(items, query) {
   });
 }
 
-/** Map category name → sortOrder for display ordering. */
-export function buildCategorySortMap(categoryRows) {
+export function buildCategorySortMap(categories) {
   const m = new Map();
-  (categoryRows || []).forEach((c) => {
-    if (c.active === false) return;
+  (categories || []).forEach((c) => {
     m.set(c.name, c.sortOrder ?? 0);
   });
   return m;
 }
 
-/** Category tabs: API order first, then any orphan categories from menu items. */
-export function buildCategoryTabs(categoryRows, menuItems, { includeInactive = false } = {}) {
-  const fromApi = (categoryRows || [])
-    .filter((c) => includeInactive || c.active !== false)
+export function buildCategoryTabs(categories, menuItems) {
+  const fromApi = (categories || [])
+    .slice()
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name))
     .map((c) => c.name);
-  const extras = [...new Set((menuItems || []).map((i) => i.category))]
+  const extras = [...new Set((menuItems || []).map((m) => m.category))]
     .filter((c) => c && !fromApi.includes(c))
     .sort();
   return ['All', ...fromApi, ...extras];
 }
 
-/**
- * Scope items by category tab. When search is active, search across all categories.
- */
 export function scopeMenuItemsByCategory(items, activeCategory, menuSearch) {
   const searching = menuSearch.trim().length > 0;
   const list = searching || activeCategory === 'All'
     ? items
-    : items.filter((i) => i.category === activeCategory);
+    : items.filter((m) => m.category === activeCategory);
   return filterMenuItems(list, menuSearch);
 }
 
-/**
- * Sort menu items for display: category sortOrder (when viewing All or global search),
- * then item sortOrder, then name.
- */
 export function sortMenuItemsForDisplay(items, { activeCategory, categorySortMap, menuSearch = '' }) {
   const useCategoryOrder = menuSearch.trim().length > 0 || activeCategory === 'All';
   return [...items].sort((a, b) => {
@@ -65,16 +55,4 @@ export function sortMenuItemsForDisplay(items, { activeCategory, categorySortMap
 export function resolveMenuDisplayItems(items, { activeCategory, menuSearch, categorySortMap }) {
   const scoped = scopeMenuItemsByCategory(items, activeCategory, menuSearch);
   return sortMenuItemsForDisplay(scoped, { activeCategory, categorySortMap, menuSearch });
-}
-
-export function compareSortValues(a, b, dir) {
-  if (a == null && b == null) return 0;
-  if (a == null) return dir;
-  if (b == null) return -dir;
-  if (typeof a === 'string' && typeof b === 'string') {
-    return a.localeCompare(b, undefined, { sensitivity: 'base' }) * dir;
-  }
-  if (a < b) return -dir;
-  if (a > b) return dir;
-  return 0;
 }

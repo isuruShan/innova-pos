@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Plus, Minus, Trash2, Save, Link2, Hash, AlertTriangle, Tag, CheckCircle, Loader2 } from 'lucide-react';
+import { X, Plus, Minus, Trash2, Save, Link2, Hash, AlertTriangle, Tag, CheckCircle, Loader2, Clock, XCircle, ChevronRight } from 'lucide-react';
 import api from '../api/axios';
 import { formatCurrency, formatDateTime as fmtDT } from '../utils/format';
 import SlideOver from './SlideOver';
 import Badge from './Badge';
 import { ORDER_TYPES, ORDER_TYPE_MAP } from './OrderTypeBadge';
 import { useStoreContext } from '../context/StoreContext';
+import { buildCategorySortMap, resolveMenuDisplayItems } from '../utils/menuItemSearch';
+import OptionPickerModal, { MenuItemPickerModal } from './OptionPickerModal';
 
 const CACHEABLE_QUERIES = ['order-board', 'kitchen-orders', 'cashier-ready-orders', 'recent-orders', 'manager-orders', 'sales-report'];
 
@@ -215,39 +217,30 @@ function ItemRow({
 }
 
 function AddItemRow({ menuItems, existingIds, onAdd }) {
-  const [selectedId, setSelectedId] = useState('');
+  const [showPicker, setShowPicker] = useState(false);
   const available = menuItems.filter(m => m.available && !existingIds.has(m._id));
-
-  const add = () => {
-    if (!selectedId) return;
-    onAdd(menuItems.find(m => m._id === selectedId));
-    setSelectedId('');
-  };
 
   if (!available.length) return null;
 
   return (
-    <div className="flex gap-2 mt-2">
-      <select
-        value={selectedId}
-        onChange={e => setSelectedId(e.target.value)}
-        className="flex-1 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-      >
-        <option value="">+ Add item…</option>
-        {available.map(m => (
-          <option key={m._id} value={m._id}>
-            {m.name} — {formatPrice(m.price)}
-          </option>
-        ))}
-      </select>
+    <>
       <button
-        onClick={add}
-        disabled={!selectedId}
-        className="bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white px-3 py-2 rounded-xl text-sm font-semibold transition"
+        type="button"
+        onClick={() => setShowPicker(true)}
+        className="w-full flex items-center justify-center gap-2 mt-3 bg-[var(--pos-surface-inset)] hover:bg-slate-800/60 border-2 border-dashed border-slate-700 hover:border-slate-600 text-slate-400 hover:text-slate-300 font-medium py-3 rounded-xl transition text-sm"
       >
-        Add
+        <Plus size={16} />
+        Add Item
       </button>
-    </div>
+      <MenuItemPickerModal
+        open={showPicker}
+        onClose={() => setShowPicker(false)}
+        menuItems={menuItems}
+        existingIds={existingIds}
+        onSelect={onAdd}
+        formatPrice={formatPrice}
+      />
+    </>
   );
 }
 
@@ -273,6 +266,8 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
   const [showUberDeny, setShowUberDeny] = useState(false);
   const [uberPrepTime, setUberPrepTime] = useState('15');
   const [uberDenyReason, setUberDenyReason] = useState('OUT_OF_ITEMS');
+  const [showPrepTimePicker, setShowPrepTimePicker] = useState(false);
+  const [showDenyReasonPicker, setShowDenyReasonPicker] = useState(false);
 
   useEffect(() => {
     if (order) {
@@ -312,6 +307,21 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
     queryFn: () => api.get('/menu').then(r => r.data),
     enabled: !!order && isEditable && isStoreReady,
   });
+
+  const { data: categoryRows = [] } = useQuery({
+    queryKey: ['categories', selectedStoreId],
+    queryFn: () => api.get('/categories').then((r) => r.data),
+    enabled: !!order && isEditable && isStoreReady,
+  });
+
+  const sortedMenuItems = useMemo(() => {
+    const categorySortMap = buildCategorySortMap(categoryRows);
+    return resolveMenuDisplayItems(menuItems, {
+      activeCategory: 'All',
+      menuSearch: '',
+      categorySortMap,
+    });
+  }, [menuItems, categoryRows]);
 
   const { data: cafeTables = [] } = useQuery({
     queryKey: ['cafe-tables', selectedStoreId],
@@ -663,7 +673,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
           </div>
 
           {isEditable && (
-            <AddItemRow menuItems={menuItems} existingIds={existingIds} onAdd={addItem} />
+            <AddItemRow menuItems={sortedMenuItems} existingIds={existingIds} onAdd={addItem} />
           )}
         </div>
 
@@ -748,24 +758,25 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
                 <>
                   {!showUberDeny ? (
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between gap-3 text-xs">
-                        <span className="text-slate-400">Prep Time:</span>
-                        <select
-                          value={uberPrepTime}
-                          onChange={(e) => setUberPrepTime(e.target.value)}
-                          className="rounded-lg bg-[var(--pos-surface-inset)] border border-slate-700 text-sm text-[var(--pos-text-primary)] p-1.5 outline-none"
-                        >
-                          <option value="10">10 mins</option>
-                          <option value="15">15 mins</option>
-                          <option value="20">20 mins</option>
-                          <option value="30">30 mins</option>
-                        </select>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowPrepTimePicker(true)}
+                        className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-[var(--pos-surface-inset)] border border-slate-700 hover:border-slate-600 transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Clock size={16} className="text-slate-400" />
+                          <span className="text-xs text-slate-400">Prep Time</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-amber-400">{uberPrepTime} mins</span>
+                          <ChevronRight size={14} className="text-slate-500" />
+                        </div>
+                      </button>
                       <div className="flex gap-2">
                         <button
                           type="button"
                           onClick={() => setShowUberDeny(true)}
-                          className="flex-1 py-2 rounded-xl border border-red-500/40 text-red-400 hover:bg-red-500/10 font-bold text-xs transition"
+                          className="flex-1 py-3 rounded-xl border border-red-500/40 text-red-400 hover:bg-red-500/10 font-bold text-sm transition"
                         >
                           Deny Order
                         </button>
@@ -773,33 +784,39 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
                           type="button"
                           onClick={() => uberAcceptMutation.mutate(uberPrepTime)}
                           disabled={uberAcceptMutation.isPending}
-                          className="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-450 text-white font-bold text-xs transition flex justify-center items-center gap-1.5"
+                          className="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-450 text-white font-bold text-sm transition flex justify-center items-center gap-1.5"
                         >
-                          {uberAcceptMutation.isPending && <Loader2 className="animate-spin" size={12} />}
+                          {uberAcceptMutation.isPending && <Loader2 className="animate-spin" size={14} />}
                           Accept Order
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      <div className="space-y-1">
-                        <label className="block text-[11px] font-semibold text-slate-400">Denial Reason:</label>
-                        <select
-                          value={uberDenyReason}
-                          onChange={(e) => setUberDenyReason(e.target.value)}
-                          className="w-full rounded-lg bg-[var(--pos-surface-inset)] border border-slate-700 text-xs text-[var(--pos-text-primary)] p-2 outline-none"
-                        >
-                          <option value="OUT_OF_ITEMS">Out of Items</option>
-                          <option value="KITCHEN_CLOSED">Kitchen Closed</option>
-                          <option value="TOO_BUSY">Store Too Busy</option>
-                          <option value="CUSTOMER_REQUEST">Customer Request</option>
-                        </select>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowDenyReasonPicker(true)}
+                        className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-[var(--pos-surface-inset)] border border-slate-700 hover:border-slate-600 transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          <XCircle size={16} className="text-red-400" />
+                          <span className="text-xs text-slate-400">Denial Reason</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-red-400">
+                            {uberDenyReason === 'OUT_OF_ITEMS' && 'Out of Items'}
+                            {uberDenyReason === 'KITCHEN_CLOSED' && 'Kitchen Closed'}
+                            {uberDenyReason === 'TOO_BUSY' && 'Store Too Busy'}
+                            {uberDenyReason === 'CUSTOMER_REQUEST' && 'Customer Request'}
+                          </span>
+                          <ChevronRight size={14} className="text-slate-500" />
+                        </div>
+                      </button>
                       <div className="flex gap-2">
                         <button
                           type="button"
                           onClick={() => setShowUberDeny(false)}
-                          className="flex-1 py-2 rounded-xl border border-slate-700 text-slate-300 font-bold text-xs transition"
+                          className="flex-1 py-3 rounded-xl border border-slate-700 text-slate-300 font-bold text-sm transition"
                         >
                           Back
                         </button>
@@ -807,9 +824,9 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
                           type="button"
                           onClick={() => uberDenyMutation.mutate(uberDenyReason)}
                           disabled={uberDenyMutation.isPending}
-                          className="flex-1 py-2 rounded-xl bg-red-500 hover:bg-red-450 text-white font-bold text-xs transition flex justify-center items-center gap-1.5"
+                          className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-450 text-white font-bold text-sm transition flex justify-center items-center gap-1.5"
                         >
-                          {uberDenyMutation.isPending && <Loader2 className="animate-spin" size={12} />}
+                          {uberDenyMutation.isPending && <Loader2 className="animate-spin" size={14} />}
                           Confirm Deny
                         </button>
                       </div>
@@ -845,6 +862,39 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
         item={variantSelectionItem}
         onClose={() => setVariantSelectionItem(null)}
         onConfirm={addItem}
+      />
+
+      {/* Prep Time Picker Modal */}
+      <OptionPickerModal
+        open={showPrepTimePicker}
+        onClose={() => setShowPrepTimePicker(false)}
+        title="Prep Time"
+        subtitle="How long to prepare the order"
+        options={[
+          { value: '10', label: '10 mins', icon: '⏱️' },
+          { value: '15', label: '15 mins', icon: '⏱️', badge: 'Default' },
+          { value: '20', label: '20 mins', icon: '⏱️' },
+          { value: '30', label: '30 mins', icon: '⏱️' },
+        ]}
+        value={uberPrepTime}
+        onChange={setUberPrepTime}
+      />
+
+      {/* Deny Reason Picker Modal */}
+      <OptionPickerModal
+        open={showDenyReasonPicker}
+        onClose={() => setShowDenyReasonPicker(false)}
+        title="Denial Reason"
+        subtitle="Select why you're denying this order"
+        options={[
+          { value: 'OUT_OF_ITEMS', label: 'Out of Items', icon: '📦', description: 'Ingredient unavailable' },
+          { value: 'KITCHEN_CLOSED', label: 'Kitchen Closed', icon: '🔒', description: 'No longer accepting orders' },
+          { value: 'TOO_BUSY', label: 'Store Too Busy', icon: '🏃', description: 'Cannot fulfill in time' },
+          { value: 'CUSTOMER_REQUEST', label: 'Customer Request', icon: '👤', description: 'Customer asked to cancel' },
+        ]}
+        value={uberDenyReason}
+        onChange={setUberDenyReason}
+        columns={1}
       />
     </SlideOver>
   );

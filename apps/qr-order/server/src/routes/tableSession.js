@@ -8,6 +8,7 @@ const { attachFreshMenuImageUrls } = require(paths.menuItemImageUrls);
 const CafeTable = require(paths.models.CafeTable);
 const Store = require(paths.models.Store);
 const MenuItem = require(paths.models.MenuItem);
+const Category = require(paths.models.Category);
 const Order = require(paths.models.Order);
 const TenantSettings = require(paths.models.TenantSettings);
 const { enrichItems, recalculateOrderMoney, appendItemsToOrder } = require(paths.orderHelpers);
@@ -83,7 +84,7 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
       storeId: ctx.ids.storeId,
       available: true,
     };
-    const menuLimit = Math.min(120, Math.max(1, parseInt(req.query.menuLimit, 10) || 60));
+    const menuLimit = Math.min(500, Math.max(1, parseInt(req.query.menuLimit, 10) || 120));
     const menuSkip = Math.max(0, parseInt(req.query.menuSkip, 10) || 0);
 
     const menuTotal = await MenuItem.countDocuments(menuFilter);
@@ -94,6 +95,15 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
       .lean();
 
     const menuItems = await attachFreshMenuImageUrls(menuItemsRaw);
+
+    const categoryRows = await Category.find({
+      tenantId: ctx.ids.tenantId,
+      storeId: ctx.ids.storeId,
+      active: { $ne: false },
+    })
+      .sort({ sortOrder: 1, name: 1 })
+      .select('name sortOrder active')
+      .lean();
 
     const brandingDoc = await TenantSettings.findOne({ tenantId: ctx.ids.tenantId })
       .select(
@@ -140,6 +150,10 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
       guestWaiterCallCooldownSeconds: ctx.store.guestWaiterCallCooldownSeconds || 300,
       nextWaiterCallAt,
       branding,
+      categories: categoryRows.map((c) => ({
+        name: c.name,
+        sortOrder: c.sortOrder ?? 0,
+      })),
       menuItems,
       menuTotal,
       menuSkip,

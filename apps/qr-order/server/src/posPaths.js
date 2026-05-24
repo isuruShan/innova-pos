@@ -8,7 +8,7 @@ module.exports = {
   models: {
     CafeTable: path.join(posSrc, 'models/CafeTable.js'),
     Store: path.join(posSrc, 'models/Store.js'),
-    MenuItem: path.join(posSrc, 'models/MenuItem.js'),
+    Category: path.join(posSrc, 'models/Category.js'),
     Order: path.join(posSrc, 'models/Order.js'),
     TenantSettings: path.join(posSrc, 'models/TenantSettings.js'),
   },

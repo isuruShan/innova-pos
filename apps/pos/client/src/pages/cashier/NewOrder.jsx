@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShoppingCart, Plus, Minus, Trash2, Hash, Link2, ChevronDown, ChevronUp,
-  Tag, ToggleLeft, ToggleRight, X, Zap, Search, User, Gift, UserPlus, ChevronLeft,
+  Tag, ToggleLeft, ToggleRight, X, Zap, Search, User, Gift, UserPlus, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -13,11 +13,12 @@ import { useFohrMode } from '../../hooks/useFohrMode';
 import { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/cashierSessionContext';
 import OrderTypeBadge, { ORDER_TYPES, ORDER_TYPE_MAP } from '../../components/OrderTypeBadge';
 import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
+import OptionPickerModal, { TablePickerModal } from '../../components/OptionPickerModal';
 import { mergeOrderLists } from '../../offline/mergeOrders.js';
 import { listPendingOrders } from '../../offline/idb.js';
 import { resolveLiveOrder, useSyncOfflineOrderSelection } from '../../offline/orderSelection.js';
 import { formatCurrency } from '../../utils/format';
-import { filterMenuItems } from '../../utils/menuItemSearch';
+import { compareSortValues, buildCategorySortMap, buildCategoryTabs, resolveMenuDisplayItems } from '../../utils/menuItemSearch';
 import { useBranding } from '../../context/BrandingContext';
 import { useStoreContext } from '../../context/StoreContext';
 import { MenuGridSkeleton } from '../../components/StoreSkeletons';
@@ -459,6 +460,8 @@ export default function NewOrder() {
   const [tableNumber, setTableNumber] = useState('');
   const [selectedTableId, setSelectedTableId] = useState('');
   const [reference, setReference] = useState('');
+  const [showOrderTypePicker, setShowOrderTypePicker] = useState(false);
+  const [showTablePicker, setShowTablePicker] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentType, setPaymentType] = useState('cash');
@@ -774,42 +777,24 @@ export default function NewOrder() {
     },
   });
 
-  const categorySortMap = useMemo(() => {
-    const m = new Map();
-    categoryRows.filter((c) => c.active).forEach((c) => {
-      m.set(c.name, c.sortOrder ?? 0);
-    });
-    return m;
-  }, [categoryRows]);
+  const categorySortMap = useMemo(
+    () => buildCategorySortMap(categoryRows),
+    [categoryRows],
+  );
 
-  const categories = useMemo(() => {
-    const fromApi = categoryRows
-      .filter((c) => c.active)
-      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name))
-      .map((c) => c.name);
-    const extras = [...new Set(menuItems.map((i) => i.category))]
-      .filter((c) => c && !fromApi.includes(c))
-      .sort();
-    return ['All', ...fromApi, ...extras];
-  }, [categoryRows, menuItems]);
+  const categories = useMemo(
+    () => buildCategoryTabs(categoryRows, menuItems),
+    [categoryRows, menuItems],
+  );
 
-  const filtered = useMemo(() => {
-    let list = activeCategory === 'All'
-      ? menuItems
-      : menuItems.filter((i) => i.category === activeCategory);
-    list = filterMenuItems(list, menuSearch);
-    return [...list].sort((a, b) => {
-      if (activeCategory === 'All') {
-        const catA = categorySortMap.get(a.category) ?? 9999;
-        const catB = categorySortMap.get(b.category) ?? 9999;
-        if (catA !== catB) return catA - catB;
-        if (a.category !== b.category) return a.category.localeCompare(b.category);
-      }
-      const byOrder = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
-      if (byOrder !== 0) return byOrder;
-      return a.name.localeCompare(b.name);
-    });
-  }, [menuItems, activeCategory, menuSearch, categorySortMap]);
+  const filtered = useMemo(
+    () => resolveMenuDisplayItems(menuItems, {
+      activeCategory,
+      menuSearch,
+      categorySortMap,
+    }),
+    [menuItems, activeCategory, menuSearch, categorySortMap],
+  );
 
   const addToCart = (item, selectedVariant = null) => {
     if (item.hasVariants && !selectedVariant) {
@@ -1198,29 +1183,22 @@ export default function NewOrder() {
 
           <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-              {/* Order type — dropdown */}
+              {/* Order type — touch-friendly picker */}
               <div className="px-4 pt-4 pb-2">
-                <label htmlFor="neworder-order-type" className="block text-xs font-medium text-slate-400 mb-1.5">
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">
                   Order type
                 </label>
-                <select
-                  id="neworder-order-type"
-                  value={orderType}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setOrderType(v);
-                    setTableNumber('');
-                    setReference('');
-                    setSelectedTableId('');
-                  }}
-                  className="w-full rounded-xl border border-slate-700 bg-[var(--pos-surface-inset)] px-3 py-2.5 text-sm font-medium text-[var(--pos-text-primary)] focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                <button
+                  type="button"
+                  onClick={() => setShowOrderTypePicker(true)}
+                  className="w-full flex items-center justify-between gap-3 rounded-xl border border-slate-700 bg-[var(--pos-surface-inset)] px-4 py-3 text-sm font-medium text-[var(--pos-text-primary)] hover:border-slate-600 transition"
                 >
-                  {ORDER_TYPES.filter((type) => type.id !== 'uber-eats' || paidAddons?.uberEats).map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.icon} {type.label}
-                    </option>
-                  ))}
-                </select>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base">{activeType.icon}</span>
+                    <span>{activeType.label}</span>
+                  </div>
+                  <ChevronRight size={16} className="text-slate-500" />
+                </button>
               </div>
 
               {/* Customer + table / delivery ref (takeaway: full-width customer line only) */}
@@ -1277,23 +1255,18 @@ export default function NewOrder() {
                         No tables configured. Add tables under Manager → Café tables &amp; QR.
                       </p>
                     ) : (
-                      <select
-                        value={selectedTableId}
-                        onChange={(e) => setSelectedTableId(e.target.value)}
-                        className="w-full rounded-xl border border-slate-700 bg-[var(--pos-surface-inset)] px-3 py-2 text-sm text-[var(--pos-text-primary)] focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                      <button
+                        type="button"
+                        onClick={() => setShowTablePicker(true)}
+                        className="w-full flex items-center justify-between gap-3 rounded-xl border border-slate-700 bg-[var(--pos-surface-inset)] px-4 py-3 text-sm text-[var(--pos-text-primary)] hover:border-slate-600 transition"
                       >
-                        <option value="">Select table…</option>
-                        {cafeTables
-                          .filter((t) => t.active !== false)
-                          .map((t) => {
-                            const busy = occupancyByTable.has(String(t._id));
-                            return (
-                              <option key={t._id} value={String(t._id)} disabled={busy}>
-                                {t.label}{busy ? ' (in use)' : ''}
-                              </option>
-                            );
-                          })}
-                      </select>
+                        <span className={selectedTableId ? 'font-semibold' : 'text-slate-500'}>
+                          {selectedTableId
+                            ? cafeTables.find((t) => String(t._id) === selectedTableId)?.label || 'Table'
+                            : 'Select table…'}
+                        </span>
+                        <ChevronRight size={16} className="text-slate-500" />
+                      </button>
                     )}
                   </>
                 ) : orderType === 'dine-in' ? (
@@ -1798,6 +1771,37 @@ export default function NewOrder() {
         item={variantSelectionItem}
         onClose={() => setVariantSelectionItem(null)}
         onConfirm={addToCart}
+      />
+
+      {/* Order Type Picker Modal */}
+      <OptionPickerModal
+        open={showOrderTypePicker}
+        onClose={() => setShowOrderTypePicker(false)}
+        title="Order Type"
+        subtitle="Select how the customer will receive their order"
+        options={ORDER_TYPES.filter((type) => type.id !== 'uber-eats' || paidAddons?.uberEats).map((type) => ({
+          value: type.id,
+          label: type.label,
+          icon: type.icon,
+        }))}
+        value={orderType}
+        onChange={(v) => {
+          setOrderType(v);
+          setTableNumber('');
+          setReference('');
+          setSelectedTableId('');
+        }}
+        columns={2}
+      />
+
+      {/* Table Picker Modal */}
+      <TablePickerModal
+        open={showTablePicker}
+        onClose={() => setShowTablePicker(false)}
+        tables={cafeTables}
+        occupancyMap={occupancyByTable}
+        selectedTableId={selectedTableId}
+        onSelect={(tableId) => setSelectedTableId(tableId)}
       />
     </div>
     </CashierSessionGate>
