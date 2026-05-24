@@ -50,13 +50,16 @@ export function printReceipt(order, { branding, store, paymentType, cashTender }
   const lines = (order.items || []).map((i) => {
     const code = receiptItemCode(i.menuItem);
     const rawName = truncateReceiptName(i.name, RECEIPT_MAX_ITEM_NAME_CHARS);
-    const name = escapeHtml(rawName);
+    let nameHtml = `<span class="name-clamp">${escapeHtml(rawName)}</span>`;
+    if (i.variantName) {
+      nameHtml += `<span style="display: block; font-size: 9px; color: #555; padding-top: 1px;">↳ ${escapeHtml(i.variantName)}</span>`;
+    }
     const qty = escapeHtml(String(i.qty));
     const lineAmt = Number(i.price) * Number(i.qty);
     return `
     <tr>
       <td class="col-code">${escapeHtml(code)}</td>
-      <td class="col-name"><span class="name-clamp">${name}</span></td>
+      <td class="col-name">${nameHtml}</td>
       <td class="col-qty">${qty}</td>
       <td class="col-amt">${escapeHtml(receiptMoney(branding, lineAmt))}</td>
     </tr>`;

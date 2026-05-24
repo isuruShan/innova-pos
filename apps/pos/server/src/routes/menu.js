@@ -15,6 +15,15 @@ function sanitizeMenuPayload(body) {
   if (next.price !== undefined && next.price !== null) {
     next.price = roundMoney2(next.price);
   }
+  if (Array.isArray(next.variants)) {
+    next.variants = next.variants.map((v) => {
+      const nextV = { ...v };
+      if (nextV.price !== undefined && nextV.price !== null) {
+        nextV.price = roundMoney2(nextV.price);
+      }
+      return nextV;
+    });
+  }
   return next;
 }
 

@@ -264,7 +264,12 @@ export default function CashierOrderHistory() {
                   const id = String(item._id);
                   return (
                     <div key={id} className="flex items-center justify-between gap-2 text-sm">
-                      <span className="text-slate-200 truncate flex-1">{item.name}</span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-slate-200 truncate block">{item.name}</span>
+                        {item.variantName && (
+                          <span className="text-[10px] text-amber-400/90 truncate block">↳ {item.variantName}</span>
+                        )}
+                      </div>
                       <span className="text-slate-500 text-xs shrink-0">max {rem}</span>
                       <input
                         type="number"

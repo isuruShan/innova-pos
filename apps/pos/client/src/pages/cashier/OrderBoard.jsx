@@ -138,9 +138,16 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId }) {
         {order.items.map((item, i) => (
           <div key={i}>
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1 min-w-0">
-                {item.isCombo && <Link2 size={10} className="text-amber-400 flex-shrink-0" />}
-                <span className="text-xs text-slate-300 truncate">{item.name}</span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1">
+                  {item.isCombo && <Link2 size={10} className="text-amber-400 flex-shrink-0" />}
+                  <span className="text-xs text-slate-300 truncate">{item.name}</span>
+                </div>
+                {item.variantName && (
+                  <span className="text-[10px] text-amber-400/80 truncate ml-3 block">
+                    ↳ {item.variantName}
+                  </span>
+                )}
               </div>
               <span className="text-xs text-slate-500 flex-shrink-0">×{item.qty}</span>
             </div>

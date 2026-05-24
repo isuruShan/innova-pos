@@ -13,6 +13,15 @@ const orderItemSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   isCombo: { type: Boolean, default: false },
   comboItems: { type: [orderComboItemSchema], default: [] },
+  variantId: { type: String, default: null },
+  variantName: { type: String, default: '' },
+  variantAttributes: {
+    type: [{
+      name: { type: String },
+      value: { type: String }
+    }],
+    default: []
+  },
   deliveredToTable: { type: Boolean, default: false },
   kitchenNew: { type: Boolean, default: false },
   kitchenPendingQty: { type: Number, default: null },

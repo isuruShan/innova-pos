@@ -13,6 +13,15 @@ const orderItemSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   isCombo: { type: Boolean, default: false },
   comboItems: { type: [orderComboItemSchema], default: [] },
+  variantId: { type: String, default: null },
+  variantName: { type: String, default: '' },
+  variantAttributes: {
+    type: [{
+      name: { type: String },
+      value: { type: String }
+    }],
+    default: []
+  },
   /** Cashier marked as brought to the table (hides from kitchen prep list) */
   deliveredToTable: { type: Boolean, default: false },
   /** True when line was added after initial order (highlight on KDS until cleared) */

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 import {
   Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Link2, X,
-  ChevronDown, ChevronUp, Tag, Check, Upload, ImageIcon,
+  ChevronDown, ChevronUp, Tag, Check, Upload, ImageIcon, Loader2,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -16,6 +16,7 @@ import { MenuGridSkeleton } from '../../components/StoreSkeletons';
 const EMPTY_FORM = {
   name: '', category: '', price: '', description: '', images: [],
   available: true, isCombo: false, comboItems: [],
+  hasVariants: false, variantOptions: [], variants: [],
 };
 
 // ─── Combo builder ───────────────────────────────────────────────────────────
@@ -215,6 +216,416 @@ function MenuGalleryAppend({ onAppend }) {
   );
 }
 
+// ─── Rebuild combinations preserving existing data ───────────────────────────
+
+function generateCombinations(options) {
+  if (!options || options.length === 0) return [];
+  const validOptions = options.filter(opt => opt.name && opt.values?.length > 0);
+  if (validOptions.length === 0) return [];
+
+  const results = [];
+  function helper(index, currentAttributes, currentName) {
+    if (index === validOptions.length) {
+      results.push({
+        name: currentName,
+        attributes: currentAttributes,
+        price: '',
+        description: '',
+        images: [],
+        available: true,
+      });
+      return;
+    }
+    const option = validOptions[index];
+    for (const val of option.values) {
+      helper(
+        index + 1,
+        [...currentAttributes, { name: option.name, value: val }],
+        currentName ? `${currentName} / ${val}` : val
+      );
+    }
+  }
+  helper(0, [], '');
+  return results;
+}
+
+function rebuildVariants(newOptions, currentVariants) {
+  const generated = generateCombinations(newOptions);
+  return generated.map(gen => {
+    const match = currentVariants.find(v => {
+      if (v.attributes?.length !== gen.attributes.length) return false;
+      return gen.attributes.every(genAttr => 
+        v.attributes.some(vAttr => vAttr.name === genAttr.name && vAttr.value === genAttr.value)
+      );
+    });
+    if (match) {
+      return {
+        ...gen,
+        _id: match._id,
+        price: match.price,
+        description: match.description,
+        images: match.images || [],
+        image: match.image || '',
+        imageKey: match.imageKey || '',
+        available: match.available !== false,
+      };
+    }
+    return gen;
+  });
+}
+
+// ─── Inline variant image upload ─────────────────────────────────────────────
+
+function VariantImagePicker({ images, onChange }) {
+  const fileRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const imgUrl = images?.[0]?.url || '';
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const { optimizeImage } = await import('../../utils/imageUpload');
+      const optimized = await optimizeImage(file, 'menu');
+      const fd = new FormData();
+      fd.append('image', optimized);
+      fd.append('type', 'menu');
+      const { postUpload } = await import('../../api/uploadRequest');
+      const { data } = await postUpload(fd);
+      onChange([{ url: data.url, key: data.key }]);
+    } catch (err) {
+      alert(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input type="file" ref={fileRef} onChange={handleUpload} accept="image/*" className="hidden" />
+      <button
+        type="button"
+        onClick={() => fileRef.current?.click()}
+        disabled={uploading}
+        className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 hover:border-amber-500/50 flex items-center justify-center overflow-hidden shrink-0 text-slate-400 hover:text-amber-500 transition"
+      >
+        {uploading ? (
+          <Loader2 className="animate-spin text-amber-500" size={12} />
+        ) : imgUrl ? (
+          <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <ImageIcon size={14} />
+        )}
+      </button>
+      {imgUrl && (
+        <button
+          type="button"
+          onClick={() => onChange([])}
+          className="text-[10px] text-red-400 hover:text-red-300 transition"
+        >
+          Clear
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Option Options Builder Panel ────────────────────────────────────────────
+
+function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation }) {
+  const [selectedCriteriaId, setSelectedCriteriaId] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customName, setCustomName] = useState('');
+  const [newValueInput, setNewValueInput] = useState({});
+
+  const availableCriteria = savedCriteria.filter(
+    (sc) => !form.variantOptions.some((opt) => opt.name.toLowerCase() === sc.name.toLowerCase())
+  );
+
+  const addOptionGroup = (criteriaName) => {
+    if (!criteriaName) return;
+    const matched = savedCriteria.find(sc => sc.name.toLowerCase() === criteriaName.toLowerCase());
+    const initialValues = matched ? matched.values || [] : [];
+    
+    const newOptions = [...form.variantOptions, { name: criteriaName, values: initialValues }];
+    const nextVariants = rebuildVariants(newOptions, form.variants);
+    setForm(f => ({
+      ...f,
+      variantOptions: newOptions,
+      variants: nextVariants
+    }));
+    setSelectedCriteriaId('');
+  };
+
+  const createCustomGroup = () => {
+    if (!customName.trim()) return;
+    const name = customName.trim();
+    saveCriteriaMutation.mutate({ name, values: [] });
+    const newOptions = [...form.variantOptions, { name, values: [] }];
+    const nextVariants = rebuildVariants(newOptions, form.variants);
+    setForm(f => ({
+      ...f,
+      variantOptions: newOptions,
+      variants: nextVariants
+    }));
+    setCustomName('');
+    setShowCustomInput(false);
+  };
+
+  const removeOptionGroup = (idx) => {
+    const newOptions = form.variantOptions.filter((_, i) => i !== idx);
+    const nextVariants = rebuildVariants(newOptions, form.variants);
+    setForm(f => ({
+      ...f,
+      variantOptions: newOptions,
+      variants: nextVariants
+    }));
+  };
+
+  const addValueToGroup = (idx, val) => {
+    const cleanVal = val.trim();
+    if (!cleanVal) return;
+    const group = form.variantOptions[idx];
+    if (group.values.includes(cleanVal)) return;
+
+    const newValues = [...group.values, cleanVal];
+    const newOptions = form.variantOptions.map((opt, i) => i === idx ? { ...opt, values: newValues } : opt);
+    const nextVariants = rebuildVariants(newOptions, form.variants);
+    setForm(f => ({
+      ...f,
+      variantOptions: newOptions,
+      variants: nextVariants
+    }));
+
+    saveCriteriaMutation.mutate({ name: group.name, values: [cleanVal] });
+  };
+
+  const removeValueFromGroup = (groupIndex, valIndex) => {
+    const group = form.variantOptions[groupIndex];
+    const newValues = group.values.filter((_, i) => i !== valIndex);
+    const newOptions = form.variantOptions.map((opt, i) => i === groupIndex ? { ...opt, values: newValues } : opt);
+    const nextVariants = rebuildVariants(newOptions, form.variants);
+    setForm(f => ({
+      ...f,
+      variantOptions: newOptions,
+      variants: nextVariants
+    }));
+  };
+
+  const updateVariantPrice = (vIdx, val) => {
+    const nextV = form.variants.map((v, idx) => idx === vIdx ? { ...v, price: val } : v);
+    setForm(f => ({ ...f, variants: nextV }));
+  };
+
+  const updateVariantDesc = (vIdx, val) => {
+    const nextV = form.variants.map((v, idx) => idx === vIdx ? { ...v, description: val } : v);
+    setForm(f => ({ ...f, variants: nextV }));
+  };
+
+  const updateVariantImages = (vIdx, images) => {
+    const primaryImg = images?.[0]?.url || '';
+    const primaryKey = images?.[0]?.key || '';
+    const nextV = form.variants.map((v, idx) => idx === vIdx ? {
+      ...v,
+      images,
+      image: primaryImg,
+      imageKey: primaryKey
+    } : v);
+    setForm(f => ({ ...f, variants: nextV }));
+  };
+
+  const toggleVariantAvailable = (vIdx) => {
+    const nextV = form.variants.map((v, idx) => idx === vIdx ? { ...v, available: !v.available } : v);
+    setForm(f => ({ ...f, variants: nextV }));
+  };
+
+  return (
+    <div className="space-y-4 bg-slate-900/40 p-4 border border-slate-700/60 rounded-2xl">
+      <h3 className="text-sm font-semibold text-amber-400 flex items-center gap-1.5">
+        🛠️ Variant Builder
+      </h3>
+
+      <div className="space-y-3">
+        {form.variantOptions.map((group, groupIdx) => (
+          <div key={groupIdx} className="bg-[var(--pos-surface-inset)] rounded-xl p-3 border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-slate-200">{group.name}</span>
+              <button
+                type="button"
+                onClick={() => removeOptionGroup(groupIdx)}
+                className="text-xs text-red-400 hover:text-red-300 font-medium"
+              >
+                Remove
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {group.values.map((val, valIdx) => (
+                <span
+                  key={valIdx}
+                  className="inline-flex items-center gap-1 text-xs bg-slate-800 text-slate-300 rounded-lg px-2 py-1 border border-slate-700 font-medium"
+                >
+                  {val}
+                  <button
+                    type="button"
+                    onClick={() => removeValueFromGroup(groupIdx, valIdx)}
+                    className="text-slate-500 hover:text-slate-300 ml-0.5"
+                  >
+                    <X size={11} />
+                  </button>
+                </span>
+              ))}
+              {group.values.length === 0 && (
+                <span className="text-xs text-slate-600 italic">No values added yet</span>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newValueInput[groupIdx] || ''}
+                onChange={(e) => setNewValueInput(p => ({ ...p, [groupIdx]: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addValueToGroup(groupIdx, newValueInput[groupIdx]);
+                    setNewValueInput(p => ({ ...p, [groupIdx]: '' }));
+                  }
+                }}
+                placeholder={`Add value for ${group.name}...`}
+                className="flex-1 bg-slate-900 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  addValueToGroup(groupIdx, newValueInput[groupIdx]);
+                  setNewValueInput(p => ({ ...p, [groupIdx]: '' }));
+                }}
+                disabled={!(newValueInput[groupIdx] || '').trim()}
+                className="bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white text-xs px-3 py-1.5 rounded-lg transition"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {!showCustomInput ? (
+        <div className="flex gap-2">
+          <select
+            value={selectedCriteriaId}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === '__custom__') {
+                setShowCustomInput(true);
+              } else {
+                addOptionGroup(val);
+              }
+            }}
+            className="flex-1 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+          >
+            <option value="">+ Add variant criteria (Size, Flavor…)</option>
+            {availableCriteria.map(sc => (
+              <option key={sc._id} value={sc.name}>{sc.name}</option>
+            ))}
+            <option value="__custom__">— Add Custom Criteria… —</option>
+          </select>
+        </div>
+      ) : (
+        <div className="bg-[var(--pos-surface-inset)] rounded-xl p-3 border border-slate-800 space-y-2">
+          <p className="text-xs font-semibold text-slate-300">Create custom variant criteria</p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={customName}
+              onChange={(e) => setCustomName(e.target.value)}
+              placeholder="e.g. Roast Level, Milk Type"
+              className="flex-1 bg-slate-900 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+            />
+            <button
+              type="button"
+              onClick={createCustomGroup}
+              disabled={!customName.trim()}
+              className="bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white text-xs px-3 py-1.5 rounded-lg transition font-semibold"
+            >
+              Add
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowCustomInput(false); setCustomName(''); }}
+              className="border border-slate-700 text-slate-400 hover:text-white text-xs px-3 py-1.5 rounded-lg transition"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {form.variants.length > 0 && (
+        <div className="space-y-2 border-t border-slate-800 pt-3">
+          <p className="text-xs font-semibold text-slate-400">Variant Matrix ({form.variants.length})</p>
+          <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+            {form.variants.map((v, idx) => (
+              <div key={idx} className="bg-slate-900/80 rounded-xl p-3 border border-slate-850 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-slate-200 truncate flex-1">{v.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleVariantAvailable(idx)}
+                    className={`flex items-center gap-1 text-[10px] font-medium transition ${v.available ? 'text-green-400' : 'text-slate-500'}`}
+                  >
+                    {v.available ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+                    {v.available ? 'Active' : 'Disabled'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+                  <div className="flex gap-2">
+                    <div className="w-20">
+                      <label className="text-[9px] text-slate-500 block mb-0.5">Price ($) *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={v.price}
+                        onChange={(e) => updateVariantPrice(idx, e.target.value)}
+                        placeholder="0.00"
+                        required
+                        disabled={!v.available}
+                        className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none disabled:opacity-40"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-[9px] text-slate-500 block mb-0.5">Desc override</label>
+                      <input
+                        type="text"
+                        value={v.description || ''}
+                        onChange={(e) => updateVariantDesc(idx, e.target.value)}
+                        placeholder="Falls back to product"
+                        disabled={!v.available}
+                        className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none disabled:opacity-40"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <label className="text-[9px] text-slate-500 block mb-0.5 self-start">Photo</label>
+                    <VariantImagePicker
+                      images={v.images}
+                      onChange={(imgList) => updateVariantImages(idx, imgList)}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Category management panel ────────────────────────────────────────────────
 
 function CategoryManager({ categories, onClose }) {
@@ -347,6 +758,17 @@ export default function MenuManagement() {
   const [formError, setFormError] = useState('');
   const qc = useQueryClient();
 
+  const { data: savedCriteria = [] } = useQuery({
+    queryKey: ['variant-criteria', selectedStoreId],
+    queryFn: () => api.get('/variant-criteria').then(r => r.data),
+    enabled: isStoreReady,
+  });
+
+  const saveCriteriaMutation = useMutation({
+    mutationFn: (data) => api.post('/variant-criteria', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['variant-criteria'] }),
+  });
+
   useEffect(() => {
     setActiveCategory('All');
   }, [selectedStoreId]);
@@ -419,6 +841,9 @@ export default function MenuManagement() {
       available: item.available,
       isCombo: item.isCombo || false,
       comboItems: item.comboItems || [],
+      hasVariants: item.hasVariants || false,
+      variantOptions: item.variantOptions || [],
+      variants: item.variants || [],
     });
     setFormError('');
     setSlideOpen(true);
@@ -432,18 +857,41 @@ export default function MenuManagement() {
     const rawPrice = Number(form.price);
     const price = Number.isFinite(rawPrice) ? Math.round(rawPrice * 100) / 100 : NaN;
     if (!form.name.trim()) return setFormError('Name is required');
-    if (isNaN(price) || price < 0) return setFormError('Price must be a positive number');
+    if (!form.hasVariants && (isNaN(price) || price < 0)) return setFormError('Price must be a positive number');
     if (form.isCombo && form.comboItems.length === 0)
       return setFormError('A combo must have at least one item added');
+
+    if (form.hasVariants) {
+      if (!form.variantOptions?.length) {
+        return setFormError('At least one option criteria (e.g. Size) is required when "Has Variants" is enabled');
+      }
+      const hasEmptyValues = form.variantOptions.some(opt => !opt.values || opt.values.length === 0);
+      if (hasEmptyValues) {
+        return setFormError('All option criteria must have at least one value');
+      }
+      if (!form.variants || form.variants.length === 0) {
+        return setFormError('No variants generated');
+      }
+      for (const v of form.variants) {
+        const vp = Number(v.price);
+        if (v.available && (isNaN(vp) || vp < 0)) {
+          return setFormError(`Price for variant "${v.name}" must be a positive number`);
+        }
+      }
+    }
+
     const payload = {
       name: form.name.trim(),
       category: form.category,
-      price,
+      price: form.hasVariants ? 0 : price,
       description: form.description,
       images: form.images,
       available: form.available,
       isCombo: form.isCombo,
       comboItems: form.isCombo ? form.comboItems : [],
+      hasVariants: form.hasVariants,
+      variantOptions: form.hasVariants ? form.variantOptions : [],
+      variants: form.hasVariants ? form.variants : [],
     };
     if (editing) updateMutation.mutate({ id: editing._id, data: payload });
     else createMutation.mutate(payload);
@@ -603,14 +1051,16 @@ export default function MenuManagement() {
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Price ($) *</label>
-            <input type="number" step="0.01" min="0" value={form.price}
-              onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
-              placeholder="0.00" required
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
-            {form.isCombo && <p className="text-xs text-slate-500 mt-1">Set the combo price (can differ from sum of parts)</p>}
-          </div>
+          {!form.hasVariants && (
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Price ($) *</label>
+              <input type="number" step="0.01" min="0" value={form.price}
+                onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
+                placeholder="0.00" required
+                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
+              {form.isCombo && <p className="text-xs text-slate-500 mt-1">Set the combo price (can differ from sum of parts)</p>}
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">Description</label>
@@ -634,6 +1084,31 @@ export default function MenuManagement() {
                 onChange={comboItems => setForm(f => ({ ...f, comboItems }))}
                 allItems={items} currentItemId={editing?._id} />
             </div>
+          )}
+
+          {/* Variants Configuration */}
+          {!form.isCombo && (
+            <>
+              <div className="flex items-center justify-between bg-[var(--pos-surface-inset)] rounded-xl px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-slate-300">Has Variants</p>
+                  <p className="text-xs text-slate-500">Sell in different sizes, flavors, etc.</p>
+                </div>
+                <button type="button" onClick={() => setForm(f => ({ ...f, hasVariants: !f.hasVariants, price: f.hasVariants ? f.price : '' }))}
+                  className={`w-12 h-6 rounded-full transition relative ${form.hasVariants ? 'bg-amber-500' : 'bg-slate-700'}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${form.hasVariants ? 'left-6' : 'left-0.5'}`} />
+                </button>
+              </div>
+
+              {form.hasVariants && (
+                <VariantsBuilder
+                  form={form}
+                  setForm={setForm}
+                  savedCriteria={savedCriteria}
+                  saveCriteriaMutation={saveCriteriaMutation}
+                />
+              )}
+            </>
           )}
 
           {/* Availability toggle */}

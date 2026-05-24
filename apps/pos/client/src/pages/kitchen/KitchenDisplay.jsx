@@ -201,11 +201,18 @@ function KitchenCard({
         ) : null}
         {preview.map((item, i) => (
           <div key={i} className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 min-w-0">
-              {item.isCombo && <Link2 size={10} className="text-amber-400 flex-shrink-0" />}
-              <span className={`text-sm truncate ${item.isCombo ? 'text-amber-300 font-medium' : 'text-[var(--pos-text-primary)]'}`}>
-                {item.name}
-              </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                {item.isCombo && <Link2 size={10} className="text-amber-400 flex-shrink-0" />}
+                <span className={`text-sm truncate ${item.isCombo ? 'text-amber-300 font-medium' : 'text-[var(--pos-text-primary)]'}`}>
+                  {item.name}
+                </span>
+              </div>
+              {item.variantName && (
+                <span className="block text-[10px] text-amber-400/80 truncate ml-4">
+                  ↳ {item.variantName}
+                </span>
+              )}
             </div>
             <span className="text-xs font-bold text-[var(--pos-text-muted)] bg-[var(--pos-surface-inset)] rounded-full px-1.5 py-0.5 flex-shrink-0">
               ×{item.qty}

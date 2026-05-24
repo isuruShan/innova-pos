@@ -296,18 +296,21 @@ function CartItem({ item, onChangeQty, showImage = false }) {
               </button>
             )}
           </div>
-          <p className="text-xs text-amber-400">{formatPrice(item.price)} each</p>
+          {item.variantName && (
+            <p className="text-xs text-amber-400/95 font-medium mt-0.5 truncate">↳ {item.variantName}</p>
+          )}
+          <p className="text-xs text-slate-400 mt-0.5">{formatPrice(item.price)} each</p>
         </div>
         <div className="flex items-center gap-1.5">
           <button
-            onClick={() => onChangeQty(item.menuItem, -1)}
+            onClick={() => onChangeQty(item.menuItem, item.variantId, -1)}
             className="w-6 h-6 rounded-full bg-slate-700 hover:bg-red-500/30 text-slate-300 hover:text-red-400 flex items-center justify-center transition"
           >
             <Minus size={11} />
           </button>
           <span className="w-6 text-center text-sm font-semibold text-[var(--pos-text-primary)]">{item.qty}</span>
           <button
-            onClick={() => onChangeQty(item.menuItem, 1)}
+            onClick={() => onChangeQty(item.menuItem, item.variantId, 1)}
             className="w-6 h-6 rounded-full bg-slate-700 hover:bg-amber-500/30 text-slate-300 hover:text-amber-400 flex items-center justify-center transition"
           >
             <Plus size={11} />
@@ -329,10 +332,126 @@ function CartItem({ item, onChangeQty, showImage = false }) {
   );
 }
 
+function VariantSelectorModal({ item, onClose, onConfirm }) {
+  const [selections, setSelections] = useState({});
+
+  useEffect(() => {
+    setSelections({});
+  }, [item?._id]);
+
+  if (!item) return null;
+
+  const options = item.variantOptions || [];
+  const variants = item.variants || [];
+
+  const handleSelect = (optionName, val) => {
+    setSelections((p) => ({ ...p, [optionName]: val }));
+  };
+
+  const selectedVariant = variants.find((v) => {
+    if (!v.available) return false;
+    return options.every((opt) => selections[opt.name] === v.attributes?.find((a) => a.name === opt.name)?.value);
+  });
+
+  const canConfirm = options.every((opt) => selections[opt.name] !== undefined);
+
+  return (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
+      <div
+        className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <h3 className="text-base font-bold text-[var(--pos-text-primary)]">{item.name}</h3>
+            <p className="text-xs text-slate-500">Please choose options</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded bg-slate-800 text-slate-400 hover:text-white">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {options.map((opt) => (
+            <div key={opt.name} className="space-y-1.5">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{opt.name}</span>
+              <div className="flex flex-wrap gap-2">
+                {opt.values?.map((val) => {
+                  const active = selections[opt.name] === val;
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => handleSelect(opt.name, val)}
+                      className={`px-3 py-2 rounded-xl text-xs font-medium border transition ${
+                        active
+                          ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)] shadow-lg'
+                          : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
+                      }`}
+                    >
+                      {val}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {selectedVariant ? (
+          <div className="bg-[var(--pos-surface-inset)] rounded-xl p-3 border border-slate-800 flex items-center gap-3">
+            <div className="w-12 h-12 bg-slate-800 rounded-lg overflow-hidden border border-slate-700 shrink-0">
+              {selectedVariant.image ? (
+                <img src={selectedVariant.image} alt="" className="w-full h-full object-cover" />
+              ) : item.images?.[0]?.url || item.image ? (
+                <img src={item.images?.[0]?.url || item.image} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xl">🍔</div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-200 truncate">{selectedVariant.name}</p>
+              <p className="text-xs text-slate-500 truncate">{selectedVariant.description || item.description || 'No description'}</p>
+            </div>
+            <span className="text-sm font-bold text-amber-400 shrink-0">
+              {formatPrice(selectedVariant.price)}
+            </span>
+          </div>
+        ) : (
+          canConfirm && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl">
+              Selected combination is currently unavailable
+            </div>
+          )
+        )}
+
+        <div className="flex gap-3 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-semibold py-2.5 rounded-xl transition text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(item, selectedVariant)}
+            disabled={!selectedVariant}
+            className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white font-semibold py-2.5 rounded-xl transition text-sm flex justify-center items-center"
+          >
+            Add to Cart
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function NewOrder() {
   const fohr = useFohrMode();
   const [activeCategory, setActiveCategory] = useState('All');
   const [cart, setCart] = useState([]);
+  const [variantSelectionItem, setVariantSelectionItem] = useState(null);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [orderType, setOrderType] = useState('dine-in');
   const [tableNumber, setTableNumber] = useState('');
@@ -656,25 +775,47 @@ export default function NewOrder() {
     [menuItems, activeCategory]
   );
 
-  const addToCart = (item) => {
+  const addToCart = (item, selectedVariant = null) => {
+    if (item.hasVariants && !selectedVariant) {
+      setVariantSelectionItem(item);
+      return;
+    }
+
+    const price = selectedVariant
+      ? Math.round(Number(selectedVariant.price) * 100) / 100
+      : Math.round(Number(item.price) * 100) / 100;
+    const variantId = selectedVariant ? selectedVariant._id : null;
+    const variantName = selectedVariant ? selectedVariant.name : '';
+    const variantAttributes = selectedVariant ? selectedVariant.attributes || [] : [];
+    const images = selectedVariant?.images?.length ? selectedVariant.images : item.images || [];
+    const image = selectedVariant?.image || item.image || '';
+
     setCart(prev => {
-      const existing = prev.find(c => c.menuItem === item._id);
-      if (existing) return prev.map(c => c.menuItem === item._id ? { ...c, qty: c.qty + 1 } : c);
+      const existing = prev.find(c => c.menuItem === item._id && c.variantId === variantId);
+      if (existing) {
+        return prev.map(c => (c.menuItem === item._id && c.variantId === variantId) ? { ...c, qty: c.qty + 1 } : c);
+      }
       return [...prev, {
         menuItem: item._id,
+        variantId,
+        variantName,
+        variantAttributes,
         name: item.name,
-        price: Math.round(Number(item.price) * 100) / 100,
+        price,
         qty: 1,
         category: item.category || '',
         isCombo: item.isCombo || false,
         comboItems: item.comboItems || [],
+        images,
+        image,
       }];
     });
+    setVariantSelectionItem(null);
   };
 
-  const changeQty = (id, delta) => {
+  const changeQty = (id, variantId, delta) => {
     setCart(prev => prev
-      .map(c => c.menuItem === id ? { ...c, qty: c.qty + delta } : c)
+      .map(c => (c.menuItem === id && c.variantId === variantId) ? { ...c, qty: c.qty + delta } : c)
       .filter(c => c.qty > 0)
     );
   };
@@ -1283,7 +1424,7 @@ export default function NewOrder() {
                   </div>
                 ) : (
                   cart.map(item => (
-                    <CartItem key={item.menuItem} item={item} onChangeQty={changeQty} showImage={isCompact} />
+                    <CartItem key={`${item.menuItem}-${item.variantId || 'base'}`} item={item} onChangeQty={changeQty} showImage={isCompact} />
                   ))
                 )}
               </div>
@@ -1590,6 +1731,12 @@ export default function NewOrder() {
           </div>
         </div>
       )}
+      {/* Variant Selection Modal */}
+      <VariantSelectorModal
+        item={variantSelectionItem}
+        onClose={() => setVariantSelectionItem(null)}
+        onConfirm={addToCart}
+      />
     </div>
     </CashierSessionGate>
   );

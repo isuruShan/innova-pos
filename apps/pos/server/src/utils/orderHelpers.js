@@ -15,12 +15,30 @@ async function enrichItems(items, tenantId, storeId) {
   return items.map((i) => {
     const doc = menuMap[i.menuItem?.toString()];
     const qty = Math.max(1, Number(i.qty) || 1);
+    
+    let price = doc?.price ?? i.price;
+    let variantId = i.variantId || null;
+    let variantName = i.variantName || '';
+    let variantAttributes = i.variantAttributes || [];
+    
+    if (doc && doc.hasVariants && variantId) {
+      const variant = doc.variants?.find(v => String(v._id) === String(variantId));
+      if (variant) {
+        price = variant.price;
+        variantName = variant.name;
+        variantAttributes = variant.attributes || [];
+      }
+    }
+
     const base = {
       menuItem: doc?._id || i.menuItem,
       name: doc?.name || i.name,
       category: doc?.category || '',
       qty,
-      price: roundMoney2(doc?.price ?? i.price),
+      price: roundMoney2(price),
+      variantId,
+      variantName,
+      variantAttributes,
       isCombo: false,
       comboItems: [],
       deliveredToTable: false,
@@ -75,12 +93,29 @@ async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId, order
       }
     }
 
+    let price = doc.price;
+    let variantId = raw.variantId || null;
+    let variantName = raw.variantName || '';
+    let variantAttributes = raw.variantAttributes || [];
+    
+    if (doc.hasVariants && variantId) {
+      const variant = doc.variants?.find(v => String(v._id) === String(variantId));
+      if (variant) {
+        price = variant.price;
+        variantName = variant.name;
+        variantAttributes = variant.attributes || [];
+      }
+    }
+
     const line = {
       menuItem: doc._id,
       name: doc.name,
       category: doc.category || '',
       qty,
-      price: roundMoney2(doc.price),
+      price: roundMoney2(price),
+      variantId,
+      variantName,
+      variantAttributes,
       isCombo: false,
       comboItems: [],
       deliveredToTable: prev
@@ -147,7 +182,10 @@ async function appendItemsToOrder(order, rawItems, tenantId, storeId) {
 
   for (const nl of newLines) {
     const mid = String(nl.menuItem);
-    const existing = order.items.find((i) => String(i.menuItem) === mid);
+    const vid = nl.variantId ? String(nl.variantId) : '';
+    const existing = order.items.find(
+      (i) => String(i.menuItem) === mid && String(i.variantId || '') === vid
+    );
     if (existing) {
       existing.qty += nl.qty;
       existing.kitchenNew = true;

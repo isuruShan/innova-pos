@@ -83,6 +83,7 @@ app.use('/api/tables',     require('./routes/tables'));
 app.use('/api/inventory',  require('./routes/inventory'));
 app.use('/api/suppliers',  require('./routes/suppliers'));
 app.use('/api/categories', require('./routes/categories'));
+app.use('/api/variant-criteria', require('./routes/variantCriteria'));
 app.use('/api/reports',    require('./routes/reports'));
 app.use('/api/analytics',  require('./routes/analytics'));
 app.use('/api/promotions', require('./routes/promotions'));

@@ -417,7 +417,7 @@ export default function OrdersView() {
                     <div><Badge label={order.status} variant={order.status} /></div>
                     <div className="min-w-0">
                       <p className="text-sm text-slate-300 truncate">
-                        {order.items.map(i => `${i.name} ×${i.qty}`).join(', ')}
+                        {order.items.map(i => `${i.name}${i.variantName ? ` (${i.variantName})` : ''} ×${i.qty}`).join(', ')}
                       </p>
                       {order.createdBy?.name && (
                         <p className="text-xs text-slate-600">{order.createdBy.name}</p>
@@ -450,7 +450,7 @@ export default function OrdersView() {
                       <span className="text-xs text-slate-500">{formatDateTime(order.createdAt)}</span>
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5 truncate">
-                      {order.items.map(i => `${i.name} ×${i.qty}`).join(', ')}
+                      {order.items.map(i => `${i.name}${i.variantName ? ` (${i.variantName})` : ''} ×${i.qty}`).join(', ')}
                     </p>
                   </div>
                 </button>

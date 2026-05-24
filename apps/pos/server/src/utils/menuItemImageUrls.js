@@ -11,6 +11,14 @@ function collectMenuImageKeys(items) {
     for (const img of i.images || []) {
       if (img && img.key) keys.add(String(img.key));
     }
+    if (Array.isArray(i.variants)) {
+      for (const v of i.variants) {
+        if (v.imageKey) keys.add(String(v.imageKey));
+        for (const img of v.images || []) {
+          if (img && img.key) keys.add(String(img.key));
+        }
+      }
+    }
   }
   return [...keys];
 }
@@ -35,6 +43,19 @@ async function attachFreshMenuImageUrls(items) {
         url: img?.key && urlByKey[img.key] ? urlByKey[img.key] : String(img?.url || ''),
         key: img?.key ? String(img.key) : '',
       }));
+    }
+    if (Array.isArray(next.variants) && next.variants.length) {
+      next.variants = next.variants.map((v) => {
+        const nextV = { ...v };
+        if (nextV.imageKey && urlByKey[nextV.imageKey]) nextV.image = urlByKey[nextV.imageKey];
+        if (Array.isArray(nextV.images) && nextV.images.length) {
+          nextV.images = nextV.images.map((img) => ({
+            url: img?.key && urlByKey[img.key] ? urlByKey[img.key] : String(img?.url || ''),
+            key: img?.key ? String(img.key) : '',
+          }));
+        }
+        return nextV;
+      });
     }
     return next;
   });

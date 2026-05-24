@@ -34,6 +34,33 @@ const menuItemSchema = new mongoose.Schema(
     available: { type: Boolean, default: true },
     isCombo: { type: Boolean, default: false },
     comboItems: { type: [comboItemSchema], default: [] },
+    hasVariants: { type: Boolean, default: false },
+    variantOptions: {
+      type: [{
+        name: { type: String, required: true },
+        values: { type: [String], default: [] }
+      }],
+      default: []
+    },
+    variants: {
+      type: [{
+        name: { type: String, required: true },
+        price: { type: Number, required: true, min: 0 },
+        description: { type: String, default: '' },
+        images: { type: [menuItemImageSchema], default: [] },
+        image: { type: String, default: '' },
+        imageKey: { type: String, default: '' },
+        attributes: {
+          type: [{
+            name: { type: String, required: true },
+            value: { type: String, required: true }
+          }],
+          default: []
+        },
+        available: { type: Boolean, default: true }
+      }],
+      default: []
+    },
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
