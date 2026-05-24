@@ -277,31 +277,32 @@ async function computeSubscriptionRenewalExpected(tenant) {
     addonTotal += storeLine.amount;
   }
 
-  // Get active users details for the tenant
-  const activeUsers = await User.find({ tenantId: t._id })
+  // Get all users for the tenant (inactive users are still billed until deleted)
+  const allUsers = await User.find({ tenantId: t._id })
     .sort({ createdAt: 1 })
     .lean();
 
   const usersDetail = [];
-  if (activeUsers.length > 0) {
+  if (allUsers.length > 0) {
     const cycle = plan.billingCycle || 'monthly';
 
     // First user is free for seat, but check if they have extra store slots
     let firstUserExtraStoreSlots = 0;
     let firstUserExtraStoreCost = 0;
-    if (activeUsers[0].role !== 'merchant_admin') {
-      firstUserExtraStoreSlots = Math.max(0, (activeUsers[0].licensedStoreSlots || 1) - 1);
+    if (allUsers[0].role !== 'merchant_admin') {
+      firstUserExtraStoreSlots = Math.max(0, (allUsers[0].licensedStoreSlots || 1) - 1);
       if (firstUserExtraStoreSlots > 0) {
-        const storePricing = await getRolePricing(activeUsers[0].role, t.countryIso, 'extraStore');
+        const storePricing = await getRolePricing(allUsers[0].role, t.countryIso, 'extraStore');
         const extraStoreUnit = cycle === 'yearly' ? storePricing.yearlyAmount : storePricing.monthlyAmount;
         firstUserExtraStoreCost = extraStoreUnit * firstUserExtraStoreSlots;
       }
     }
 
     usersDetail.push({
-      name: activeUsers[0].name,
-      email: activeUsers[0].email,
-      role: activeUsers[0].role,
+      name: allUsers[0].name,
+      email: allUsers[0].email,
+      role: allUsers[0].role,
+      isActive: allUsers[0].isActive !== false,
       cost: firstUserExtraStoreCost,
       isFree: firstUserExtraStoreCost <= 0,
       seatCost: 0,
@@ -309,8 +310,8 @@ async function computeSubscriptionRenewalExpected(tenant) {
       extraStoreSlotsCost: firstUserExtraStoreCost,
     });
 
-    if (activeUsers.length > 1) {
-      const billableUsers = activeUsers.slice(1);
+    if (allUsers.length > 1) {
+      const billableUsers = allUsers.slice(1);
       const usersByRole = {};
       for (const u of billableUsers) {
         const r = u.role || 'cashier';
@@ -358,6 +359,7 @@ async function computeSubscriptionRenewalExpected(tenant) {
           name: u.name,
           email: u.email,
           role: u.role,
+          isActive: u.isActive !== false,
           cost: userTotalCost,
           isFree: userTotalCost <= 0,
           seatCost: seatUnit,
@@ -367,9 +369,9 @@ async function computeSubscriptionRenewalExpected(tenant) {
       }
     }
 
-    // Now calculate and add extra store slots for all active users to addons list
+    // Now calculate and add extra store slots for all users to addons list
     const extraStoreSlotsByRole = {};
-    for (const u of activeUsers) {
+    for (const u of allUsers) {
       if (u.role === 'merchant_admin') continue;
       const extraSlots = Math.max(0, (u.licensedStoreSlots || 1) - 1);
       if (extraSlots > 0) {
@@ -410,6 +412,7 @@ async function computeSubscriptionRenewalExpected(tenant) {
     storesDetail.push({
       name: activeStores[0].name,
       code: activeStores[0].code,
+      city: activeStores[0].address?.city || '',
       cost: 0,
       isFree: true,
     });
@@ -424,6 +427,7 @@ async function computeSubscriptionRenewalExpected(tenant) {
         storesDetail.push({
           name: s.name,
           code: s.code,
+          city: s.address?.city || '',
           cost: unit,
           isFree: unit <= 0,
         });

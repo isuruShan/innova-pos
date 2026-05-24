@@ -2,7 +2,7 @@ const express = require('express');
 const User = require('../models/User');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, resolveWriteStoreId } = require('../middleware/storeScope');
-const { presignObjectKey } = require('../utils/s3Runtime');
+const { presignObjectKey, presignObjectKeys } = require('../utils/s3Runtime');
 const { parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
@@ -21,12 +21,15 @@ const storeAccessFilter = (storeId) => (
     : {}
 );
 
+/**
+ * Attach fresh presigned URLs to user profile images using batch presigning.
+ */
 async function attachFreshProfileImages(users) {
   if (!users?.length) return users;
   const keys = [...new Set(users.map((u) => u.profileImageKey).filter(Boolean))];
   if (!keys.length) return users;
-  const pairs = await Promise.all(keys.map(async (key) => [key, await presignObjectKey(key, 86400)]));
-  const urls = Object.fromEntries(pairs.filter(([, url]) => Boolean(url)));
+  // Single batch call instead of N individual calls
+  const urls = await presignObjectKeys(keys, 86400);
   return users.map((u) => (u.profileImageKey && urls[u.profileImageKey]
     ? { ...u, profileImage: urls[u.profileImageKey] }
     : u));

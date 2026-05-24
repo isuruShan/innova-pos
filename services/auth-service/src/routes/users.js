@@ -106,7 +106,7 @@ router.post('/', authenticateJWT, tenantScope, async (req, res) => {
 
     if (sendWelcome) {
       const loginUrl = process.env.POS_URL || 'http://localhost:5173';
-      await sendWelcomeEmail({ to: user.email, name: user.name, tempPassword, loginUrl }).catch(() => {});
+      await sendWelcomeEmail({ to: user.email, name: user.name, tempPassword, loginUrl, role: user.role }).catch(() => {});
     }
 
     res.status(201).json({
@@ -227,7 +227,7 @@ router.post('/:id/reset-password', authenticateJWT, authorize('merchant_admin', 
     await emitAudit({ req, action: 'USER_PASSWORD_RESET', resource: 'User', resourceId: user._id });
 
     const loginUrl = process.env.POS_URL || 'http://localhost:5173';
-    await sendWelcomeEmail({ to: user.email, name: user.name, tempPassword, loginUrl }).catch(() => {});
+    await sendWelcomeEmail({ to: user.email, name: user.name, tempPassword, loginUrl, role: user.role }).catch(() => {});
 
     res.json({ message: 'Password reset and welcome email sent' });
   } catch (err) {

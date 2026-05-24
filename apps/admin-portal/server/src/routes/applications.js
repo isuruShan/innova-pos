@@ -257,6 +257,7 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
           name: adminUser.name,
           tempPassword,
           loginUrl: adminUrl,
+          role: 'merchant_admin',
         });
         welcomeEmailSent = true;
       } catch (emailErr) {

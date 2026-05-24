@@ -167,6 +167,48 @@ router.post('/presign', serviceOrJwt, async (req, res) => {
 });
 
 /**
+ * POST /upload/presign-batch
+ * Batch presigning endpoint to reduce N+1 calls.
+ * Body: { keys: string[], expiresIn?: number }
+ * Returns: { urls: { [key: string]: string | null } }
+ */
+router.post('/presign-batch', serviceOrJwt, async (req, res) => {
+  const { keys, expiresIn = 3600 } = req.body;
+  if (!Array.isArray(keys) || !keys.length) {
+    return res.status(400).json({ message: 'keys array is required' });
+  }
+  if (keys.length > 100) {
+    return res.status(400).json({ message: 'Maximum 100 keys per batch' });
+  }
+
+  const isService = req.headers['x-service-key'] && req.headers['x-service-key'] === process.env.INTERNAL_SERVICE_KEY;
+  const tenantId = req.tenantId;
+
+  // Filter keys by access permissions
+  const allowedKeys = keys.filter((key) => {
+    if (!key || typeof key !== 'string') return false;
+    if (isService || req.user?.role === 'superadmin') return true;
+    if (tenantId && (key.startsWith(`tenants/${tenantId}/`) || key.startsWith('tenants/system/'))) return true;
+    return false;
+  });
+
+  const results = {};
+  const expiry = Math.min(expiresIn, 86400);
+
+  await Promise.all(
+    allowedKeys.map(async (key) => {
+      try {
+        results[key] = await getPresignedUrl(key, expiry);
+      } catch {
+        results[key] = null;
+      }
+    })
+  );
+
+  res.json({ urls: results });
+});
+
+/**
  * DELETE /upload
  */
 router.delete('/', authenticateJWT, async (req, res) => {

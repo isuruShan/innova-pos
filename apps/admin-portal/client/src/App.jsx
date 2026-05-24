@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import Layout from './components/layout/Layout';
+import ForcePasswordResetGate from './components/auth/ForcePasswordResetGate';
 
 // Superadmin pages
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
@@ -41,7 +42,11 @@ const PrivateRoute = ({ children, roles }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
-  return <MerchantSubscriptionGate>{children}</MerchantSubscriptionGate>;
+  return (
+    <ForcePasswordResetGate>
+      <MerchantSubscriptionGate>{children}</MerchantSubscriptionGate>
+    </ForcePasswordResetGate>
+  );
 };
 
 const RootRedirect = () => {

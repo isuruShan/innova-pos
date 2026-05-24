@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 import {
   Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Link2, X,
-  ChevronDown, ChevronUp, Tag, Check, Upload, ImageIcon, Loader2,
+  ChevronDown, ChevronUp, Tag, Check, Upload, ImageIcon, Loader2, Layers,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -746,6 +746,101 @@ function CategoryManager({ categories, onClose }) {
   );
 }
 
+// ─── Delete confirmation dialog ───────────────────────────────────────────────
+
+function DeleteMenuItemDialog({ item, allItems, onConfirm, onCancel, isDeleting }) {
+  // Find combos that include this item
+  const affectedCombos = allItems.filter(
+    (i) => i.isCombo && i.comboItems?.some((ci) => ci.menuItem === item._id)
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onCancel} />
+      
+      {/* Dialog */}
+      <div className="relative bg-[var(--pos-surface)] border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fade-in">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+            <Trash2 className="text-red-400" size={24} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-bold text-[var(--pos-text-primary)]">Delete Menu Item</h3>
+            <p className="text-sm text-slate-400 mt-1">
+              Are you sure you want to delete <span className="font-semibold text-slate-200">{item.name}</span>?
+            </p>
+          </div>
+        </div>
+
+        {/* Context warnings */}
+        <div className="mt-4 space-y-2">
+          {item.isCombo && item.comboItems?.length > 0 && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3">
+              <p className="text-sm text-amber-400 font-medium flex items-center gap-2">
+                <Link2 size={14} /> This is a combo with {item.comboItems.length} item{item.comboItems.length > 1 ? 's' : ''}
+              </p>
+            </div>
+          )}
+
+          {item.hasVariants && item.variants?.length > 0 && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3">
+              <p className="text-sm text-amber-400 font-medium flex items-center gap-2">
+                <Layers size={14} /> This item has {item.variants.length} variant{item.variants.length > 1 ? 's' : ''} that will be removed
+              </p>
+            </div>
+          )}
+
+          {affectedCombos.length > 0 && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3">
+              <p className="text-sm text-red-400 font-medium flex items-center gap-2">
+                <Link2 size={14} /> Used in {affectedCombos.length} combo{affectedCombos.length > 1 ? 's' : ''}
+              </p>
+              <ul className="mt-1.5 space-y-0.5">
+                {affectedCombos.slice(0, 3).map((combo) => (
+                  <li key={combo._id} className="text-xs text-red-300 pl-5">• {combo.name}</li>
+                ))}
+                {affectedCombos.length > 3 && (
+                  <li className="text-xs text-red-300 pl-5">• and {affectedCombos.length - 3} more...</li>
+                )}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        <p className="text-xs text-slate-500 mt-4">This action cannot be undone.</p>
+
+        {/* Actions */}
+        <div className="flex gap-3 mt-5">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isDeleting}
+            className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-[var(--pos-text-primary)] font-semibold py-2.5 rounded-xl transition text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="flex-1 bg-red-500 hover:bg-red-400 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition text-sm flex items-center justify-center gap-2"
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              'Delete'
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function MenuManagement() {
@@ -756,6 +851,7 @@ export default function MenuManagement() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const qc = useQueryClient();
 
   const { data: savedCriteria = [] } = useQuery({
@@ -976,7 +1072,7 @@ export default function MenuManagement() {
                       className="w-7 h-7 bg-slate-900/80 backdrop-blur rounded-lg flex items-center justify-center text-slate-300 hover:text-[var(--pos-text-primary)]">
                       <Edit2 size={12} />
                     </button>
-                    <button onClick={() => { if (confirm('Delete this item?')) deleteMutation.mutate(item._id); }}
+                    <button onClick={() => setDeleteTarget(item)}
                       className="w-7 h-7 bg-slate-900/80 backdrop-blur rounded-lg flex items-center justify-center text-slate-300 hover:text-red-400">
                       <Trash2 size={12} />
                     </button>
@@ -1139,6 +1235,20 @@ export default function MenuManagement() {
           </div>
         </form>
       </SlideOver>
+
+      {/* Delete confirmation dialog */}
+      {deleteTarget && (
+        <DeleteMenuItemDialog
+          item={deleteTarget}
+          allItems={items}
+          onConfirm={() => {
+            deleteMutation.mutate(deleteTarget._id);
+            setDeleteTarget(null);
+          }}
+          onCancel={() => setDeleteTarget(null)}
+          isDeleting={deleteMutation.isPending}
+        />
+      )}
     </div>
   );
 }

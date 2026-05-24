@@ -10,7 +10,7 @@ const multer = require('multer');
 const axios = require('axios');
 const FormData = require('form-data');
 const { tenantPlanAudience } = require('../utils/planAudience');
-const { presignObjectKey } = require('../utils/s3Runtime');
+const { presignObjectKey, presignObjectKeys } = require('../utils/s3Runtime');
 const { notifySuperAdmins, notifyMerchantAdmins } = require('../lib/notificationHelpers');
 const { notifySubscriptionEvent } = require('../lib/subscriptionNotify');
 const { resolveTenantPeriodEnd } = require('../lib/subscriptionDates');
@@ -44,12 +44,16 @@ const upload = multer({
 
 const amountsEqual = (a, b) => Number(a).toFixed(2) === Number(b).toFixed(2);
 
+/**
+ * Attach fresh presigned URLs to receipt documents using batch presigning.
+ * Uses single HTTP call instead of N calls for N receipts.
+ */
 async function attachFreshReceiptUrls(receipts) {
   if (!receipts?.length) return receipts;
   const keys = [...new Set(receipts.map((r) => r.receiptFileKey).filter(Boolean))];
   if (!keys.length) return receipts;
-  const pairs = await Promise.all(keys.map(async (key) => [key, await presignObjectKey(key, 86400)]));
-  const urls = Object.fromEntries(pairs.filter(([, url]) => Boolean(url)));
+  // Single batch call instead of N individual calls
+  const urls = await presignObjectKeys(keys, 86400);
   return receipts.map((r) => (r.receiptFileKey && urls[r.receiptFileKey]
     ? { ...r, receiptFileUrl: urls[r.receiptFileKey] }
     : r));

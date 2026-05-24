@@ -21,6 +21,7 @@ export default function BillingBreakdownPanel({ breakdown }) {
 
   const totalUsersCost = usersDetail.reduce((sum, u) => sum + (u.cost || 0), 0);
   const totalStoresCost = storesDetail.reduce((sum, s) => sum + (s.cost || 0), 0);
+  const inactiveUsersCount = usersDetail.filter((u) => u.isActive === false).length;
 
   const formatRole = (role) => {
     if (!role) return '';
@@ -118,7 +119,9 @@ export default function BillingBreakdownPanel({ breakdown }) {
             >
               <div className="flex items-center gap-2">
                 <Users size={18} className="text-gray-400 group-hover:text-brand-orange transition-colors animate-fade-in" />
-                <span className="font-semibold text-gray-900 text-sm">User Seats ({usersDetail.length} active)</span>
+                <span className="font-semibold text-gray-900 text-sm">
+                  User Seats ({usersDetail.length} total{inactiveUsersCount > 0 && `, ${inactiveUsersCount} inactive`})
+                </span>
                 {usersExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
               </div>
               <span className="tabular-nums font-bold text-gray-900 text-sm">
@@ -140,6 +143,11 @@ export default function BillingBreakdownPanel({ breakdown }) {
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${ROLE_BADGES[u.role] || 'bg-gray-50 text-gray-600'}`}>
                             {formatRole(u.role)}
                           </span>
+                          {u.isActive === false && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                              Inactive — billed until removed
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-gray-500 truncate mt-0.5">{u.email}</p>
                         {u.extraStoreSlots > 0 && (
@@ -206,9 +214,11 @@ export default function BillingBreakdownPanel({ breakdown }) {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-gray-900 text-sm truncate">{s.name}</span>
-                          <span className="font-mono text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                            {s.code}
-                          </span>
+                          {s.city && (
+                            <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                              {s.city}
+                            </span>
+                          )}
                         </div>
                         <p className="text-[11px] text-gray-400 mt-0.5">
                           {s.isFree ? 'Primary store location' : 'Additional store branch'}

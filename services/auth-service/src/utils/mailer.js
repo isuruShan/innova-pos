@@ -18,11 +18,41 @@ const sendEmail = async ({ to, subject, html, text }) => {
   await t.sendMail({ from, to, subject, html: wrapped, text });
 };
 
-const sendWelcomeEmail = async ({ to, name, tempPassword, loginUrl }) => {
+/**
+ * Send welcome email with role-appropriate content.
+ * @param {Object} params
+ * @param {string} params.to - Email address
+ * @param {string} params.name - User's display name
+ * @param {string} params.tempPassword - Temporary password
+ * @param {string} params.loginUrl - Login URL for the appropriate portal
+ * @param {string} [params.role] - User role (merchant_admin, manager, cashier, kitchen)
+ */
+const sendWelcomeEmail = async ({ to, name, tempPassword, loginUrl, role }) => {
+  const isOwner = role === 'merchant_admin';
+  const isStaff = ['manager', 'cashier', 'kitchen'].includes(role);
+  const roleLabel = role ? role.replace(/_/g, ' ') : '';
+  
+  // Different heading and intro based on role
+  const heading = isOwner 
+    ? 'Welcome to Cafinity! 🎉' 
+    : `You've been added to a Cafinity team! 🎉`;
+  
+  const subheading = isOwner
+    ? 'Your account is ready to use'
+    : 'Your staff account is ready';
+
+  const intro = isOwner
+    ? 'Congratulations! Your merchant account has been verified and is now active. You can start using Cafinity to manage your café or restaurant right away.'
+    : `Your administrator has created a <strong>${roleLabel}</strong> account for you. Use the credentials below to log in and start using the POS system.`;
+
+  const subject = isOwner
+    ? '🎉 Welcome to Cafinity - Your Account is Ready!'
+    : `🎉 Welcome to Cafinity - Your ${roleLabel} Account is Ready!`;
+
   const html = `
-    ${emailHeading('Welcome to Cafinity! 🎉', 'Your account is ready to use')}
+    ${emailHeading(heading, subheading)}
     ${emailParagraph(`Hi <strong>${esc(name)}</strong>,`)}
-    ${emailParagraph('Congratulations! Your merchant account has been verified and is now active. You can start using Cafinity to manage your café or restaurant right away.')}
+    ${emailParagraph(intro)}
     ${emailPanel(`
       <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#16213e;text-transform:uppercase;letter-spacing:0.05em">Your Login Credentials</p>
       <div style="margin:0 0 14px;padding:12px 0;border-bottom:2px solid #e2e8f0">
@@ -38,7 +68,7 @@ const sendWelcomeEmail = async ({ to, name, tempPassword, loginUrl }) => {
     ${emailButton(loginUrl, '🔒 Login to Your Account')}
     ${emailParagraph('<span style="color:#94a3b8;font-size:14px">Need help getting started? Our support team is here to assist you every step of the way.</span>')}
   `;
-  await sendEmail({ to, subject: '🎉 Welcome to Cafinity - Your Account is Ready!', html });
+  await sendEmail({ to, subject, html });
 };
 
 const sendRejectionEmail = async ({ to, name, reason }) => {

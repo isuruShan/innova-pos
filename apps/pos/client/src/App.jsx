@@ -5,6 +5,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { BrandingProvider } from './context/BrandingContext';
 import { StoreProvider } from './context/StoreContext';
 import PosNotificationStream from './components/PosNotificationStream';
+import ForcePasswordResetGate from './components/auth/ForcePasswordResetGate';
 
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
@@ -48,7 +49,7 @@ const RoleRoute = ({ children, roles }) => {
   if (user.subscriptionActive === false) return <SubscriptionBlocked />;
   const r = normalizeRole(user.role);
   if (!roles.some((allowed) => normalizeRole(allowed) === r)) return <Navigate to="/login" replace />;
-  return children;
+  return <ForcePasswordResetGate>{children}</ForcePasswordResetGate>;
 };
 
 const RootRedirect = () => {

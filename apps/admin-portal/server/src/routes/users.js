@@ -4,7 +4,7 @@ const User = require('../models/User');
 const { authenticateJWT, authorize, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { childLogger } = require('@innovapos/logger');
 const { sendWelcomeEmail, sendAdminResetPasswordEmail } = require('../utils/mailer');
-const { presignObjectKey } = require('../utils/s3Runtime');
+const { presignObjectKey, presignObjectKeys } = require('../utils/s3Runtime');
 const { parsePageQuery, paginated, parseSortQuery } = require('../lib/listPagination');
 const { quoteCreateUser, quoteAssignStores } = require('../lib/userLicenseQuote');
 const {
@@ -17,12 +17,15 @@ const router = express.Router();
 const generateTempPassword = () => crypto.randomBytes(6).toString('hex');
 const STAFF_ROLES = ['manager', 'cashier', 'kitchen'];
 
+/**
+ * Attach fresh presigned URLs to user profile images using batch presigning.
+ */
 async function attachFreshProfileImages(users) {
   if (!users?.length) return users;
   const keys = [...new Set(users.map((u) => u.profileImageKey).filter(Boolean))];
   if (!keys.length) return users;
-  const pairs = await Promise.all(keys.map(async (key) => [key, await presignObjectKey(key, 86400)]));
-  const urls = Object.fromEntries(pairs.filter(([, url]) => Boolean(url)));
+  // Single batch call instead of N individual calls
+  const urls = await presignObjectKeys(keys, 86400);
   return users.map((u) => (u.profileImageKey && urls[u.profileImageKey]
     ? { ...u, profileImage: urls[u.profileImageKey] }
     : u));
