@@ -26,6 +26,35 @@ const screenshotUpload = multer({
   },
 });
 
+/** All known paid addon codes */
+const ADDON_CODES = ['loyalty', 'qr_ordering', 'table_management', 'uber_eats', 'accounting'];
+
+/** Merchant: get list of currently active add-on codes (for conditional UI rendering). */
+router.get('/status', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
+  try {
+    let tenant = await Tenant.findById(req.tenantId).select('paidAddons').lean();
+    if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+    // Determine which addons are active for this tenant
+    const activeAddons = [];
+    for (const code of ADDON_CODES) {
+      const entitlementKey = entitlementKeyForCode(code);
+      const addon = tenant.paidAddons?.[entitlementKey];
+      if (addon?.active || addon?.subscribed) {
+        // Check if the addon is past its expiry date
+        if (addon.expiresAt && new Date(addon.expiresAt) < new Date()) {
+          continue; // Skip expired addon
+        }
+        activeAddons.push(code);
+      }
+    }
+
+    res.json({ activeAddons });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 async function buildCatalogRow(tenant, addon, plan, billingLabel) {
   const priced = priceAddonForPlan(addon, plan, tenant.countryIso);
   const state = await getAddonMerchantState(tenant, addon.code);
@@ -54,6 +83,13 @@ async function buildCatalogRow(tenant, addon, plan, billingLabel) {
 /** Merchant: purchasable add-ons with prices for the current billing period. */
 router.get('/merchant-catalog', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
   try {
+    // Check global paid addons visibility setting
+    const PlatformPaymentSettings = require('../models/PlatformPaymentSettings');
+    const platformSettings = await PlatformPaymentSettings.findOne({ singletonKey: 'default' }).lean();
+    if (platformSettings?.paidAddonsEnabled === false) {
+      return res.json([]); // Return empty catalog if globally disabled
+    }
+
     await ensureDefaultPaidAddons();
     let tenant = await loadTenantForBilling(req.tenantId);
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });

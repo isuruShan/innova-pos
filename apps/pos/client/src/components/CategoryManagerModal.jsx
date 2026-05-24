@@ -1,15 +1,20 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Tag, Check, X,
-  Search, ChevronUp, ChevronDown, Loader2, AlertTriangle,
+  Search, GripVertical, Loader2, AlertTriangle,
 } from 'lucide-react';
 import api from '../api/axios';
 import CenteredModal from './CenteredModal';
+import ConfirmDialog from './ConfirmDialog';
 import SortableTh from './SortableTh';
 import { useListSort } from '../hooks/useListSort';
+import { useDragReorder, reorderByDrag } from '../hooks/useDragReorder';
+import {
+  PLACEHOLDER_CATEGORY_NAME,
+  isHiddenFromCategoryManager,
+} from '../constants/categories';
 
-export const PLACEHOLDER_CATEGORY_NAME = 'Uncategorized';
 const CATEGORY_NAME_MAX = 100;
 
 function compareValues(a, b, dir) {
@@ -25,66 +30,6 @@ function compareValues(a, b, dir) {
   return dir * (a - b);
 }
 
-function DeleteCategoryDialog({ category, productCount, onConfirm, onCancel, isDeleting }) {
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative bg-[var(--pos-surface)] border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fade-in">
-        <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center">
-            <Trash2 className="text-red-400" size={24} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-bold text-[var(--pos-text-primary)]">Delete Category</h3>
-            <p className="text-sm text-slate-400 mt-1">
-              Are you sure you want to delete{' '}
-              <span className="font-semibold text-slate-200">{category.name}</span>?
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-4 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3">
-          <p className="text-sm text-amber-400 font-medium flex items-start gap-2">
-            <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-            <span>
-              {productCount > 0
-                ? `${productCount} product${productCount !== 1 ? 's' : ''} in this category will be moved to "${PLACEHOLDER_CATEGORY_NAME}".`
-                : `No products are linked to this category.`}
-              {' '}The category will be permanently removed.
-            </span>
-          </p>
-        </div>
-
-        <div className="flex gap-3 mt-6">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isDeleting}
-            className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-[var(--pos-text-primary)] font-semibold py-2.5 rounded-xl transition text-sm"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isDeleting}
-            className="flex-1 bg-red-500 hover:bg-red-400 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition text-sm flex items-center justify-center gap-2"
-          >
-            {isDeleting ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              'Delete Category'
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function CategoryManagerModal({ open, onClose, categories, menuItems }) {
   const qc = useQueryClient();
   const [newName, setNewName] = useState('');
@@ -94,6 +39,11 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const { sort, order, toggleSort } = useListSort('sortOrder', 'asc');
+
+  const manageableCategories = useMemo(
+    () => categories.filter((c) => !isHiddenFromCategoryManager(c.name)),
+    [categories],
+  );
 
   const productCounts = useMemo(() => {
     const counts = {};
@@ -132,12 +82,20 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
     onError: (e) => setError(e.response?.data?.message || 'Failed to reorder categories'),
   });
 
+  const orderedManageable = useMemo(() => {
+    return [...manageableCategories].sort((a, b) => {
+      const so = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+      if (so !== 0) return so;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
+  }, [manageableCategories]);
+
   const enriched = useMemo(
-    () => categories.map((c) => ({
+    () => orderedManageable.map((c) => ({
       ...c,
       productCount: productCounts[c.name] || 0,
     })),
-    [categories, productCounts],
+    [orderedManageable, productCounts],
   );
 
   const displayed = useMemo(() => {
@@ -157,6 +115,14 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
       return compareValues(a[field], b[field], dir);
     });
   }, [enriched, search, sort, order]);
+
+  const persistReorder = useCallback((fromId, toId) => {
+    const reordered = reorderByDrag(orderedManageable, fromId, toId);
+    if (!reordered) return;
+    reorderMutation.mutate(reordered.map((c) => c._id));
+  }, [orderedManageable, reorderMutation]);
+
+  const { bindHandle, bindDropTarget, isOver } = useDragReorder(persistReorder);
 
   const startEdit = (cat) => {
     setEditingId(cat._id);
@@ -184,24 +150,6 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
     createMutation.mutate(trimmed);
   };
 
-  const allOrdered = useMemo(() => {
-    return [...categories].sort((a, b) => {
-      const so = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
-      if (so !== 0) return so;
-      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-    });
-  }, [categories]);
-
-  const moveCategory = (catId, direction) => {
-    const ids = allOrdered.map((c) => c._id);
-    const idx = ids.findIndex((id) => String(id) === String(catId));
-    if (idx < 0) return;
-    const swapIdx = idx + direction;
-    if (swapIdx < 0 || swapIdx >= ids.length) return;
-    [ids[idx], ids[swapIdx]] = [ids[swapIdx], ids[idx]];
-    reorderMutation.mutate(ids);
-  };
-
   const handleClose = () => {
     setSearch('');
     setEditingId(null);
@@ -209,6 +157,8 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
     setDeleteTarget(null);
     onClose();
   };
+
+  const deleteProductCount = deleteTarget ? (productCounts[deleteTarget.name] || 0) : 0;
 
   return (
     <>
@@ -220,7 +170,6 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
         ariaLabel="Manage categories"
       >
         <div className="space-y-4">
-          {/* Add category */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">New Category</label>
             <div className="flex gap-2">
@@ -231,22 +180,21 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                 placeholder="e.g. Wraps"
-                className="flex-1 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+                className="flex-1 bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500"
               />
               <button
                 type="button"
                 onClick={handleCreate}
                 disabled={!newName.trim() || createMutation.isPending}
-                className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white px-4 py-2 rounded-xl text-sm font-semibold transition"
+                className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
               >
                 {createMutation.isPending ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
                 Add
               </button>
             </div>
-            <p className="text-xs text-slate-500 mt-1">{newName.length}/{CATEGORY_NAME_MAX} characters · New categories appear at the top</p>
+            <p className="text-xs text-slate-500 mt-1">{newName.length}/{CATEGORY_NAME_MAX} characters · Drag rows to reorder</p>
           </div>
 
-          {/* Search */}
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
@@ -254,7 +202,7 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search categories…"
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl pl-9 pr-9 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg pl-9 pr-9 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500"
             />
             {search && (
               <button
@@ -269,27 +217,25 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
           </div>
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm">{error}</div>
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">{error}</div>
           )}
 
-          {/* Table */}
-          <div className="bg-[var(--pos-panel)] rounded-xl border border-slate-700/50 overflow-hidden -mx-2 sm:mx-0">
+          <div className="rounded-lg border border-slate-700 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-700/50">
-                    <th className="px-3 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide w-20">Order</th>
+                  <tr className="border-b border-slate-700 bg-[var(--pos-surface-inset)]">
+                    <th className="px-3 py-3 w-10" aria-label="Drag to reorder" />
                     <SortableTh label="Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} className="px-4 py-3" />
-                    <SortableTh label="Sort #" field="sortOrder" currentSort={sort} currentOrder={order} onSort={toggleSort} className="px-4 py-3" align="center" />
                     <SortableTh label="Products" field="productCount" currentSort={sort} currentOrder={order} onSort={toggleSort} className="px-4 py-3" align="center" />
                     <SortableTh label="Active" field="active" currentSort={sort} currentOrder={order} onSort={toggleSort} className="px-4 py-3" align="center" />
                     <th className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-700/30">
+                <tbody className="divide-y divide-slate-700/50">
                   {displayed.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center text-slate-500 py-12">
+                      <td colSpan={5} className="text-center text-slate-500 py-12">
                         {search ? 'No categories match your search' : 'No categories yet'}
                       </td>
                     </tr>
@@ -297,34 +243,17 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                     displayed.map((cat) => {
                       const isPlaceholder = cat.name === PLACEHOLDER_CATEGORY_NAME;
                       const isEditing = editingId === cat._id;
-                      const globalIdx = allOrdered.findIndex((c) => c._id === cat._id);
+                      const handleDrag = bindHandle(cat._id);
+                      const dropTarget = bindDropTarget(cat._id);
 
                       return (
                         <tr
                           key={cat._id}
-                          className={`hover:bg-slate-700/20 transition ${!cat.active ? 'opacity-60' : ''}`}
+                          {...dropTarget}
+                          className={`hover:bg-slate-800/40 transition ${!cat.active ? 'opacity-60' : ''} ${isOver(cat._id) ? 'bg-amber-500/10 ring-1 ring-inset ring-amber-500/40' : ''}`}
                         >
-                          <td className="px-3 py-3">
-                            <div className="flex flex-col gap-0.5">
-                              <button
-                                type="button"
-                                disabled={globalIdx <= 0 || reorderMutation.isPending}
-                                onClick={() => moveCategory(cat._id, -1)}
-                                className="p-1 rounded bg-slate-700 text-slate-300 disabled:opacity-30 hover:bg-slate-600"
-                                title="Move up"
-                              >
-                                <ChevronUp size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                disabled={globalIdx >= allOrdered.length - 1 || reorderMutation.isPending}
-                                onClick={() => moveCategory(cat._id, 1)}
-                                className="p-1 rounded bg-slate-700 text-slate-300 disabled:opacity-30 hover:bg-slate-600"
-                                title="Move down"
-                              >
-                                <ChevronDown size={14} />
-                              </button>
-                            </div>
+                          <td className="px-3 py-3 text-slate-500 cursor-grab active:cursor-grabbing" {...handleDrag}>
+                            <GripVertical size={16} />
                           </td>
                           <td className="px-4 py-3">
                             {isEditing ? (
@@ -357,7 +286,6 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                               </div>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-center text-slate-400 tabular-nums">{cat.sortOrder ?? 0}</td>
                           <td className="px-4 py-3 text-center text-slate-400 tabular-nums">{cat.productCount}</td>
                           <td className="px-4 py-3 text-center">
                             <button
@@ -409,15 +337,33 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
         </div>
       </CenteredModal>
 
-      {deleteTarget && (
-        <DeleteCategoryDialog
-          category={deleteTarget}
-          productCount={productCounts[deleteTarget.name] || 0}
-          onConfirm={() => deleteMutation.mutate(deleteTarget._id)}
-          onCancel={() => setDeleteTarget(null)}
-          isDeleting={deleteMutation.isPending}
-        />
-      )}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete Category"
+        message={
+          deleteTarget
+            ? `Are you sure you want to delete "${deleteTarget.name}"?`
+            : ''
+        }
+        confirmLabel="Delete Category"
+        cancelLabel="Cancel"
+        variant="delete"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate(deleteTarget._id)}
+        onCancel={() => setDeleteTarget(null)}
+      >
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3">
+          <p className="text-sm text-amber-400 flex items-start gap-2">
+            <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+            <span>
+              {deleteProductCount > 0
+                ? `${deleteProductCount} product${deleteProductCount !== 1 ? 's' : ''} will be moved to "${PLACEHOLDER_CATEGORY_NAME}".`
+                : 'No products are linked to this category.'}
+              {' '}The category will be permanently removed.
+            </span>
+          </p>
+        </div>
+      </ConfirmDialog>
     </>
   );
 }

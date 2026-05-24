@@ -7,6 +7,7 @@ import api from '../../api/axios';
 import PlanChangeModal from '../../components/subscription/PlanChangeModal';
 import BillingBreakdownPanel from '../../components/billing/BillingBreakdownPanel';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
+import PaymentReceiptDetailModal from '../../components/payments/PaymentReceiptDetailModal';
 import { useToast } from '../../context/ToastContext';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
 import { formatMoney, BillingQuotePanel, LicenseQuoteBreakdown } from '../../components/billing/ProrationBreakdown';
@@ -31,179 +32,6 @@ function CopyableRef({ text }) {
   );
 }
 
-const RECEIPT_KIND_LABELS = {
-  subscription: 'Plan Renewal',
-  addon: 'Add-on',
-  user_license: 'User License',
-  store: 'Store Activation',
-};
-
-const STATUS_BADGES = {
-  pending:  'bg-yellow-100 text-yellow-800',
-  approved: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
-};
-
-function ReceiptDetailPopup({ receipt: r, onClose, onViewReceipt }) {
-  if (!r) return null;
-
-  let licensePayload = {};
-  try { if (r.userLicensePayload) licensePayload = typeof r.userLicensePayload === 'string' ? JSON.parse(r.userLicensePayload) : r.userLicensePayload; } catch {}
-
-  const plan = r.requestedPlanId;
-  const statusBadge = STATUS_BADGES[r.status] || 'bg-gray-100 text-gray-600';
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <div>
-            <h3 className="font-semibold text-gray-900">{RECEIPT_KIND_LABELS[r.receiptKind] || 'Payment'} Details</h3>
-            <p className="text-xs text-gray-500 mt-0.5">
-              <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge}`}>
-                {r.status?.charAt(0).toUpperCase() + r.status?.slice(1)}
-              </span>
-            </p>
-          </div>
-          <button type="button" onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="px-6 py-5 space-y-5">
-          {/* Amount */}
-          <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
-            <span className="text-sm text-gray-600">Amount paid</span>
-            <span className="text-xl font-bold text-gray-900">
-              {formatMoney(r.currency || 'LKR', r.amount)}
-            </span>
-          </div>
-
-          {/* What was purchased */}
-          {r.receiptKind === 'subscription' && plan && (
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Plan</p>
-              <div className="bg-blue-50 rounded-xl px-4 py-3 space-y-1">
-                <p className="font-medium text-blue-900">{plan.name}</p>
-                {plan.code && <p className="text-xs text-blue-700">Code: {plan.code}</p>}
-                {plan.billingCycle && <p className="text-xs text-blue-700 capitalize">Billing: {plan.billingCycle}</p>}
-                {plan.durationDays && <p className="text-xs text-blue-700">Duration: {plan.durationDays} days</p>}
-              </div>
-            </div>
-          )}
-
-          {r.receiptKind === 'addon' && r.addonCode && (
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Add-on</p>
-              <div className="bg-purple-50 rounded-xl px-4 py-3">
-                <p className="font-medium text-purple-900 capitalize">{r.addonCode.replace(/_/g, ' ')}</p>
-              </div>
-            </div>
-          )}
-
-          {r.receiptKind === 'user_license' && (
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase mb-2">User License</p>
-              <div className="bg-orange-50 rounded-xl px-4 py-3 space-y-1">
-                {licensePayload.action && <p className="text-xs text-orange-800 capitalize">Action: {licensePayload.action.replace(/_/g, ' ')}</p>}
-                {licensePayload.seats && <p className="text-xs text-orange-800">Seats: {licensePayload.seats}</p>}
-                {licensePayload.role && <p className="text-xs text-orange-800 capitalize">Role: {licensePayload.role.replace(/_/g, ' ')}</p>}
-              </div>
-            </div>
-          )}
-
-          {/* Dates */}
-          <div className="grid grid-cols-2 gap-3">
-            {r.paymentDate && (
-              <div className="bg-gray-50 rounded-xl px-4 py-3">
-                <p className="text-xs text-gray-500 mb-0.5">Payment date</p>
-                <p className="text-sm font-medium text-gray-800">{new Date(r.paymentDate).toLocaleDateString()}</p>
-              </div>
-            )}
-            {r.verifiedAt && (
-              <div className="bg-green-50 rounded-xl px-4 py-3">
-                <p className="text-xs text-gray-500 mb-0.5">Verified at</p>
-                <p className="text-sm font-medium text-gray-800">{new Date(r.verifiedAt).toLocaleDateString()}</p>
-              </div>
-            )}
-            {r.extensionDays > 0 && (
-              <div className="bg-blue-50 rounded-xl px-4 py-3">
-                <p className="text-xs text-gray-500 mb-0.5">Extension days</p>
-                <p className="text-sm font-medium text-blue-800">+{r.extensionDays} days</p>
-              </div>
-            )}
-          </div>
-
-          {/* Bank reference */}
-          {r.bankReference && (
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Bank reference</p>
-              <CopyableRef text={r.bankReference} />
-            </div>
-          )}
-
-          {/* Notes */}
-          {r.notes && (
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Notes</p>
-              <p className="text-sm text-gray-700 bg-gray-50 rounded-xl px-4 py-3">{r.notes}</p>
-            </div>
-          )}
-
-          {/* Detailed cost breakdown if present */}
-          {r.paymentBreakdown && (
-            <div className="pt-2 border-t border-gray-100">
-              <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Cost Breakdown</p>
-              {r.paymentBreakdown.plan ? (
-                <div className="bg-gray-55 border border-gray-150 rounded-xl p-4">
-                  <BillingBreakdownPanel breakdown={r.paymentBreakdown} />
-                </div>
-              ) : r.paymentBreakdown.lineItems ? (
-                <LicenseQuoteBreakdown
-                  lineItems={r.paymentBreakdown.lineItems}
-                  totalAmount={r.paymentBreakdown.priced?.amount || r.amount}
-                  currency={r.paymentBreakdown.priced?.currency || r.currency}
-                  recurringRates={r.paymentBreakdown.recurringRates}
-                />
-              ) : (
-                <BillingQuotePanel
-                  recurringRates={r.paymentBreakdown.recurringRates}
-                  proration={r.paymentBreakdown.proration}
-                  amountDue={r.paymentBreakdown.priced?.amount || r.amount}
-                  currency={r.paymentBreakdown.priced?.currency || r.currency}
-                  fullCycle={r.paymentBreakdown.fullCycle}
-                />
-              )}
-            </div>
-          )}
-
-          {/* Rejection reason */}
-          {r.status === 'rejected' && r.rejectionReason && (
-            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
-              <p className="text-xs font-semibold text-red-600 uppercase mb-1">Rejection reason</p>
-              <p className="text-sm text-red-800">{r.rejectionReason}</p>
-            </div>
-          )}
-
-          {/* Receipt file */}
-          {r.receiptFileKey && (
-            <button
-              type="button"
-              onClick={() => onViewReceipt(r._id, r.receiptFileUrl)}
-              className="flex items-center gap-2 text-sm text-brand-orange hover:underline bg-transparent border-0 p-0 cursor-pointer font-medium"
-            >
-              <FileText size={14} />
-              View uploaded receipt file
-              <ExternalLink size={12} />
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function SubscriptionPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -214,10 +42,9 @@ export default function SubscriptionPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [kindFilter, setKindFilter] = useState('');
   const [sortBy, setSortBy] = useState('newest');
-  const [paymentsSubTab, setPaymentsSubTab] = useState('addons'); // 'addons' or 'periodic'
+  const [detailReceiptId, setDetailReceiptId] = useState(null);
 
   const [planModalOpen, setPlanModalOpen] = useState(false);
-  const [popupReceipt, setPopupReceipt] = useState(null);
   const fileRef = useRef(null);
   const [form, setForm] = useState({ amount: '', bankReference: '', notes: '', planId: '' });
   const { isInternational, billingNote } = useMerchantBillingRegion();
@@ -515,13 +342,27 @@ export default function SubscriptionPage() {
     setSortBy('newest');
   };
 
-  const addonsList = useMemo(() => {
-    return filteredReceipts.filter((r) => r.receiptKind === 'addon' || r.addonCode || r.receiptKind === 'store' || r.receiptKind === 'user_license');
-  }, [filteredReceipts]);
+  // Helper to determine receipt type
+  const getReceiptType = (r) => {
+    if (r.receiptKind === 'addon' || r.addonCode) return 'addon';
+    if (r.receiptKind === 'store') return 'store';
+    if (r.receiptKind === 'user_license') return 'license';
+    return 'subscription';
+  };
 
-  const periodicList = useMemo(() => {
-    return filteredReceipts.filter((r) => r.receiptKind === 'subscription' || (!r.receiptKind && !r.addonCode && r.receiptKind !== 'store' && r.receiptKind !== 'user_license'));
-  }, [filteredReceipts]);
+  // Get display label for item purchased
+  const getItemLabel = (r) => {
+    const type = getReceiptType(r);
+    if (type === 'license') {
+      let licenseInfo = {};
+      try { if (r.userLicensePayload) licenseInfo = typeof r.userLicensePayload === 'string' ? JSON.parse(r.userLicensePayload) : r.userLicensePayload; } catch {}
+      return licenseInfo.name ? `${licenseInfo.name} (${licenseInfo.role?.replace('_', ' ') || 'user'})` : (licenseInfo.role?.replace('_', ' ') || 'User license');
+    }
+    if (type === 'addon' || type === 'store') {
+      return r.addonCode ? r.addonCode.replace(/_/g, ' ') : 'Add-on / Store';
+    }
+    return r.requestedPlanId?.name || r.requestedPlanCode || 'Plan Subscription';
+  };
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -1023,32 +864,6 @@ export default function SubscriptionPage() {
           <div className="p-5 border-b border-gray-100">
             <h3 className="font-semibold text-gray-900 text-sm">Payment & Receipt History</h3>
             <p className="text-xs text-gray-500 mt-1">Review the status and history of bank transfers and online checkout receipts.</p>
-            
-            {/* Sub-tabs */}
-            <div className="flex border-b border-gray-200 mt-4 mb-2">
-              <button
-                type="button"
-                onClick={() => setPaymentsSubTab('addons')}
-                className={`py-2 px-4 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
-                  paymentsSubTab === 'addons'
-                    ? 'border-brand-orange text-brand-orange'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Payments for Add-ons
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentsSubTab('periodic')}
-                className={`py-2 px-4 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
-                  paymentsSubTab === 'periodic'
-                    ? 'border-brand-orange text-brand-orange'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Periodic Subscription Payments
-              </button>
-            </div>
 
             {/* Filters Row */}
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
@@ -1085,8 +900,8 @@ export default function SubscriptionPage() {
                   onChange={(e) => setKindFilter(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs bg-white cursor-pointer"
                 >
-                  <option value="">All Kinds</option>
-                  <option value="plan">Plan Subscription</option>
+                  <option value="">All Types</option>
+                  <option value="plan">Subscription</option>
                   <option value="addon">Add-ons & Stores</option>
                 </select>
               </div>
@@ -1107,197 +922,131 @@ export default function SubscriptionPage() {
             </div>
           </div>
 
-          {/* Receipts Log List */}
-          {paymentsSubTab === 'addons' ? (
-            addonsList.length === 0 ? (
-              <div className="text-center py-16 text-gray-400 text-sm">
-                <FileText size={32} className="mx-auto text-gray-300 mb-2" />
-                <p className="font-medium text-gray-500">No add-on payments found</p>
-                {receipts.length > 0 ? (
-                  <div className="mt-2 space-y-2">
-                    <p className="text-xs text-gray-400">Try adjusting your search queries or filters.</p>
-                    <button
-                      onClick={handleClearFilters}
-                      className="text-xs font-semibold text-brand-orange bg-transparent border-0 cursor-pointer underline"
-                    >
-                      Clear Filters
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400 mt-1">Your payment receipt history will appear here once submitted.</p>
-                )}
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {addonsList.map((r) => {
-                  const isAddon = r.receiptKind === 'addon' || r.addonCode || r.receiptKind === 'store';
-                  const isUserLicense = r.receiptKind === 'user_license';
-                  let licenseInfo = {};
-                  try { if (r.userLicensePayload) licenseInfo = typeof r.userLicensePayload === 'string' ? JSON.parse(r.userLicensePayload) : r.userLicensePayload; } catch {}
-                  const componentLabel = isUserLicense
-                    ? (licenseInfo.name ? `${licenseInfo.name} (${licenseInfo.role?.replace('_', ' ') || 'user'})` : (licenseInfo.role?.replace('_', ' ') || 'User license'))
-                    : isAddon
-                    ? (r.addonCode ? r.addonCode.replace(/_/g, ' ') : 'Add-on / Store')
-                    : (r.requestedPlanId?.name || 'Plan Subscription');
-                  return (
-                    <div key={r._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-gray-50/50 transition-colors">
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-gray-900 text-sm">
-                            {formatMoney(r.currency || 'LKR', r.amount)}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide border ${
-                            isUserLicense
-                              ? 'bg-orange-50 text-orange-700 border-orange-100'
-                              : 'bg-violet-50 text-violet-700 border-violet-100'
-                          }`}>
-                            {isUserLicense ? 'User License' : 'Add-on / Store'}
-                          </span>
-                          <span className="text-xs text-gray-600 font-medium capitalize">{componentLabel}</span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500">
-                          <span>Submitted: {new Date(r.paymentDate || r.createdAt).toLocaleDateString()}</span>
-                          <span>·</span>
-                          <span className="flex items-center gap-1.5">
-                            Bank Ref: <CopyableRef text={r.bankReference || '—'} />
-                          </span>
-                        </div>
-                        
-                        {r.notes && (
-                          <p className="text-xs text-gray-500 italic bg-gray-50 border border-gray-100 rounded-md p-1.5 mt-1 font-sans">
-                            Note: "{r.notes}"
-                          </p>
-                        )}
-                      </div>
+          {/* Receipts count */}
+          {filteredReceipts.length > 0 && (
+            <p className="text-xs text-gray-400 px-5 py-2 border-b border-gray-50">
+              {filteredReceipts.length} payment{filteredReceipts.length !== 1 ? 's' : ''} found
+              {statusFilter && ` · ${statusFilter}`}
+              {kindFilter && ` · ${kindFilter === 'plan' ? 'subscription' : 'add-ons'}`}
+            </p>
+          )}
 
-                      <div className="shrink-0 flex items-center gap-3">
-                        {r.receiptFileKey && (
-                          <button
-                            type="button"
-                            onClick={() => handleViewReceipt(r._id, r.receiptFileUrl)}
-                            className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline flex items-center gap-0.5 px-2 py-1 rounded border border-gray-200 hover:bg-gray-50 bg-white cursor-pointer"
-                          >
-                            <ExternalLink size={12} /> View Receipt
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => setPopupReceipt(r)}
-                          className="text-xs text-gray-600 hover:text-brand-orange font-medium flex items-center gap-1 px-2 py-1 rounded border border-gray-200 hover:border-brand-orange hover:bg-orange-50 bg-white transition-colors cursor-pointer"
-                        >
-                          <Eye size={12} /> Details
-                        </button>
-                        
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize border flex items-center gap-1 ${
-                          r.status === 'verified'
-                            ? 'bg-green-50 text-green-700 border-green-100'
-                            : r.status === 'rejected'
-                            ? 'bg-red-50 text-red-700 border-red-100'
-                            : 'bg-amber-50 text-amber-700 border-amber-100'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            r.status === 'verified'
-                              ? 'bg-green-500'
-                              : r.status === 'rejected'
-                              ? 'bg-red-500'
-                              : 'bg-amber-500'
-                          }`} />
-                          {r.status}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )
+          {/* Receipts Table */}
+          {filteredReceipts.length === 0 ? (
+            <div className="text-center py-16 text-gray-400 text-sm">
+              <FileText size={32} className="mx-auto text-gray-300 mb-2" />
+              <p className="font-medium text-gray-500">No payments found</p>
+              {receipts.length > 0 ? (
+                <div className="mt-2 space-y-2">
+                  <p className="text-xs text-gray-400">Try adjusting your search queries or filters.</p>
+                  <button
+                    onClick={handleClearFilters}
+                    className="text-xs font-semibold text-brand-orange bg-transparent border-0 cursor-pointer underline"
+                  >
+                    Clear Filters
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 mt-1">Your payment receipt history will appear here once submitted.</p>
+              )}
+            </div>
           ) : (
-            periodicList.length === 0 ? (
-              <div className="text-center py-16 text-gray-400 text-sm">
-                <FileText size={32} className="mx-auto text-gray-300 mb-2" />
-                <p className="font-medium text-gray-500">No subscription payments found</p>
-                {receipts.length > 0 ? (
-                  <div className="mt-2 space-y-2">
-                    <p className="text-xs text-gray-400">Try adjusting your search queries or filters.</p>
-                    <button
-                      onClick={handleClearFilters}
-                      className="text-xs font-semibold text-brand-orange bg-transparent border-0 cursor-pointer underline"
-                    >
-                      Clear Filters
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400 mt-1">Your payment receipt history will appear here once submitted.</p>
-                )}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-100 bg-gray-50 text-[10px] uppercase font-bold tracking-wider text-gray-500">
-                      <th className="px-4 py-3">Billing Period</th>
-                      <th className="px-4 py-3">Plan</th>
-                      <th className="px-4 py-3">Amount</th>
-                      <th className="px-4 py-3">Paid Date</th>
-                      <th className="px-4 py-3">Bank Ref</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 text-sm">
-                    {periodicList.map((r) => {
-                      const periodStart = r.billingPeriodStart ? new Date(r.billingPeriodStart).toLocaleDateString() : '';
-                      const periodEnd = r.billingPeriodEnd ? new Date(r.billingPeriodEnd).toLocaleDateString() : '';
-                      const periodLabel = periodStart && periodEnd ? `${periodStart} – ${periodEnd}` : '—';
-                      
-                      return (
-                        <tr key={r._id} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="px-4 py-3 font-medium text-gray-900">{periodLabel}</td>
-                          <td className="px-4 py-3 text-gray-600 font-medium">{r.requestedPlanId?.name || r.requestedPlanCode || 'Plan Subscription'}</td>
-                          <td className="px-4 py-3 font-semibold text-gray-900">{formatMoney(r.currency || 'LKR', r.amount)}</td>
-                          <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{new Date(r.paymentDate || r.createdAt).toLocaleDateString()}</td>
-                          <td className="px-4 py-3 text-gray-500 font-mono text-xs"><CopyableRef text={r.bankReference || '—'} /></td>
-                          <td className="px-4 py-3">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-                              r.status === 'verified' ? 'bg-green-50 text-green-700 border-green-100' :
-                              r.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' :
-                              'bg-amber-50 text-amber-700 border-amber-100'
-                            }`}>
-                              {r.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right whitespace-nowrap">
-                            <div className="flex items-center justify-end gap-2">
-                              {r.receiptFileKey && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleViewReceipt(r._id, r.receiptFileUrl)}
-                                  className="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline flex items-center gap-0.5 px-2 py-1 rounded border border-gray-200 hover:bg-gray-50 bg-white cursor-pointer"
-                                >
-                                  <ExternalLink size={12} /> View
-                                </button>
-                              )}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50 text-[10px] uppercase font-bold tracking-wider text-gray-500">
+                    <th className="px-4 py-3">Item</th>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3">Amount</th>
+                    <th className="px-4 py-3">Reference</th>
+                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredReceipts.map((r) => {
+                    const type = getReceiptType(r);
+                    const itemLabel = getItemLabel(r);
+                    const typeBadge = {
+                      subscription: { bg: 'bg-blue-50 text-blue-700 border-blue-100', label: 'Subscription' },
+                      addon: { bg: 'bg-violet-50 text-violet-700 border-violet-100', label: 'Add-on' },
+                      store: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-100', label: 'Store' },
+                      license: { bg: 'bg-orange-50 text-orange-700 border-orange-100', label: 'User License' },
+                    }[type] || { bg: 'bg-gray-50 text-gray-700 border-gray-100', label: 'Payment' };
+
+                    return (
+                      <tr key={r._id} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailReceiptId(r._id)}>
+                        <td className="px-4 py-3 font-medium text-gray-900 max-w-[160px]">
+                          <span className="truncate block capitalize" title={itemLabel}>{itemLabel}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium border ${typeBadge.bg}`}>
+                            {typeBadge.label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-semibold tabular-nums text-gray-900 whitespace-nowrap">
+                          {formatMoney(r.currency || 'LKR', r.amount)}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 font-mono text-xs">
+                          <CopyableRef text={r.bankReference || '—'} />
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                          {new Date(r.paymentDate || r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border capitalize ${
+                            r.status === 'verified' ? 'bg-green-50 text-green-700 border-green-100' :
+                            r.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' :
+                            'bg-amber-50 text-amber-700 border-amber-100'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              r.status === 'verified' ? 'bg-green-500' :
+                              r.status === 'rejected' ? 'bg-red-500' :
+                              'bg-amber-500'
+                            }`} />
+                            {r.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-2">
+                            {r.receiptFileKey && (
                               <button
                                 type="button"
-                                onClick={() => setPopupReceipt(r)}
-                                className="text-xs text-gray-600 hover:text-brand-orange font-medium flex items-center gap-1 px-2 py-1 rounded border border-gray-200 hover:border-brand-orange hover:bg-orange-50 bg-white transition-colors cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); handleViewReceipt(r._id, r.receiptFileUrl); }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-50 cursor-pointer"
+                                title="View receipt file"
                               >
-                                <Eye size={12} /> Details
+                                <ExternalLink size={12} />
                               </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setDetailReceiptId(r._id); }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                              <Eye size={12} /> View
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
-      {popupReceipt && <ReceiptDetailPopup receipt={popupReceipt} onClose={() => setPopupReceipt(null)} />}
+
+      {/* Payment Detail Modal */}
+      {detailReceiptId && (
+        <PaymentReceiptDetailModal
+          receiptId={detailReceiptId}
+          onClose={() => setDetailReceiptId(null)}
+          showTenantContext={false}
+        />
+      )}
     </div>
   );
 }

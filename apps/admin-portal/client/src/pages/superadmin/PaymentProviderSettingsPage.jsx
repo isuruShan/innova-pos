@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Upload, Loader } from 'lucide-react';
+import { Plus, Pencil, Upload, Loader, AlertTriangle, Sparkles } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import api from '../../api/axios';
 import SideDrawer from '../../components/common/SideDrawer';
@@ -87,7 +87,27 @@ export default function PaymentProviderSettingsPage() {
     },
   });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['platform-payment-methods'] });
+  const { data: platformSettings } = useQuery({
+    queryKey: ['platform-payment-settings'],
+    queryFn: async () => {
+      const { data } = await api.get('/platform-payments/settings');
+      return data;
+    },
+  });
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['platform-payment-methods'] });
+    qc.invalidateQueries({ queryKey: ['platform-payment-settings'] });
+  };
+
+  const togglePaidAddons = useMutation({
+    mutationFn: (enabled) => api.put('/platform-payments/paid-addons-enabled', { enabled }),
+    onSuccess: (res) => {
+      invalidate();
+      toast.success(res.data.paidAddonsEnabled ? 'Paid add-ons enabled for merchants' : 'Paid add-ons hidden from merchants');
+    },
+    onError: (e) => toast.error(e.response?.data?.message || 'Failed to update setting'),
+  });
 
   const saveStripe = useMutation({
     mutationFn: (payload) => api.put('/platform-payments/stripe', { stripe: payload }),
@@ -336,6 +356,39 @@ export default function PaymentProviderSettingsPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Paid Add-ons Global Toggle */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-violet-100 text-violet-700">
+              <Sparkles size={20} />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Paid add-ons visibility</h3>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Control whether merchants can see and purchase paid add-ons (QR ordering, loyalty, etc.)
+              </p>
+              {platformSettings?.paidAddonsEnabled === false && (
+                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                  <AlertTriangle size={12} />
+                  Add-ons are currently hidden from merchants
+                </p>
+              )}
+            </div>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={platformSettings?.paidAddonsEnabled !== false}
+              onChange={(e) => togglePaidAddons.mutate(e.target.checked)}
+              disabled={togglePaidAddons.isPending}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-orange/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-orange peer-disabled:opacity-50" />
+          </label>
+        </div>
       </div>
 
       <SideDrawer

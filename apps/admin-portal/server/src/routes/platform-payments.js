@@ -147,6 +147,7 @@ async function sanitizeForSuperadmin(doc) {
     stripe: await stripeDetails(o),
     paypal: await paypalDetails(o),
     hasBank: Boolean(o.bankAccounts?.[0]),
+    paidAddonsEnabled: o.paidAddonsEnabled !== false,
   };
 }
 
@@ -370,6 +371,20 @@ router.delete('/bank-accounts/:id', authenticateJWT, authorize('superadmin'), as
     doc.updatedBy = req.user.id;
     await doc.save();
     res.json(await sanitizeForSuperadmin(doc));
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
+// Toggle paid add-ons visibility to merchants
+router.put('/paid-addons-enabled', authenticateJWT, authorize('superadmin'), async (req, res) => {
+  try {
+    const doc = await getOrCreateSettings();
+    const { enabled } = req.body || {};
+    doc.paidAddonsEnabled = enabled !== false;
+    doc.updatedBy = req.user.id;
+    await doc.save();
+    res.json({ paidAddonsEnabled: doc.paidAddonsEnabled });
   } catch (err) {
     sendRouteError(res, err, { req });
   }

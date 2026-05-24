@@ -1,15 +1,17 @@
 const express = require('express');
 const Category = require('../models/Category');
-const MenuItem = require('../models/MenuItem');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
 const { parseSortQuery } = require('../lib/listPagination');
 const { getNextTopSortOrder, applyReorder } = require('../lib/sortOrderHelpers');
 const {
   PLACEHOLDER_CATEGORY_NAME,
+  COMBO_CATEGORY_NAME,
+  isSystemCategoryName,
   cascadeCategoryRename,
   reassignMenuItemsFromCategory,
   buildItemStoreFilter,
+  ensureStoreSystemCategories,
 } = require('../lib/categoryHelpers');
 
 const router = express.Router();
@@ -25,6 +27,15 @@ const DEFAULT_CATEGORY_SORT = { sortOrder: 1, name: 1 };
 
 router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
+    const storeId = req.storeId || (await resolveWriteStoreId(req));
+    if (storeId) {
+      await ensureStoreSystemCategories({
+        tenantId: req.tenantId,
+        storeId,
+        userId: req.user?.id,
+      });
+    }
+
     const { all } = req.query;
     const filter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
     if (all !== 'true') filter.active = true;
@@ -53,6 +64,9 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
   try {
     const { name, sortOrder: requestedSortOrder } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: 'Category name is required' });
+    if (isSystemCategoryName(name)) {
+      return res.status(400).json({ message: 'That category name is reserved by the system' });
+    }
     const storeId = await resolveWriteStoreId(req);
     if (!storeId) return res.status(400).json({ message: 'No store available for category creation' });
 
@@ -83,6 +97,15 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
     if (!existing) return res.status(404).json({ message: 'Category not found' });
 
     const oldName = existing.name;
+    if (isSystemCategoryName(oldName)) {
+      if (name !== undefined && name.trim() !== oldName) {
+        return res.status(400).json({ message: 'System categories cannot be renamed' });
+      }
+      if (active === false) {
+        return res.status(400).json({ message: 'System categories must stay active' });
+      }
+    }
+
     const update = { updatedBy: req.user.id };
     if (name !== undefined) update.name = name.trim();
     if (active !== undefined) update.active = active;
@@ -111,8 +134,8 @@ router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmi
     const category = await Category.findOne(filter);
     if (!category) return res.status(404).json({ message: 'Category not found' });
 
-    if (category.name === PLACEHOLDER_CATEGORY_NAME) {
-      return res.status(400).json({ message: 'The Uncategorized category cannot be deleted' });
+    if (isSystemCategoryName(category.name)) {
+      return res.status(400).json({ message: 'System categories cannot be deleted' });
     }
 
     const { reassignedCount, placeholderCategory } = await reassignMenuItemsFromCategory({

@@ -10,7 +10,7 @@ const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require(
 const { roundMoney2 } = require('../utils/orderHelpers');
 const { parseSortQuery } = require('../lib/listPagination');
 const { getNextTopSortOrder, applyReorder } = require('../lib/sortOrderHelpers');
-const { buildItemStoreFilter } = require('../lib/categoryHelpers');
+const { buildItemStoreFilter, COMBO_CATEGORY_NAME, ensureComboCategory } = require('../lib/categoryHelpers');
 
 function sanitizeMenuPayload(body) {
   if (!body || typeof body !== 'object') return body;
@@ -41,6 +41,21 @@ const MENU_SORT_FIELDS = {
 };
 
 const DEFAULT_MENU_SORT = { category: 1, sortOrder: 1, name: 1 };
+
+async function resolveItemCategory(req, body, storeId) {
+  const payload = sanitizeMenuPayload(body);
+  if (payload.isCombo) {
+    await ensureComboCategory({ tenantId: req.tenantId, storeId, userId: req.user.id });
+    return COMBO_CATEGORY_NAME;
+  }
+  const category = body.category?.trim();
+  if (!category) {
+    const err = new Error('Category is required');
+    err.status = 400;
+    throw err;
+  }
+  return category;
+}
 
 router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
@@ -75,11 +90,11 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
   try {
     const storeId = await resolveWriteStoreId(req);
     if (!storeId) return res.status(400).json({ message: 'No store available for menu item creation' });
-    const category = req.body.category?.trim();
-    if (!category) return res.status(400).json({ message: 'Category is required' });
 
     const { images, image, imageKey } = normalizeMenuItemImages(req.body);
     const payload = sanitizeMenuPayload(req.body);
+    const category = await resolveItemCategory(req, req.body, storeId);
+    payload.category = category;
 
     const itemScope = {
       tenantId: req.tenantId,
@@ -109,7 +124,21 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
 
 router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
+    const existing = await MenuItem.findOne({
+      _id: req.params.id,
+      tenantId: req.tenantId,
+      ...buildStoreFilter(req),
+    });
+    if (!existing) return res.status(404).json({ message: 'Menu item not found' });
+
+    const storeId = existing.storeId || (await resolveWriteStoreId(req));
     const update = { ...sanitizeMenuPayload(req.body), updatedBy: req.user.id };
+
+    if (req.body.isCombo !== undefined || req.body.category !== undefined) {
+      const isCombo = req.body.isCombo !== undefined ? !!req.body.isCombo : existing.isCombo;
+      update.isCombo = isCombo;
+      update.category = await resolveItemCategory(req, { ...req.body, isCombo }, storeId);
+    }
     const hasImageData = req.body?.images !== undefined || req.body?.image !== undefined || req.body?.imageKey !== undefined;
     if (hasImageData) {
       const { images, image, imageKey } = normalizeMenuItemImages(req.body);

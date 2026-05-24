@@ -20,6 +20,8 @@ const platformPaymentSettingsSchema = new mongoose.Schema(
   {
     singletonKey: { type: String, default: 'default', unique: true },
     bankAccounts: { type: [bankAccountSchema], default: [] },
+    /** Global kill switch for paid add-ons visibility to merchants */
+    paidAddonsEnabled: { type: Boolean, default: true },
     stripe: {
       enabled: { type: Boolean, default: false },
       publishableKey: { type: String, default: '' },

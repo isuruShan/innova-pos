@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { getPosUrl } from '@innovapos/app-urls';
 import {
   LayoutDashboard, Users, Palette, CreditCard, Building2,
   ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3, Sparkles, Landmark,
 } from 'lucide-react';
+import api from '../../api/axios';
 import NotificationBell from '../NotificationBell';
 import SubscriptionDueBanner from '../SubscriptionDueBanner';
 import { useAuth } from '../../context/AuthContext';
@@ -45,7 +47,7 @@ const ADMIN_NAV_GROUPS = [
   {
     title: 'Customers & marketing',
     items: [
-      { label: 'Loyalty admin', icon: Award, to: '/loyalty' },
+      { label: 'Loyalty admin', icon: Award, to: '/loyalty', requiresAddon: 'loyalty' },
       { label: 'Customers', icon: ContactRound, to: '/customers' },
       { label: 'Promotions', icon: Tag, to: '/promotions' },
     ],
@@ -53,7 +55,7 @@ const ADMIN_NAV_GROUPS = [
   {
     title: 'Finance',
     items: [
-      { label: 'Accounting', icon: Landmark, to: '/accounting' },
+      { label: 'Accounting', icon: Landmark, to: '/accounting', requiresAddon: 'accounting' },
     ],
   },
   {
@@ -61,7 +63,7 @@ const ADMIN_NAV_GROUPS = [
     items: [
       { label: 'Cashier sessions', icon: Wallet, to: '/cashier-sessions' },
       { label: 'Add-ons', icon: Sparkles, to: '/addons' },
-      { label: 'Uber Eats Config', icon: Sparkles, to: '/uber-config' },
+      { label: 'Uber Eats Config', icon: Sparkles, to: '/uber-config', requiresAddon: 'uber_eats' },
       { label: 'Subscription', icon: CreditCard, to: '/subscription' },
     ],
   },
@@ -76,13 +78,42 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const subscriptionLocked = !isSuperAdmin && user?.subscriptionActive === false;
-  const merchantNavGroups = subscriptionLocked
-    ? [{ title: 'Billing', items: [{ label: 'Subscription', icon: CreditCard, to: '/subscription' }] }]
-    : ADMIN_NAV_GROUPS;
-  const navGroups = isSuperAdmin ? SUPERADMIN_NAV_GROUPS : merchantNavGroups;
+
+  // Fetch tenant's active addons (only for merchant admins)
+  const { data: addonStatus } = useQuery({
+    queryKey: ['tenant-addon-status'],
+    queryFn: async () => {
+      const { data } = await api.get('/paid-addons/status');
+      return data;
+    },
+    enabled: !isSuperAdmin && !subscriptionLocked,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
+  // Filter nav items based on addon subscriptions
+  const filteredAdminNavGroups = useMemo(() => {
+    if (subscriptionLocked) {
+      return [{ title: 'Billing', items: [{ label: 'Subscription', icon: CreditCard, to: '/subscription' }] }];
+    }
+    
+    const activeAddons = addonStatus?.activeAddons || [];
+    
+    return ADMIN_NAV_GROUPS.map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        // Show items that don't require an addon
+        if (!item.requiresAddon) return true;
+        // Show items only if the addon is active
+        return activeAddons.includes(item.requiresAddon);
+      }),
+    })).filter((group) => group.items.length > 0); // Remove empty groups
+  }, [subscriptionLocked, addonStatus?.activeAddons]);
+
+  const merchantNavGroups = isSuperAdmin ? SUPERADMIN_NAV_GROUPS : filteredAdminNavGroups;
+  const navGroups = merchantNavGroups;
   const navItems = isSuperAdmin
     ? SUPERADMIN_NAV_FLAT
-    : (subscriptionLocked ? [{ label: 'Subscription', to: '/subscription' }] : ADMIN_NAV_FLAT);
+    : (subscriptionLocked ? [{ label: 'Subscription', to: '/subscription' }] : filteredAdminNavGroups.flatMap((g) => g.items));
 
   const handleLogout = () => {
     logout();

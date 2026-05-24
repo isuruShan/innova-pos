@@ -87,7 +87,7 @@ function TenantContextPanel({ ctx }) {
   );
 }
 
-export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify, onReject, isMutating = false, mutationError = null }) {
+export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify, onReject, isMutating = false, mutationError = null, showTenantContext = true }) {
   const [confirmVerify, setConfirmVerify] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -141,7 +141,7 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
           {receipt && (
             <div className="space-y-4">
               <div className="rounded-lg border border-gray-200 p-4">
-                <DetailRow label="Merchant">{receipt.tenantId?.businessName || '—'}</DetailRow>
+                {showTenantContext && <DetailRow label="Merchant">{receipt.tenantId?.businessName || '—'}</DetailRow>}
                 <DetailRow label="Status">
                   <span className="capitalize font-medium">{receipt.status}</span>
                 </DetailRow>
@@ -166,8 +166,8 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
                 ) : null}
               </div>
 
-              {/* Merchant subscription context — shown for all receipt types */}
-              <TenantContextPanel ctx={data?.tenantContext} />
+              {/* Merchant subscription context — shown for all receipt types (unless disabled) */}
+              {showTenantContext && <TenantContextPanel ctx={data?.tenantContext} />}
 
               {data?.addonMeta && (
                 <div className="rounded-lg bg-violet-50 border border-violet-100 p-4 text-sm">

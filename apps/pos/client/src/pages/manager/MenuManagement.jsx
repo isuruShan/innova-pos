@@ -1,14 +1,17 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 import {
   Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Link2, X,
-  ChevronDown, ChevronUp, Tag, Upload, ImageIcon, Loader2, Layers,
+  ChevronDown, ChevronUp, Tag, Upload, ImageIcon, Loader2, Layers, GripVertical,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
 import CategoryManagerModal from '../../components/CategoryManagerModal';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import { COMBO_CATEGORY_NAME, isSelectableMenuCategory } from '../../constants/categories';
+import { useDragReorder, reorderByDrag } from '../../hooks/useDragReorder';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { formatCurrency } from '../../utils/format';
 import { useStoreContext } from '../../context/StoreContext';
@@ -628,101 +631,6 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation })
 }
 
 
-// ─── Delete confirmation dialog ───────────────────────────────────────────────
-
-function DeleteMenuItemDialog({ item, allItems, onConfirm, onCancel, isDeleting }) {
-  // Find combos that include this item
-  const affectedCombos = allItems.filter(
-    (i) => i.isCombo && i.comboItems?.some((ci) => ci.menuItem === item._id)
-  );
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onCancel} />
-      
-      {/* Dialog */}
-      <div className="relative bg-[var(--pos-surface)] border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fade-in">
-        <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center">
-            <Trash2 className="text-red-400" size={24} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-bold text-[var(--pos-text-primary)]">Delete Menu Item</h3>
-            <p className="text-sm text-slate-400 mt-1">
-              Are you sure you want to delete <span className="font-semibold text-slate-200">{item.name}</span>?
-            </p>
-          </div>
-        </div>
-
-        {/* Context warnings */}
-        <div className="mt-4 space-y-2">
-          {item.isCombo && item.comboItems?.length > 0 && (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3">
-              <p className="text-sm text-amber-400 font-medium flex items-center gap-2">
-                <Link2 size={14} /> This is a combo with {item.comboItems.length} item{item.comboItems.length > 1 ? 's' : ''}
-              </p>
-            </div>
-          )}
-
-          {item.hasVariants && item.variants?.length > 0 && (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3">
-              <p className="text-sm text-amber-400 font-medium flex items-center gap-2">
-                <Layers size={14} /> This item has {item.variants.length} variant{item.variants.length > 1 ? 's' : ''} that will be removed
-              </p>
-            </div>
-          )}
-
-          {affectedCombos.length > 0 && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3">
-              <p className="text-sm text-red-400 font-medium flex items-center gap-2">
-                <Link2 size={14} /> Used in {affectedCombos.length} combo{affectedCombos.length > 1 ? 's' : ''}
-              </p>
-              <ul className="mt-1.5 space-y-0.5">
-                {affectedCombos.slice(0, 3).map((combo) => (
-                  <li key={combo._id} className="text-xs text-red-300 pl-5">• {combo.name}</li>
-                ))}
-                {affectedCombos.length > 3 && (
-                  <li className="text-xs text-red-300 pl-5">• and {affectedCombos.length - 3} more...</li>
-                )}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        <p className="text-xs text-slate-500 mt-4">This action cannot be undone.</p>
-
-        {/* Actions */}
-        <div className="flex gap-3 mt-5">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isDeleting}
-            className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-[var(--pos-text-primary)] font-semibold py-2.5 rounded-xl transition text-sm"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isDeleting}
-            className="flex-1 bg-red-500 hover:bg-red-400 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition text-sm flex items-center justify-center gap-2"
-          >
-            {isDeleting ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              'Delete'
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function MenuManagement() {
@@ -765,8 +673,16 @@ export default function MenuManagement() {
   });
 
   const menuLoading = !isStoreReady || menuPending || categoriesPending;
-  const activeCategories = allCategories.filter(c => c.active);
-  const categoryNames = activeCategories.map(c => c.name);
+  const activeCategories = allCategories.filter((c) => c.active);
+  const categoryNames = activeCategories.map((c) => c.name);
+  const selectableCategoryNames = activeCategories
+    .filter((c) => isSelectableMenuCategory(c.name))
+    .map((c) => c.name);
+
+  const reorderMenuMutation = useMutation({
+    mutationFn: ({ ids, category }) => api.patch('/menu/reorder', { ids, category }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['menu'] }),
+  });
 
   const createMutation = useMutation({
     mutationFn: (data) => api.post('/menu', data),
@@ -794,9 +710,9 @@ export default function MenuManagement() {
     setEditing(null);
     // Respect the category tab selected in the sidebar — do not always use the first category in the list.
     const defaultCategory =
-      activeCategory !== 'All' && categoryNames.includes(activeCategory)
+      activeCategory !== 'All' && selectableCategoryNames.includes(activeCategory)
         ? activeCategory
-        : categoryNames[0] || '';
+        : selectableCategoryNames[0] || '';
     setForm({ ...EMPTY_FORM, category: defaultCategory });
     setFormError('');
     setSlideOpen(true);
@@ -860,7 +776,7 @@ export default function MenuManagement() {
 
     const payload = {
       name: form.name.trim(),
-      category: form.category,
+      category: form.isCombo ? COMBO_CATEGORY_NAME : form.category,
       price: form.hasVariants ? 0 : price,
       description: form.description,
       images: form.images,
@@ -875,10 +791,42 @@ export default function MenuManagement() {
     else createMutation.mutate(payload);
   };
 
-  const filtered = useMemo(
-    () => activeCategory === 'All' ? items : items.filter(i => i.category === activeCategory),
-    [items, activeCategory]
+  const filtered = useMemo(() => {
+    const list = activeCategory === 'All'
+      ? items
+      : items.filter((i) => i.category === activeCategory);
+    return [...list].sort((a, b) => {
+      if (activeCategory === 'All') {
+        const byCat = a.category.localeCompare(b.category);
+        if (byCat !== 0) return byCat;
+      }
+      const byOrder = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+      if (byOrder !== 0) return byOrder;
+      return a.name.localeCompare(b.name);
+    });
+  }, [items, activeCategory]);
+
+  const canDragProducts = activeCategory !== 'All';
+
+  const persistMenuReorder = useCallback((fromId, toId) => {
+    const reordered = reorderByDrag(filtered, fromId, toId);
+    if (!reordered) return;
+    reorderMenuMutation.mutate({
+      ids: reordered.map((i) => i._id),
+      category: activeCategory,
+    });
+  }, [filtered, activeCategory, reorderMenuMutation]);
+
+  const { bindHandle: menuDragHandle, bindDropTarget: menuDropTarget, isOver: menuDragOver } = useDragReorder(
+    canDragProducts ? persistMenuReorder : () => {},
   );
+
+  const deleteAffectedCombos = useMemo(() => {
+    if (!deleteTarget) return [];
+    return items.filter(
+      (i) => i.isCombo && i.comboItems?.some((ci) => ci.menuItem === deleteTarget._id),
+    );
+  }, [deleteTarget, items]);
   const isPending = createMutation.isPending || updateMutation.isPending;
   const nonComboItems = items.filter(i => !i.isCombo);
   const filterTabs = ['All', ...categoryNames];
@@ -909,17 +857,26 @@ export default function MenuManagement() {
         </div>
 
         {/* Category filter */}
-        <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
-          {filterTabs.map(cat => (
-            <button key={cat} onClick={() => setActiveCategory(cat)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
-                activeCategory === cat
-                  ? 'bg-amber-500 text-[var(--pos-selection-text)] shadow-lg shadow-amber-500/20'
-                  : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700'
-              }`}>
-              {cat}
-            </button>
-          ))}
+        <div className="flex flex-col gap-2 mb-5">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {filterTabs.map(cat => (
+              <button key={cat} onClick={() => setActiveCategory(cat)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
+                  activeCategory === cat
+                    ? 'bg-amber-500 text-[var(--pos-selection-text)] shadow-lg shadow-amber-500/20'
+                    : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700'
+                }`}>
+                {cat}
+              </button>
+            ))}
+          </div>
+          {canDragProducts ? (
+            <p className="text-xs text-slate-500 flex items-center gap-1">
+              <GripVertical size={12} /> Drag products to reorder within {activeCategory}
+            </p>
+          ) : (
+            <p className="text-xs text-slate-500">Select a category tab to drag and reorder products</p>
+          )}
         </div>
 
         {menuLoading ? (
@@ -929,12 +886,24 @@ export default function MenuManagement() {
             {filtered.length === 0 && (
               <div className="col-span-full text-center text-slate-600 py-16">No items in this category</div>
             )}
-            {filtered.map(item => (
+            {filtered.map(item => {
+              const handleDrag = canDragProducts ? menuDragHandle(item._id) : {};
+              const dropTarget = canDragProducts ? menuDropTarget(item._id) : {};
+              return (
               <div key={item._id}
+                {...dropTarget}
                 className={`bg-[var(--pos-panel)] rounded-2xl overflow-hidden border transition group ${
                   item.isCombo ? 'border-amber-500/30 hover:border-amber-500/60' : 'border-slate-700/50 hover:border-slate-600'
-                }`}>
+                } ${menuDragOver(item._id) ? 'ring-2 ring-amber-500/60' : ''}`}>
                 <div className="relative h-32 bg-slate-800 overflow-hidden">
+                  {canDragProducts && (
+                    <div
+                      {...handleDrag}
+                      className="absolute top-2 left-2 z-10 w-7 h-7 bg-slate-900/90 rounded-lg flex items-center justify-center text-slate-400 cursor-grab active:cursor-grabbing"
+                    >
+                      <GripVertical size={12} />
+                    </div>
+                  )}
                   {(item.images?.[0]?.url || item.image) ? (
                     <img src={item.images?.[0]?.url || item.image} alt={item.name} className="w-full h-full object-cover" />
                   ) : (
@@ -943,7 +912,7 @@ export default function MenuManagement() {
                     </div>
                   )}
                   {item.isCombo && (
-                    <div className="absolute top-2 left-2">
+                    <div className={`absolute top-2 ${canDragProducts ? 'left-11' : 'left-2'}`}>
                       <span className="flex items-center gap-1 bg-amber-500/90 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                         <Link2 size={10} /> Combo
                       </span>
@@ -975,7 +944,8 @@ export default function MenuManagement() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -993,7 +963,15 @@ export default function MenuManagement() {
 
           {/* Combo toggle */}
           <div
-            onClick={() => setForm(f => ({ ...f, isCombo: !f.isCombo, category: !f.isCombo ? 'Combos' : f.category, comboItems: [] }))}
+            onClick={() => setForm((f) => ({
+              ...f,
+              isCombo: !f.isCombo,
+              category: !f.isCombo ? COMBO_CATEGORY_NAME : (selectableCategoryNames[0] || ''),
+              comboItems: f.isCombo ? [] : f.comboItems,
+              hasVariants: false,
+              variantOptions: [],
+              variants: [],
+            }))}
             className={`flex items-center justify-between rounded-xl px-4 py-3 cursor-pointer border transition ${
               form.isCombo ? 'bg-amber-500/10 border-amber-500/40' : 'bg-[var(--pos-surface-inset)] border-slate-700 hover:border-slate-600'
             }`}>
@@ -1017,19 +995,32 @@ export default function MenuManagement() {
               className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Category *</label>
-            {categoryNames.length > 0 ? (
-              <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
-                {categoryNames.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            ) : (
-              <p className="text-xs text-slate-500 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-4 py-3">
-                No active categories. Add categories first using the Categories button.
-              </p>
-            )}
-          </div>
+          {form.isCombo ? (
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Category</label>
+              <input
+                type="text"
+                value={COMBO_CATEGORY_NAME}
+                disabled
+                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-400 rounded-xl px-4 py-2.5 text-sm cursor-not-allowed opacity-70"
+              />
+              <p className="text-xs text-slate-500 mt-1">Combo products are always assigned to the Combos category.</p>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Category *</label>
+              {selectableCategoryNames.length > 0 ? (
+                <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                  {selectableCategoryNames.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              ) : (
+                <p className="text-xs text-slate-500 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-4 py-3">
+                  No active categories. Add categories first using the Categories button.
+                </p>
+              )}
+            </div>
+          )}
 
           {!form.hasVariants && (
             <div>
@@ -1120,19 +1111,42 @@ export default function MenuManagement() {
         </form>
       </SlideOver>
 
-      {/* Delete confirmation dialog */}
-      {deleteTarget && (
-        <DeleteMenuItemDialog
-          item={deleteTarget}
-          allItems={items}
-          onConfirm={() => {
-            deleteMutation.mutate(deleteTarget._id);
-            setDeleteTarget(null);
-          }}
-          onCancel={() => setDeleteTarget(null)}
-          isDeleting={deleteMutation.isPending}
-        />
-      )}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete Menu Item"
+        message={deleteTarget ? `Are you sure you want to delete "${deleteTarget.name}"? This action cannot be undone.` : ''}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="delete"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => {
+          deleteMutation.mutate(deleteTarget._id);
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      >
+        {deleteTarget && (
+          <div className="space-y-2">
+            {deleteTarget.isCombo && deleteTarget.comboItems?.length > 0 && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 text-sm text-amber-400">
+                This combo includes {deleteTarget.comboItems.length} item{deleteTarget.comboItems.length !== 1 ? 's' : ''}.
+              </div>
+            )}
+            {deleteTarget.hasVariants && deleteTarget.variants?.length > 0 && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 text-sm text-amber-400">
+                {deleteTarget.variants.length} variant{deleteTarget.variants.length !== 1 ? 's' : ''} will be removed.
+              </div>
+            )}
+            {deleteAffectedCombos.length > 0 && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-400">
+                Used in {deleteAffectedCombos.length} combo{deleteAffectedCombos.length !== 1 ? 's' : ''}:{' '}
+                {deleteAffectedCombos.slice(0, 3).map((c) => c.name).join(', ')}
+                {deleteAffectedCombos.length > 3 ? ` and ${deleteAffectedCombos.length - 3} more` : ''}
+              </div>
+            )}
+          </div>
+        )}
+      </ConfirmDialog>
     </div>
   );
 }
