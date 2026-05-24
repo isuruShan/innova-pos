@@ -21,7 +21,7 @@ export default function CashierDraftTabs({
               key={draft.id}
               className={`group flex items-center shrink-0 max-w-[11rem] rounded-lg border transition ${
                 active
-                  ? 'border-amber-500/60 bg-amber-500/15'
+                  ? 'border-[var(--pos-accent)] bg-[var(--pos-accent)]/15'
                   : 'border-slate-700 bg-[var(--pos-surface-inset)] hover:border-slate-600'
               }`}
             >
@@ -29,13 +29,13 @@ export default function CashierDraftTabs({
                 type="button"
                 onClick={() => onSelect(draft.id)}
                 className={`min-w-0 flex-1 px-2.5 py-2 text-left text-xs font-medium truncate ${
-                  active ? 'text-amber-200' : 'text-slate-300'
+                  active ? 'text-[var(--pos-text-primary)] font-semibold' : 'text-slate-300'
                 }`}
                 title={label}
               >
                 <span className="truncate block">{label}</span>
                 {count > 0 && (
-                  <span className={`text-[10px] ${active ? 'text-amber-300/80' : 'text-slate-500'}`}>
+                  <span className={`text-[10px] ${active ? 'text-[var(--pos-accent)]' : 'text-slate-500'}`}>
                     {count} item{count !== 1 ? 's' : ''}
                   </span>
                 )}
@@ -49,7 +49,7 @@ export default function CashierDraftTabs({
                   }}
                   className={`shrink-0 p-1.5 mr-0.5 rounded-md transition ${
                     active
-                      ? 'text-amber-300/70 hover:text-amber-100 hover:bg-amber-500/20'
+                      ? 'text-[var(--pos-accent)] hover:text-[var(--pos-text-primary)] hover:bg-[var(--pos-accent)]/20'
                       : 'text-slate-500 hover:text-slate-200 hover:bg-slate-700/50'
                   }`}
                   aria-label={`Close ${label}`}

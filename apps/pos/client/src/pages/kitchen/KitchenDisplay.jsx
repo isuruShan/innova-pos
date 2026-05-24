@@ -1,13 +1,14 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Clock, RefreshCw, ChefHat, Link2 } from 'lucide-react';
+import { Clock, RefreshCw, ChefHat, Link2, Sun, Moon } from 'lucide-react';
 import api from '../../api/axios';
 import OfflineBanner from '../../components/OfflineBanner';
 import { mergeOrderLists } from '../../offline/mergeOrders.js';
 import { listPendingOrders } from '../../offline/idb.js';
 import { resolveLiveOrder, useSyncOfflineOrderSelection } from '../../offline/orderSelection.js';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import OrderTypeBadge from '../../components/OrderTypeBadge';
 import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
 import { AvatarMenu, NavLogo } from '../../components/Navbar';
@@ -423,6 +424,7 @@ export default function KitchenDisplay() {
   const liveSelectedOrder = resolveLiveOrder(orders, selectedOrder);
 
   const handleLogout = () => { logout(); navigate('/login'); };
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="h-screen bg-[var(--pos-page-bg)] flex flex-col overflow-hidden">
@@ -451,10 +453,19 @@ export default function KitchenDisplay() {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-xs text-[var(--pos-text-muted)]">
-            <RefreshCw size={11} className={isFetching ? 'animate-spin text-amber-400' : ''} />
-            <span className="hidden sm:block">Auto-refresh · {lastUpdated}</span>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--pos-surface-inset)] border border-[var(--pos-border)]">
+            <RefreshCw size={12} className={isFetching ? 'animate-spin text-amber-400' : 'text-[var(--pos-text-muted)]'} />
+            <span className="hidden sm:block text-xs text-[var(--pos-text-primary)] font-medium">Auto-refresh</span>
+            <span className="text-xs text-[var(--pos-text-muted)]">{lastUpdated}</span>
           </div>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="p-2.5 rounded-xl border border-slate-700/40 bg-slate-800/30 text-[var(--color-header-text,var(--color-text))] hover:bg-slate-800/55 hover:border-amber-500/35 transition flex items-center justify-center shrink-0"
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+          >
+            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
           <AvatarMenu user={user} onLogout={handleLogout} />
         </div>
       </div>
