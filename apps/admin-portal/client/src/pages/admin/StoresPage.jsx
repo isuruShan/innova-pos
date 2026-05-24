@@ -209,7 +209,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
   const [editingStoreId, setEditingStoreId] = useState('');
   const [editingStore, setEditingStore] = useState(null);
   const [editForm, setEditForm] = useState({
-    name: '', address: '', paymentMethods: ['cash'], isActive: true,
+    name: '', address: '', paymentMethods: ['cash'], isActive: true, posMenuLayout: 'default',
   });
   const [editMeta, setEditMeta] = useState({ deactivatedBySuperadmin: false });
   const [editPhoneCountryIso, setEditPhoneCountryIso] = useState(DEFAULT_COUNTRY_CODE);
@@ -263,6 +263,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
       address: store.address || '',
       paymentMethods: store.paymentMethods?.length ? [...store.paymentMethods] : ['cash'],
       isActive: store.isActive !== false,
+      posMenuLayout: store.posMenuLayout || 'default',
     };
   };
 
@@ -600,6 +601,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
         phone,
         paymentMethods: [...editForm.paymentMethods],
         isActive: editForm.isActive,
+        posMenuLayout: editForm.posMenuLayout,
       },
     });
   };
@@ -1126,6 +1128,31 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                       />
                       <span className="text-sm text-gray-700 capitalize">{m.replace('_', ' ')}</span>
                     </label>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">POS Cashier Screen Layout</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'default', label: 'Standard', sub: 'Larger cards, wider cart' },
+                    { id: 'compact', label: 'Compact Grid', sub: 'Small squares, 1/3 cart + images' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setEditForm((p) => ({ ...p, posMenuLayout: opt.id }))}
+                      className={`text-left p-3 rounded-lg border-2 transition-colors ${
+                        editForm.posMenuLayout === opt.id
+                          ? 'border-brand-orange bg-orange-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className={`block text-sm font-medium ${
+                        editForm.posMenuLayout === opt.id ? 'text-brand-orange' : 'text-gray-800'
+                      }`}>{opt.label}</span>
+                      <span className="block text-xs text-gray-500 mt-0.5">{opt.sub}</span>
+                    </button>
                   ))}
                 </div>
               </div>

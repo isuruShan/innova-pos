@@ -219,29 +219,32 @@ function computeLoyaltyRewardDiscount(reward, cart, remainingOrderCap) {
 }
 
 
-function MenuCard({ item, onAdd }) {
+function MenuCard({ item, onAdd, compact = false }) {
+  const imageUrl = item.images?.[0]?.url || item.image;
   return (
     <button
       onClick={() => onAdd(item)}
       disabled={!item.available}
-      className={`bg-[var(--pos-panel)] rounded-2xl overflow-hidden border hover:shadow-lg transition group disabled:opacity-40 disabled:cursor-not-allowed text-left w-full ${
+      className={`bg-[var(--pos-panel)] overflow-hidden border hover:shadow-lg transition group disabled:opacity-40 disabled:cursor-not-allowed text-left w-full ${
+        compact ? 'rounded-xl' : 'rounded-2xl'
+      } ${
         item.isCombo
           ? 'border-amber-500/30 hover:border-amber-500/60 hover:shadow-amber-500/10'
           : 'border-slate-700/50 hover:border-amber-500/50 hover:shadow-amber-500/5'
       }`}
     >
-      <div className="relative h-32 bg-slate-800 overflow-hidden">
-        {item.image ? (
-          <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+      <div className={`relative bg-slate-800 overflow-hidden ${compact ? 'h-20' : 'h-28'}`}>
+        {imageUrl ? (
+          <img src={imageUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-4xl">
+          <div className={`w-full h-full flex items-center justify-center ${compact ? 'text-2xl' : 'text-4xl'}`}>
             {item.isCombo ? '🍱' : '🍔'}
           </div>
         )}
         {item.isCombo && (
-          <div className="absolute top-2 left-2">
-            <span className="flex items-center gap-1 bg-amber-500/90 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-              <Link2 size={9} /> Combo
+          <div className="absolute top-1.5 left-1.5">
+            <span className="flex items-center gap-0.5 bg-amber-500/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+              <Link2 size={8} />{compact ? '' : ' Combo'}
             </span>
           </div>
         )}
@@ -251,24 +254,36 @@ function MenuCard({ item, onAdd }) {
           </div>
         )}
       </div>
-      <div className="p-3">
-        <p className="font-semibold text-[var(--pos-text-primary)] text-sm truncate">{item.name}</p>
-        {item.isCombo && item.comboItems?.length > 0 && (
+      <div className={compact ? 'px-2 py-1.5' : 'p-3'}>
+        <p className={`font-semibold text-[var(--pos-text-primary)] truncate leading-tight ${compact ? 'text-xs' : 'text-sm'}`}>{item.name}</p>
+        {!compact && item.isCombo && item.comboItems?.length > 0 && (
           <p className="text-xs text-slate-500 truncate mt-0.5">
             {item.comboItems.map(c => c.name).join(' + ')}
           </p>
         )}
-        <p className="text-amber-400 font-bold mt-0.5">{formatPrice(item.price)}</p>
+        <p className={`text-amber-400 font-bold ${compact ? 'text-[11px] mt-0.5' : 'mt-0.5'}`}>{formatPrice(item.price)}</p>
       </div>
     </button>
   );
 }
 
-function CartItem({ item, onChangeQty }) {
+function CartItem({ item, onChangeQty, showImage = false }) {
   const [expanded, setExpanded] = useState(false);
+  const imageUrl = item.images?.[0]?.url || item.image;
   return (
     <div className="bg-[var(--pos-surface-inset)] rounded-xl p-3">
       <div className="flex items-center gap-3">
+        {showImage && (
+          <div className="w-10 h-10 rounded-lg bg-slate-800 overflow-hidden flex-shrink-0 border border-slate-700">
+            {imageUrl ? (
+              <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-base">
+                {item.isCombo ? '🍱' : '🍔'}
+              </div>
+            )}
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <p className="text-sm font-medium text-[var(--pos-text-primary)] truncate">{item.name}</p>
@@ -352,6 +367,8 @@ export default function NewOrder() {
   const selectedStore =
     stores.find((s) => String(s._id) === String(selectedStoreId)) || stores.find((s) => s.isDefault) || null;
   const tableMgmt = selectedStore?.tableManagementEnabled === true;
+  const posMenuLayout = selectedStore?.posMenuLayout || 'default';
+  const isCompact = posMenuLayout === 'compact';
   const deferPayment = tableMgmt && orderType === 'dine-in';
   const availablePaymentMethods = (selectedStore?.paymentMethods?.length ? selectedStore.paymentMethods : ['cash']);
 
@@ -908,7 +925,7 @@ export default function NewOrder() {
           </div>
 
           {/* Menu grid */}
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className={`flex-1 overflow-y-auto ${isCompact ? 'p-2' : 'p-4'}`}>
             {menuLoading ? (
               <div className="p-1">
                 <MenuGridSkeleton />
@@ -916,9 +933,12 @@ export default function NewOrder() {
             ) : filtered.length === 0 ? (
               <div className="flex items-center justify-center h-full text-slate-500">No items in this category</div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              <div className={isCompact
+                ? 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 gap-2'
+                : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3'
+              }>
                 {filtered.map(item => (
-                  <MenuCard key={item._id} item={item} onAdd={addToCart} />
+                  <MenuCard key={item._id} item={item} onAdd={addToCart} compact={isCompact} />
                 ))}
               </div>
             )}
@@ -951,8 +971,8 @@ export default function NewOrder() {
         {/* Right: Cart — side panel on md+, bottom-sheet on mobile */}
         <div className={
           mobileCartOpen
-            ? 'fixed inset-x-0 bottom-0 z-40 flex flex-col max-h-[90vh] rounded-t-2xl border-t border-slate-700/50 shadow-2xl bg-[var(--pos-panel)] overflow-hidden md:static md:max-h-none md:h-full md:min-h-0 md:rounded-none md:border-t-0 md:shadow-none md:w-80 xl:w-96'
-            : 'hidden md:flex md:h-full md:min-h-0 md:flex-col bg-[var(--pos-panel)]/30 md:w-80 xl:w-96'
+            ? `fixed inset-x-0 bottom-0 z-40 flex flex-col max-h-[90vh] rounded-t-2xl border-t border-slate-700/50 shadow-2xl bg-[var(--pos-panel)] overflow-hidden md:static md:max-h-none md:h-full md:min-h-0 md:rounded-none md:border-t-0 md:shadow-none ${isCompact ? 'md:w-[33.333%]' : 'md:w-96 xl:w-[28rem]'}`
+            : `hidden md:flex md:h-full md:min-h-0 md:flex-col bg-[var(--pos-panel)]/30 ${isCompact ? 'md:w-[33.333%]' : 'md:w-96 xl:w-[28rem]'}`
         }>
           <div className="shrink-0 p-4 border-b border-slate-700/50 flex items-center gap-2">
             {/* Mobile close button */}
@@ -1263,7 +1283,7 @@ export default function NewOrder() {
                   </div>
                 ) : (
                   cart.map(item => (
-                    <CartItem key={item.menuItem} item={item} onChangeQty={changeQty} />
+                    <CartItem key={item.menuItem} item={item} onChangeQty={changeQty} showImage={isCompact} />
                   ))
                 )}
               </div>

@@ -201,7 +201,7 @@ router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), t
     });
     if (!store) return res.status(404).json({ message: 'Store not found' });
 
-    const { name, code, address, phone, paymentMethods, isActive, tableManagementEnabled, guestWaiterCallCooldownSeconds } = body;
+    const { name, code, address, phone, paymentMethods, isActive, tableManagementEnabled, guestWaiterCallCooldownSeconds, posMenuLayout } = body;
     if (name !== undefined) store.name = name.trim();
     if (code !== undefined) store.code = code.trim().toUpperCase();
     if (address !== undefined) store.address = address.trim();
@@ -211,6 +211,9 @@ router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), t
     if (guestWaiterCallCooldownSeconds !== undefined) {
       const n = parseInt(guestWaiterCallCooldownSeconds, 10);
       if (Number.isFinite(n)) store.guestWaiterCallCooldownSeconds = Math.min(3600, Math.max(30, n));
+    }
+    if (posMenuLayout !== undefined) {
+      if (['default', 'compact'].includes(posMenuLayout)) store.posMenuLayout = posMenuLayout;
     }
     if (isActive !== undefined) {
       const nextActive = Boolean(isActive);

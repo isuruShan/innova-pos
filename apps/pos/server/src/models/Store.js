@@ -19,6 +19,8 @@ const storeSchema = new mongoose.Schema(
     /** When true, dine-in orders pick configured tables; tables are locked while an order is active */
     tableManagementEnabled: { type: Boolean, default: false },
     guestWaiterCallCooldownSeconds: { type: Number, default: 300, min: 30, max: 3600 },
+    /** POS cashier screen layout: 'default' = standard card grid, 'compact' = small square grid with 1/3 cart */
+    posMenuLayout: { type: String, enum: ['default', 'compact'], default: 'default' },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },

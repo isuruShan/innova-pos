@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Save, ToggleLeft, ToggleRight, Settings as SettingsIcon,
   Percent, Hash, Users, Plus, Edit2, Trash2,
-  ChefHat, ShoppingCart, Eye, EyeOff,
+  ChefHat, ShoppingCart, Eye, EyeOff, LayoutGrid,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -457,11 +457,105 @@ function GuestQrTab() {
   );
 }
 
-// ─── Settings shell with tabs ─────────────────────────────────────────────────
+// ─── POS View Layout tab ──────────────────────────────────────────────────────
+
+const LAYOUT_OPTIONS = [
+  {
+    id: 'default',
+    label: 'Standard',
+    description: 'Larger cards, wider cart panel',
+    preview: (
+      <div className="flex gap-1 w-full h-14 rounded overflow-hidden border border-slate-600">
+        <div className="flex-1 grid grid-cols-3 gap-0.5 p-1">
+          {[0,1,2,3,4,5].map(i => <div key={i} className="rounded bg-slate-600" />)}
+        </div>
+        <div className="w-9 bg-slate-700 rounded-r" />
+      </div>
+    ),
+  },
+  {
+    id: 'compact',
+    label: 'Compact Grid',
+    description: 'Small squares, 1/3 cart with images',
+    preview: (
+      <div className="flex gap-1 w-full h-14 rounded overflow-hidden border border-slate-600">
+        <div className="flex-[2] grid grid-cols-4 gap-0.5 p-1">
+          {[0,1,2,3,4,5,6,7].map(i => <div key={i} className="rounded bg-slate-600" />)}
+        </div>
+        <div className="flex-1 bg-slate-700 rounded-r" />
+      </div>
+    ),
+  },
+];
+
+function PosViewTab() {
+  const qc = useQueryClient();
+  const { selectedStoreId, isStoreReady, stores } = useStoreContext();
+  const store = stores.find((s) => String(s._id) === String(selectedStoreId));
+  const [layout, setLayout] = useState(store?.posMenuLayout || 'default');
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setLayout(store?.posMenuLayout || 'default');
+  }, [store?._id, store?.posMenuLayout]);
+
+  const saveMutation = useMutation({
+    mutationFn: (val) => api.put(`/stores/${selectedStoreId}`, { posMenuLayout: val }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pos-stores'] });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    },
+  });
+
+  if (!isStoreReady) {
+    return <p className="text-sm text-amber-300">Select a store in the header first.</p>;
+  }
+
+  return (
+    <div className="space-y-5 max-w-lg">
+      <p className="text-sm text-slate-400">Choose how the POS cashier screen displays menu items.</p>
+      <div className="grid grid-cols-2 gap-3">
+        {LAYOUT_OPTIONS.map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => setLayout(opt.id)}
+            className={`text-left rounded-2xl border-2 p-3 transition ${
+              layout === opt.id
+                ? 'border-amber-500 bg-amber-500/10'
+                : 'border-slate-700 bg-[var(--pos-panel)] hover:border-slate-500'
+            }`}
+          >
+            {opt.preview}
+            <p className={`mt-2 text-sm font-semibold ${
+              layout === opt.id ? 'text-amber-400' : 'text-[var(--pos-text-primary)]'
+            }`}>{opt.label}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{opt.description}</p>
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => saveMutation.mutate(layout)}
+        disabled={saveMutation.isPending}
+        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
+          saved ? 'bg-green-500 text-white' : 'bg-amber-500 hover:bg-amber-400 text-white disabled:opacity-60'
+        }`}
+      >
+        <Save size={14} />
+        {saveMutation.isPending ? 'Saving…' : saved ? 'Saved ✓' : 'Save Layout'}
+      </button>
+    </div>
+  );
+}
+
+// ─── Settings shell with tabs ─────────────────────────────────────────────
 
 const TABS = [
   { id: 'charges', label: 'Order Charges', icon: SettingsIcon },
-  { id: 'guestqr', label: 'QR Ordering', icon: ShoppingCart },
+  { id: 'posview', label: 'POS View',       icon: LayoutGrid },
+  { id: 'guestqr', label: 'QR Ordering',   icon: ShoppingCart },
   { id: 'users',   label: 'Staff Users',   icon: Users },
   { id: 'payments', label: 'Store Payments', icon: Hash },
 ];
@@ -499,7 +593,7 @@ export default function SettingsPage() {
           })}
         </div>
 
-        {tab === 'charges' ? <ChargesTab /> : tab === 'guestqr' ? <GuestQrTab /> : tab === 'users' && user?.role === 'merchant_admin' ? <UsersTab /> : tab === 'payments' ? <PaymentMethodsTab /> : <ChargesTab />}
+        {tab === 'charges' ? <ChargesTab /> : tab === 'posview' ? <PosViewTab /> : tab === 'guestqr' ? <GuestQrTab /> : tab === 'users' && user?.role === 'merchant_admin' ? <UsersTab /> : tab === 'payments' ? <PaymentMethodsTab /> : <ChargesTab />}
       </div>
     </div>
   );
