@@ -8,11 +8,13 @@ import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import CategoryManagerModal from '../../components/CategoryManagerModal';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import Toast from '../../components/Toast';
 import MenuItemFormModal from '../../components/menu/MenuItemFormModal';
 import MenuItemTable from '../../components/menu/MenuItemTable';
 import { COMBO_CATEGORY_NAME, isSelectableMenuCategory } from '../../constants/categories';
 import { useDragReorder, reorderByDrag } from '../../hooks/useDragReorder';
 import { useListSort } from '../../hooks/useListSort';
+import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { formatCurrency } from '../../utils/format';
 import { filterMenuItems, compareSortValues } from '../../utils/menuItemSearch';
@@ -24,6 +26,25 @@ const EMPTY_FORM = {
   available: true, isCombo: false, comboItems: [],
   hasVariants: false, variantOptions: [], variants: [],
 };
+
+function menuQueryKey(storeId) {
+  return ['menu', storeId];
+}
+
+function applyMenuReorder(allItems, orderedIds, category) {
+  const idOrder = orderedIds.map(String);
+  const idSet = new Set(idOrder);
+  const categoryItems = (allItems || []).filter((i) => i.category === category);
+  const otherItems = (allItems || []).filter((i) => i.category !== category);
+
+  const reordered = idOrder.map((id, index) => {
+    const item = categoryItems.find((i) => String(i._id) === id);
+    return item ? { ...item, sortOrder: index } : null;
+  }).filter(Boolean);
+
+  const leftover = categoryItems.filter((i) => !idSet.has(String(i._id)));
+  return [...otherItems, ...reordered, ...leftover];
+}
 
 function ComboItemsPreview({ comboItems }) {
   const [open, setOpen] = useState(false);
@@ -58,7 +79,14 @@ export default function MenuManagement() {
   const [menuSearch, setMenuSearch] = useState('');
   const [viewMode, setViewMode] = useState('table');
   const qc = useQueryClient();
+  const { toast, showToast, clearToast } = useToast();
   const { sort, order, toggleSort } = useListSort('sortOrder', 'asc');
+
+  const menuKey = menuQueryKey(selectedStoreId);
+
+  const syncMenu = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ['menu'] });
+  }, [qc]);
 
   const { data: savedCriteria = [] } = useQuery({
     queryKey: ['variant-criteria', selectedStoreId],
@@ -97,29 +125,114 @@ export default function MenuManagement() {
 
   const reorderMenuMutation = useMutation({
     mutationFn: ({ ids, category }) => api.patch('/menu/reorder', { ids, category }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['menu'] }),
+    onMutate: async ({ ids, category }) => {
+      await qc.cancelQueries({ queryKey: menuKey });
+      const previous = qc.getQueryData(menuKey) || [];
+      qc.setQueryData(menuKey, applyMenuReorder(previous, ids, category));
+      return { previous };
+    },
+    onError: (err, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(menuKey, ctx.previous);
+      showToast(getApiErrorMessage(err, 'Failed to reorder menu items'));
+    },
+    onSuccess: () => syncMenu(),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => api.post('/menu', data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['menu'] }); closeForm(); },
-    onError: (e) => setFormError(e.response?.data?.message || 'Failed to save item'),
+    mutationFn: (data) => api.post('/menu', data).then((r) => r.data),
+    onMutate: async (data) => {
+      await qc.cancelQueries({ queryKey: menuKey });
+      const previous = qc.getQueryData(menuKey) || [];
+      const inCategory = previous.filter((i) => i.category === data.category);
+      const minSort = inCategory.reduce((min, i) => Math.min(min, i.sortOrder ?? 0), 0);
+      const formSnapshot = { editing, form: { ...form } };
+      const optimistic = {
+        _id: `temp-${Date.now()}`,
+        ...data,
+        sortOrder: minSort - 1,
+        createdAt: new Date().toISOString(),
+      };
+      qc.setQueryData(menuKey, [optimistic, ...previous]);
+      setFormOpen(false);
+      setEditing(null);
+      setForm(EMPTY_FORM);
+      setFormError('');
+      return { previous, formSnapshot };
+    },
+    onError: (err, _data, ctx) => {
+      if (ctx?.previous) qc.setQueryData(menuKey, ctx.previous);
+      if (ctx?.formSnapshot) {
+        setEditing(ctx.formSnapshot.editing);
+        setForm(ctx.formSnapshot.form);
+        setFormOpen(true);
+      }
+      showToast(getApiErrorMessage(err, 'Failed to save item'));
+    },
+    onSuccess: () => syncMenu(),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => api.put(`/menu/${id}`, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['menu'] }); closeForm(); },
-    onError: (e) => setFormError(e.response?.data?.message || 'Failed to save item'),
+    mutationFn: ({ id, data }) => api.put(`/menu/${id}`, data).then((r) => r.data),
+    onMutate: async ({ id, data }) => {
+      await qc.cancelQueries({ queryKey: menuKey });
+      const previous = qc.getQueryData(menuKey) || [];
+      const formSnapshot = { editing, form: { ...form } };
+      qc.setQueryData(
+        menuKey,
+        previous.map((item) => (String(item._id) === String(id) ? { ...item, ...data } : item)),
+      );
+      setFormOpen(false);
+      setEditing(null);
+      setForm(EMPTY_FORM);
+      setFormError('');
+      return { previous, formSnapshot };
+    },
+    onError: (err, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(menuKey, ctx.previous);
+      if (ctx?.formSnapshot) {
+        setEditing(ctx.formSnapshot.editing);
+        setForm(ctx.formSnapshot.form);
+        setFormOpen(true);
+      }
+      showToast(getApiErrorMessage(err, 'Failed to save item'));
+    },
+    onSuccess: () => syncMenu(),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => api.delete(`/menu/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['menu'] }),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: menuKey });
+      const previous = qc.getQueryData(menuKey) || [];
+      qc.setQueryData(
+        menuKey,
+        previous.filter((item) => String(item._id) !== String(id)),
+      );
+      return { previous };
+    },
+    onError: (err, _id, ctx) => {
+      if (ctx?.previous) qc.setQueryData(menuKey, ctx.previous);
+      showToast(getApiErrorMessage(err, 'Failed to delete menu item'));
+    },
+    onSuccess: () => syncMenu(),
   });
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, available }) => api.put(`/menu/${id}`, { available }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['menu'] }),
+    onMutate: async ({ id, available }) => {
+      await qc.cancelQueries({ queryKey: menuKey });
+      const previous = qc.getQueryData(menuKey) || [];
+      qc.setQueryData(
+        menuKey,
+        previous.map((item) => (String(item._id) === String(id) ? { ...item, available } : item)),
+      );
+      return { previous };
+    },
+    onError: (err, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(menuKey, ctx.previous);
+      showToast(getApiErrorMessage(err, 'Failed to update availability'));
+    },
+    onSuccess: () => syncMenu(),
   });
 
   const openAdd = () => {
@@ -501,6 +614,8 @@ export default function MenuManagement() {
           </div>
         )}
       </ConfirmDialog>
+
+      <Toast toast={toast} onDismiss={clearToast} />
     </div>
   );
 }
