@@ -2,20 +2,30 @@ import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Tag, Check, X,
-  Search, GripVertical, Loader2, AlertTriangle,
+  Search, GripVertical, AlertTriangle,
 } from 'lucide-react';
 import api from '../api/axios';
 import CenteredModal from './CenteredModal';
 import ConfirmDialog from './ConfirmDialog';
+import Toast from './Toast';
 import SortableTh from './SortableTh';
 import { useListSort } from '../hooks/useListSort';
 import { useDragReorder, reorderByDrag } from '../hooks/useDragReorder';
+import { useToast, getApiErrorMessage } from '../hooks/useToast';
 import {
   PLACEHOLDER_CATEGORY_NAME,
   isHiddenFromCategoryManager,
 } from '../constants/categories';
 
 const CATEGORY_NAME_MAX = 100;
+
+function categoriesQueryKey(storeId) {
+  return ['categories', 'all', storeId];
+}
+
+function menuQueryKey(storeId) {
+  return ['menu', storeId];
+}
 
 function compareValues(a, b, dir) {
   if (a == null && b == null) return 0;
@@ -30,15 +40,31 @@ function compareValues(a, b, dir) {
   return dir * (a - b);
 }
 
-export default function CategoryManagerModal({ open, onClose, categories, menuItems }) {
+function applyManageableReorder(allCategories, orderedIds) {
+  const idOrder = orderedIds.map(String);
+  const idSet = new Set(idOrder);
+  const manageable = (allCategories || []).filter((c) => idSet.has(String(c._id)));
+  const rest = (allCategories || []).filter((c) => !idSet.has(String(c._id)));
+  const reordered = idOrder.map((id, index) => {
+    const cat = manageable.find((c) => String(c._id) === id);
+    return cat ? { ...cat, sortOrder: index } : null;
+  }).filter(Boolean);
+  return [...reordered, ...rest];
+}
+
+export default function CategoryManagerModal({ open, onClose, categories, menuItems, selectedStoreId }) {
   const qc = useQueryClient();
+  const { toast, showToast, clearToast } = useToast();
   const [newName, setNewName] = useState('');
   const [search, setSearch] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
-  const [error, setError] = useState('');
+  const [validationError, setValidationError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const { sort, order, toggleSort } = useListSort('sortOrder', 'asc');
+
+  const catKey = categoriesQueryKey(selectedStoreId);
+  const menuKey = menuQueryKey(selectedStoreId);
 
   const manageableCategories = useMemo(
     () => categories.filter((c) => !isHiddenFromCategoryManager(c.name)),
@@ -53,33 +79,122 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
     return counts;
   }, [menuItems]);
 
-  const invalidateAll = () => {
+  const syncQueries = useCallback(() => {
     qc.invalidateQueries({ queryKey: ['categories'] });
     qc.invalidateQueries({ queryKey: ['menu'] });
-  };
+  }, [qc]);
 
   const createMutation = useMutation({
-    mutationFn: (name) => api.post('/categories', { name }),
-    onSuccess: () => { invalidateAll(); setNewName(''); setError(''); },
-    onError: (e) => setError(e.response?.data?.message || 'Failed to add category'),
+    mutationFn: (name) => api.post('/categories', { name }).then((r) => r.data),
+    onMutate: async (name) => {
+      await qc.cancelQueries({ queryKey: catKey });
+      const previous = qc.getQueryData(catKey) || [];
+      const minSort = previous.reduce((min, c) => Math.min(min, c.sortOrder ?? 0), 0);
+      const optimistic = {
+        _id: `temp-${Date.now()}`,
+        name,
+        active: true,
+        sortOrder: minSort - 1,
+      };
+      qc.setQueryData(catKey, [optimistic, ...previous]);
+      setNewName('');
+      setValidationError('');
+      return { previous };
+    },
+    onError: (err, _name, ctx) => {
+      if (ctx?.previous) qc.setQueryData(catKey, ctx.previous);
+      showToast(getApiErrorMessage(err, 'Failed to add category'));
+    },
+    onSuccess: () => syncQueries(),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => api.put(`/categories/${id}`, data),
-    onSuccess: () => { invalidateAll(); setEditingId(null); setError(''); },
-    onError: (e) => setError(e.response?.data?.message || 'Failed to update category'),
+    mutationFn: ({ id, data }) => api.put(`/categories/${id}`, data).then((r) => r.data),
+    onMutate: async ({ id, data }) => {
+      await qc.cancelQueries({ queryKey: catKey });
+      await qc.cancelQueries({ queryKey: menuKey });
+      const previousCategories = qc.getQueryData(catKey) || [];
+      const previousMenu = qc.getQueryData(menuKey) || [];
+      const existing = previousCategories.find((c) => String(c._id) === String(id));
+
+      qc.setQueryData(
+        catKey,
+        previousCategories.map((c) => (String(c._id) === String(id) ? { ...c, ...data } : c)),
+      );
+
+      if (data.name && existing && data.name !== existing.name) {
+        qc.setQueryData(
+          menuKey,
+          previousMenu.map((item) => (
+            item.category === existing.name ? { ...item, category: data.name } : item
+          )),
+        );
+      }
+
+      if (data.name !== undefined) {
+        setEditingId(null);
+        setEditName('');
+      }
+
+      return { previousCategories, previousMenu };
+    },
+    onError: (err, _vars, ctx) => {
+      if (ctx?.previousCategories) qc.setQueryData(catKey, ctx.previousCategories);
+      if (ctx?.previousMenu) qc.setQueryData(menuKey, ctx.previousMenu);
+      showToast(getApiErrorMessage(err, 'Failed to update category'));
+    },
+    onSuccess: () => syncQueries(),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => api.delete(`/categories/${id}`),
-    onSuccess: () => { invalidateAll(); setDeleteTarget(null); },
-    onError: (e) => setError(e.response?.data?.message || 'Failed to delete category'),
+    mutationFn: (id) => api.delete(`/categories/${id}`).then((r) => r.data),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: catKey });
+      await qc.cancelQueries({ queryKey: menuKey });
+      const previousCategories = qc.getQueryData(catKey) || [];
+      const previousMenu = qc.getQueryData(menuKey) || [];
+      const removed = previousCategories.find((c) => String(c._id) === String(id));
+
+      qc.setQueryData(
+        catKey,
+        previousCategories.filter((c) => String(c._id) !== String(id)),
+      );
+
+      if (removed) {
+        qc.setQueryData(
+          menuKey,
+          previousMenu.map((item) => (
+            item.category === removed.name
+              ? { ...item, category: PLACEHOLDER_CATEGORY_NAME }
+              : item
+          )),
+        );
+      }
+
+      setDeleteTarget(null);
+      return { previousCategories, previousMenu };
+    },
+    onError: (err, _id, ctx) => {
+      if (ctx?.previousCategories) qc.setQueryData(catKey, ctx.previousCategories);
+      if (ctx?.previousMenu) qc.setQueryData(menuKey, ctx.previousMenu);
+      showToast(getApiErrorMessage(err, 'Failed to delete category'));
+    },
+    onSuccess: () => syncQueries(),
   });
 
   const reorderMutation = useMutation({
-    mutationFn: (ids) => api.patch('/categories/reorder', { ids }),
-    onSuccess: () => invalidateAll(),
-    onError: (e) => setError(e.response?.data?.message || 'Failed to reorder categories'),
+    mutationFn: (ids) => api.patch('/categories/reorder', { ids }).then((r) => r.data),
+    onMutate: async (ids) => {
+      await qc.cancelQueries({ queryKey: catKey });
+      const previous = qc.getQueryData(catKey) || [];
+      qc.setQueryData(catKey, applyManageableReorder(previous, ids));
+      return { previous };
+    },
+    onError: (err, _ids, ctx) => {
+      if (ctx?.previous) qc.setQueryData(catKey, ctx.previous);
+      showToast(getApiErrorMessage(err, 'Failed to reorder categories'));
+    },
+    onSuccess: () => syncQueries(),
   });
 
   const orderedManageable = useMemo(() => {
@@ -127,14 +242,14 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
   const startEdit = (cat) => {
     setEditingId(cat._id);
     setEditName(cat.name);
-    setError('');
+    setValidationError('');
   };
 
   const saveEdit = () => {
     const trimmed = editName.trim();
     if (!trimmed) return;
     if (trimmed.length > CATEGORY_NAME_MAX) {
-      setError(`Category name must be ${CATEGORY_NAME_MAX} characters or fewer`);
+      setValidationError(`Category name must be ${CATEGORY_NAME_MAX} characters or fewer`);
       return;
     }
     updateMutation.mutate({ id: editingId, data: { name: trimmed } });
@@ -144,7 +259,7 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
     const trimmed = newName.trim();
     if (!trimmed) return;
     if (trimmed.length > CATEGORY_NAME_MAX) {
-      setError(`Category name must be ${CATEGORY_NAME_MAX} characters or fewer`);
+      setValidationError(`Category name must be ${CATEGORY_NAME_MAX} characters or fewer`);
       return;
     }
     createMutation.mutate(trimmed);
@@ -153,8 +268,9 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
   const handleClose = () => {
     setSearch('');
     setEditingId(null);
-    setError('');
+    setValidationError('');
     setDeleteTarget(null);
+    clearToast();
     onClose();
   };
 
@@ -185,10 +301,10 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
               <button
                 type="button"
                 onClick={handleCreate}
-                disabled={!newName.trim() || createMutation.isPending}
+                disabled={!newName.trim()}
                 className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
               >
-                {createMutation.isPending ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
+                <Plus size={15} />
                 Add
               </button>
             </div>
@@ -216,8 +332,8 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
             )}
           </div>
 
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">{error}</div>
+          {validationError && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">{validationError}</div>
           )}
 
           <div className="rounded-lg border border-slate-700 overflow-hidden">
@@ -348,7 +464,6 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
         confirmLabel="Delete Category"
         cancelLabel="Cancel"
         variant="delete"
-        isLoading={deleteMutation.isPending}
         onConfirm={() => deleteMutation.mutate(deleteTarget._id)}
         onCancel={() => setDeleteTarget(null)}
       >
@@ -364,6 +479,8 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
           </p>
         </div>
       </ConfirmDialog>
+
+      <Toast toast={toast} onDismiss={clearToast} />
     </>
   );
 }

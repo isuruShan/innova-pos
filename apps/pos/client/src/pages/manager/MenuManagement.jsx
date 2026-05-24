@@ -955,6 +955,7 @@ export default function MenuManagement() {
         onClose={() => setCatModalOpen(false)}
         categories={allCategories}
         menuItems={items}
+        selectedStoreId={selectedStoreId}
       />
 
       {/* Menu item slide-over */}
