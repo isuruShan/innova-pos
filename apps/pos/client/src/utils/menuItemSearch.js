@@ -20,15 +20,28 @@ export function buildCategorySortMap(categoryRows) {
   return m;
 }
 
-/** Category tabs: API order first, then any orphan categories from menu items. */
-export function buildCategoryTabs(categoryRows, menuItems, { includeInactive = false } = {}) {
+/** Category tabs: API order first, then any orphan categories from menu items.
+ * Filters to only show categories that have active (available) products.
+ * Excludes "Uncategorized" from the list.
+ */
+export function buildCategoryTabs(categoryRows, menuItems, { includeInactive = false, excludeUncategorized = true } = {}) {
+  // Get categories that have at least one active/available product
+  const activeItems = (menuItems || []).filter(item => item.available !== false);
+  const categoriesWithActiveProducts = new Set(activeItems.map(item => item.category).filter(Boolean));
+  
   const fromApi = (categoryRows || [])
     .filter((c) => includeInactive || c.active !== false)
+    .filter((c) => categoriesWithActiveProducts.has(c.name)) // Only include if has active products
+    .filter((c) => !excludeUncategorized || (c.name?.toLowerCase() !== 'uncategorized')) // Exclude Uncategorized
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name))
     .map((c) => c.name);
-  const extras = [...new Set((menuItems || []).map((i) => i.category))]
+  
+  // Extras: orphan categories from menu items (also only if they have active products)
+  const extras = [...new Set(activeItems.map((i) => i.category))]
     .filter((c) => c && !fromApi.includes(c))
+    .filter((c) => !excludeUncategorized || c.toLowerCase() !== 'uncategorized')
     .sort();
+  
   return ['All', ...fromApi, ...extras];
 }
 

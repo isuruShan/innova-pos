@@ -269,20 +269,19 @@ function MenuCard({ item, onAdd, compact = false }) {
             {item.isCombo ? '🍱' : '🍔'}
           </div>
         )}
-        {item.isCombo && (
-          <div className="absolute top-1.5 left-1.5">
+        {/* Tags container - left top */}
+        <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
+          {item.isCombo && (
             <span className="flex items-center gap-0.5 bg-amber-500/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
               <Link2 size={8} />{compact ? '' : ' Combo'}
             </span>
-          </div>
-        )}
-        {hasMultipleVariants && (
-          <div className="absolute top-1.5 right-1.5">
+          )}
+          {hasMultipleVariants && (
             <span className="bg-sky-500/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
               {item.variants.length} options
             </span>
-          </div>
-        )}
+          )}
+        </div>
         {!item.available && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
             <span className="text-xs text-red-400 font-semibold bg-red-500/20 border border-red-500/30 rounded-full px-2 py-0.5">Unavailable</span>

@@ -426,7 +426,33 @@ export function CustomerPickerModal({
   const [quickName, setQuickName] = useState('');
   const [quickMobile, setQuickMobile] = useState('');
   const [quickEmail, setQuickEmail] = useState('');
+  const [quickBirthday, setQuickBirthday] = useState('');
   const [formError, setFormError] = useState('');
+
+  // Format phone number as user types (for LK: XX XXX XXXX or XXX XXX XXXX)
+  const formatPhoneNumber = (value) => {
+    // Remove all non-digit characters
+    const digits = value.replace(/\D/g, '');
+    
+    // Format based on country
+    if (countryIso === 'LK') {
+      // Sri Lanka format: 07X XXX XXXX
+      if (digits.length <= 3) return digits;
+      if (digits.length <= 6) return `${digits.slice(0, 3)} ${digits.slice(3)}`;
+      return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 10)}`;
+    }
+    
+    // Default format: XXX XXX XXXX
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)} ${digits.slice(3)}`;
+    return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 10)}`;
+  };
+
+  const handleMobileChange = (e) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setQuickMobile(formatted);
+    setFormError('');
+  };
 
   // Reset form when modal closes
   const handleClose = () => {
@@ -434,6 +460,7 @@ export function CustomerPickerModal({
     setQuickName('');
     setQuickMobile('');
     setQuickEmail('');
+    setQuickBirthday('');
     setFormError('');
     onClose?.();
   };
@@ -450,8 +477,9 @@ export function CustomerPickerModal({
 
   const handleSaveNewCustomer = () => {
     const name = quickName.trim();
-    const mobile = quickMobile.trim();
+    const mobile = quickMobile.replace(/\s/g, '').trim(); // Remove formatting spaces
     const email = quickEmail.trim();
+    const birthday = quickBirthday || null;
 
     if (!name && !mobile && !email) {
       setFormError('Enter at least name, mobile, or email');
@@ -477,11 +505,12 @@ export function CustomerPickerModal({
     }
 
     setFormError('');
-    onCreateCustomer?.({ name, mobile, email }, () => {
+    onCreateCustomer?.({ name, mobile, email, birthday }, () => {
       // Success callback - reset form
       setQuickName('');
       setQuickMobile('');
       setQuickEmail('');
+      setQuickBirthday('');
       setShowNewForm(false);
       handleClose();
     });
@@ -624,17 +653,21 @@ export function CustomerPickerModal({
                       placeholder="Name"
                       className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-[var(--pos-text-primary)] placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
-                    <input
-                      type="tel"
-                      value={quickMobile}
-                      onChange={(e) => { setQuickMobile(e.target.value); setFormError(''); }}
-                      placeholder={`Mobile (${countryIso})`}
-                      className={`w-full bg-slate-800 border rounded-xl px-4 py-3 text-sm text-[var(--pos-text-primary)] placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                        formError && formError.toLowerCase().includes('mobile')
-                          ? 'border-red-500'
-                          : 'border-slate-700'
-                      }`}
-                    />
+                    <div>
+                      <input
+                        type="tel"
+                        value={quickMobile}
+                        onChange={handleMobileChange}
+                        placeholder={countryIso === 'LK' ? '07X XXX XXXX' : 'Mobile number'}
+                        maxLength={12}
+                        className={`w-full bg-slate-800 border rounded-xl px-4 py-3 text-sm text-[var(--pos-text-primary)] placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono tracking-wide ${
+                          formError && formError.toLowerCase().includes('mobile')
+                            ? 'border-red-500'
+                            : 'border-slate-700'
+                        }`}
+                      />
+                      <p className="text-[10px] text-slate-600 mt-1 px-1">Format: {countryIso === 'LK' ? '07X XXX XXXX' : 'XXX XXX XXXX'}</p>
+                    </div>
                     <input
                       type="email"
                       value={quickEmail}
@@ -646,6 +679,16 @@ export function CustomerPickerModal({
                           : 'border-slate-700'
                       }`}
                     />
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1.5 px-1">Birthday (optional)</label>
+                      <input
+                        type="date"
+                        value={quickBirthday}
+                        onChange={(e) => { setQuickBirthday(e.target.value); setFormError(''); }}
+                        max={new Date().toISOString().split('T')[0]}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-[var(--pos-text-primary)] placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500 [color-scheme:dark]"
+                      />
+                    </div>
                     {formError && (
                       <p className="text-xs text-red-400 px-1">{formError}</p>
                     )}
