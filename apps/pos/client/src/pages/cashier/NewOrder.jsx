@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShoppingCart, Plus, Minus, Trash2, Hash, Link2, ChevronDown, ChevronUp,
-  Tag, ToggleLeft, ToggleRight, X, Zap, Search, User, Gift, UserPlus, ChevronLeft, ChevronRight,
+  Tag, ToggleLeft, ToggleRight, X, Zap, Search, User, Gift, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -13,7 +13,7 @@ import { useFohrMode } from '../../hooks/useFohrMode';
 import { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/cashierSessionContext';
 import OrderTypeBadge, { ORDER_TYPES, ORDER_TYPE_MAP } from '../../components/OrderTypeBadge';
 import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
-import OptionPickerModal, { TablePickerModal } from '../../components/OptionPickerModal';
+import OptionPickerModal, { TablePickerModal, CustomerPickerModal } from '../../components/OptionPickerModal';
 import { mergeOrderLists } from '../../offline/mergeOrders.js';
 import { listPendingOrders } from '../../offline/idb.js';
 import { resolveLiveOrder, useSyncOfflineOrderSelection } from '../../offline/orderSelection.js';
@@ -462,6 +462,7 @@ export default function NewOrder() {
   const [reference, setReference] = useState('');
   const [showOrderTypePicker, setShowOrderTypePicker] = useState(false);
   const [showTablePicker, setShowTablePicker] = useState(false);
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentType, setPaymentType] = useState('cash');
@@ -477,11 +478,6 @@ export default function NewOrder() {
   const [customerSearch, setCustomerSearch] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedLoyaltyRewardId, setSelectedLoyaltyRewardId] = useState('');
-  const [showCustomerForm, setShowCustomerForm] = useState(false);
-  const [quickName, setQuickName] = useState('');
-  const [quickMobile, setQuickMobile] = useState('');
-  const [quickEmail, setQuickEmail] = useState('');
-  const [quickFormError, setQuickFormError] = useState('');
   const [readySlideOrder, setReadySlideOrder] = useState(null);
 
   const qc = useQueryClient();
@@ -511,10 +507,6 @@ export default function NewOrder() {
       setSelectedCustomer(null);
       setCustomerSearch('');
       setSelectedLoyaltyRewardId('');
-      setShowCustomerForm(false);
-      setQuickName('');
-      setQuickMobile('');
-      setQuickEmail('');
       setTableNumber('');
       setSelectedTableId('');
       setReadySlideOrder(null);
@@ -697,10 +689,6 @@ export default function NewOrder() {
       if (!c?._id) return;
       setSelectedCustomer(c);
       setCustomerSearch(c.name || c.email || c.mobile || '');
-      setQuickName('');
-      setQuickMobile('');
-      setQuickEmail('');
-      setShowCustomerForm(false);
       qc.invalidateQueries({ queryKey: ['customers-search'] });
       qc.invalidateQueries({ queryKey: ['customer-loyalty'] });
       if (c.reused) showToast('Existing customer matched — attached to order');
@@ -734,10 +722,6 @@ export default function NewOrder() {
       setSelectedCustomer(null);
       setCustomerSearch('');
       setSelectedLoyaltyRewardId('');
-      setShowCustomerForm(false);
-      setQuickName('');
-      setQuickMobile('');
-      setQuickEmail('');
       
       // Show success message
       const msg = isOfflineOrder 
@@ -1204,46 +1188,33 @@ export default function NewOrder() {
               {/* Customer + table / delivery ref (takeaway: full-width customer line only) */}
               <div className="px-4 pb-3 space-y-2 border-b border-slate-700/40">
                 <div className={orderType === 'takeaway' ? 'space-y-2' : 'grid grid-cols-1 sm:grid-cols-2 gap-3 items-start'}>
-                  <div className="min-w-0 relative">
+                  <div className="min-w-0">
                     <label className="block text-xs font-medium text-slate-400 mb-1.5">Customer (optional)</label>
-                    <div
-                      className={`flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 px-3 py-2 transition ${
-                        orderType === 'takeaway' ? 'focus-within:border-green-500' : ''
-                      }`}
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomerPicker(true)}
+                      className="w-full flex items-center justify-between gap-3 rounded-xl border border-slate-700 bg-[var(--pos-surface-inset)] px-4 py-3 text-sm text-[var(--pos-text-primary)] hover:border-slate-600 transition"
                     >
-                      <Search size={14} className="text-slate-500 shrink-0" />
-                      <input
-                        type="text"
-                        value={customerSearch}
-                        onChange={(e) => setCustomerSearch(e.target.value)}
-                        placeholder={
-                          orderType === 'takeaway'
-                            ? 'Search customer or type name on order…'
-                            : 'Search…'
-                        }
-                        className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600 min-w-0"
-                      />
-                    </div>
-                {searchQ.length >= 2 && customerHits.length > 0 && !selectedCustomer && (
-                  <ul className="absolute left-0 right-0 top-full mt-1 z-30 max-h-40 overflow-y-auto rounded-xl border border-slate-700 bg-[var(--pos-panel)] shadow-xl sm:left-0 sm:right-auto sm:w-[min(100%,18rem)]">
-                    {customerHits.slice(0, 8).map((c) => (
-                      <li key={c._id}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedCustomer(c);
-                            setCustomerSearch(c.name || c.email || c.mobile || '');
-                          }}
-                          className="w-full text-left px-3 py-2 text-xs hover:bg-slate-800/80 border-b border-slate-800 last:border-0"
-                        >
-                          <span className="font-medium text-[var(--pos-text-primary)]">{c.name || 'Customer'}</span>
-                          <span className="block text-slate-500 truncate">{c.email || c.mobile || ''}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+                      {selectedCustomer ? (
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-base">👤</span>
+                          <div className="min-w-0 text-left">
+                            <span className="font-semibold truncate block">
+                              {selectedCustomer.name || 'Customer'}
+                            </span>
+                            {(selectedCustomer.email || selectedCustomer.mobile) && (
+                              <span className="text-xs text-slate-500 truncate block">
+                                {selectedCustomer.email || selectedCustomer.mobile}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-slate-500">Select customer…</span>
+                      )}
+                      <ChevronRight size={16} className="text-slate-500 shrink-0" />
+                    </button>
+                  </div>
 
                   {orderType !== 'takeaway' && (
                   <div className="min-w-0">
@@ -1304,114 +1275,16 @@ export default function NewOrder() {
                   )}
             </div>
 
-            {!selectedCustomer && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => { setShowCustomerForm((v) => !v); setQuickFormError(''); }}
-                  className="mt-1 flex items-center gap-1.5 text-xs font-medium text-amber-400 hover:text-amber-300"
-                >
-                  <UserPlus size={13} />
-                  {showCustomerForm ? 'Hide new customer' : 'New customer (optional)'}
-                </button>
-                {showCustomerForm && (
-                  <div className="mt-2 space-y-2 rounded-xl border border-slate-700/80 bg-[var(--pos-panel)]/50 p-3">
-                    <input
-                      type="text"
-                      value={quickName}
-                      onChange={(e) => { setQuickName(e.target.value); setQuickFormError(''); }}
-                      placeholder="Name"
-                      className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)]"
-                    />
-                    <div>
-                      <input
-                        type="tel"
-                        value={quickMobile}
-                        onChange={(e) => { setQuickMobile(e.target.value); setQuickFormError(''); }}
-                        placeholder={`Mobile (${branding.countryIso || 'LK'})`}
-                        className={`w-full bg-[var(--pos-surface-inset)] border rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)] ${
-                          quickFormError && quickFormError.toLowerCase().includes('mobile')
-                            ? 'border-red-500'
-                            : 'border-slate-700'
-                        }`}
-                      />
-                    </div>
-                    <div>
-                      <input
-                        type="email"
-                        value={quickEmail}
-                        onChange={(e) => { setQuickEmail(e.target.value); setQuickFormError(''); }}
-                        placeholder="Email"
-                        className={`w-full bg-[var(--pos-surface-inset)] border rounded-lg px-3 py-2 text-sm text-[var(--pos-text-primary)] ${
-                          quickFormError && quickFormError.toLowerCase().includes('email')
-                            ? 'border-red-500'
-                            : 'border-slate-700'
-                        }`}
-                      />
-                    </div>
-                    {quickFormError && (
-                      <p className="text-xs text-red-400 leading-snug">{quickFormError}</p>
-                    )}
-                    <button
-                      type="button"
-                      disabled={upsertCustomerMutation.isPending}
-                      onClick={() => {
-                        const name = quickName.trim();
-                        const mobile = quickMobile.trim();
-                        const email = quickEmail.trim();
-                        if (!name && !mobile && !email) {
-                          showToast('Enter at least name, mobile, or email');
-                          return;
-                        }
-                        const mobileErr = validateMobile(mobile, branding.countryIso || 'LK');
-                        const emailErr = validateEmail(email);
-                        if (mobileErr || emailErr) {
-                          setQuickFormError(mobileErr || emailErr);
-                          return;
-                        }
-                        setQuickFormError('');
-                        upsertCustomerMutation.mutate({ name, mobile, email });
-                      }}
-                      className="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-white text-sm font-semibold"
-                    >
-                      {upsertCustomerMutation.isPending ? 'Saving…' : 'Save & attach'}
-                    </button>
-                    <p className="text-[10px] text-slate-500 leading-snug">
-                      If mobile or email matches an existing customer, that profile is used.
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
-            {selectedCustomer && (
-              <div className="mt-1 flex items-center gap-2 flex-wrap">
+            {/* Loyalty info badge when customer is selected */}
+            {selectedCustomer && customerLoyalty?.lifetimePoints != null && (
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-1.5 text-xs bg-sky-500/15 text-sky-300 border border-sky-500/30 rounded-full px-2.5 py-1">
                   <User size={11} />
-                  {customerLoyalty?.name || selectedCustomer.name || 'Customer'}
-                  {customerLoyalty?.lifetimePoints != null && (
-                    <span className="text-sky-200/90">
-                      · {customerLoyalty.lifetimePoints} pts
-                      {customerLoyalty?.loyalty?.effectiveTier?.name && (
-                        <> · {customerLoyalty.loyalty.effectiveTier.name}</>
-                      )}
-                    </span>
+                  {customerLoyalty.lifetimePoints} pts
+                  {customerLoyalty?.loyalty?.effectiveTier?.name && (
+                    <> · {customerLoyalty.loyalty.effectiveTier.name}</>
                   )}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedCustomer(null);
-                    setCustomerSearch('');
-                    setSelectedLoyaltyRewardId('');
-                    setShowCustomerForm(false);
-                    setQuickName('');
-                    setQuickMobile('');
-                    setQuickEmail('');
-                  }}
-                  className="text-xs text-slate-500 hover:text-red-400"
-                >
-                  Clear
-                </button>
               </div>
             )}
 
@@ -1802,6 +1675,34 @@ export default function NewOrder() {
         occupancyMap={occupancyByTable}
         selectedTableId={selectedTableId}
         onSelect={(tableId) => setSelectedTableId(tableId)}
+      />
+
+      {/* Customer Picker Modal */}
+      <CustomerPickerModal
+        open={showCustomerPicker}
+        onClose={() => setShowCustomerPicker(false)}
+        customerHits={customerHits}
+        searchQuery={customerSearch}
+        onSearchChange={setCustomerSearch}
+        selectedCustomer={selectedCustomer}
+        onSelectCustomer={(c) => {
+          setSelectedCustomer(c);
+          if (c) {
+            setCustomerSearch(c.name || c.email || c.mobile || '');
+          } else {
+            setCustomerSearch('');
+            setSelectedLoyaltyRewardId('');
+          }
+        }}
+        onCreateCustomer={(data, onSuccess) => {
+          upsertCustomerMutation.mutate(data, {
+            onSuccess: () => onSuccess?.(),
+          });
+        }}
+        createPending={upsertCustomerMutation.isPending}
+        countryIso={branding.countryIso || 'LK'}
+        validateMobileFn={validateMobile}
+        validateEmailFn={validateEmail}
       />
     </div>
     </CashierSessionGate>

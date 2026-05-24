@@ -403,3 +403,278 @@ export function TablePickerModal({
     </div>
   );
 }
+
+/**
+ * Touch-friendly customer picker modal with search and add new customer form.
+ * Used in POS for selecting/creating customers for orders.
+ */
+export function CustomerPickerModal({
+  open,
+  onClose,
+  customerHits = [],
+  searchQuery = '',
+  onSearchChange,
+  selectedCustomer,
+  onSelectCustomer,
+  onCreateCustomer,
+  createPending = false,
+  countryIso = 'LK',
+  validateMobileFn,
+  validateEmailFn,
+}) {
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [quickName, setQuickName] = useState('');
+  const [quickMobile, setQuickMobile] = useState('');
+  const [quickEmail, setQuickEmail] = useState('');
+  const [formError, setFormError] = useState('');
+
+  // Reset form when modal closes
+  const handleClose = () => {
+    setShowNewForm(false);
+    setQuickName('');
+    setQuickMobile('');
+    setQuickEmail('');
+    setFormError('');
+    onClose?.();
+  };
+
+  const handleSelectCustomer = (customer) => {
+    onSelectCustomer?.(customer);
+    handleClose();
+  };
+
+  const handleClearCustomer = () => {
+    onSelectCustomer?.(null);
+    onSearchChange?.('');
+  };
+
+  const handleSaveNewCustomer = () => {
+    const name = quickName.trim();
+    const mobile = quickMobile.trim();
+    const email = quickEmail.trim();
+
+    if (!name && !mobile && !email) {
+      setFormError('Enter at least name, mobile, or email');
+      return;
+    }
+
+    // Validate mobile if provided
+    if (mobile && validateMobileFn) {
+      const mobileErr = validateMobileFn(mobile, countryIso);
+      if (mobileErr) {
+        setFormError(mobileErr);
+        return;
+      }
+    }
+
+    // Validate email if provided
+    if (email && validateEmailFn) {
+      const emailErr = validateEmailFn(email);
+      if (emailErr) {
+        setFormError(emailErr);
+        return;
+      }
+    }
+
+    setFormError('');
+    onCreateCustomer?.({ name, mobile, email }, () => {
+      // Success callback - reset form
+      setQuickName('');
+      setQuickMobile('');
+      setQuickEmail('');
+      setShowNewForm(false);
+      handleClose();
+    });
+  };
+
+  if (!open) return null;
+
+  const searchQ = searchQuery.trim();
+
+  return (
+    <div
+      className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/70"
+      onClick={handleClose}
+    >
+      <div
+        className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-700/60 shrink-0">
+          <div>
+            <h3 className="text-base font-bold text-[var(--pos-text-primary)]">
+              {selectedCustomer ? 'Customer Selected' : 'Select Customer'}
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {selectedCustomer ? 'Tap to change or remove' : 'Search or add a new customer'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="p-2 rounded-xl text-slate-400 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition"
+            aria-label="Close"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4">
+          {/* Selected customer display */}
+          {selectedCustomer && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-amber-300 truncate">
+                    {selectedCustomer.name || 'Customer'}
+                  </p>
+                  <p className="text-xs text-slate-400 truncate mt-0.5">
+                    {selectedCustomer.email || selectedCustomer.mobile || 'No contact info'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleClearCustomer}
+                  className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold hover:bg-red-500/20 transition"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Search input */}
+          {!selectedCustomer && (
+            <>
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => onSearchChange?.(e.target.value)}
+                  placeholder="Search by name, email, or mobile…"
+                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl pl-9 pr-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+                  autoFocus
+                />
+              </div>
+
+              {/* Search results */}
+              {searchQ.length >= 2 && customerHits.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-slate-500 px-1">Search Results</p>
+                  <div className="space-y-1.5">
+                    {customerHits.slice(0, 8).map((c) => (
+                      <button
+                        key={c._id}
+                        type="button"
+                        onClick={() => handleSelectCustomer(c)}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-700 bg-[var(--pos-surface-inset)] hover:border-slate-600 hover:bg-slate-800/60 transition active:scale-[0.99] text-left"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-lg shrink-0">
+                          👤
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-[var(--pos-text-primary)] truncate">
+                            {c.name || 'Customer'}
+                          </p>
+                          <p className="text-xs text-slate-500 truncate">
+                            {c.email || c.mobile || 'No contact info'}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {searchQ.length >= 2 && customerHits.length === 0 && (
+                <p className="text-sm text-slate-500 text-center py-4">
+                  No customers found
+                </p>
+              )}
+
+              {/* Add new customer section */}
+              <div className="pt-2 border-t border-slate-700/60">
+                <button
+                  type="button"
+                  onClick={() => setShowNewForm((v) => !v)}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-slate-700 hover:border-slate-600 text-slate-400 hover:text-slate-300 font-medium text-sm transition"
+                >
+                  {showNewForm ? (
+                    <>
+                      <X size={16} />
+                      Cancel New Customer
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-lg">+</span>
+                      Add New Customer
+                    </>
+                  )}
+                </button>
+
+                {showNewForm && (
+                  <div className="mt-3 space-y-3 p-4 rounded-xl border border-slate-700 bg-[var(--pos-surface-inset)]">
+                    <input
+                      type="text"
+                      value={quickName}
+                      onChange={(e) => { setQuickName(e.target.value); setFormError(''); }}
+                      placeholder="Name"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-[var(--pos-text-primary)] placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                    <input
+                      type="tel"
+                      value={quickMobile}
+                      onChange={(e) => { setQuickMobile(e.target.value); setFormError(''); }}
+                      placeholder={`Mobile (${countryIso})`}
+                      className={`w-full bg-slate-800 border rounded-xl px-4 py-3 text-sm text-[var(--pos-text-primary)] placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                        formError && formError.toLowerCase().includes('mobile')
+                          ? 'border-red-500'
+                          : 'border-slate-700'
+                      }`}
+                    />
+                    <input
+                      type="email"
+                      value={quickEmail}
+                      onChange={(e) => { setQuickEmail(e.target.value); setFormError(''); }}
+                      placeholder="Email"
+                      className={`w-full bg-slate-800 border rounded-xl px-4 py-3 text-sm text-[var(--pos-text-primary)] placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                        formError && formError.toLowerCase().includes('email')
+                          ? 'border-red-500'
+                          : 'border-slate-700'
+                      }`}
+                    />
+                    {formError && (
+                      <p className="text-xs text-red-400 px-1">{formError}</p>
+                    )}
+                    <button
+                      type="button"
+                      disabled={createPending}
+                      onClick={handleSaveNewCustomer}
+                      className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-white font-semibold text-sm transition active:scale-[0.99]"
+                    >
+                      {createPending ? 'Saving…' : 'Save & Select'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-4 pb-4 shrink-0">
+          <button
+            type="button"
+            onClick={handleClose}
+            className="w-full py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-semibold text-sm transition"
+          >
+            {selectedCustomer ? 'Done' : 'Cancel'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
