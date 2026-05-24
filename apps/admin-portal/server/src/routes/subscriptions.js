@@ -103,13 +103,132 @@ async function resolveRequestedPlan({ tenant, planId }) {
   return SubscriptionPlan.findOne({ isActive: true, isDefault: true, ...regionFilter }).sort({ createdAt: 1 });
 }
 
+function escapeRegex(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function applyReceiptKindFilter(filter, kind) {
+  if (!kind) return;
+  if (kind === 'subscription') {
+    filter.$and = [...(filter.$and || []), {
+      $or: [
+        { receiptKind: 'subscription' },
+        { receiptKind: { $exists: false } },
+        { receiptKind: null },
+      ],
+    }];
+    return;
+  }
+  if (kind === 'addon') {
+    filter.receiptKind = { $in: ['addon', 'store', 'user_license'] };
+    return;
+  }
+  filter.receiptKind = kind;
+}
+
+async function loadReceiptDetail(receiptId, { includeAdminContext = false } = {}) {
+  const PaidAddonDefinition = require('../models/PaidAddonDefinition');
+  let receipt = await PaymentReceipt.findById(receiptId)
+    .populate('tenantId', 'businessName slug subscriptionStatus trialEndsAt countryIso')
+    .populate('requestedPlanId', 'name code amount currency billingCycle durationDays')
+    .populate('verifiedBy', 'name email')
+    .populate('createdBy', 'name email')
+    .lean();
+  if (!receipt) return null;
+
+  [receipt] = await attachFreshReceiptUrls([receipt]);
+
+  const tenant = receipt.tenantId;
+  let billingBreakdown = null;
+  let addonMeta = null;
+  let storeMeta = null;
+  let userMeta = null;
+  let storesMeta = null;
+  let tenantContext = null;
+
+  if (includeAdminContext) {
+    if ((receipt.receiptKind === 'subscription' || (!receipt.receiptKind && !receipt.addonCode))
+      && !receipt.paymentBreakdown) {
+      billingBreakdown = await computeSubscriptionRenewalExpected(tenant);
+    }
+
+    const ADDON_LABELS = {
+      qrOrdering: 'QR Ordering',
+      loyalty: 'Loyalty Program',
+      tableManagement: 'Table Management',
+      uberEats: 'Uber Eats',
+      accounting: 'Accounting',
+    };
+    const fullTenant = await Tenant.findById(tenant._id)
+      .populate('assignedPlanId', 'name billingCycle amount currency')
+      .lean();
+    const latestSub = await Subscription.findOne({ tenantId: tenant._id })
+      .sort({ endDate: -1 })
+      .select('endDate')
+      .lean();
+    const periodEnd = resolveTenantPeriodEnd(fullTenant, latestSub?.endDate);
+    const activeAddons = Object.entries(fullTenant?.paidAddons || {})
+      .filter(([, v]) => v?.active === true)
+      .map(([key]) => ADDON_LABELS[key] || key);
+    tenantContext = {
+      subscriptionStatus: fullTenant?.subscriptionStatus || tenant.subscriptionStatus,
+      planName: fullTenant?.assignedPlanId?.name || null,
+      planBillingCycle: fullTenant?.assignedPlanId?.billingCycle || null,
+      periodEnd: periodEnd ? periodEnd.toISOString() : null,
+      activeAddons,
+    };
+  }
+
+  if (receipt.receiptKind === 'addon' || receipt.addonCode) {
+    const addon = await PaidAddonDefinition.findOne({ code: receipt.addonCode }).lean();
+    addonMeta = addon
+      ? { code: addon.code, name: addon.name, shortDescription: addon.shortDescription }
+      : { code: receipt.addonCode, name: receipt.addonCode };
+  }
+  if (receipt.receiptKind === 'store') {
+    storeMeta = { label: 'Additional store location', description: 'Creates one store with default settings after verification.' };
+  }
+  if (receipt.receiptKind === 'user_license' && receipt.userLicensePayload) {
+    const UserModel = require('../models/User');
+    const Store = require('../models/Store');
+    const payload = receipt.userLicensePayload;
+    if (payload.userId) {
+      const u = await UserModel.findById(payload.userId).select('name email role').lean();
+      userMeta = u || { name: 'Unknown User', email: '' };
+    }
+    const storeIds = payload.storeIds || payload.targetStoreIds || [];
+    if (storeIds.length > 0) {
+      const docs = await Store.find({ _id: { $in: storeIds } }).select('name code').lean();
+      storesMeta = docs.map((s) => ({ name: s.name, code: s.code }));
+    }
+  }
+
+  return {
+    receipt,
+    billingBreakdown,
+    addonMeta,
+    storeMeta,
+    userMeta,
+    storesMeta,
+    tenantContext,
+    receiptKindLabel:
+      receipt.receiptKind === 'user_license'
+        ? 'User license'
+        : receipt.receiptKind === 'store'
+          ? 'Additional store'
+          : receipt.receiptKind === 'addon' || receipt.addonCode
+            ? 'Paid add-on'
+            : 'Subscription renewal',
+  };
+}
+
 // GET /subscriptions/receipts — list payment receipts
 router.get('/receipts', authenticateJWT, async (req, res) => {
   try {
     const tenantId = req.user.role === 'superadmin' ? (req.query.tenantId || undefined) : req.tenantId;
     const filter = tenantId ? { tenantId } : {};
     if (req.query.status) filter.status = req.query.status;
-    if (req.query.kind) filter.receiptKind = req.query.kind;
+    applyReceiptKindFilter(filter, req.query.kind);
     if (req.query.method) filter.paymentMethod = req.query.method;
     if (req.query.dateFrom || req.query.dateTo) {
       filter.paymentDate = {};
@@ -124,7 +243,7 @@ router.get('/receipts', authenticateJWT, async (req, res) => {
     const search = String(req.query.search || req.query.q || '').trim();
     if (search && req.user.role === 'superadmin') {
       const Tenant = require('../models/Tenant');
-      const re = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      const re = new RegExp(escapeRegex(search), 'i');
       const tenants = await Tenant.find({ businessName: re }).select('_id').lean();
       const ids = tenants.map((t) => t._id);
       if (!ids.length) {
@@ -132,6 +251,9 @@ router.get('/receipts', authenticateJWT, async (req, res) => {
         return res.json(paginated([], 0, page, limit));
       }
       filter.tenantId = { $in: ids };
+    } else if (search && req.user.role === 'merchant_admin') {
+      const re = new RegExp(escapeRegex(search), 'i');
+      filter.$and = [...(filter.$and || []), { $or: [{ bankReference: re }, { notes: re }] }];
     }
 
     const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 100 });
@@ -143,6 +265,7 @@ router.get('/receipts', authenticateJWT, async (req, res) => {
       paymentDate: 'paymentDate',
     }, { createdAt: -1 });
     let receipts = await PaymentReceipt.find(filter)
+      .select('-paymentBreakdown')
       .sort(sort)
       .skip(skip)
       .limit(limit)
@@ -409,98 +532,23 @@ router.get('/receipts/:id/url', authenticateJWT, async (req, res) => {
   }
 });
 
-// GET /subscriptions/receipts/:id — superadmin payment detail
-router.get('/receipts/:id', authenticateJWT, authorize('superadmin'), async (req, res) => {
+// GET /subscriptions/receipts/:id — payment detail (superadmin or owning merchant)
+router.get('/receipts/:id', authenticateJWT, async (req, res) => {
   try {
-    const PaidAddonDefinition = require('../models/PaidAddonDefinition');
-    let receipt = await PaymentReceipt.findById(req.params.id)
-      .populate('tenantId', 'businessName slug subscriptionStatus trialEndsAt countryIso')
-      .populate('requestedPlanId', 'name code amount currency billingCycle durationDays')
-      .populate('verifiedBy', 'name email')
-      .populate('createdBy', 'name email')
-      .lean();
-    if (!receipt) return res.status(404).json({ message: 'Receipt not found' });
+    const receiptDoc = await PaymentReceipt.findById(req.params.id).select('tenantId').lean();
+    if (!receiptDoc) return res.status(404).json({ message: 'Receipt not found' });
 
-    [receipt] = await attachFreshReceiptUrls([receipt]);
-
-    const tenant = receipt.tenantId;
-    let billingBreakdown = null;
-    let addonMeta = null;
-    let storeMeta = null;
-    let userMeta = null;
-    let storesMeta = null;
-
-    if (receipt.receiptKind === 'subscription' || (!receipt.receiptKind && !receipt.addonCode)) {
-      billingBreakdown = await computeSubscriptionRenewalExpected(tenant);
-    }
-
-    // Always build a rich subscription context for the admin to make decisions
-    const ADDON_LABELS = {
-      qrOrdering: 'QR Ordering',
-      loyalty: 'Loyalty Program',
-      tableManagement: 'Table Management',
-      uberEats: 'Uber Eats',
-      accounting: 'Accounting',
-    };
-    const fullTenant = await Tenant.findById(tenant._id)
-      .populate('assignedPlanId', 'name billingCycle amount currency')
-      .lean();
-    const latestSub = await Subscription.findOne({ tenantId: tenant._id })
-      .sort({ endDate: -1 })
-      .select('endDate')
-      .lean();
-    const periodEnd = resolveTenantPeriodEnd(fullTenant, latestSub?.endDate);
-    const activeAddons = Object.entries(fullTenant?.paidAddons || {})
-      .filter(([, v]) => v?.active === true)
-      .map(([key]) => ADDON_LABELS[key] || key);
-    const tenantContext = {
-      subscriptionStatus: fullTenant?.subscriptionStatus || tenant.subscriptionStatus,
-      planName: fullTenant?.assignedPlanId?.name || null,
-      planBillingCycle: fullTenant?.assignedPlanId?.billingCycle || null,
-      periodEnd: periodEnd ? periodEnd.toISOString() : null,
-      activeAddons,
-    };
-    if (receipt.receiptKind === 'addon' || receipt.addonCode) {
-      const addon = await PaidAddonDefinition.findOne({ code: receipt.addonCode }).lean();
-      addonMeta = addon
-        ? { code: addon.code, name: addon.name, shortDescription: addon.shortDescription }
-        : { code: receipt.addonCode, name: receipt.addonCode };
-    }
-    if (receipt.receiptKind === 'store') {
-      storeMeta = { label: 'Additional store location', description: 'Creates one store with default settings after verification.' };
-    }
-    if (receipt.receiptKind === 'user_license' && receipt.userLicensePayload) {
-      const User = require('../models/User');
-      const Store = require('../models/Store');
-      const payload = receipt.userLicensePayload;
-      if (payload.userId) {
-        const u = await User.findById(payload.userId).select('name email role').lean();
-        userMeta = u || { name: 'Unknown User', email: '' };
-      }
-      const storeIds = payload.storeIds || payload.targetStoreIds || [];
-      if (storeIds.length > 0) {
-        const docs = await Store.find({ _id: { $in: storeIds } }).select('name code').lean();
-        storesMeta = docs.map(s => ({ name: s.name, code: s.code }));
+    const isSuperadmin = req.user.role === 'superadmin';
+    if (!isSuperadmin) {
+      if (req.user.role !== 'merchant_admin' || String(receiptDoc.tenantId) !== String(req.tenantId)) {
+        return res.status(403).json({ message: 'Access forbidden: insufficient role' });
       }
     }
 
-    res.json({
-      receipt,
-      billingBreakdown,
-      addonMeta,
-      storeMeta,
-      userMeta,
-      storesMeta,
-      tenantContext,
-      receiptKindLabel:
-        receipt.receiptKind === 'user_license'
-          ? 'User license'
-          : receipt.receiptKind === 'store'
-            ? 'Additional store'
-            : receipt.receiptKind === 'addon' || receipt.addonCode
-              ? 'Paid add-on'
-              : 'Subscription renewal',
-    });
+    const detail = await loadReceiptDetail(req.params.id, { includeAdminContext: isSuperadmin });
+    if (!detail) return res.status(404).json({ message: 'Receipt not found' });
+
+    res.json(detail);
   } catch (err) {
     sendRouteError(res, err, { req });
   }
@@ -1072,7 +1120,7 @@ router.post('/schedule-plan', authenticateJWT, authorize('merchant_admin'), asyn
   }
 });
 
-// GET /subscriptions/my — merchant's own subscription status
+// GET /subscriptions/my — merchant's own subscription status (lightweight; no receipt list)
 router.get('/my', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
   try {
     const tenant = await Tenant.findById(req.tenantId)
@@ -1081,13 +1129,18 @@ router.get('/my', authenticateJWT, authorize('merchant_admin'), async (req, res)
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
 
     const subscriptions = await Subscription.find({ tenantId: req.tenantId }).sort({ endDate: -1 });
-    let receipts = await PaymentReceipt.find({ tenantId: req.tenantId })
-      .populate('requestedPlanId', 'name code amount currency billingCycle durationDays')
-      .sort({ createdAt: -1 })
-      .lean();
+    const pendingReceiptsCount = await PaymentReceipt.countDocuments({
+      tenantId: req.tenantId,
+      status: 'pending',
+    });
 
-    const renewal = await computeSubscriptionRenewalExpected(tenant);
-    res.json({ tenant, subscriptions, receipts, billingBreakdown: renewal });
+    const includeBreakdown = req.query.includeBreakdown === '1' || req.query.includeBreakdown === 'true';
+    let billingBreakdown = null;
+    if (includeBreakdown) {
+      billingBreakdown = await computeSubscriptionRenewalExpected(tenant);
+    }
+
+    res.json({ tenant, subscriptions, pendingReceiptsCount, billingBreakdown });
   } catch (err) {
     sendRouteError(res, err, { req });
   }

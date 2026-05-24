@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Loader, UserCheck, UserX, Key, X, Pencil, Search, ArrowLeft, Clock, AlertTriangle, ChevronDown, Trash2 } from 'lucide-react';
 import TooltipWrap from '../../components/common/TooltipWrap';
@@ -91,6 +92,8 @@ function MultiSelectDropdown({ label, options, selected, onChange }) {
 export default function UsersPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { isInternational } = useMerchantBillingRegion();
   const { currencySymbol: merchantSymbol, currency: tenantCurrency } = useTenantCurrency();
   const [showModal, setShowModal] = useState(false);
@@ -117,7 +120,11 @@ export default function UsersPage() {
   const bankFileRef = useRef(null);
   const paypalContainerRef = useRef(null);
   const [paypalReady, setPaypalReady] = useState(false);
-  const [activeTab, setActiveTab] = useState('active');
+  
+  // Route-based tab navigation
+  const activeTab = location.pathname.endsWith('/pending') ? 'pending' : 'active';
+  const setActiveTab = (tab) => navigate(`/users/${tab}`);
+  
   const [deactivateTarget, setDeactivateTarget] = useState(null);
   const [activateTarget, setActivateTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -152,28 +159,26 @@ export default function UsersPage() {
     queryFn: () => api.get('/platform-payments/merchant-options').then((r) => r.data),
   });
 
-  const { data: subscriptionData } = useQuery({
-    queryKey: ['my-subscription'],
-    queryFn: () => api.get('/subscriptions/my').then((r) => r.data),
-    staleTime: 0,
+  const { data: pendingUserReceipts = [] } = useQuery({
+    queryKey: ['merchant-receipts', 'pending-user-license'],
+    queryFn: async () => {
+      const { data } = await api.get('/subscriptions/receipts', {
+        params: { status: 'pending', kind: 'user_license', limit: 50 },
+      });
+      const items = unwrapPagedList(data).items;
+      return items.map((r) => {
+        let payload = {};
+        try {
+          if (r.userLicensePayload) {
+            payload = typeof r.userLicensePayload === 'string'
+              ? JSON.parse(r.userLicensePayload)
+              : r.userLicensePayload;
+          }
+        } catch { /* noop */ }
+        return { ...r, _parsedPayload: payload };
+      });
+    },
   });
-
-  const pendingUserReceipts = useMemo(() => {
-    if (!subscriptionData?.receipts) return [];
-    return subscriptionData.receipts.filter(
-      (r) => r.receiptKind === 'user_license' && r.status === 'pending',
-    ).map((r) => {
-      let payload = {};
-      try {
-        if (r.userLicensePayload) {
-          payload = typeof r.userLicensePayload === 'string'
-            ? JSON.parse(r.userLicensePayload)
-            : r.userLicensePayload;
-        }
-      } catch { /* noop */ }
-      return { ...r, _parsedPayload: payload };
-    });
-  }, [subscriptionData]);
 
   const originalStoreIds = useMemo(() => {
     if (!editingUser?.storeIds) return [];
@@ -303,6 +308,7 @@ export default function UsersPage() {
     onSuccess: () => {
       toast.success('Receipt submitted. The change will apply after super admin approval.');
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
       closeAll();
     },
     onError: (err) => setPaymentError(err.response?.data?.message || 'Upload failed'),

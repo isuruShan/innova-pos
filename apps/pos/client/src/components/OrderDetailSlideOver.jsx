@@ -461,12 +461,10 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
     if (items.length === 0) return setError('Order must have at least one item');
     if (orderType === 'dine-in' && tableMgmt && !selectedTableId)
       return setError('Select a table for dine-in');
-    if (orderType === 'dine-in' && !tableMgmt && !tableNumber.trim())
-      return setError('Table number is required for dine-in orders');
     saveMutation.mutate({
       orderType,
       ...(orderType === 'dine-in' && tableMgmt ? { tableId: selectedTableId } : {}),
-      ...(orderType === 'dine-in' && !tableMgmt ? { tableNumber: tableNumber.trim() } : {}),
+      ...(orderType === 'dine-in' ? { tableNumber: tableNumber.trim() } : {}),
       reference,
       items: items.map((i) => ({
         menuItem: i.menuItem,
@@ -629,7 +627,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
                   value={tableNumber}
                   onChange={e => { setTableNumber(e.target.value); setDirty(true); }}
                   disabled={!isEditable}
-                  placeholder="Table number"
+                  placeholder="Table number (optional)"
                   className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600 disabled:opacity-50"
                 />
               </div>

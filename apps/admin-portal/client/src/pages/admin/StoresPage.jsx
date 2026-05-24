@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader, X, ArrowLeft, Plus, Search, Star, Trash2, Clock, ChevronDown, Check, Filter, ArrowUpDown } from 'lucide-react';
 import api from '../../api/axios';
@@ -243,6 +244,8 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
   const [editPhoneCountryIso, setEditPhoneCountryIso] = useState(DEFAULT_COUNTRY_CODE);
   const [editPhoneNationalDigits, setEditPhoneNationalDigits] = useState('');
   const toast = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { isInternational } = useMerchantBillingRegion();
   const { currencySymbol: merchantSymbol } = useTenantCurrency();
   const [error, setError] = useState('');
@@ -253,7 +256,11 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
   const [paymentMethodsFilter, setPaymentMethodsFilter] = useState(['cash', 'card', 'bank_transfer', 'mobile_wallet']);
   const { sort, order, toggleSort, sortParams, setSort, setOrder } = useListSort('name', 'asc');
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [activeTab, setActiveTab] = useState('active');
+  
+  // Route-based tab navigation
+  const activeTab = location.pathname.endsWith('/pending') ? 'pending' : 'active';
+  const setActiveTab = (tab) => navigate(`/stores/${tab}`);
+  
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [purchaseOpen, setPurchaseOpen] = useState(false);
   const [purchaseStep, setPurchaseStep] = useState('review');
@@ -379,19 +386,16 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
     },
   });
 
-  const { data: subscriptionData } = useQuery({
-    queryKey: ['my-subscription'],
-    queryFn: () => api.get('/subscriptions/my').then((r) => r.data),
+  const { data: pendingStoreReceipts = [] } = useQuery({
+    queryKey: ['merchant-receipts', 'pending-store'],
+    queryFn: async () => {
+      const { data } = await api.get('/subscriptions/receipts', {
+        params: { status: 'pending', kind: 'store', limit: 50 },
+      });
+      return unwrapPagedList(data).items;
+    },
     enabled: isMerchantAdmin && !workspaceMode,
-    staleTime: 0,
   });
-
-  const pendingStoreReceipts = useMemo(() => {
-    if (!subscriptionData?.receipts) return [];
-    return subscriptionData.receipts.filter(
-      (r) => r.receiptKind === 'store' && r.status === 'pending'
-    );
-  }, [subscriptionData]);
 
   const createStoreSuper = useMutation({
     mutationFn: (payload) => api.post('/stores', tenantIdOverride ? { ...payload, tenantId: tenantIdOverride } : payload),
@@ -436,6 +440,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
       toast.success('Receipt submitted. Your store will be created after verification.');
       closePurchase();
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
     },
     onError: (err) => setPurchaseError(err.response?.data?.message || 'Upload failed'),
   });
@@ -611,6 +616,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
       queryClient.invalidateQueries({ queryKey: ['stores'] });
       queryClient.invalidateQueries({ queryKey: ['users-for-store-access'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || 'Failed to delete store');

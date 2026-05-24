@@ -40,14 +40,39 @@ const ADMIN_NAV_GROUPS = [
       { label: 'Analytics', icon: BarChart3, to: '/analytics' },
       { label: 'Notifications', icon: Bell, to: '/notifications' },
       { label: 'Branding & Settings', icon: Palette, to: '/branding' },
-      { label: 'Users', icon: Users, to: '/users' },
-      { label: 'Stores', icon: Store, to: '/stores' },
+      { 
+        label: 'Users', 
+        icon: Users, 
+        to: '/users',
+        subItems: [
+          { label: 'Active Users', to: '/users/active' },
+          { label: 'Pending Approvals', to: '/users/pending' },
+        ],
+      },
+      { 
+        label: 'Stores', 
+        icon: Store, 
+        to: '/stores',
+        subItems: [
+          { label: 'Active Stores', to: '/stores/active' },
+          { label: 'Pending Stores', to: '/stores/pending' },
+        ],
+      },
     ],
   },
   {
     title: 'Customers & marketing',
     items: [
-      { label: 'Loyalty admin', icon: Award, to: '/loyalty', requiresAddon: 'loyalty' },
+      { 
+        label: 'Loyalty admin', 
+        icon: Award, 
+        to: '/loyalty', 
+        requiresAddon: 'loyalty',
+        subItems: [
+          { label: 'Program & Tiers', to: '/loyalty/program' },
+          { label: 'Rewards', to: '/loyalty/rewards' },
+        ],
+      },
       { label: 'Customers', icon: ContactRound, to: '/customers' },
       { label: 'Promotions', icon: Tag, to: '/promotions' },
     ],
@@ -55,7 +80,19 @@ const ADMIN_NAV_GROUPS = [
   {
     title: 'Finance',
     items: [
-      { label: 'Accounting', icon: Landmark, to: '/accounting', requiresAddon: 'accounting' },
+      { 
+        label: 'Accounting', 
+        icon: Landmark, 
+        to: '/accounting', 
+        requiresAddon: 'accounting',
+        subItems: [
+          { label: 'Chart of Accounts', to: '/accounting/coa' },
+          { label: 'General Ledger', to: '/accounting/ledger' },
+          { label: 'Contacts', to: '/accounting/contacts' },
+          { label: 'Payroll', to: '/accounting/payroll' },
+          { label: 'Reports', to: '/accounting/reports' },
+        ],
+      },
     ],
   },
   {
@@ -64,7 +101,16 @@ const ADMIN_NAV_GROUPS = [
       { label: 'Cashier sessions', icon: Wallet, to: '/cashier-sessions' },
       { label: 'Add-ons', icon: Sparkles, to: '/addons' },
       { label: 'Uber Eats Config', icon: Sparkles, to: '/uber-config', requiresAddon: 'uber_eats' },
-      { label: 'Subscription', icon: CreditCard, to: '/subscription' },
+      { 
+        label: 'Subscription', 
+        icon: CreditCard, 
+        to: '/subscription',
+        subItems: [
+          { label: 'Overview', to: '/subscription/overview' },
+          { label: 'Breakdown', to: '/subscription/breakdown' },
+          { label: 'Payment History', to: '/subscription/payments' },
+        ],
+      },
     ],
   },
 ];
@@ -165,21 +211,48 @@ export default function Layout({ children }) {
               <div className="mt-0.5 space-y-0.5">
                 {group.items.map((item) => {
                   const active = isActive(item.to);
+                  const hasSubItems = item.subItems && item.subItems.length > 0;
+                  
                   return (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      onClick={() => setSidebarOpen(false)}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        active
-                          ? 'bg-brand-teal text-white'
-                          : 'text-gray-400 hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      <item.icon size={17} className="shrink-0" />
-                      {item.label}
-                      {active ? <ChevronRight size={14} className="ml-auto opacity-80" /> : null}
-                    </Link>
+                    <div key={item.to}>
+                      <Link
+                        to={hasSubItems ? item.subItems[0].to : item.to}
+                        onClick={() => setSidebarOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          active
+                            ? 'bg-brand-teal text-white'
+                            : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        <item.icon size={17} className="shrink-0" />
+                        {item.label}
+                        {active && !hasSubItems ? <ChevronRight size={14} className="ml-auto opacity-80" /> : null}
+                        {hasSubItems && <ChevronRight size={14} className={`ml-auto opacity-60 transition-transform ${active ? 'rotate-90' : ''}`} />}
+                      </Link>
+                      
+                      {/* Sub-items */}
+                      {hasSubItems && active && (
+                        <div className="ml-6 mt-0.5 space-y-0.5 border-l border-white/10 pl-2">
+                          {item.subItems.map((subItem) => {
+                            const subActive = location.pathname === subItem.to;
+                            return (
+                              <Link
+                                key={subItem.to}
+                                to={subItem.to}
+                                onClick={() => setSidebarOpen(false)}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                                  subActive
+                                    ? 'bg-white/10 text-white'
+                                    : 'text-gray-500 hover:text-white hover:bg-white/5'
+                                }`}
+                              >
+                                {subItem.label}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>

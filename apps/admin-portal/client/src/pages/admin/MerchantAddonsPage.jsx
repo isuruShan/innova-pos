@@ -19,6 +19,7 @@ import BankReceiptFields from '../../components/billing/BankReceiptFields';
 import { useToast } from '../../context/ToastContext';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import { unwrapPagedList } from '../../utils/unwrapPagedList';
 
 /**
  * Paid add-ons (e.g. QR Ordering): review first, then choose an admin-configured
@@ -56,6 +57,16 @@ export default function MerchantAddonsPage() {
   });
   const tenant = tenantData?.tenant;
 
+  const { data: recentReceipts = [] } = useQuery({
+    queryKey: ['merchant-receipts', 'recent'],
+    queryFn: async () => {
+      const { data } = await api.get('/subscriptions/receipts', {
+        params: { limit: 8, sort: 'createdAt', order: 'desc' },
+      });
+      return unwrapPagedList(data).items;
+    },
+  });
+
   const { data: catalog = [], isPending: catalogPending, error: catalogError } = useQuery({
     queryKey: ['paid-addons-merchant-catalog'],
     queryFn: () => api.get('/paid-addons/merchant-catalog').then((r) => r.data),
@@ -71,6 +82,7 @@ export default function MerchantAddonsPage() {
       api.post('/subscriptions/checkout/paypal/capture', { orderId }).then((r) => r.data),
     onSuccess: (capData) => {
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
       queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
       if (capData?.addon) {
         toast.success(capData.message || 'Add-on is now active.');
@@ -87,6 +99,7 @@ export default function MerchantAddonsPage() {
     mutationFn: (fd) => api.post('/subscriptions/receipts', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
       queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
       toast.success('Receipt submitted. Pending super admin approval.');
       closeFlow();
@@ -102,6 +115,7 @@ export default function MerchantAddonsPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
       toast.success(data?.message || 'Unsubscribe scheduled.');
       setUnsubscribingCode('');
     },
@@ -118,6 +132,7 @@ export default function MerchantAddonsPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
       toast.success(data?.message || 'Trial started successfully!');
       setTrialStartingCode('');
     },
@@ -623,14 +638,14 @@ export default function MerchantAddonsPage() {
         </div>
       )}
 
-      {tenantData?.receipts?.length > 0 && (
+      {recentReceipts.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="p-4 border-b border-gray-100">
             <h3 className="font-semibold text-gray-900">Recent payment receipts</h3>
             <p className="text-xs text-gray-500 mt-1">Includes subscription and add-on submissions.</p>
           </div>
           <div className="divide-y divide-gray-100 max-h-64 overflow-y-auto">
-            {tenantData.receipts.slice(0, 8).map((r) => (
+            {recentReceipts.map((r) => (
               <div key={r._id} className="flex items-center justify-between px-4 py-3">
                 <div>
                   <p className="text-sm font-medium text-gray-800">

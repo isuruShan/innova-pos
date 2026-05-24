@@ -9,6 +9,7 @@ import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import OfflineBanner from '../../components/OfflineBanner';
 import CashierSessionGate from '../../components/cashier/CashierSessionGate';
+import CollectPaymentModal from '../../components/cashier/CollectPaymentModal';
 import { useFohrMode } from '../../hooks/useFohrMode';
 import { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/cashierSessionContext';
 import OrderTypeBadge, { ORDER_TYPES, ORDER_TYPE_MAP } from '../../components/OrderTypeBadge';
@@ -500,8 +501,6 @@ export default function NewOrder() {
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [paymentType, setPaymentType] = useState('cash');
-  const [cashReceivedInput, setCashReceivedInput] = useState('');
 
   // Promotion state
   const [autoApply, setAutoApply] = useState(true);
@@ -980,46 +979,29 @@ export default function NewOrder() {
     : discountedSubtotal * (serviceFeeRate / 100);
   const total = discountedSubtotal + taxAmount + serviceFeeAmount;
 
-  useEffect(() => {
-    if (paymentModalOpen) {
-      setCashReceivedInput(total.toFixed(2));
-    }
-  }, [paymentModalOpen, total]);
-
   const canPlace =
     cart.length > 0 &&
-    (orderType !== 'dine-in' ||
-      (tableMgmt ? Boolean(selectedTableId) : tableNumber.trim()));
+    (orderType !== 'dine-in' || !tableMgmt || Boolean(selectedTableId));
 
   const nonDineInReference =
     orderType === 'takeaway' ? customerSearch.trim() : reference.trim();
 
-  const placeOrder = () => {
+  const handlePaymentConfirm = ({ paymentType, paymentAmount, cashTender }) => {
     if (!canPlace) return;
-    
-    const parsedTender = parseFloat(String(cashReceivedInput).replace(/,/g, ''));
-    const cashTender =
-      paymentType === 'cash' && Number.isFinite(parsedTender) ? parsedTender : undefined;
-    
-    console.log('[Place Order] Starting mutation, online:', online);
-    
     mutation.mutate({
       orderType,
       ...(orderType === 'dine-in' && tableMgmt && selectedTableId ? { tableId: selectedTableId } : {}),
-      tableNumber:
-        orderType === 'dine-in' && !tableMgmt ? tableNumber.trim() : '',
+      tableNumber: orderType === 'dine-in' && !tableMgmt ? tableNumber.trim() : '',
       reference: orderType !== 'dine-in' ? nonDineInReference : '',
       items: cart,
       paymentType,
-      paymentAmount: total,
+      paymentAmount,
       cashTender,
       ...(selectedCustomer?._id ? { customerId: selectedCustomer._id } : {}),
       ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0 && !deferPayment
         ? { loyaltyRewardId: selectedLoyaltyRewardId }
         : {}),
     });
-    
-    // Note: modal is closed in onSettled handler for both online and offline
   };
 
   const sendTableTabOrder = () => {
@@ -1036,13 +1018,6 @@ export default function NewOrder() {
         : {}),
     });
   };
-
-  const parsedReceiving = parseFloat(String(cashReceivedInput).replace(/,/g, ''));
-  const receivingAmount = Number.isFinite(parsedReceiving) ? parsedReceiving : total;
-  const cashChange =
-    paymentType === 'cash' && receivingAmount >= total ? receivingAmount - total : null;
-  const cashBalanceDue =
-    paymentType === 'cash' && receivingAmount < total ? total - receivingAmount : null;
 
   return (
     <CashierSessionGate requireSession={fohr.requireCashierSession}>
@@ -1277,8 +1252,10 @@ export default function NewOrder() {
                   </>
                 ) : orderType === 'dine-in' ? (
                   <>
-                    <label className="block text-xs font-medium text-slate-400 mb-1.5">Table # *</label>
-                    <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 focus-within:border-blue-500 px-3 py-2 transition">
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                      Table {tableMgmt ? '*' : '(optional)'}
+                    </label>
+                    <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 focus-within:border-blue-500 px-4 py-3 transition">
                       <Hash size={14} className="text-slate-500 shrink-0" />
                       <input
                         type="text"
@@ -1556,7 +1533,6 @@ export default function NewOrder() {
                     sendTableTabOrder();
                     return;
                   }
-                  setPaymentType(availablePaymentMethods[0] || 'cash');
                   setPaymentModalOpen(true);
                 }}
                 disabled={!canPlace || mutation.isPending}
@@ -1586,94 +1562,23 @@ export default function NewOrder() {
         onClose={() => setReadySlideOrder(null)}
         canCancel
       />
-      {paymentModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center p-3 sm:p-4">
-          <div className="w-full max-w-lg bg-[var(--pos-panel)] border border-slate-600/80 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl shadow-black/50 max-h-[92vh] overflow-y-auto">
-            <h3 className="text-[var(--pos-text-primary)] font-bold text-xl sm:text-2xl tracking-tight">Collect payment</h3>
-            <p className="text-sm text-slate-400 mt-2">Choose a method and confirm. Large tap targets for counter use.</p>
-
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mt-6 mb-2">Payment method</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {availablePaymentMethods.map((method) => {
-                const label = method.replace(/_/g, ' ');
-                const pretty = label.charAt(0).toUpperCase() + label.slice(1);
-                const active = paymentType === method;
-                return (
-                  <button
-                    key={method}
-                    type="button"
-                    onClick={() => {
-                      setPaymentType(method);
-                      if (method === 'cash') setCashReceivedInput(total.toFixed(2));
-                    }}
-                    className={`min-h-[52px] rounded-2xl px-4 text-base font-semibold border-2 transition active:scale-[0.99] ${
-                      active
-                        ? 'border-amber-500 bg-amber-500/15 text-[var(--pos-selection-text)] ring-2 ring-amber-500/40'
-                        : 'border-slate-600 bg-[var(--pos-surface-inset)] text-slate-200 hover:border-slate-500'
-                    }`}
-                  >
-                    {pretty}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-6 rounded-2xl bg-[var(--pos-surface-inset)] border border-slate-700 p-4 space-y-3">
-              <div className="flex justify-between items-baseline gap-3 text-slate-400 text-base">
-                <span>Order total</span>
-                <span className="text-[var(--pos-text-primary)] font-bold text-xl tabular-nums">{formatPrice(total)}</span>
-              </div>
-
-              {paymentType === 'cash' && (
-                <div className="pt-2 border-t border-slate-700/80 space-y-3">
-                  <label className="block text-sm font-semibold text-slate-300">Amount received</label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={cashReceivedInput}
-                    onChange={(e) => setCashReceivedInput(e.target.value)}
-                    className="w-full min-h-[56px] rounded-2xl border-2 border-slate-600 bg-slate-900/80 text-[var(--pos-text-primary)] text-2xl font-bold text-center tracking-wide px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 tabular-nums"
-                    placeholder={total.toFixed(2)}
-                    autoComplete="off"
-                  />
-                  {cashChange != null && (
-                    <div className="flex justify-between items-center text-lg bg-green-500/10 border border-green-500/25 rounded-xl px-4 py-3">
-                      <span className="text-green-300 font-medium">Change due</span>
-                      <span className="text-green-400 font-bold text-xl tabular-nums">{formatPrice(cashChange)}</span>
-                    </div>
-                  )}
-                  {cashBalanceDue != null && (
-                    <div className="flex justify-between items-center text-lg bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3">
-                      <span className="text-amber-200 font-medium">Balance due</span>
-                      <span className="text-amber-300 font-bold text-xl tabular-nums">{formatPrice(cashBalanceDue)}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 flex flex-col-reverse sm:flex-row gap-3">
-              <button
-                type="button"
-                onClick={() => setPaymentModalOpen(false)}
-                className="flex-1 min-h-[54px] rounded-2xl border-2 border-slate-600 text-slate-200 text-lg font-semibold hover:bg-slate-800/80 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={placeOrder}
-                disabled={mutation.isPending}
-                className="flex-1 min-h-[54px] rounded-2xl bg-green-500 hover:bg-green-400 disabled:opacity-60 text-white text-lg font-bold shadow-lg shadow-green-500/25 transition"
-              >
-                {mutation.isPending
-                  ? (online ? 'Processing…' : 'Saving offline…')
-                  : 'Confirm & print'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CollectPaymentModal
+        open={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        onConfirm={handlePaymentConfirm}
+        total={total}
+        availablePaymentMethods={availablePaymentMethods}
+        confirmLabel="Confirm & print"
+        isPending={mutation.isPending}
+        orderType={orderType}
+        tableNumber={tableNumber}
+        reference={nonDineInReference}
+        items={cart}
+        subtotal={subtotal}
+        discountTotal={discountTotal}
+        taxAmount={taxAmount}
+        serviceFeeAmount={serviceFeeAmount}
+      />
       {/* Variant Selection Modal */}
       <VariantSelectorModal
         item={variantSelectionItem}

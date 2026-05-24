@@ -141,12 +141,12 @@ export default function App() {
               <Layout><BrandingPage /></Layout>
             </PrivateRoute>
           } />
-          <Route path="/users" element={
+          <Route path="/users/*" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><UsersPage /></Layout>
             </PrivateRoute>
           } />
-          <Route path="/subscription" element={
+          <Route path="/subscription/*" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><SubscriptionPage /></Layout>
             </PrivateRoute>
@@ -161,7 +161,7 @@ export default function App() {
               <Layout><UberConfigPanel /></Layout>
             </PrivateRoute>
           } />
-          <Route path="/stores" element={
+          <Route path="/stores/*" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><StoresPage /></Layout>
             </PrivateRoute>
@@ -171,12 +171,12 @@ export default function App() {
               <Layout><CashierSessionsPage /></Layout>
             </PrivateRoute>
           } />
-          <Route path="/loyalty" element={
+          <Route path="/loyalty/*" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><LoyaltyProgramPage /></Layout>
             </PrivateRoute>
           } />
-          <Route path="/accounting" element={
+          <Route path="/accounting/*" element={
             <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><AccountingPage /></Layout>
             </PrivateRoute>

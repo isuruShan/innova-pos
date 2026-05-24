@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, ExternalLink, Loader, XCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 import api from '../../api/axios';
@@ -91,6 +91,8 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
   const [confirmVerify, setConfirmVerify] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [slipUrl, setSlipUrl] = useState(null);
+  const [slipLoading, setSlipLoading] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['payment-receipt-detail', receiptId],
@@ -100,6 +102,23 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
 
   const receipt = data?.receipt;
   const kind = data?.receiptKindLabel || 'Payment';
+
+  useEffect(() => {
+    setSlipUrl(null);
+    if (!receipt) return undefined;
+    if (receipt.receiptFileUrl) {
+      setSlipUrl(receipt.receiptFileUrl);
+      return undefined;
+    }
+    if (!receipt.receiptFileKey) return undefined;
+    let cancelled = false;
+    setSlipLoading(true);
+    api.get(`/subscriptions/receipts/${receiptId}/url`)
+      .then(({ data: res }) => { if (!cancelled) setSlipUrl(res?.url || null); })
+      .catch(() => { if (!cancelled) setSlipUrl(null); })
+      .finally(() => { if (!cancelled) setSlipLoading(false); });
+    return () => { cancelled = true; };
+  }, [receipt, receiptId]);
 
   const handleVerifyConfirm = () => {
     setConfirmVerify(false);
@@ -313,15 +332,23 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
                 </div>
               )}
 
-              {receipt.receiptFileUrl && (
-                <a
-                  href={receipt.receiptFileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:underline"
-                >
-                  <ExternalLink size={14} /> View uploaded receipt file
-                </a>
+              {receipt.receiptFileKey && (
+                slipUrl ? (
+                  <a
+                    href={slipUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-brand-orange hover:underline"
+                  >
+                    <ExternalLink size={14} /> View uploaded receipt file
+                  </a>
+                ) : slipLoading ? (
+                  <p className="text-sm text-gray-500 flex items-center gap-2">
+                    <Loader size={14} className="animate-spin" /> Loading receipt file…
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-400">Receipt file unavailable</p>
+                )
               )}
 
               {receipt.status === 'pending' && (

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, Loader, CheckCircle, AlertTriangle, ExternalLink, ImageIcon, X, Search, Copy, Check, FileText, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 import { validateImageFile } from '../../components/billing/BankReceiptFields';
@@ -8,9 +8,17 @@ import PlanChangeModal from '../../components/subscription/PlanChangeModal';
 import BillingBreakdownPanel from '../../components/billing/BillingBreakdownPanel';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
 import PaymentReceiptDetailModal from '../../components/payments/PaymentReceiptDetailModal';
+import ListPagination from '../../components/common/ListPagination';
+import { unwrapPagedList } from '../../utils/unwrapPagedList';
 import { useToast } from '../../context/ToastContext';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
 import { formatMoney, BillingQuotePanel, LicenseQuoteBreakdown } from '../../components/billing/ProrationBreakdown';
+
+const METHOD_LABELS = {
+  bank_transfer: 'Bank transfer',
+  stripe: 'Stripe',
+  paypal: 'PayPal',
+};
 
 function CopyableRef({ text }) {
   const [copied, setCopied] = useState(false);
@@ -35,13 +43,24 @@ function CopyableRef({ text }) {
 export default function SubscriptionPage() {
   const queryClient = useQueryClient();
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'breakdown', 'payments'
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Route-based tab navigation
+  const getActiveTab = () => {
+    if (location.pathname.endsWith('/breakdown')) return 'breakdown';
+    if (location.pathname.endsWith('/payments')) return 'payments';
+    return 'overview';
+  };
+  const activeTab = getActiveTab();
+  const setActiveTab = (tab) => navigate(`/subscription/${tab}`);
   
   // Payment History Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [kindFilter, setKindFilter] = useState('');
   const [sortBy, setSortBy] = useState('newest');
+  const [receiptPage, setReceiptPage] = useState(1);
   const [detailReceiptId, setDetailReceiptId] = useState(null);
 
   const [planModalOpen, setPlanModalOpen] = useState(false);
@@ -58,6 +77,40 @@ export default function SubscriptionPage() {
   const { data } = useQuery({
     queryKey: ['my-subscription'],
     queryFn: async () => { const { data } = await api.get('/subscriptions/my'); return data; },
+  });
+
+  const needsBreakdown = activeTab === 'overview' || activeTab === 'breakdown';
+  const { data: breakdownData } = useQuery({
+    queryKey: ['my-subscription-breakdown'],
+    queryFn: async () => {
+      const { data } = await api.get('/subscriptions/my', { params: { includeBreakdown: '1' } });
+      return data;
+    },
+    enabled: needsBreakdown,
+  });
+
+  const receiptQueryParams = useMemo(() => {
+    const params = { page: receiptPage, limit: 25 };
+    if (statusFilter) params.status = statusFilter;
+    if (kindFilter === 'plan') params.kind = 'subscription';
+    else if (kindFilter === 'addon') params.kind = 'addon';
+    if (searchQuery.trim()) params.search = searchQuery.trim();
+    if (sortBy === 'newest') { params.sort = 'createdAt'; params.order = 'desc'; }
+    else if (sortBy === 'oldest') { params.sort = 'createdAt'; params.order = 'asc'; }
+    else if (sortBy === 'amount_desc') { params.sort = 'amount'; params.order = 'desc'; }
+    else if (sortBy === 'amount_asc') { params.sort = 'amount'; params.order = 'asc'; }
+    return params;
+  }, [receiptPage, statusFilter, kindFilter, searchQuery, sortBy]);
+
+  useEffect(() => { setReceiptPage(1); }, [statusFilter, kindFilter, searchQuery, sortBy]);
+
+  const { data: receiptList = { items: [], page: 1, pages: 1, total: 0 }, isLoading: receiptsLoading, isFetching: receiptsFetching } = useQuery({
+    queryKey: ['merchant-receipts', receiptQueryParams],
+    queryFn: async () => {
+      const { data } = await api.get('/subscriptions/receipts', { params: receiptQueryParams });
+      return unwrapPagedList(data);
+    },
+    enabled: activeTab === 'payments',
   });
   
   const { data: plans = [] } = useQuery({
@@ -80,6 +133,8 @@ export default function SubscriptionPage() {
     mutationFn: (planId) => api.post('/subscriptions/schedule-plan', { planId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
+      queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
       setPlanModalOpen(false);
       toast.success('Plan change scheduled');
     },
@@ -94,6 +149,8 @@ export default function SubscriptionPage() {
     mutationFn: (fd) => api.post('/subscriptions/receipts', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
+      queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
       setSubmitted(true);
       setForm((f) => ({ ...f, bankReference: '', notes: '' }));
       setFile(null);
@@ -114,6 +171,8 @@ export default function SubscriptionPage() {
       api.post('/subscriptions/checkout/paypal/capture', { orderId }).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
+      queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
       setSubmitted(true);
       setErrors({});
     },
@@ -124,6 +183,8 @@ export default function SubscriptionPage() {
     const payment = searchParams.get('payment');
     if (payment === 'success') {
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
+      queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
       setSubmitted(true);
       searchParams.delete('payment');
       searchParams.delete('session_id');
@@ -133,7 +194,10 @@ export default function SubscriptionPage() {
 
   const requestActivationMutation = useMutation({
     mutationFn: () => api.post(`/tenants/${data?.tenant?._id}/temporary-activation/request`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-subscription'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
+    },
     onError: (err) => setErrors({ api: err.response?.data?.message || 'Request failed' }),
   });
 
@@ -181,10 +245,9 @@ export default function SubscriptionPage() {
   };
 
   const tenant = data?.tenant;
-  const billingBreakdown = data?.billingBreakdown;
-  const receipts = data?.receipts || [];
+  const billingBreakdown = breakdownData?.billingBreakdown;
+  const receipts = receiptList.items || [];
   const subscriptions = data?.subscriptions || [];
-  const latestReceiptPlanId = receipts.find((r) => r.requestedPlanId?._id)?.requestedPlanId?._id;
 
   const latestSubscription = subscriptions?.length
     ? [...subscriptions].sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime())[0]
@@ -227,7 +290,6 @@ export default function SubscriptionPage() {
     const defaultPlanId =
       (tenant.planLocked && tenant.assignedPlanId?._id) ||
       nextBillingPlanId ||
-      latestReceiptPlanId ||
       payPlans[0]?._id ||
       '';
     if (!defaultPlanId) return;
@@ -235,7 +297,7 @@ export default function SubscriptionPage() {
       ...f,
       planId: defaultPlanId,
     }));
-  }, [tenant, payPlans, nextBillingPlanId, latestReceiptPlanId]);
+  }, [tenant, payPlans, nextBillingPlanId]);
 
   useEffect(() => {
     const total =
@@ -286,54 +348,7 @@ export default function SubscriptionPage() {
     ? Math.max(0, Math.ceil((new Date(tenant.trialEndsAt) - Date.now()) / (1000 * 60 * 60 * 24)))
     : null;
 
-  const pendingReceiptsCount = useMemo(() => {
-    return receipts.filter((r) => r.status === 'pending').length;
-  }, [receipts]);
-
-  // Payment History client-side filtering and sorting
-  const filteredReceipts = useMemo(() => {
-    let result = [...receipts];
-
-    // Search filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (r) =>
-          (r.bankReference && r.bankReference.toLowerCase().includes(q)) ||
-          (r.notes && r.notes.toLowerCase().includes(q))
-      );
-    }
-
-    // Status filter
-    if (statusFilter) {
-      result = result.filter((r) => r.status === statusFilter);
-    }
-
-    // Kind filter
-    if (kindFilter) {
-      if (kindFilter === 'addon') {
-        result = result.filter((r) => r.receiptKind === 'addon' || r.addonCode || r.receiptKind === 'store');
-      } else if (kindFilter === 'plan') {
-        result = result.filter((r) => r.receiptKind !== 'addon' && !r.addonCode && r.receiptKind !== 'store');
-      }
-    }
-
-    // Sorting
-    result.sort((a, b) => {
-      const dateA = new Date(a.paymentDate || a.createdAt || 0).getTime();
-      const dateB = new Date(b.paymentDate || b.createdAt || 0).getTime();
-      if (sortBy === 'newest') return dateB - dateA;
-      if (sortBy === 'oldest') return dateA - dateB;
-      
-      const amtA = Number(a.amount || 0);
-      const amtB = Number(b.amount || 0);
-      if (sortBy === 'amount_desc') return amtB - amtA;
-      if (sortBy === 'amount_asc') return amtA - amtB;
-      return 0;
-    });
-
-    return result;
-  }, [receipts, searchQuery, statusFilter, kindFilter, sortBy]);
+  const pendingReceiptsCount = data?.pendingReceiptsCount ?? 0;
 
   const handleClearFilters = () => {
     setSearchQuery('');
@@ -410,10 +425,6 @@ export default function SubscriptionPage() {
           {pendingReceiptsCount > 0 ? (
             <span className="bg-amber-100 text-amber-800 text-[10px] font-semibold px-2 py-0.5 rounded-full">
               {pendingReceiptsCount} pending
-            </span>
-          ) : receipts.length > 0 ? (
-            <span className="bg-gray-100 text-gray-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">
-              {receipts.length}
             </span>
           ) : null}
         </button>
@@ -923,20 +934,25 @@ export default function SubscriptionPage() {
           </div>
 
           {/* Receipts count */}
-          {filteredReceipts.length > 0 && (
+          {!receiptsLoading && receiptList.total > 0 && (
             <p className="text-xs text-gray-400 px-5 py-2 border-b border-gray-50">
-              {filteredReceipts.length} payment{filteredReceipts.length !== 1 ? 's' : ''} found
+              {receiptList.total} payment{receiptList.total !== 1 ? 's' : ''} found
               {statusFilter && ` · ${statusFilter}`}
               {kindFilter && ` · ${kindFilter === 'plan' ? 'subscription' : 'add-ons'}`}
             </p>
           )}
 
           {/* Receipts Table */}
-          {filteredReceipts.length === 0 ? (
+          {receiptsLoading ? (
+            <div className="text-center py-16 text-gray-400 text-sm">
+              <Loader size={24} className="animate-spin mx-auto text-gray-300 mb-2" />
+              Loading payment history…
+            </div>
+          ) : receipts.length === 0 ? (
             <div className="text-center py-16 text-gray-400 text-sm">
               <FileText size={32} className="mx-auto text-gray-300 mb-2" />
               <p className="font-medium text-gray-500">No payments found</p>
-              {receipts.length > 0 ? (
+              {(statusFilter || kindFilter || searchQuery.trim()) ? (
                 <div className="mt-2 space-y-2">
                   <p className="text-xs text-gray-400">Try adjusting your search queries or filters.</p>
                   <button
@@ -959,13 +975,14 @@ export default function SubscriptionPage() {
                     <th className="px-4 py-3">Type</th>
                     <th className="px-4 py-3">Amount</th>
                     <th className="px-4 py-3">Reference</th>
-                    <th className="px-4 py-3">Date</th>
+                    <th className="px-4 py-3">Created</th>
+                    <th className="px-4 py-3">Method</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {filteredReceipts.map((r) => {
+                  {receipts.map((r) => {
                     const type = getReceiptType(r);
                     const itemLabel = getItemLabel(r);
                     const typeBadge = {
@@ -992,7 +1009,12 @@ export default function SubscriptionPage() {
                           <CopyableRef text={r.bankReference || '—'} />
                         </td>
                         <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                          {new Date(r.paymentDate || r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {r.createdAt
+                            ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                            : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap capitalize">
+                          {METHOD_LABELS[r.paymentMethod] || r.paymentMethod || '—'}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border capitalize ${
@@ -1035,6 +1057,16 @@ export default function SubscriptionPage() {
                 </tbody>
               </table>
             </div>
+          )}
+
+          {!receiptsLoading && receipts.length > 0 && (
+            <ListPagination
+              page={receiptList.page}
+              pages={receiptList.pages}
+              total={receiptList.total}
+              onPageChange={setReceiptPage}
+              isFetching={receiptsFetching}
+            />
           )}
         </div>
       )}

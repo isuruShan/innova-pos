@@ -1,4 +1,5 @@
 import { useState, useMemo, Fragment } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Wallet, Plus, Landmark, CheckCircle, AlertCircle } from 'lucide-react';
 import api from '../../api/axios';
@@ -10,7 +11,19 @@ import { useListSort } from '../../hooks/useListSort';
 export default function AccountingPage() {
   const qc = useQueryClient();
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState('coa');
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Route-based tab navigation
+  const getActiveTab = () => {
+    if (location.pathname.endsWith('/ledger')) return 'ledger';
+    if (location.pathname.endsWith('/contacts')) return 'contacts';
+    if (location.pathname.endsWith('/payroll')) return 'payroll';
+    if (location.pathname.endsWith('/reports')) return 'reports';
+    return 'coa';
+  };
+  const activeTab = getActiveTab();
+  const setActiveTab = (tab) => navigate(`/accounting/${tab}`);
 
   // Modal states
   const [accountModalOpen, setAccountModalOpen] = useState(false);

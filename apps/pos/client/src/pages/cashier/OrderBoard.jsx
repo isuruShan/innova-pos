@@ -9,6 +9,7 @@ import {
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import CashierSessionGate from '../../components/cashier/CashierSessionGate';
+import CollectPaymentModal from '../../components/cashier/CollectPaymentModal';
 import { useFohrMode } from '../../hooks/useFohrMode';
 import { CASHIER_SESSION_QUERY_KEY, useCashierSession } from '../../components/cashier/cashierSessionContext';
 import { mergeOrderLists } from '../../offline/mergeOrders.js';
@@ -257,7 +258,6 @@ export default function OrderBoard() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [completePaymentOrder, setCompletePaymentOrder] = useState(null);
-  const [completePaymentType, setCompletePaymentType] = useState('cash');
 
   useEffect(() => {
     if (!orderFromUrl) setSelectedOrder(null);
@@ -326,11 +326,12 @@ export default function OrderBoard() {
   }, [orderFromUrl, orders, isStoreReady]);
 
   const mutation = useMutation({
-    mutationFn: async ({ id, status, paymentType: pt, paymentAmount: pa }) => {
+    mutationFn: async ({ id, status, paymentType: pt, paymentAmount: pa, cashTender }) => {
       const body = {};
       if (status != null) body.status = status;
       if (pt) body.paymentType = pt;
       if (pa != null) body.paymentAmount = pa;
+      if (cashTender != null) body.cashTender = cashTender;
       const { data } = await api.put(`/orders/${encodeURIComponent(id)}/status`, body);
       return data;
     },
@@ -357,6 +358,7 @@ export default function OrderBoard() {
             branding,
             store: selectedStore,
             paymentType: updatedOrder.paymentType,
+            cashTender: variables?.cashTender,
           });
         } catch (err) {
           console.warn('[Receipt Print] Failed:', err);
@@ -374,21 +376,20 @@ export default function OrderBoard() {
         window.alert('Payment must be collected at the register before completing this order.');
         return;
       }
-      setCompletePaymentType(availablePaymentMethods[0] || 'cash');
       setCompletePaymentOrder(order);
       return;
     }
     mutation.mutate({ id: order._id, status: nextStatus });
   };
 
-  const confirmCompleteWithPayment = () => {
+  const handlePaymentConfirm = ({ paymentType, paymentAmount, cashTender }) => {
     if (!completePaymentOrder) return;
-    const total = Number(completePaymentOrder.totalAmount || 0);
     mutation.mutate({
       id: completePaymentOrder._id,
       status: 'completed',
-      paymentType: completePaymentType,
-      paymentAmount: total,
+      paymentType,
+      paymentAmount,
+      cashTender,
     });
     setCompletePaymentOrder(null);
   };
@@ -517,60 +518,26 @@ export default function OrderBoard() {
         }}
       />
 
-      {completePaymentOrder && (
-        <div className="fixed inset-0 z-[100] bg-black/70 flex items-end sm:items-center justify-center p-3 sm:p-4">
-          <div className="w-full max-w-md bg-[var(--pos-panel)] border border-slate-600/80 rounded-2xl p-5 shadow-2xl">
-            <h3 className="text-[var(--pos-text-primary)] font-bold text-lg">Collect payment</h3>
-            <p className="text-sm text-slate-400 mt-1">
-              Order #{String(completePaymentOrder.orderNumber).padStart(3, '0')} · Total{' '}
-              <span className="text-amber-400 font-semibold tabular-nums">
-                {formatCurrency(completePaymentOrder.totalAmount || 0)}
-              </span>
-            </p>
-            <p className="text-xs text-slate-500 mt-2">
-              Guest tabs are paid when you complete the order. Pick how they paid, then confirm.
-            </p>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {availablePaymentMethods.map((method) => {
-                const label = method.replace(/_/g, ' ');
-                const pretty = label.charAt(0).toUpperCase() + label.slice(1);
-                const active = completePaymentType === method;
-                return (
-                  <button
-                    key={method}
-                    type="button"
-                    onClick={() => setCompletePaymentType(method)}
-                    className={`min-h-[48px] rounded-xl px-3 text-sm font-semibold border-2 transition ${
-                      active
-                        ? 'border-amber-500 bg-amber-500/15 text-[var(--pos-selection-text)] ring-2 ring-amber-500/40'
-                        : 'border-slate-600 bg-[var(--pos-surface-inset)] text-slate-200 hover:border-slate-500'
-                    }`}
-                  >
-                    {pretty}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-5 flex flex-col-reverse sm:flex-row gap-2">
-              <button
-                type="button"
-                onClick={() => setCompletePaymentOrder(null)}
-                className="flex-1 min-h-[48px] rounded-xl border-2 border-slate-600 text-slate-200 text-sm font-semibold"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmCompleteWithPayment}
-                disabled={mutation.isPending}
-                className="flex-1 min-h-[48px] rounded-xl bg-green-500 hover:bg-green-400 disabled:opacity-60 text-white text-sm font-bold"
-              >
-                {mutation.isPending ? 'Processing…' : 'Complete & print bill'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CollectPaymentModal
+        open={Boolean(completePaymentOrder)}
+        onClose={() => setCompletePaymentOrder(null)}
+        onConfirm={handlePaymentConfirm}
+        total={completePaymentOrder?.totalAmount || 0}
+        availablePaymentMethods={availablePaymentMethods}
+        confirmLabel="Complete & print bill"
+        isPending={mutation.isPending}
+        orderNumber={completePaymentOrder?.orderNumber}
+        orderType={completePaymentOrder?.orderType}
+        tableNumber={completePaymentOrder?.tableNumber}
+        reference={completePaymentOrder?.reference}
+        items={completePaymentOrder?.items || []}
+        subtotal={completePaymentOrder?.subtotal}
+        discountTotal={completePaymentOrder?.discountTotal}
+        taxAmount={completePaymentOrder?.taxAmount}
+        serviceFeeAmount={completePaymentOrder?.serviceFeeAmount}
+        contextNote="Guest tabs are paid when you complete the order. Pick how they paid, then confirm."
+      />
+
     </div>
     </CashierSessionGate>
   );

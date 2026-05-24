@@ -353,7 +353,8 @@ export default function PaymentsPage() {
                     <SortableTh label="Amount" field="amount" currentSort={sort} currentOrder={order} onSort={toggleSort} className="whitespace-nowrap" />
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Method</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Reference</th>
-                    <SortableTh label="Date" field="paymentDate" currentSort={sort} currentOrder={order} onSort={toggleSort} className="whitespace-nowrap" />
+                    <SortableTh label="Created" field="createdAt" currentSort={sort} currentOrder={order} onSort={toggleSort} className="whitespace-nowrap" />
+                    <SortableTh label="Payment date" field="paymentDate" currentSort={sort} currentOrder={order} onSort={toggleSort} className="whitespace-nowrap" />
                     <SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} className="whitespace-nowrap" />
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Actions</th>
                   </tr>
@@ -394,9 +395,17 @@ export default function PaymentsPage() {
                         </td>
                         {/* Reference */}
                         <td className="px-4 py-3 text-gray-500 font-mono text-xs">{r.bankReference || '—'}</td>
-                        {/* Date */}
+                        {/* Created */}
                         <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                          {new Date(r.paymentDate || r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {r.createdAt
+                            ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                            : '—'}
+                        </td>
+                        {/* Payment date */}
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                          {r.paymentDate
+                            ? new Date(r.paymentDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                            : '—'}
                         </td>
                         {/* Status */}
                         <td className="px-4 py-3">

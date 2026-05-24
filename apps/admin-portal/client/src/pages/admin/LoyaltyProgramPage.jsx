@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Award, Plus, Trash2, Gift } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
@@ -14,8 +14,14 @@ const emptyTier = { name: '', level: '1', minLifetimePoints: '0', description: '
 
 export default function LoyaltyProgramPage() {
   const qc = useQueryClient();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [mainTab, setMainTab] = useState('program');
+  
+  // Route-based tab navigation
+  const mainTab = location.pathname.endsWith('/rewards') ? 'rewards' : 'program';
+  const setMainTab = (tab) => navigate(`/loyalty/${tab}`);
+  
   const [tierModal, setTierModal] = useState(null);
   const [tierForm, setTierForm] = useState(emptyTier);
   const [confirmDeleteTier, setConfirmDeleteTier] = useState(null);
@@ -71,10 +77,6 @@ export default function LoyaltyProgramPage() {
     () => [...tiers].sort((a, b) => (a.minLifetimePoints ?? 0) - (b.minLifetimePoints ?? 0)),
     [tiers],
   );
-
-  useEffect(() => {
-    if (searchParams.get('tab') === 'rewards') setMainTab('rewards');
-  }, [searchParams]);
 
   const rewardIdFromUrl = searchParams.get('reward');
 

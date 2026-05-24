@@ -210,8 +210,6 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
         }
         resolvedTableId = tbl._id;
         resolvedTableLabel = tbl.label;
-      } else if (!resolvedTableLabel) {
-        return res.status(400).json({ message: 'Table number is required for dine-in orders' });
       }
     }
 
