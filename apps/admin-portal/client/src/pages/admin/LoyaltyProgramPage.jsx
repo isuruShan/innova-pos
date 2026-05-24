@@ -101,7 +101,7 @@ export default function LoyaltyProgramPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Award className="text-brand-orange" size={26} />

@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Loader,
   AlertTriangle,
-  ExternalLink,
   FileText,
   X,
   ArrowLeft,
@@ -19,7 +18,6 @@ import BankReceiptFields from '../../components/billing/BankReceiptFields';
 import { useToast } from '../../context/ToastContext';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import { unwrapPagedList } from '../../utils/unwrapPagedList';
 
 /**
  * Paid add-ons (e.g. QR Ordering): review first, then choose an admin-configured
@@ -56,16 +54,6 @@ export default function MerchantAddonsPage() {
     },
   });
   const tenant = tenantData?.tenant;
-
-  const { data: recentReceipts = [] } = useQuery({
-    queryKey: ['merchant-receipts', 'recent'],
-    queryFn: async () => {
-      const { data } = await api.get('/subscriptions/receipts', {
-        params: { limit: 8, sort: 'createdAt', order: 'desc' },
-      });
-      return unwrapPagedList(data).items;
-    },
-  });
 
   const { data: catalog = [], isPending: catalogPending, error: catalogError } = useQuery({
     queryKey: ['paid-addons-merchant-catalog'],
@@ -304,23 +292,6 @@ export default function MerchantAddonsPage() {
     fd.append('notes', (addonForm.notes || '').trim());
     fd.append('receipt', addonFile);
     addonUploadMutation.mutate(fd);
-  };
-
-  const handleViewReceipt = async (receiptId, fallbackUrl) => {
-    if (fallbackUrl) {
-      window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    try {
-      const { data: res } = await api.get(`/subscriptions/receipts/${receiptId}/url`);
-      if (res?.url) {
-        window.open(res.url, '_blank', 'noopener,noreferrer');
-      } else {
-        toast.error('Could not retrieve receipt URL');
-      }
-    } catch {
-      toast.error('Failed to load receipt URL');
-    }
   };
 
   return (
@@ -638,49 +609,6 @@ export default function MerchantAddonsPage() {
         </div>
       )}
 
-      {recentReceipts.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="p-4 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900">Recent payment receipts</h3>
-            <p className="text-xs text-gray-500 mt-1">Includes subscription and add-on submissions.</p>
-          </div>
-          <div className="divide-y divide-gray-100 max-h-64 overflow-y-auto">
-            {recentReceipts.map((r) => (
-              <div key={r._id} className="flex items-center justify-between px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-800">
-                    {r.receiptKind === 'addon' || r.addonCode ? (
-                      <span className="mr-2 text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-100 text-violet-800">Add-on</span>
-                    ) : null}
-                    {r.currency || 'LKR'} {Number(r.amount ?? 0).toLocaleString()}
-                  </p>
-                  <p className="text-xs text-gray-500">{r.bankReference} · {new Date(r.paymentDate).toLocaleDateString()}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {r.receiptFileKey && (
-                    <button
-                      type="button"
-                      onClick={() => handleViewReceipt(r._id, r.receiptFileUrl)}
-                      className="text-xs text-blue-600 hover:underline flex items-center gap-0.5 bg-transparent border-0 cursor-pointer font-medium p-0"
-                    >
-                      <ExternalLink size={11} /> View
-                    </button>
-                  )}
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
-                      r.status === 'verified' ? 'bg-green-100 text-green-700'
-                        : r.status === 'rejected' ? 'bg-red-100 text-red-700'
-                        : 'bg-yellow-100 text-yellow-700'
-                    }`}
-                  >
-                    {r.status}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
 
       <ConfirmDialog

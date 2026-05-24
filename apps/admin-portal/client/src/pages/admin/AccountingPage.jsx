@@ -241,7 +241,7 @@ export default function AccountingPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Wallet className="text-indigo-600" size={26} />

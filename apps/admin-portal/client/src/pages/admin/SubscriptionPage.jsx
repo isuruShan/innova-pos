@@ -380,7 +380,7 @@ export default function SubscriptionPage() {
   };
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-6">
       <div>
         <h2 className="text-xl font-bold text-gray-900">Subscription</h2>
         <p className="text-sm text-gray-500 mt-0.5">Account status, plan changes, and optional paid features.</p>
