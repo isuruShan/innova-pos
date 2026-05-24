@@ -74,6 +74,8 @@ async function fulfillOnlinePayment({ tenantId, planId, paymentMethod, externalI
   if (subscription?._id) {
     receipt.subscriptionId = subscription._id;
     receipt.subscriptionExtended = true;
+    receipt.billingPeriodStart = subscription.startDate;
+    receipt.billingPeriodEnd = subscription.endDate;
     await receipt.save();
   }
 

@@ -146,7 +146,6 @@ router.get('/receipts', authenticateJWT, async (req, res) => {
       .populate('verifiedBy', 'name')
       .populate('requestedPlanId', 'name code amount currency billingCycle durationDays')
       .lean();
-    receipts = await attachFreshReceiptUrls(receipts);
 
     // Attach a human-readable label for what was purchased
     receipts = receipts.map((r) => {
@@ -383,6 +382,29 @@ router.get('/superadmin/dashboard-stats', authenticateJWT, authorize('superadmin
   }
 });
 
+// GET /subscriptions/receipts/:id/url — get on-demand presigned/SAS URL for a payment receipt
+router.get('/receipts/:id/url', authenticateJWT, async (req, res) => {
+  try {
+    const receipt = await PaymentReceipt.findById(req.params.id);
+    if (!receipt) return res.status(404).json({ message: 'Receipt not found' });
+    
+    // Check authorization: must be superadmin or own receipt
+    if (req.user.role !== 'superadmin' && String(receipt.tenantId) !== String(req.tenantId)) {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    if (!receipt.receiptFileKey) {
+      return res.status(400).json({ message: 'Receipt has no attached file' });
+    }
+
+    const { presignObjectKey } = require('../utils/s3Runtime');
+    const url = await presignObjectKey(receipt.receiptFileKey, 3600); // 1-hour expiry
+    res.json({ url });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 // GET /subscriptions/receipts/:id — superadmin payment detail
 router.get('/receipts/:id', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {
@@ -604,6 +626,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
         bankReference: bankReference.trim(),
         receiptFileKey,
         notes,
+        paymentBreakdown: built.quote,
         createdBy: req.user.id,
       });
 
@@ -650,6 +673,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
         receiptFileKey,
         notes: (notes || '').trim(),
         userLicensePayload: storeLocationName ? { name: String(storeLocationName).trim().slice(0, 100) } : null,
+        paymentBreakdown: quote,
         createdBy: req.user.id,
       });
 
@@ -711,6 +735,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
         receiptFileUrl: '',
         receiptFileKey,
         notes: (notes || '').trim(),
+        paymentBreakdown: quote,
         createdBy: req.user.id,
       });
 
@@ -763,6 +788,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       receiptFileUrl: '',
       receiptFileKey,
       notes: (notes || '').trim(),
+      paymentBreakdown: renewal,
       createdBy: req.user.id,
     });
 
@@ -964,6 +990,10 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
     receipt.extensionDays = plan.durationDays;
     receipt.amountMatchesExpected = amountsEqual(receipt.amount, receipt.expectedAmount);
     receipt.subscriptionId = subscription._id;
+    if (subscription) {
+      receipt.billingPeriodStart = subscription.startDate;
+      receipt.billingPeriodEnd = subscription.endDate;
+    }
     receipt.updatedBy = req.user.id;
     await receipt.save();
 
@@ -1051,7 +1081,6 @@ router.get('/my', authenticateJWT, authorize('merchant_admin'), async (req, res)
       .populate('requestedPlanId', 'name code amount currency billingCycle durationDays')
       .sort({ createdAt: -1 })
       .lean();
-    receipts = await attachFreshReceiptUrls(receipts);
 
     const renewal = await computeSubscriptionRenewalExpected(tenant);
     res.json({ tenant, subscriptions, receipts, billingBreakdown: renewal });

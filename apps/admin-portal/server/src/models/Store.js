@@ -10,7 +10,17 @@ const storeSchema = new mongoose.Schema(
     },
     name: { type: String, required: true, trim: true },
     code: { type: String, required: true, trim: true, uppercase: true },
-    address: { type: String, default: '', trim: true },
+    address: {
+      type: mongoose.Schema.Types.Mixed,
+      default: () => ({
+        street1: '',
+        street2: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: '',
+      }),
+    },
     phone: { type: String, default: '', trim: true },
     paymentMethods: { type: [String], default: ['cash'] },
     isActive: { type: Boolean, default: true },

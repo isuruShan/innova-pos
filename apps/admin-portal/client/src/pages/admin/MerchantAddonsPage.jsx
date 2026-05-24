@@ -291,6 +291,23 @@ export default function MerchantAddonsPage() {
     addonUploadMutation.mutate(fd);
   };
 
+  const handleViewReceipt = async (receiptId, fallbackUrl) => {
+    if (fallbackUrl) {
+      window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    try {
+      const { data: res } = await api.get(`/subscriptions/receipts/${receiptId}/url`);
+      if (res?.url) {
+        window.open(res.url, '_blank', 'noopener,noreferrer');
+      } else {
+        toast.error('Could not retrieve receipt URL');
+      }
+    } catch {
+      toast.error('Failed to load receipt URL');
+    }
+  };
+
   return (
     <>
     <div className="max-w-3xl space-y-6">
@@ -625,10 +642,14 @@ export default function MerchantAddonsPage() {
                   <p className="text-xs text-gray-500">{r.bankReference} · {new Date(r.paymentDate).toLocaleDateString()}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {r.receiptFileUrl && (
-                    <a href={r.receiptFileUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-0.5">
+                  {r.receiptFileKey && (
+                    <button
+                      type="button"
+                      onClick={() => handleViewReceipt(r._id, r.receiptFileUrl)}
+                      className="text-xs text-blue-600 hover:underline flex items-center gap-0.5 bg-transparent border-0 cursor-pointer font-medium p-0"
+                    >
                       <ExternalLink size={11} /> View
-                    </a>
+                    </button>
                   )}
                   <span
                     className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { X, ExternalLink, Loader, XCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 import api from '../../api/axios';
 import BillingBreakdownPanel from '../billing/BillingBreakdownPanel';
-import { formatMoney } from '../billing/ProrationBreakdown';
+import { formatMoney, BillingQuotePanel, LicenseQuoteBreakdown } from '../billing/ProrationBreakdown';
 import ConfirmDialog from '../common/ConfirmDialog';
 
 const SUB_STATUS_STYLES = {
@@ -253,12 +253,36 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
                 </div>
               )}
 
-              {data?.billingBreakdown?.plan && (
+              {/* Show breakdown if present on the receipt itself, or fallback to data.billingBreakdown */}
+              {receipt.paymentBreakdown ? (
+                receipt.paymentBreakdown.plan ? (
+                  <BillingBreakdownPanel breakdown={receipt.paymentBreakdown} />
+                ) : receipt.paymentBreakdown.lineItems ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">License Breakdown</p>
+                    <LicenseQuoteBreakdown
+                      lineItems={receipt.paymentBreakdown.lineItems}
+                      totalAmount={receipt.paymentBreakdown.priced?.amount || receipt.amount}
+                      currency={receipt.paymentBreakdown.priced?.currency || receipt.currency}
+                      recurringRates={receipt.paymentBreakdown.recurringRates}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Proration Breakdown</p>
+                    <BillingQuotePanel
+                      recurringRates={receipt.paymentBreakdown.recurringRates}
+                      proration={receipt.paymentBreakdown.proration}
+                      amountDue={receipt.paymentBreakdown.priced?.amount || receipt.amount}
+                      currency={receipt.paymentBreakdown.priced?.currency || receipt.currency}
+                      fullCycle={receipt.paymentBreakdown.fullCycle}
+                    />
+                  </div>
+                )
+              ) : data?.billingBreakdown?.plan ? (
                 <BillingBreakdownPanel breakdown={data.billingBreakdown} />
-              )}
-
-              {/* Payment amount breakdown — for all receipt types */}
-              {!data?.billingBreakdown?.plan && (
+              ) : (
+                /* Fallback simple summary */
                 <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Payment summary</p>
                   <div className="space-y-2">

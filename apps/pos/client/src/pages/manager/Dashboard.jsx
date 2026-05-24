@@ -191,12 +191,20 @@ export default function Dashboard() {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-3 gap-y-1.5 text-xs">
                   <div className="min-w-0">
-                    <span className="text-slate-500 block text-[10px] leading-tight">Code</span>
-                    <span className="text-slate-300 leading-snug">{selectedStore.code}</span>
+                    <span className="text-slate-500 block text-[10px] leading-tight">City</span>
+                    <span className="text-slate-300 leading-snug">{selectedStore.address?.city || '—'}</span>
                   </div>
                   <div className="min-w-0 sm:col-span-2">
                     <span className="text-slate-500 block text-[10px] leading-tight">Address</span>
-                    <span className="text-slate-300 line-clamp-2 leading-snug">{selectedStore.address || '—'}</span>
+                    <span className="text-slate-300 line-clamp-2 leading-snug">
+                      {(() => {
+                        const addr = selectedStore.address;
+                        if (!addr) return '—';
+                        if (typeof addr === 'string') return addr;
+                        const parts = [addr.street1, addr.street2, addr.city, addr.state, addr.postalCode, addr.country].filter(Boolean);
+                        return parts.join(', ') || '—';
+                      })()}
+                    </span>
                   </div>
                   <div className="min-w-0 sm:col-span-3">
                     <span className="text-slate-500 block text-[10px] leading-tight">Payments</span>

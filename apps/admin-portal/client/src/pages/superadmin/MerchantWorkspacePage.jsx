@@ -9,7 +9,19 @@ import { unwrapPagedList } from '../../utils/unwrapPagedList';
 export default function MerchantWorkspacePage() {
   const { id } = useParams();
   const queryClient = useQueryClient();
-  const [storeForm, setStoreForm] = useState({ name: '', code: '', address: '', phone: '', paymentMethods: ['cash'] });
+  const [storeForm, setStoreForm] = useState({
+    name: '',
+    address: {
+      street1: '',
+      street2: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: '',
+    },
+    phone: '',
+    paymentMethods: ['cash'],
+  });
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_workspace_admins') || 'table');
 
   const { data: tenant, isLoading: tenantLoading } = useQuery({
@@ -98,7 +110,19 @@ export default function MerchantWorkspacePage() {
   const createStoreMutation = useMutation({
     mutationFn: (payload) => api.post('/stores', { ...payload, tenantId: id }),
     onSuccess: () => {
-      setStoreForm({ name: '', code: '', address: '', phone: '', paymentMethods: ['cash'] });
+      setStoreForm({
+        name: '',
+        address: {
+          street1: '',
+          street2: '',
+          city: '',
+          state: '',
+          postalCode: '',
+          country: '',
+        },
+        phone: '',
+        paymentMethods: ['cash'],
+      });
       queryClient.invalidateQueries({ queryKey: ['workspace-stores', id] });
     },
   });
@@ -321,8 +345,21 @@ export default function MerchantWorkspacePage() {
 function StoreCard({ store, onSave }) {
   const [form, setForm] = useState({
     name: store.name || '',
-    code: store.code || '',
-    address: store.address || '',
+    address: store.address && typeof store.address === 'object' ? {
+      street1: store.address.street1 || '',
+      street2: store.address.street2 || '',
+      city: store.address.city || '',
+      state: store.address.state || '',
+      postalCode: store.address.postalCode || '',
+      country: store.address.country || '',
+    } : {
+      street1: store.address || '',
+      street2: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: '',
+    },
     phone: store.phone || '',
     paymentMethods: store.paymentMethods?.length ? store.paymentMethods : ['cash'],
     isActive: store.isActive !== false,
@@ -331,8 +368,21 @@ function StoreCard({ store, onSave }) {
   useEffect(() => {
     setForm({
       name: store.name || '',
-      code: store.code || '',
-      address: store.address || '',
+      address: store.address && typeof store.address === 'object' ? {
+        street1: store.address.street1 || '',
+        street2: store.address.street2 || '',
+        city: store.address.city || '',
+        state: store.address.state || '',
+        postalCode: store.address.postalCode || '',
+        country: store.address.country || '',
+      } : {
+        street1: store.address || '',
+        street2: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: '',
+      },
       phone: store.phone || '',
       paymentMethods: store.paymentMethods?.length ? store.paymentMethods : ['cash'],
       isActive: store.isActive !== false,
@@ -356,10 +406,21 @@ function StoreCard({ store, onSave }) {
       </label>
       <label className="block text-xs text-gray-500">Store Name</label>
       <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
-      <label className="block text-xs text-gray-500">Store Code</label>
-      <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.code} onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))} />
-      <label className="block text-xs text-gray-500">Address</label>
-      <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.address} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} />
+      
+      <div className="space-y-2 p-3 bg-gray-50 rounded-lg border border-gray-150">
+        <span className="block text-xs font-semibold text-gray-700">Address</span>
+        <input className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs bg-white" placeholder="Street 1" value={form.address.street1} onChange={(e) => setForm((p) => ({ ...p, address: { ...p.address, street1: e.target.value } }))} />
+        <input className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs bg-white" placeholder="Street 2" value={form.address.street2} onChange={(e) => setForm((p) => ({ ...p, address: { ...p.address, street2: e.target.value } }))} />
+        <div className="grid grid-cols-2 gap-2">
+          <input className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs bg-white" placeholder="City" value={form.address.city} onChange={(e) => setForm((p) => ({ ...p, address: { ...p.address, city: e.target.value } }))} />
+          <input className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs bg-white" placeholder="State" value={form.address.state} onChange={(e) => setForm((p) => ({ ...p, address: { ...p.address, state: e.target.value } }))} />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <input className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs bg-white" placeholder="Postal Code" value={form.address.postalCode} onChange={(e) => setForm((p) => ({ ...p, address: { ...p.address, postalCode: e.target.value } }))} />
+          <input className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-xs bg-white" placeholder="Country" value={form.address.country} onChange={(e) => setForm((p) => ({ ...p, address: { ...p.address, country: e.target.value } }))} />
+        </div>
+      </div>
+
       <label className="block text-xs text-gray-500">Phone</label>
       <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
       <label className="block text-xs text-gray-500">Payment Methods (cash required)</label>
@@ -384,7 +445,6 @@ function StoreCard({ store, onSave }) {
       <button
         onClick={() => onSave({
           name: form.name,
-          code: form.code,
           address: form.address,
           phone: form.phone,
           paymentMethods: form.paymentMethods,

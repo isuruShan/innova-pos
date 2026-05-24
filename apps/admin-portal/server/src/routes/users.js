@@ -111,8 +111,19 @@ router.post('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), asy
       });
     }
 
-    const exists = await User.findOne({ email: email.toLowerCase() });
+    const exists = await User.findOne({ email: email.toLowerCase().trim() });
     if (exists) return res.status(400).json({ message: 'Email already in use' });
+
+    const PaymentReceipt = require('../models/PaymentReceipt');
+    const pending = await PaymentReceipt.findOne({
+      receiptKind: 'user_license',
+      userLicenseAction: 'create_user',
+      status: 'pending',
+      'userLicensePayload.email': email.toLowerCase().trim(),
+    });
+    if (pending) {
+      return res.status(400).json({ message: 'A user creation request for this email is already pending approval' });
+    }
 
     const { user } = await fulfillCreateUser(
       tenantId,

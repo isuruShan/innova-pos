@@ -75,7 +75,7 @@ async function fulfillCreateUser(tenantId, payload, meta = {}) {
       : process.env.POS_URL || 'http://localhost:5173';
 
   // Fire-and-forget — welcome email must not block the response
-  sendWelcomeEmail({ to: user.email, name: user.name, tempPassword, loginUrl }).catch(() => {});
+  sendWelcomeEmail({ to: user.email, name: user.name, tempPassword, loginUrl, role: user.role }).catch(() => {});
 
   return { user, tempPassword };
 }

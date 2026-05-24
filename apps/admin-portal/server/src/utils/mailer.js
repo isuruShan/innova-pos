@@ -23,14 +23,39 @@ const sendEmail = async ({ to, subject, html }) => {
   });
 };
 
-const sendWelcomeEmail = async ({ to, name, tempPassword, loginUrl }) => {
+const sendWelcomeEmail = async ({ to, name, tempPassword, loginUrl, role = 'merchant_admin' }) => {
+  const isMerchantAdmin = role === 'merchant_admin';
+  const roleLabel = role === 'manager' ? 'Manager' : role === 'cashier' ? 'Cashier' : role === 'kitchen_staff' ? 'Kitchen Staff' : role;
+  
+  const subject = isMerchantAdmin
+    ? '🎉 Welcome to Cafinity — Your Account is Ready!'
+    : `🎒 Welcome to the Team — Your Cafinity ${roleLabel} Account is Ready!`;
+
+  const heading = isMerchantAdmin
+    ? emailHeading('Welcome to Cafinity! 🎉', 'Your merchant account is active')
+    : emailHeading('Welcome to the Team! 🎒', `Your ${roleLabel.toLowerCase()} account is ready`);
+
+  const body = isMerchantAdmin
+    ? emailParagraph(`Hi <strong>${esc(name)}</strong>,`) +
+      emailParagraph('Congratulations! Your merchant account has been verified and is ready to use. You can start managing your café or restaurant right away.')
+    : emailParagraph(`Hi <strong>${esc(name)}</strong>,`) +
+      emailParagraph(`Your administrator has created a Cafinity account for you as a <strong>${esc(roleLabel)}</strong>. You can now log in using the credentials below.`);
+
+  const trialPanel = isMerchantAdmin
+    ? emailPanel(`
+        <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#10b981">🎁 30-Day Free Trial</p>
+        <p style="margin:0;font-size:14px;color:#64748b;line-height:1.7">You have full access to all features for 30 days. No credit card required!</p>
+      `)
+    : '';
+
+  const buttonLabel = isMerchantAdmin ? '🚀 Access Admin Portal' : '🚀 Log In to POS';
+
   await sendEmail({
     to,
-    subject: '🎉 Welcome to Cafinity — Your Account is Ready!',
+    subject,
     html: `
-      ${emailHeading('Welcome to Cafinity! 🎉', 'Your merchant account is active')}
-      ${emailParagraph(`Hi <strong>${esc(name)}</strong>,`)}
-      ${emailParagraph('Congratulations! Your merchant account has been verified and is ready to use. You can start managing your café or restaurant right away.')}
+      ${heading}
+      ${body}
       ${emailPanel(`
         <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#16213e;text-transform:uppercase;letter-spacing:0.05em">Your Credentials</p>
         <div style="margin:0 0 16px">
@@ -43,11 +68,8 @@ const sendWelcomeEmail = async ({ to, name, tempPassword, loginUrl }) => {
         </div>
       `)}
       ${emailAlert('<strong>🔒 Security First:</strong> Change this temporary password immediately after your first login. Never share your password with anyone!', 'warning')}
-      ${emailPanel(`
-        <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#10b981">🎁 30-Day Free Trial</p>
-        <p style="margin:0;font-size:14px;color:#64748b;line-height:1.7">You have full access to all features for 30 days. No credit card required!</p>
-      `)}
-      ${emailButton(loginUrl, '🚀 Access Admin Portal')}
+      ${trialPanel}
+      ${emailButton(loginUrl, buttonLabel)}
     `,
   });
 };

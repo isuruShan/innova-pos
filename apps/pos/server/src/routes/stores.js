@@ -44,7 +44,27 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
     const { name, code, address, phone, paymentMethods, isActive, tableManagementEnabled, guestWaiterCallCooldownSeconds, posMenuLayout } = req.body;
     if (name !== undefined) store.name = String(name).trim();
     if (code !== undefined) store.code = String(code).trim().toUpperCase();
-    if (address !== undefined) store.address = String(address).trim();
+    if (address !== undefined) {
+      if (typeof address === 'object' && address !== null) {
+        store.address = {
+          street1: String(address.street1 || '').trim(),
+          street2: String(address.street2 || '').trim(),
+          city: String(address.city || '').trim(),
+          state: String(address.state || '').trim(),
+          postalCode: String(address.postalCode || '').trim(),
+          country: String(address.country || '').trim(),
+        };
+      } else {
+        store.address = {
+          street1: String(address || '').trim(),
+          street2: '',
+          city: '',
+          state: '',
+          postalCode: '',
+          country: '',
+        };
+      }
+    }
     if (phone !== undefined) store.phone = String(phone).trim();
     if (paymentMethods !== undefined) store.paymentMethods = normalizePaymentMethods(paymentMethods);
     if (tableManagementEnabled !== undefined && req.user.role !== 'cashier') {

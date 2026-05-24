@@ -93,6 +93,7 @@ router.post('/stripe', authenticateJWT, authorize('merchant_admin'), async (req,
       paymentDate: new Date(),
       stripeSessionId: session.id,
       status: 'pending',
+      paymentBreakdown: renewal,
       createdBy: req.user.id,
     });
 
@@ -137,6 +138,7 @@ router.post('/paypal/create-order', authenticateJWT, authorize('merchant_admin')
       paymentDate: new Date(),
       paypalOrderId: orderId,
       status: 'pending',
+      paymentBreakdown: renewal,
       createdBy: req.user.id,
     });
 
@@ -202,6 +204,7 @@ router.post('/paypal/create-addon-order', authenticateJWT, authorize('merchant_a
       paymentDate: new Date(),
       paypalOrderId: orderId,
       status: 'pending',
+      paymentBreakdown: quote,
       createdBy: req.user.id,
     });
 
@@ -260,6 +263,7 @@ router.post('/paypal/create-user-license-order', authenticateJWT, authorize('mer
       currency,
       paymentMethod: 'paypal',
       paypalOrderId: orderId,
+      paymentBreakdown: quote,
       createdBy: req.user.id,
     });
 
@@ -314,6 +318,7 @@ router.post('/paypal/create-store-order', authenticateJWT, authorize('merchant_a
       paymentDate: new Date(),
       paypalOrderId: orderId,
       status: 'pending',
+      paymentBreakdown: quote,
       createdBy: req.user.id,
     });
 

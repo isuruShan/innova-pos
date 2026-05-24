@@ -36,13 +36,18 @@ const PAYMENT_METHOD_OPTIONS = [
 const SORT_OPTIONS = [
   { label: 'Name (A-Z)', sort: 'name', order: 'asc' },
   { label: 'Name (Z-A)', sort: 'name', order: 'desc' },
-  { label: 'Code (A-Z)', sort: 'code', order: 'asc' },
-  { label: 'Code (Z-A)', sort: 'code', order: 'desc' },
   { label: 'Newest First', sort: 'createdAt', order: 'desc' },
   { label: 'Oldest First', sort: 'createdAt', order: 'asc' },
   { label: 'Active First', sort: 'status', order: 'asc' },
   { label: 'Inactive First', sort: 'status', order: 'desc' },
 ];
+
+const formatAddress = (addr) => {
+  if (!addr) return 'No address';
+  if (typeof addr === 'string') return addr;
+  const parts = [addr.street1, addr.street2, addr.city, addr.state, addr.postalCode, addr.country].filter(Boolean);
+  return parts.join(', ') || 'No address';
+};
 
 function MultiSelectDropdown({ label, options, selected, onChange, icon: Icon }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -205,11 +210,34 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
   const { isSuperAdmin, isMerchantAdmin } = useAuth();
   const canCreateStore = isSuperAdmin || isMerchantAdmin;
   const queryClient = useQueryClient();
-  const [form, setForm] = useState({ name: '', address: '', phone: '', paymentMethods: ['cash'] });
+  const [form, setForm] = useState({
+    name: '',
+    address: {
+      street1: '',
+      street2: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: '',
+    },
+    phone: '',
+    paymentMethods: ['cash'],
+  });
   const [editingStoreId, setEditingStoreId] = useState('');
   const [editingStore, setEditingStore] = useState(null);
   const [editForm, setEditForm] = useState({
-    name: '', address: '', paymentMethods: ['cash'], isActive: true, posMenuLayout: 'default',
+    name: '',
+    address: {
+      street1: '',
+      street2: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: '',
+    },
+    paymentMethods: ['cash'],
+    isActive: true,
+    posMenuLayout: 'default',
   });
   const [editMeta, setEditMeta] = useState({ deactivatedBySuperadmin: false });
   const [editPhoneCountryIso, setEditPhoneCountryIso] = useState(DEFAULT_COUNTRY_CODE);
@@ -258,9 +286,20 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
     const parsed = parsePhoneForField(store.phone, DEFAULT_COUNTRY_CODE);
     setEditPhoneCountryIso(parsed.countryIso);
     setEditPhoneNationalDigits(parsed.nationalDigits);
+    const addr = store.address || {};
+    const addressObj = typeof addr === 'string'
+      ? { street1: addr, street2: '', city: '', state: '', postalCode: '', country: '' }
+      : {
+          street1: addr.street1 || '',
+          street2: addr.street2 || '',
+          city: addr.city || '',
+          state: addr.state || '',
+          postalCode: addr.postalCode || '',
+          country: addr.country || '',
+        };
     return {
       name: store.name || '',
-      address: store.address || '',
+      address: addressObj,
       paymentMethods: store.paymentMethods?.length ? [...store.paymentMethods] : ['cash'],
       isActive: store.isActive !== false,
       posMenuLayout: store.posMenuLayout || 'default',
@@ -357,7 +396,19 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
   const createStoreSuper = useMutation({
     mutationFn: (payload) => api.post('/stores', tenantIdOverride ? { ...payload, tenantId: tenantIdOverride } : payload),
     onSuccess: () => {
-      setForm({ name: '', address: '', phone: '', paymentMethods: ['cash'] });
+      setForm({
+        name: '',
+        address: {
+          street1: '',
+          street2: '',
+          city: '',
+          state: '',
+          postalCode: '',
+          country: '',
+        },
+        phone: '',
+        paymentMethods: ['cash'],
+      });
       setError('');
       setDrawerOpen(false);
       queryClient.invalidateQueries({ queryKey: ['admin-stores'] });
@@ -597,7 +648,14 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
       payload: {
         ...(tenantIdOverride ? { tenantId: tenantIdOverride } : {}),
         name: editForm.name.trim(),
-        address: editForm.address.trim(),
+        address: {
+          street1: editForm.address.street1.trim(),
+          street2: editForm.address.street2.trim(),
+          city: editForm.address.city.trim(),
+          state: editForm.address.state.trim(),
+          postalCode: editForm.address.postalCode.trim(),
+          country: editForm.address.country.trim(),
+        },
         phone,
         paymentMethods: [...editForm.paymentMethods],
         isActive: editForm.isActive,
@@ -667,34 +725,75 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
       </div>
 
       {isSuperAdmin && canCreateStore && !workspaceMode && (
-        <form onSubmit={onCreate} className="rounded-xl border border-gray-200 bg-white p-4 grid gap-3 md:grid-cols-2">
-          <div className="md:col-span-2"><label className="block text-xs text-gray-500 mb-1">Store Name</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder={PLACEHOLDERS.storeName}
-          maxLength={fieldAttrs('storeName').maxLength} value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} /></div>
-          <div><label className="block text-xs text-gray-500 mb-1">Address</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder={PLACEHOLDERS.addressLine1}
-          maxLength={fieldAttrs('addressLine1').maxLength} value={form.address} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} /></div>
-          <div><label className="block text-xs text-gray-500 mb-1">Phone</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Phone (optional)" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} /></div>
-          <div className="md:col-span-2">
-            <label className="block text-xs text-gray-500 mb-1">Payment Methods (cash required)</label>
-            <div className="flex flex-wrap gap-3">
-              {['cash', 'card', 'bank_transfer', 'mobile_wallet'].map((m) => (
-                <label key={m} className="text-sm text-gray-700 flex items-center gap-1.5">
-                  <input
-                    type="checkbox"
-                    checked={form.paymentMethods.includes(m)}
-                    disabled={m === 'cash'}
-                    onChange={() => setForm((p) => {
-                      const has = p.paymentMethods.includes(m);
-                      const next = has ? p.paymentMethods.filter((x) => x !== m) : [...p.paymentMethods, m];
-                      if (!next.includes('cash')) next.unshift('cash');
-                      return { ...p, paymentMethods: [...new Set(next)] };
-                    })}
-                  />
-                  <span className="capitalize">{m.replace('_', ' ')}</span>
-                </label>
-              ))}
+        <form onSubmit={onCreate} className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+          <h3 className="font-semibold text-gray-900">Create store</h3>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <label className="block text-xs text-gray-500 mb-1">Store Name</label>
+              <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder={PLACEHOLDERS.storeName}
+              maxLength={fieldAttrs('storeName').maxLength} value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} required />
+            </div>
+            
+            <div className="md:col-span-2 grid gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50/50">
+              <span className="block text-xs font-semibold text-gray-700">Address Details</span>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Street 1</label>
+                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" placeholder="Street 1" value={form.address.street1} onChange={(e) => setForm((p) => ({ ...p, address: { ...p.address, street1: e.target.value } }))} maxLength={100} />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Street 2 (Optional)</label>
+                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" placeholder="Street 2" value={form.address.street2} onChange={(e) => setForm((p) => ({ ...p, address: { ...p.address, street2: e.target.value } }))} maxLength={100} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">City</label>
+                  <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" placeholder="City" value={form.address.city} onChange={(e) => setForm((p) => ({ ...p, address: { ...p.address, city: e.target.value } }))} maxLength={50} />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">State / Province</label>
+                  <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" placeholder="State" value={form.address.state} onChange={(e) => setForm((p) => ({ ...p, address: { ...p.address, state: e.target.value } }))} maxLength={50} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Postal / Zip Code</label>
+                  <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" placeholder="Postal Code" value={form.address.postalCode} onChange={(e) => setForm((p) => ({ ...p, address: { ...p.address, postalCode: e.target.value } }))} maxLength={20} />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Country</label>
+                  <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" placeholder="Country" value={form.address.country} onChange={(e) => setForm((p) => ({ ...p, address: { ...p.address, country: e.target.value } }))} maxLength={50} />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Phone</label>
+              <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Phone (optional)" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-xs text-gray-500 mb-1">Payment Methods (cash required)</label>
+              <div className="flex flex-wrap gap-3">
+                {['cash', 'card', 'bank_transfer', 'mobile_wallet'].map((m) => (
+                  <label key={m} className="text-sm text-gray-700 flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.paymentMethods.includes(m)}
+                      disabled={m === 'cash'}
+                      onChange={() => setForm((p) => {
+                        const has = p.paymentMethods.includes(m);
+                        let next = has ? p.paymentMethods.filter((x) => x !== m) : [...p.paymentMethods, m];
+                        if (!next.includes('cash')) next.unshift('cash');
+                        return { ...p, paymentMethods: [...new Set(next)] };
+                      })}
+                    />
+                    <span className="capitalize">{m.replace('_', ' ')}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="md:col-span-2 flex items-center gap-3">
+          <div className="flex items-center gap-3 pt-2">
             <button type="submit" className="px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold disabled:opacity-60" disabled={createStoreSuper.isPending}>
               {createStoreSuper.isPending ? 'Creating...' : 'Create store'}
             </button>
@@ -801,8 +900,8 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                           <span className="inline-block text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded">Inactive</span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-600">{store.address || 'No address'}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Code: {store.code} · Phone: {store.phone || '-'}</p>
+                      <p className="text-xs text-gray-600">{formatAddress(store.address)}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">City: {store.address?.city || '—'} · Phone: {store.phone || '-'}</p>
                       <p className="text-xs text-gray-500 mt-0.5">Payments: {Array.isArray(store.paymentMethods) ? store.paymentMethods.map(m => m.replace('_', ' ')).join(', ') : 'cash'}</p>
                       <div className="mt-4 flex flex-wrap gap-2 pt-3 border-t border-gray-150">
                         <button type="button" className="text-xs px-2.5 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 flex-1" onClick={() => openEdit(sid)}>
@@ -827,7 +926,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
                       <th className="px-4 py-3"><SortableTh label="Store Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
-                      <th className="px-4 py-3"><SortableTh label="Code" field="code" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
+                      <th className="px-4 py-3">City</th>
                       <th className="px-4 py-3 text-gray-500 font-semibold select-none">Phone</th>
                       <th className="px-4 py-3"><SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
                       <th className="px-4 py-3"><SortableTh label="Created" field="createdAt" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
@@ -845,7 +944,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                             )}
                             {store.name}
                           </td>
-                          <td className="px-4 py-3 font-mono text-xs">{store.code}</td>
+                          <td className="px-4 py-3 text-sm">{store.address?.city || '—'}</td>
                           <td className="px-4 py-3">{store.phone || '-'}</td>
                           <td className="px-4 py-3">
                             {store.isActive === false ? (
@@ -1068,7 +1167,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                 <h3 className="font-bold text-gray-900 text-lg">Edit Store</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   {editingStore.name}
-                  {editingStore.code ? ` · ${editingStore.code}` : ''}
+                  {editingStore.address?.city ? ` · ${editingStore.address.city}` : ''}
                 </p>
               </div>
               <button
@@ -1091,15 +1190,36 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Address</label>
-                <input 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" 
-                  placeholder="Store address" 
-                  maxLength={fieldAttrs('addressLine1').maxLength}
-                  value={editForm.address} 
-                  onChange={(e) => setEditForm((p) => ({ ...p, address: e.target.value }))} 
-                />
+              <div className="space-y-3 pt-2 border-t border-gray-100">
+                <span className="block text-xs font-semibold text-gray-700">Address Details</span>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Street 1</label>
+                  <input className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" placeholder="Street 1" value={editForm.address.street1} onChange={(e) => setEditForm((p) => ({ ...p, address: { ...p.address, street1: e.target.value } }))} maxLength={100} />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Street 2 (Optional)</label>
+                  <input className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" placeholder="Street 2" value={editForm.address.street2} onChange={(e) => setEditForm((p) => ({ ...p, address: { ...p.address, street2: e.target.value } }))} maxLength={100} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">City</label>
+                    <input className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" placeholder="City" value={editForm.address.city} onChange={(e) => setEditForm((p) => ({ ...p, address: { ...p.address, city: e.target.value } }))} maxLength={50} />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">State / Province</label>
+                    <input className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" placeholder="State" value={editForm.address.state} onChange={(e) => setEditForm((p) => ({ ...p, address: { ...p.address, state: e.target.value } }))} maxLength={50} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Postal / Zip Code</label>
+                    <input className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" placeholder="Postal Code" value={editForm.address.postalCode} onChange={(e) => setEditForm((p) => ({ ...p, address: { ...p.address, postalCode: e.target.value } }))} maxLength={20} />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Country</label>
+                    <input className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" placeholder="Country" value={editForm.address.country} onChange={(e) => setEditForm((p) => ({ ...p, address: { ...p.address, country: e.target.value } }))} maxLength={50} />
+                  </div>
+                </div>
               </div>
               <MobilePhoneField
                 countryIso={editPhoneCountryIso}

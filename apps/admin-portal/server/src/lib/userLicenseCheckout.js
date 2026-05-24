@@ -9,19 +9,35 @@ async function buildCreateUserPayload(tenantId, body, createdBy) {
   if (!name?.trim() || !email?.trim() || !role) {
     throw new Error('name, email, and role are required');
   }
+
+  const emailClean = String(email).toLowerCase().trim();
+
+  // Validate system-wide email uniqueness in User table
+  const User = require('../models/User');
+  const userExists = await User.findOne({ email: emailClean });
+  if (userExists) throw new Error('Email already in use');
+
+  // Validate in pending approvals for user creation (system-wide)
+  const pendingApproval = await PaymentReceipt.findOne({
+    receiptKind: 'user_license',
+    userLicenseAction: 'create_user',
+    status: 'pending',
+    'userLicensePayload.email': emailClean,
+  });
+  if (pendingApproval) {
+    throw new Error('A user creation request for this email is already pending approval');
+  }
+
   const quote = await quoteCreateUser(tenantId, role, storeIds || []);
   if (!quote.requiresPayment) {
     throw new Error('No payment required for this user');
   }
-  const pending = await findPendingUserLicenseReceipt(tenantId, 'create_user', { email });
-  if (pending) {
-    throw new Error('A payment for this user is already pending verification');
-  }
+
   return {
     quote,
     payload: {
       name: String(name).trim(),
-      email: String(email).toLowerCase().trim(),
+      email: emailClean,
       role: String(role).toLowerCase(),
       storeIds: storeIds || [],
       defaultStoreId: defaultStoreId || null,
@@ -67,6 +83,7 @@ async function createPendingUserLicenseReceipt({
   bankReference,
   receiptFileKey,
   notes,
+  paymentBreakdown,
   createdBy,
 }) {
   return PaymentReceipt.create({
@@ -88,6 +105,7 @@ async function createPendingUserLicenseReceipt({
     receiptFileKey: receiptFileKey || '',
     notes: (notes || '').trim(),
     status: 'pending',
+    paymentBreakdown,
     createdBy,
   });
 }

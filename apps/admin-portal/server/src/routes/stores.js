@@ -138,17 +138,46 @@ router.post('/', authenticateJWT, authorize('superadmin'), tenantScope, async (r
     const { name, code, address, phone, paymentMethods, tenantId: tenantIdFromBody } = req.body;
     const tenantId = resolveTenantId(req, tenantIdFromBody);
     if (!tenantId) return res.status(400).json({ message: 'tenantId required' });
-    if (!name?.trim() || !code?.trim()) return res.status(400).json({ message: 'name and code are required' });
+    if (!name?.trim()) return res.status(400).json({ message: 'name is required' });
 
-    const existing = await Store.findOne({ tenantId, code: code.trim().toUpperCase() });
+    let finalCode = String(code || '').trim().toUpperCase();
+    if (!finalCode) {
+      const { nextStoreCode } = require('../lib/storePurchase');
+      finalCode = await nextStoreCode(tenantId);
+    }
+
+    const existing = await Store.findOne({ tenantId, code: finalCode });
     if (existing) return res.status(400).json({ message: 'Store code already exists' });
+
+    let parsedAddress = {};
+    if (address !== undefined) {
+      if (typeof address === 'object' && address !== null) {
+        parsedAddress = {
+          street1: String(address.street1 || '').trim(),
+          street2: String(address.street2 || '').trim(),
+          city: String(address.city || '').trim(),
+          state: String(address.state || '').trim(),
+          postalCode: String(address.postalCode || '').trim(),
+          country: String(address.country || '').trim(),
+        };
+      } else {
+        parsedAddress = {
+          street1: String(address || '').trim(),
+          street2: '',
+          city: '',
+          state: '',
+          postalCode: '',
+          country: '',
+        };
+      }
+    }
 
     const hasDefault = await Store.exists({ tenantId, isDefault: true, isActive: true });
     const store = await Store.create({
       tenantId,
       name: name.trim(),
-      code: code.trim().toUpperCase(),
-      address: address?.trim() || '',
+      code: finalCode,
+      address: parsedAddress,
       phone: phone?.trim() || '',
       paymentMethods: normalizePaymentMethods(paymentMethods),
       isDefault: !hasDefault,
@@ -203,8 +232,35 @@ router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), t
 
     const { name, code, address, phone, paymentMethods, isActive, tableManagementEnabled, guestWaiterCallCooldownSeconds, posMenuLayout } = body;
     if (name !== undefined) store.name = name.trim();
-    if (code !== undefined) store.code = code.trim().toUpperCase();
-    if (address !== undefined) store.address = address.trim();
+    if (code !== undefined) {
+      let finalCode = String(code || '').trim().toUpperCase();
+      if (!finalCode) {
+        const { nextStoreCode } = require('../lib/storePurchase');
+        finalCode = await nextStoreCode(tenantId);
+      }
+      store.code = finalCode;
+    }
+    if (address !== undefined) {
+      if (typeof address === 'object' && address !== null) {
+        store.address = {
+          street1: String(address.street1 || '').trim(),
+          street2: String(address.street2 || '').trim(),
+          city: String(address.city || '').trim(),
+          state: String(address.state || '').trim(),
+          postalCode: String(address.postalCode || '').trim(),
+          country: String(address.country || '').trim(),
+        };
+      } else {
+        store.address = {
+          street1: String(address || '').trim(),
+          street2: '',
+          city: '',
+          state: '',
+          postalCode: '',
+          country: '',
+        };
+      }
+    }
     if (phone !== undefined) store.phone = phone.trim();
     if (paymentMethods !== undefined) store.paymentMethods = normalizePaymentMethods(paymentMethods);
     if (tableManagementEnabled !== undefined) store.tableManagementEnabled = Boolean(tableManagementEnabled);

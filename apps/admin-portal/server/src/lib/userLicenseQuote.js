@@ -16,7 +16,7 @@ const {
 const INCLUDED_USERS = 1;
 
 async function countActiveUsers(tenantId) {
-  return User.countDocuments({ tenantId, isActive: true });
+  return User.countDocuments({ tenantId });
 }
 
 function pseudoAddonFromPricing(pricing) {
@@ -149,7 +149,7 @@ async function quoteAssignStores(tenantId, userId, targetStoreIds) {
   const tenant = await loadTenantForBilling(tenantId);
   if (!tenant) throw new Error('Tenant not found');
 
-  const user = await User.findOne({ _id: userId, tenantId, isActive: true });
+  const user = await User.findOne({ _id: userId, tenantId });
   if (!user) throw new Error('User not found');
 
   if (user.role === 'merchant_admin') {

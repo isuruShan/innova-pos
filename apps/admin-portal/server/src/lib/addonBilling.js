@@ -278,7 +278,7 @@ async function computeSubscriptionRenewalExpected(tenant) {
   }
 
   // Get active users details for the tenant
-  const activeUsers = await User.find({ tenantId: t._id, isActive: true })
+  const activeUsers = await User.find({ tenantId: t._id })
     .sort({ createdAt: 1 })
     .lean();
 

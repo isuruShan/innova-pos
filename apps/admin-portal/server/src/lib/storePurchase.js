@@ -73,6 +73,7 @@ function requiresPaymentForNewStore(activeCount) {
 }
 
 module.exports = {
+  nextStoreCode,
   createDefaultStoreForTenant,
   syncMerchantAdminStoreIds,
   countActiveStoresForTenant,

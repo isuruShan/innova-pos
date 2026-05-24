@@ -50,12 +50,15 @@ const paymentReceiptSchema = new mongoose.Schema(
     },
     rejectionReason: { type: String, default: '' },
 
-    // After verification
     verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     verifiedAt: { type: Date, default: null },
     subscriptionExtended: { type: Boolean, default: false },
     extensionDays: { type: Number, default: 0 },
     subscriptionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Subscription', default: null },
+
+    paymentBreakdown: { type: mongoose.Schema.Types.Mixed, default: null },
+    billingPeriodStart: { type: Date, default: null },
+    billingPeriodEnd: { type: Date, default: null },
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useToast } from '../../context/ToastContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ExternalLink, RefreshCw, Loader, Receipt,
@@ -67,6 +68,7 @@ function Chip({ active, onClick, children }) {
 
 export default function PaymentsPage() {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Tab
@@ -88,6 +90,23 @@ export default function PaymentsPage() {
 
   // Merchant drawer
   const [merchantDrawer, setMerchantDrawer] = useState(null); // { tenantId, name }
+
+  const handleViewReceipt = async (receiptId, fallbackUrl) => {
+    if (fallbackUrl) {
+      window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    try {
+      const { data: res } = await api.get(`/subscriptions/receipts/${receiptId}/url`);
+      if (res?.url) {
+        window.open(res.url, '_blank', 'noopener,noreferrer');
+      } else {
+        toast.error('Could not retrieve receipt URL');
+      }
+    } catch {
+      toast.error('Failed to load receipt URL');
+    }
+  };
 
   // Reset page when filters change
   useEffect(() => { setPage(1); }, [statusFilter, kindFilter, methodFilter, dateFrom, dateTo, search, sort, order]);
@@ -388,17 +407,15 @@ export default function PaymentsPage() {
                         {/* Actions */}
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            {r.receiptFileUrl && (
-                              <a
-                                href={r.receiptFileUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-50"
+                            {r.receiptFileKey && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleViewReceipt(r._id, r.receiptFileUrl); }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-50 cursor-pointer"
                                 title="View receipt file"
                               >
                                 <ExternalLink size={12} />
-                              </a>
+                              </button>
                             )}
                             {r.status === 'pending' ? (
                               <button
