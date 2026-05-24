@@ -16,7 +16,7 @@ import { useDragReorder, reorderByDrag } from '../../hooks/useDragReorder';
 import { useListSort } from '../../hooks/useListSort';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, getItemDisplayPrice } from '../../utils/format';
 import { compareSortValues, buildCategorySortMap, scopeMenuItemsByCategory, sortMenuItemsForDisplay } from '../../utils/menuItemSearch';
 import { useStoreContext } from '../../context/StoreContext';
 import { MenuGridSkeleton } from '../../components/StoreSkeletons';
@@ -541,7 +541,16 @@ export default function MenuManagement() {
                     <p className="text-xs text-slate-500 mb-1">{item.category}</p>
                     {item.isCombo && <ComboItemsPreview comboItems={item.comboItems} />}
                     <div className="flex items-center justify-between mt-1">
-                      <span className="text-amber-400 font-bold">{formatCurrency(item.price)}</span>
+                      {(() => {
+                        const { price, prefix, hasVariants } = getItemDisplayPrice(item);
+                        return (
+                          <span className="text-amber-400 font-bold">
+                            {prefix && <span className="text-slate-500 font-normal text-[10px]">{prefix}</span>}
+                            {formatCurrency(price)}
+                            {hasVariants && <span className="text-sky-400 text-[10px] ml-1">({item.variants?.length || 0} var.)</span>}
+                          </span>
+                        );
+                      })()}
                       <button type="button"
                         onClick={() => toggleMutation.mutate({ id: item._id, available: !item.available })}
                         className={`flex items-center gap-1 text-xs font-medium transition ${item.available ? 'text-green-400' : 'text-slate-500'}`}>

@@ -4,10 +4,11 @@ import {
   Upload, ImageIcon, Loader2,
 } from 'lucide-react';
 import CenteredModal from '../CenteredModal';
+import ItemVariantPickerModal from '../ItemVariantPickerModal';
 import { COMBO_CATEGORY_NAME } from '../../constants/categories';
 import { MENU_ITEM_LIMITS, VARIANT_CRITERIA } from '../../constants/menuItems';
 import { useBranding } from '../../context/BrandingContext';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, getItemDisplayPrice } from '../../utils/format';
 import {
   rebuildVariants,
   findVariantIndex,
@@ -16,41 +17,94 @@ import {
 function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
   const [selectedId, setSelectedId] = useState('');
   const [qty, setQty] = useState(1);
+  const [variantPickerItem, setVariantPickerItem] = useState(null);
+  const [pendingQty, setPendingQty] = useState(1);
 
-  const addedIds = new Set(comboItems.map((c) => c.menuItem));
+  const addedKeys = new Set(comboItems.map((c) => `${c.menuItem}:${c.variantId || ''}`));
   const available = allItems.filter(
-    (i) => i._id !== currentItemId && !addedIds.has(i._id) && !i.isCombo,
+    (i) => i._id !== currentItemId && !i.isCombo,
   );
 
-  const add = () => {
+  const handleAddClick = () => {
     if (!selectedId) return;
     const item = allItems.find((i) => i._id === selectedId);
     if (!item) return;
-    onChange([...comboItems, { menuItem: item._id, name: item.name, qty: parseInt(qty, 10) || 1 }]);
+    
+    // Check if item has variants
+    if (item.hasVariants && item.variants?.length > 0) {
+      // Show variant picker modal
+      setPendingQty(parseInt(qty, 10) || 1);
+      setVariantPickerItem(item);
+    } else {
+      // Add directly without variant
+      addItem(item, null);
+    }
+  };
+
+  const addItem = (item, variant) => {
+    const key = `${item._id}:${variant?._id || ''}`;
+    if (addedKeys.has(key)) {
+      // Already added this specific variant, just reset
+      setSelectedId('');
+      setQty(1);
+      return;
+    }
+    
+    const displayName = variant 
+      ? `${item.name} (${variant.attributes?.map(a => a.value).join(' / ') || variant.name})`
+      : item.name;
+    const price = variant ? variant.price : item.price;
+    
+    onChange([...comboItems, { 
+      menuItem: item._id, 
+      variantId: variant?._id || null,
+      name: displayName,
+      variantName: variant?.name || null,
+      price: Number(price),
+      qty: variant ? pendingQty : (parseInt(qty, 10) || 1),
+    }]);
     setSelectedId('');
     setQty(1);
+    setVariantPickerItem(null);
+    setPendingQty(1);
   };
-  const remove = (id) => onChange(comboItems.filter((c) => c.menuItem !== id));
-  const updateQty = (id, newQty) => onChange(
-    comboItems.map((c) => (c.menuItem === id ? { ...c, qty: Math.max(1, parseInt(newQty, 10) || 1) } : c)),
+
+  const handleVariantSelect = (item, variant) => {
+    addItem(item, variant);
+  };
+
+  const remove = (menuItem, variantId) => onChange(
+    comboItems.filter((c) => !(c.menuItem === menuItem && (c.variantId || null) === (variantId || null)))
+  );
+  const updateQty = (menuItem, variantId, newQty) => onChange(
+    comboItems.map((c) => 
+      (c.menuItem === menuItem && (c.variantId || null) === (variantId || null)) 
+        ? { ...c, qty: Math.max(1, parseInt(newQty, 10) || 1) } 
+        : c
+    ),
   );
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-slate-500">Quantities multiply with the ordered amount.</p>
+      <p className="text-xs text-slate-500">Quantities multiply with the ordered amount. Click on items with variants to select a specific variant.</p>
       {comboItems.length > 0 && (
         <div className="bg-[var(--pos-surface-inset)] rounded-xl divide-y divide-slate-800">
-          {comboItems.map((ci) => (
-            <div key={ci.menuItem} className="flex items-center gap-2 px-3 py-2">
-              <span className="flex-1 text-sm text-slate-200 truncate" title={ci.name}>{ci.name}</span>
+          {comboItems.map((ci, idx) => (
+            <div key={`${ci.menuItem}:${ci.variantId || ''}:${idx}`} className="flex items-center gap-2 px-3 py-2">
+              <div className="flex-1 min-w-0">
+                <span className="text-sm text-slate-200 truncate block" title={ci.name}>{ci.name}</span>
+                {ci.variantId && (
+                  <span className="text-xs text-sky-400">variant selected</span>
+                )}
+              </div>
               <div className="flex items-center gap-1">
-                <button type="button" onClick={() => updateQty(ci.menuItem, ci.qty - 1)}
+                <button type="button" onClick={() => updateQty(ci.menuItem, ci.variantId, ci.qty - 1)}
                   className="w-6 h-6 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 flex items-center justify-center text-xs">−</button>
                 <span className="w-6 text-center text-sm text-[var(--pos-text-primary)] font-semibold">{ci.qty}</span>
-                <button type="button" onClick={() => updateQty(ci.menuItem, ci.qty + 1)}
+                <button type="button" onClick={() => updateQty(ci.menuItem, ci.variantId, ci.qty + 1)}
                   className="w-6 h-6 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 flex items-center justify-center text-xs">+</button>
               </div>
-              <button type="button" onClick={() => remove(ci.menuItem)}
+              <button type="button" onClick={() => remove(ci.menuItem, ci.variantId)}
                 className="text-slate-600 hover:text-red-400 transition ml-1"><X size={14} /></button>
             </div>
           ))}
@@ -62,7 +116,8 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
             className="flex-1 min-w-0 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
             <option value="">— Select item —</option>
             {available.map((i) => {
-              const label = `${i.name} (${formatCurrency(i.price)})`;
+              const { price, prefix, hasVariants } = getItemDisplayPrice(i);
+              const label = `${i.name} (${prefix}${formatCurrency(price)})${hasVariants ? ' ★' : ''}`;
               return (
                 <option key={i._id} value={i._id} title={label}>
                   {label.length > 60 ? `${label.slice(0, 57)}…` : label}
@@ -72,13 +127,24 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
           </select>
           <input type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)}
             className="w-16 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500" />
-          <button type="button" onClick={add} disabled={!selectedId}
+          <button type="button" onClick={handleAddClick} disabled={!selectedId}
             className="bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white px-3 py-2 rounded-xl transition text-sm font-semibold shrink-0">
             Add
           </button>
         </div>
       ) : (
         <p className="text-xs text-slate-600 italic">No more items available to add.</p>
+      )}
+      <p className="text-xs text-slate-600">★ = item has variants (click Add to select)</p>
+
+      {/* Variant picker modal */}
+      {variantPickerItem && (
+        <ItemVariantPickerModal
+          item={variantPickerItem}
+          onClose={() => setVariantPickerItem(null)}
+          onSelect={handleVariantSelect}
+          title="Select Variant for Combo"
+        />
       )}
     </div>
   );

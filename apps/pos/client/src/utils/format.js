@@ -32,6 +32,34 @@ const PAYMENT_TYPE_LABELS = {
   unknown: 'Other',
 };
 
+/**
+ * Get display price for a menu item, considering default variant.
+ * @param {Object} item - Menu item with price, hasVariants, variants, defaultVariantId
+ * @returns {{ price: number, prefix: string, hasVariants: boolean }}
+ */
+export function getItemDisplayPrice(item) {
+  if (!item) return { price: 0, prefix: '', hasVariants: false };
+  
+  if (item.hasVariants && item.variants?.length > 0) {
+    const availableVariants = item.variants.filter(v => v.available !== false);
+    if (availableVariants.length > 0) {
+      // Check for default variant
+      const defaultVariant = item.defaultVariantId
+        ? availableVariants.find(v => String(v._id) === String(item.defaultVariantId))
+        : null;
+      
+      if (defaultVariant) {
+        return { price: Number(defaultVariant.price), prefix: '', hasVariants: true };
+      }
+      // Show lowest price with "from" prefix
+      const prices = availableVariants.map(v => Number(v.price)).filter(p => !isNaN(p));
+      return { price: Math.min(...prices), prefix: 'from ', hasVariants: true };
+    }
+  }
+  
+  return { price: Number(item.price) || 0, prefix: '', hasVariants: false };
+}
+
 /** Human-readable payment method for POS / session summaries. */
 export function formatPaymentTypeLabel(raw) {
   if (raw == null || raw === '') return '—';

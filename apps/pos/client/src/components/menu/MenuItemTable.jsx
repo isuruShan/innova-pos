@@ -1,6 +1,6 @@
 import { Edit2, Trash2, ToggleLeft, ToggleRight, Link2, GripVertical } from 'lucide-react';
 import SortableTh from '../SortableTh';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, getItemDisplayPrice } from '../../utils/format';
 
 function formatDate(value) {
   if (!value) return '—';
@@ -88,7 +88,15 @@ export default function MenuItemTable({
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-400">{item.category}</td>
                   <td className="px-4 py-3 text-sm text-amber-400 font-semibold text-right whitespace-nowrap">
-                    {formatCurrency(item.price)}
+                    {(() => {
+                      const { price, prefix } = getItemDisplayPrice(item);
+                      return (
+                        <>
+                          {prefix && <span className="text-slate-500 font-normal text-[10px]">{prefix}</span>}
+                          {formatCurrency(price)}
+                        </>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-500 whitespace-nowrap">{formatDate(item.createdAt)}</td>
                   <td className="px-4 py-3 text-center">

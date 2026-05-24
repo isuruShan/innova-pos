@@ -8,8 +8,9 @@ import {
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
+import ItemVariantPickerModal from '../../components/ItemVariantPickerModal';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, getItemDisplayPrice } from '../../utils/format';
 import { useStoreContext } from '../../context/StoreContext';
 import { PromoListSkeleton } from '../../components/StoreSkeletons';
 import PosDateField from '../../components/PosDateField';
@@ -76,8 +77,8 @@ const EMPTY_FORM = {
   name: '', description: '', type: 'bundle',
   startDate: '', endDate: '', active: true,
   bundleItems: [],   bundlePrice: '',
-  buyItem: '',       buyItemName: '', buyQty: '1',
-  getFreeItem: '',   getFreeItemName: '', getFreeQty: '1',
+  buyItem: '',       buyItemName: '', buyQty: '1', buyVariantId: null,
+  getFreeItem: '',   getFreeItemName: '', getFreeQty: '1', getFreeVariantId: null,
   applicableItems: [], applicableItemNames: [], applicableCategories: [],
   flatPrice: '',  discountAmount: '', discountPercent: '',
   minOrderAmount: '', maxDiscountAmount: '',
@@ -113,29 +114,69 @@ function StatusDot({ promo }) {
 
 // ─── Bundle item builder ───────────────────────────────────────────────────────
 function BundleItemsField({ bundleItems, onChange, menuItems }) {
-  const add = () => onChange([...bundleItems, { menuItem: '', name: '', qty: 1 }]);
+  const [variantPickerItem, setVariantPickerItem] = useState(null);
+  const [variantPickerIndex, setVariantPickerIndex] = useState(null);
+
+  const add = () => onChange([...bundleItems, { menuItem: '', variantId: null, name: '', qty: 1 }]);
 
   const updateItem = (i, patch) =>
     onChange(bundleItems.map((b, idx) => idx === i ? { ...b, ...patch } : b));
 
   const remove = (i) => onChange(bundleItems.filter((_, idx) => idx !== i));
 
+  const handleItemChange = (i, itemId) => {
+    const item = menuItems.find(m => m._id === itemId);
+    if (!item) {
+      updateItem(i, { menuItem: '', variantId: null, name: '' });
+      return;
+    }
+    
+    // If item has variants, show variant picker
+    if (item.hasVariants && item.variants?.length > 0) {
+      setVariantPickerItem(item);
+      setVariantPickerIndex(i);
+    } else {
+      updateItem(i, { menuItem: itemId, variantId: null, name: item.name });
+    }
+  };
+
+  const handleVariantSelect = (item, variant) => {
+    if (variantPickerIndex !== null) {
+      const displayName = `${item.name} (${variant.attributes?.map(a => a.value).join(' / ') || variant.name})`;
+      updateItem(variantPickerIndex, { 
+        menuItem: item._id, 
+        variantId: variant._id, 
+        name: displayName 
+      });
+    }
+    setVariantPickerItem(null);
+    setVariantPickerIndex(null);
+  };
+
   return (
     <div className="space-y-2">
       {bundleItems.map((bi, i) => (
         <div key={i} className="flex gap-2 items-center">
-          <select
-            value={bi.menuItem}
-            onChange={e => {
-              const item = menuItems.find(m => m._id === e.target.value);
-              // Single atomic update — avoids stale-closure overwrite bug
-              updateItem(i, { menuItem: e.target.value, name: item?.name || '' });
-            }}
-            className="flex-1 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-          >
-            <option value="">Select item…</option>
-            {menuItems.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
-          </select>
+          <div className="flex-1 min-w-0">
+            <select
+              value={bi.menuItem}
+              onChange={e => handleItemChange(i, e.target.value)}
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            >
+              <option value="">Select item…</option>
+              {menuItems.map(m => {
+                const { price, prefix, hasVariants } = getItemDisplayPrice(m);
+                return (
+                  <option key={m._id} value={m._id}>
+                    {m.name}{hasVariants ? ' ★' : ''} ({prefix}{formatCurrency(price)})
+                  </option>
+                );
+              })}
+            </select>
+            {bi.variantId && (
+              <span className="text-xs text-sky-400 ml-1">variant: {bi.name}</span>
+            )}
+          </div>
           <input
             type="number" min="1" value={bi.qty}
             onChange={e => updateItem(i, { qty: parseInt(e.target.value) || 1 })}
@@ -151,6 +192,20 @@ function BundleItemsField({ bundleItems, onChange, menuItems }) {
         className="flex items-center gap-1.5 text-sm text-amber-400 hover:text-amber-300 transition mt-1">
         <Plus size={13} /> Add item
       </button>
+      <p className="text-xs text-slate-600">★ = item has variants (selecting will prompt for variant)</p>
+
+      {/* Variant picker modal */}
+      {variantPickerItem && (
+        <ItemVariantPickerModal
+          item={variantPickerItem}
+          onClose={() => {
+            setVariantPickerItem(null);
+            setVariantPickerIndex(null);
+          }}
+          onSelect={handleVariantSelect}
+          title="Select Variant for Bundle"
+        />
+      )}
     </div>
   );
 }
@@ -298,6 +353,9 @@ export default function Promotions() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
   const { sort, order, toggleSort, sortParams, setSort, setOrder } = useListSort('createdAt', 'desc');
+  
+  // Variant picker state for buyXgetY promo type
+  const [buyXgetYVariantPicker, setBuyXgetYVariantPicker] = useState({ item: null, field: null });
 
   const { data: promotions = [], isPending: promosPending } = useQuery({
     queryKey: ['promotions', selectedStoreId, sortParams],
@@ -363,9 +421,11 @@ export default function Promotions() {
       buyItem: promo.buyItem || '',
       buyItemName: promo.buyItemName || '',
       buyQty: promo.buyQty ?? 1,
+      buyVariantId: promo.buyVariantId || null,
       getFreeItem: promo.getFreeItem || '',
       getFreeItemName: promo.getFreeItemName || '',
       getFreeQty: promo.getFreeQty ?? 1,
+      getFreeVariantId: promo.getFreeVariantId || null,
       applicableItems: promo.applicableItems || [],
       applicableItemNames: promo.applicableItemNames || [],
       applicableCategories: promo.applicableCategories || [],
@@ -422,9 +482,11 @@ export default function Promotions() {
       buyItem: form.buyItem || null,
       buyItemName: form.buyItemName,
       buyQty: +form.buyQty || 1,
+      buyVariantId: form.buyVariantId || null,
       getFreeItem: form.getFreeItem || null,
       getFreeItemName: form.getFreeItemName,
       getFreeQty: +form.getFreeQty || 1,
+      getFreeVariantId: form.getFreeVariantId || null,
       applicableItems: form.applicableItems,
       applicableItemNames: form.applicableItemNames,
       applicableCategories: form.applicableCategories,
@@ -675,12 +737,22 @@ export default function Promotions() {
                   <select value={form.buyItem}
                     onChange={e => {
                       const m = menuItems.find(x => x._id === e.target.value);
-                      setForm(f => ({ ...f, buyItem: e.target.value, buyItemName: m?.name || '' }));
+                      if (m?.hasVariants && m.variants?.length > 0) {
+                        setBuyXgetYVariantPicker({ item: m, field: 'buy' });
+                      } else {
+                        setForm(f => ({ ...f, buyItem: e.target.value, buyItemName: m?.name || '', buyVariantId: null }));
+                      }
                     }}
                     className={inputCls}>
                     <option value="">Select…</option>
-                    {menuItems.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
+                    {menuItems.map(m => {
+                      const { hasVariants } = getItemDisplayPrice(m);
+                      return <option key={m._id} value={m._id}>{m.name}{hasVariants ? ' ★' : ''}</option>;
+                    })}
                   </select>
+                  {form.buyVariantId && (
+                    <span className="text-xs text-sky-400 mt-1 block">Variant: {form.buyItemName}</span>
+                  )}
                 </div>
                 <div>
                   <label className={labelCls}>Buy Qty *</label>
@@ -693,18 +765,29 @@ export default function Promotions() {
                   <select value={form.getFreeItem}
                     onChange={e => {
                       const m = menuItems.find(x => x._id === e.target.value);
-                      setForm(f => ({ ...f, getFreeItem: e.target.value, getFreeItemName: m?.name || '' }));
+                      if (m?.hasVariants && m.variants?.length > 0) {
+                        setBuyXgetYVariantPicker({ item: m, field: 'free' });
+                      } else {
+                        setForm(f => ({ ...f, getFreeItem: e.target.value, getFreeItemName: m?.name || '', getFreeVariantId: null }));
+                      }
                     }}
                     className={inputCls}>
                     <option value="">Select…</option>
-                    {menuItems.map(m => <option key={m._id} value={m._id}>{m.name}</option>)}
+                    {menuItems.map(m => {
+                      const { hasVariants } = getItemDisplayPrice(m);
+                      return <option key={m._id} value={m._id}>{m.name}{hasVariants ? ' ★' : ''}</option>;
+                    })}
                   </select>
+                  {form.getFreeVariantId && (
+                    <span className="text-xs text-sky-400 mt-1 block">Variant: {form.getFreeItemName}</span>
+                  )}
                 </div>
                 <div>
                   <label className={labelCls}>Free Qty *</label>
                   <input type="number" min="1" {...field('getFreeQty')} className={inputCls} />
                 </div>
               </div>
+              <p className="text-xs text-slate-600">★ = item has variants (selecting will prompt for variant)</p>
             </>
           )}
 
@@ -836,6 +919,24 @@ export default function Promotions() {
           </div>
         </form>
       </SlideOver>
+
+      {/* Variant picker modal for buyXgetY promo type */}
+      {buyXgetYVariantPicker.item && (
+        <ItemVariantPickerModal
+          item={buyXgetYVariantPicker.item}
+          onClose={() => setBuyXgetYVariantPicker({ item: null, field: null })}
+          onSelect={(item, variant) => {
+            const displayName = `${item.name} (${variant.attributes?.map(a => a.value).join(' / ') || variant.name})`;
+            if (buyXgetYVariantPicker.field === 'buy') {
+              setForm(f => ({ ...f, buyItem: item._id, buyItemName: displayName, buyVariantId: variant._id }));
+            } else {
+              setForm(f => ({ ...f, getFreeItem: item._id, getFreeItemName: displayName, getFreeVariantId: variant._id }));
+            }
+            setBuyXgetYVariantPicker({ item: null, field: null });
+          }}
+          title={`Select Variant for ${buyXgetYVariantPicker.field === 'buy' ? 'Buy Item' : 'Free Item'}`}
+        />
+      )}
     </div>
   );
 }
