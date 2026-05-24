@@ -357,18 +357,18 @@ export function TablePickerModal({
                       isBusy
                         ? 'border-red-500/30 bg-red-500/5 text-slate-600 cursor-not-allowed'
                         : isSelected
-                          ? 'border-amber-500 bg-amber-500/20 text-amber-300 shadow-lg shadow-amber-500/10'
+                          ? 'border-[var(--pos-accent)] bg-[var(--pos-accent)]/20 text-[var(--pos-text-primary)] shadow-lg shadow-[var(--pos-accent)]/10'
                           : 'border-slate-700 bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] hover:border-slate-600 hover:bg-slate-800/60 active:scale-[0.98]'
                     }`}
                   >
-                    <span className={`text-lg font-bold ${isSelected ? 'text-amber-300' : ''}`}>
+                    <span className={`text-lg font-bold ${isSelected ? 'text-[var(--pos-accent)]' : ''}`}>
                       {table.label}
                     </span>
                     {isBusy && (
                       <span className="text-[10px] text-red-400 font-medium">In use</span>
                     )}
                     {isSelected && !isBusy && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--pos-accent)]" />
                     )}
                   </button>
                 );

@@ -8,7 +8,7 @@ import Badge from './Badge';
 import { ORDER_TYPES, ORDER_TYPE_MAP } from './OrderTypeBadge';
 import { useStoreContext } from '../context/StoreContext';
 import { buildCategorySortMap, resolveMenuDisplayItems } from '../utils/menuItemSearch';
-import OptionPickerModal, { MenuItemPickerModal } from './OptionPickerModal';
+import OptionPickerModal, { MenuItemPickerModal, TablePickerModal } from './OptionPickerModal';
 
 const CACHEABLE_QUERIES = ['order-board', 'kitchen-orders', 'cashier-ready-orders', 'recent-orders', 'manager-orders', 'sales-report'];
 
@@ -268,6 +268,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
   const [uberDenyReason, setUberDenyReason] = useState('OUT_OF_ITEMS');
   const [showPrepTimePicker, setShowPrepTimePicker] = useState(false);
   const [showDenyReasonPicker, setShowDenyReasonPicker] = useState(false);
+  const [showTablePicker, setShowTablePicker] = useState(false);
 
   useEffect(() => {
     if (order) {
@@ -555,9 +556,9 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
           </div>
         )}
 
-        {order.paymentCollected === false && (
+        {order.paymentCollected === false && (order.orderType !== 'dine-in' || !tableMgmt) && (
           <div className="rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-sm px-3 py-2">
-            Tab open — collect payment when you complete this order on the order board (guest QR orders also show here).
+            Payment pending — collect when completing this order.
           </div>
         )}
 
@@ -586,38 +587,24 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
           <div className="mt-2">
             {orderType === 'dine-in' && tableMgmt ? (
               <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setShowTablePicker(true)}
+                  disabled={!isEditable}
+                  className={`w-full flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm font-medium transition ${
+                    selectedTableId
+                      ? 'border-[var(--pos-accent)] bg-[var(--pos-accent)]/15 text-[var(--pos-text-primary)]'
+                      : 'border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:border-slate-600'
+                  } ${!isEditable ? 'opacity-60 cursor-not-allowed' : ''}`}
+                >
+                  <span className={selectedTableId ? 'font-semibold text-[var(--pos-text-primary)]' : ''}>
+                    {selectedTableId
+                      ? cafeTables.find((t) => String(t._id) === selectedTableId)?.label || 'Table'
+                      : 'Select table…'}
+                  </span>
+                  <ChevronRight size={16} className="text-slate-500" />
+                </button>
                 <p className="text-xs text-slate-500">Transfer moves the whole order; occupied tables are disabled.</p>
-                <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto">
-                  {cafeTables
-                    .filter((t) => t.active !== false)
-                    .map((t) => {
-                      const busy = occupancyByTable.has(String(t._id));
-                      const sel = selectedTableId === String(t._id);
-                      return (
-                        <button
-                          key={t._id}
-                          type="button"
-                          disabled={!isEditable || busy}
-                          title={busy ? 'Another active order is using this table' : undefined}
-                          onClick={() => {
-                            setSelectedTableId(String(t._id));
-                            setTableNumber(t.label || '');
-                            setDirty(true);
-                          }}
-                          className={`rounded-xl border px-2 py-2 text-sm font-medium transition ${
-                            busy
-                              ? 'border-slate-700 bg-slate-800/40 text-slate-600 cursor-not-allowed'
-                              : sel
-                                ? 'border-amber-500 bg-amber-500/20 text-amber-300'
-                                : 'border-slate-700 bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] hover:border-slate-600'
-                          }`}
-                        >
-                          {t.label}
-                          {busy ? <span className="block text-[10px] font-normal text-slate-500">In use</span> : null}
-                        </button>
-                      );
-                    })}
-                </div>
               </div>
             ) : orderType === 'dine-in' ? (
               <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-700 px-3 py-2.5">
@@ -893,6 +880,21 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
         value={uberDenyReason}
         onChange={setUberDenyReason}
         columns={1}
+      />
+
+      {/* Table Picker Modal */}
+      <TablePickerModal
+        open={showTablePicker}
+        onClose={() => setShowTablePicker(false)}
+        tables={cafeTables}
+        occupancyMap={occupancyByTable}
+        selectedTableId={selectedTableId}
+        currentOrderId={order?._id}
+        onSelect={(tableId, label) => {
+          setSelectedTableId(tableId);
+          setTableNumber(label);
+          setDirty(true);
+        }}
       />
     </SlideOver>
   );

@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import {
   Clock, ChevronRight, ChevronLeft, RefreshCw,
-  Link2, Eye, CalendarDays,
+  Link2, Eye, CalendarDays, Search, X,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -258,6 +258,7 @@ export default function OrderBoard() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [completePaymentOrder, setCompletePaymentOrder] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (!orderFromUrl) setSelectedOrder(null);
@@ -394,14 +395,44 @@ export default function OrderBoard() {
     setCompletePaymentOrder(null);
   };
 
+  // Get current user ID for session filtering
+  const currentUserId = user?._id || user?.id;
+
   const grouped = useMemo(() => {
     const g = { pending: [], preparing: [], ready: [], completed: [], cancelled: [] };
+    const q = searchQuery.trim().toLowerCase();
+    
     [...orders].reverse().forEach((o) => {
       if (!g[o.status]) return;
+      
+      // Search filter: match order number, customer name, or table number
+      if (q) {
+        const orderNum = String(o.orderNumber || '').padStart(3, '0');
+        const customerName = (o.customer?.name || o.createdBy?.name || '').toLowerCase();
+        const tableNum = (o.tableNumber || '').toLowerCase();
+        const reference = (o.reference || '').toLowerCase();
+        if (
+          !orderNum.includes(q) &&
+          !customerName.includes(q) &&
+          !tableNum.includes(q) &&
+          !reference.includes(q)
+        ) {
+          return;
+        }
+      }
+      
+      // For cashier mode (not register/manager), filter completed/cancelled to session
+      if (!fohr.isRegister && (o.status === 'completed' || o.status === 'cancelled')) {
+        const creatorId = o.createdBy?._id || o.createdBy?.id || o.createdById;
+        if (creatorId && currentUserId && String(creatorId) !== String(currentUserId)) {
+          return;
+        }
+      }
+      
       g[o.status].push(o);
     });
     return g;
-  }, [orders]);
+  }, [orders, searchQuery, fohr.isRegister, currentUserId]);
 
   const totalActive = grouped.pending.length + grouped.preparing.length + grouped.ready.length;
 
@@ -441,6 +472,30 @@ export default function OrderBoard() {
             <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
             Refresh
           </button>
+        </div>
+
+        {/* Search */}
+        <div className="mb-4 flex-shrink-0">
+          <div className="relative max-w-sm">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search orders..."
+              className="w-full bg-[var(--pos-panel)] border border-slate-700/50 text-[var(--pos-text-primary)] rounded-xl pl-9 pr-9 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 placeholder-slate-500"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Date filter — manager/register mode only */}

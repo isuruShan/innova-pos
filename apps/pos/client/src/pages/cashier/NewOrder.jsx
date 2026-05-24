@@ -1081,7 +1081,7 @@ export default function NewOrder() {
                 key={o._id}
                 type="button"
                 onClick={() => setReadySlideOrder(o)}
-                className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-green-500/35 bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-100 hover:bg-green-500/20 transition"
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-green-500/35 bg-green-500/10 px-2.5 py-1 text-xs font-medium text-[var(--pos-text-primary)] hover:bg-green-500/20 transition"
               >
                 <span className="font-mono text-amber-400 font-semibold">
                   {o._offlinePending ? '#' : `#${String(o.orderNumber).padStart(3, '0')}`}
