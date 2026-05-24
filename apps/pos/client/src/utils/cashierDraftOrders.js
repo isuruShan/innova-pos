@@ -1,10 +1,11 @@
 import { ORDER_TYPE_MAP } from '../components/OrderTypeBadge';
+import { generateUUID } from './uuid';
 
 export const DRAFT_STORAGE_KEY = 'pos:cashier-drafts:v1';
 
 export function createEmptyDraft() {
   return {
-    id: crypto.randomUUID(),
+    id: generateUUID(),
     cart: [],
     orderType: 'dine-in',
     tableNumber: '',

@@ -6,6 +6,7 @@ import {
 } from './idb.js';
 import { normalizeApiPath } from './http.js';
 import { buildSyntheticOrderFromPostBody } from './syntheticOrder.js';
+import { generateUUID } from '../utils/uuid.js';
 
 function parseBody(config) {
   const d = config.data;
@@ -59,7 +60,7 @@ export async function serveOfflineMutation(err) {
 
   if (method === 'POST' && /\/orders\/?$/.test(pathOnly)) {
     console.log('[serveOfflineMutation] Handling POST /orders offline');
-    const clientRequestId = crypto.randomUUID();
+    const clientRequestId = generateUUID();
     const base = parseBody(config);
     const body = { ...base, clientRequestId };
     const user = getStoredUser();
@@ -68,7 +69,7 @@ export async function serveOfflineMutation(err) {
     console.log('[serveOfflineMutation] Saving to IndexedDB:', synthetic);
     await putPendingOrder(clientRequestId, synthetic);
     await enqueue({
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       kind: 'POST_ORDERS',
       method: 'POST',
       url: '/orders',
@@ -99,7 +100,7 @@ export async function serveOfflineMutation(err) {
     }
 
     await enqueue({
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       kind: 'PUT_ORDER_STATUS',
       method: 'PUT',
       url: config.url || rawPath.replace(/^\/api/, ''),
