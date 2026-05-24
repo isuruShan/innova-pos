@@ -8,6 +8,9 @@ const { protect, authorize, tenantScope } = require('../middleware/auth');
 const { emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
 const { roundMoney2 } = require('../utils/orderHelpers');
+const { parseSortQuery } = require('../lib/listPagination');
+const { getNextTopSortOrder, applyReorder } = require('../lib/sortOrderHelpers');
+const { buildItemStoreFilter } = require('../lib/categoryHelpers');
 
 function sanitizeMenuPayload(body) {
   if (!body || typeof body !== 'object') return body;
@@ -29,11 +32,21 @@ function sanitizeMenuPayload(body) {
 
 const router = express.Router();
 
+const MENU_SORT_FIELDS = {
+  name: 'name',
+  category: 'category',
+  price: 'price',
+  sortOrder: 'sortOrder',
+  createdAt: 'createdAt',
+};
+
+const DEFAULT_MENU_SORT = { category: 1, sortOrder: 1, name: 1 };
+
 router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const items = await MenuItem.find({ tenantId: req.tenantId, ...buildStoreFilter(req) })
-      .sort({ category: 1, name: 1 })
-      .lean();
+    const filter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
+    const sort = parseSortQuery(req, MENU_SORT_FIELDS, DEFAULT_MENU_SORT);
+    const items = await MenuItem.find(filter).sort(sort).lean();
     const enriched = await attachFreshMenuImageUrls(items);
     res.json(enriched);
   } catch (err) {
@@ -41,13 +54,45 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
   }
 });
 
+router.patch('/reorder', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+  try {
+    const { ids, category } = req.body;
+    const filter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
+    if (category !== undefined && category !== null && String(category).trim()) {
+      filter.category = String(category).trim();
+    }
+    const count = await applyReorder(MenuItem, filter, ids, req.user.id);
+    const items = await MenuItem.find(filter).sort(DEFAULT_MENU_SORT).lean();
+    const enriched = await attachFreshMenuImageUrls(items);
+    res.json({ message: 'Menu order updated', count, items: enriched });
+  } catch (err) {
+    const status = err.status || 400;
+    res.status(status).json({ message: err.message });
+  }
+});
+
 router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const storeId = await resolveWriteStoreId(req);
     if (!storeId) return res.status(400).json({ message: 'No store available for menu item creation' });
+    const category = req.body.category?.trim();
+    if (!category) return res.status(400).json({ message: 'Category is required' });
+
     const { images, image, imageKey } = normalizeMenuItemImages(req.body);
+    const payload = sanitizeMenuPayload(req.body);
+
+    const itemScope = {
+      tenantId: req.tenantId,
+      ...buildItemStoreFilter(storeId),
+      category,
+    };
+    const sortOrder = payload.sortOrder !== undefined && payload.sortOrder !== null
+      ? Number(payload.sortOrder) || 0
+      : await getNextTopSortOrder(MenuItem, itemScope);
+
     const item = await MenuItem.create({
-      ...sanitizeMenuPayload(req.body),
+      ...payload,
+      sortOrder,
       images,
       image,
       imageKey,

@@ -25,6 +25,7 @@ const menuItemSchema = new mongoose.Schema(
     storeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', default: null, index: true },
     name: { type: String, required: true, trim: true },
     category: { type: String, required: true, trim: true },
+    sortOrder: { type: Number, default: 0 },
     price: { type: Number, required: true, min: 0 },
     description: { type: String, default: '' },
     images: { type: [menuItemImageSchema], default: [] },
@@ -70,5 +71,6 @@ const menuItemSchema = new mongoose.Schema(
 menuItemSchema.index({ tenantId: 1, available: 1 });
 menuItemSchema.index({ tenantId: 1, category: 1 });
 menuItemSchema.index({ tenantId: 1, storeId: 1, category: 1, available: 1 });
+menuItemSchema.index({ tenantId: 1, storeId: 1, category: 1, sortOrder: 1 });
 
 module.exports = mongoose.model('MenuItem', menuItemSchema);

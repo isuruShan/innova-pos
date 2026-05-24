@@ -96,22 +96,10 @@ function ProrationDetail({ proration, amountDue, currency, merchantSymbol }) {
       </div>
 
       {isProrated ? (
-        <>
-          <p className="text-blue-900/90 leading-snug text-xs">
-            Your subscription has{' '}
-            <strong>{remainingDays} day{remainingDays === 1 ? '' : 's'}</strong> remaining
-            {endLabel ? (
-              <> until <strong>{endLabel}</strong></>
-            ) : null}
-            . Today&apos;s charge is the monthly price spread over 30 days, times those remaining days.
-          </p>
-          {monthly > 0 ? (
-            <p className="text-xs text-blue-700/90 font-mono bg-white/60 rounded px-2 py-1.5">
-              ({formatMoney(cur, monthly, merchantSymbol)} ÷ {daysPerMonth} days) × {remainingDays} days
-              remaining = {formatMoney(cur, due, merchantSymbol)}
-            </p>
-          ) : null}
-        </>
+        <p className="text-xs text-blue-800/80">
+          Prorated for <strong>{remainingDays} day{remainingDays === 1 ? '' : 's'}</strong> remaining
+          {endLabel ? <> until <strong>{endLabel}</strong></> : null}.
+        </p>
       ) : (
         <p className="text-xs text-blue-800/80">
           Full monthly charge.{endLabel ? <> Billing period ends <strong>{endLabel}</strong>.</> : null}

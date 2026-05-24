@@ -1,31 +1,69 @@
 const express = require('express');
 const Category = require('../models/Category');
+const MenuItem = require('../models/MenuItem');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
+const { parseSortQuery } = require('../lib/listPagination');
+const { getNextTopSortOrder, applyReorder } = require('../lib/sortOrderHelpers');
+const {
+  PLACEHOLDER_CATEGORY_NAME,
+  cascadeCategoryRename,
+  reassignMenuItemsFromCategory,
+  buildItemStoreFilter,
+} = require('../lib/categoryHelpers');
 
 const router = express.Router();
+
+const CATEGORY_SORT_FIELDS = {
+  name: 'name',
+  sortOrder: 'sortOrder',
+  createdAt: 'createdAt',
+  active: 'active',
+};
+
+const DEFAULT_CATEGORY_SORT = { sortOrder: 1, name: 1 };
 
 router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { all } = req.query;
     const filter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
     if (all !== 'true') filter.active = true;
-    const categories = await Category.find(filter).sort({ sortOrder: 1, name: 1 });
+    const sort = parseSortQuery(req, CATEGORY_SORT_FIELDS, DEFAULT_CATEGORY_SORT);
+    const categories = await Category.find(filter).sort(sort);
     res.json(categories);
   } catch (err) {
     sendRouteError(res, err, { req });
   }
 });
 
+router.patch('/reorder', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    const filter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
+    const count = await applyReorder(Category, filter, ids, req.user.id);
+    const categories = await Category.find(filter).sort(DEFAULT_CATEGORY_SORT);
+    res.json({ message: 'Category order updated', count, categories });
+  } catch (err) {
+    const status = err.status || 400;
+    res.status(status).json({ message: err.message });
+  }
+});
+
 router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const { name, sortOrder } = req.body;
+    const { name, sortOrder: requestedSortOrder } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: 'Category name is required' });
     const storeId = await resolveWriteStoreId(req);
     if (!storeId) return res.status(400).json({ message: 'No store available for category creation' });
+
+    const scopeFilter = { tenantId: req.tenantId, ...buildItemStoreFilter(storeId) };
+    const sortOrder = requestedSortOrder !== undefined && requestedSortOrder !== null
+      ? Number(requestedSortOrder) || 0
+      : await getNextTopSortOrder(Category, scopeFilter);
+
     const category = await Category.create({
       name: name.trim(),
-      sortOrder: sortOrder || 0,
+      sortOrder,
       tenantId: req.tenantId,
       storeId,
       createdBy: req.user.id,
@@ -40,17 +78,26 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
 router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { name, active, sortOrder } = req.body;
+    const filter = { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) };
+    const existing = await Category.findOne(filter);
+    if (!existing) return res.status(404).json({ message: 'Category not found' });
+
+    const oldName = existing.name;
     const update = { updatedBy: req.user.id };
     if (name !== undefined) update.name = name.trim();
     if (active !== undefined) update.active = active;
     if (sortOrder !== undefined) update.sortOrder = sortOrder;
 
-    const category = await Category.findOneAndUpdate(
-      { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) },
-      update,
-      { new: true, runValidators: true }
-    );
-    if (!category) return res.status(404).json({ message: 'Category not found' });
+    const category = await Category.findOneAndUpdate(filter, update, { new: true, runValidators: true });
+    if (name !== undefined && update.name !== oldName) {
+      await cascadeCategoryRename({
+        tenantId: req.tenantId,
+        storeId: category.storeId,
+        oldName,
+        newName: category.name,
+        userId: req.user.id,
+      });
+    }
     res.json(category);
   } catch (err) {
     if (err.code === 11000) return res.status(400).json({ message: 'Category name already exists' });
@@ -60,9 +107,29 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
 
 router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const category = await Category.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) });
+    const filter = { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) };
+    const category = await Category.findOne(filter);
     if (!category) return res.status(404).json({ message: 'Category not found' });
-    res.json({ message: 'Category deleted' });
+
+    if (category.name === PLACEHOLDER_CATEGORY_NAME) {
+      return res.status(400).json({ message: 'The Uncategorized category cannot be deleted' });
+    }
+
+    const { reassignedCount, placeholderCategory } = await reassignMenuItemsFromCategory({
+      tenantId: req.tenantId,
+      storeId: category.storeId,
+      categoryName: category.name,
+      userId: req.user.id,
+    });
+
+    await Category.findOneAndDelete({ _id: category._id });
+    res.json({
+      message: reassignedCount > 0
+        ? `${reassignedCount} product(s) moved to "${placeholderCategory}" and category deleted`
+        : 'Category deleted',
+      reassignedCount,
+      placeholderCategory,
+    });
   } catch (err) {
     sendRouteError(res, err, { req });
   }

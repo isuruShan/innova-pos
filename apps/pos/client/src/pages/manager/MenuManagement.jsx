@@ -3,11 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 import {
   Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Link2, X,
-  ChevronDown, ChevronUp, Tag, Check, Upload, ImageIcon, Loader2, Layers,
+  ChevronDown, ChevronUp, Tag, Upload, ImageIcon, Loader2, Layers,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
+import CategoryManagerModal from '../../components/CategoryManagerModal';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { formatCurrency } from '../../utils/format';
 import { useStoreContext } from '../../context/StoreContext';
@@ -626,125 +627,6 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation })
   );
 }
 
-// ─── Category management panel ────────────────────────────────────────────────
-
-function CategoryManager({ categories, onClose }) {
-  const qc = useQueryClient();
-  const [newName, setNewName] = useState('');
-  const [editingId, setEditingId] = useState(null);
-  const [editName, setEditName] = useState('');
-  const [error, setError] = useState('');
-
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['categories'] });
-
-  const createMutation = useMutation({
-    mutationFn: (name) => api.post('/categories', { name }),
-    onSuccess: () => { invalidate(); setNewName(''); setError(''); },
-    onError: (e) => setError(e.response?.data?.message || 'Failed to add'),
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => api.put(`/categories/${id}`, data),
-    onSuccess: () => { invalidate(); setEditingId(null); setError(''); },
-    onError: (e) => setError(e.response?.data?.message || 'Failed to update'),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id) => api.delete(`/categories/${id}`),
-    onSuccess: invalidate,
-  });
-
-  const startEdit = (cat) => { setEditingId(cat._id); setEditName(cat.name); setError(''); };
-  const saveEdit = () => {
-    if (!editName.trim()) return;
-    updateMutation.mutate({ id: editingId, data: { name: editName.trim() } });
-  };
-
-  return (
-    <div className="space-y-4">
-      {/* Add new */}
-      <div>
-        <label className="block text-sm font-medium text-slate-300 mb-1.5">New Category</label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && newName.trim() && createMutation.mutate(newName.trim())}
-            placeholder="e.g. Wraps"
-            className="flex-1 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
-          />
-          <button
-            onClick={() => { if (newName.trim()) createMutation.mutate(newName.trim()); }}
-            disabled={!newName.trim() || createMutation.isPending}
-            className="bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white px-4 py-2 rounded-xl text-sm font-semibold transition"
-          >
-            <Plus size={15} />
-          </button>
-        </div>
-      </div>
-
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm">{error}</div>
-      )}
-
-      {/* Category list */}
-      <div className="space-y-2">
-        {categories.length === 0 ? (
-          <p className="text-slate-500 text-sm text-center py-6">No categories yet</p>
-        ) : (
-          categories.map(cat => (
-            <div key={cat._id}
-              className={`flex items-center gap-3 bg-[var(--pos-surface-inset)] rounded-xl px-3 py-2.5 border transition ${
-                cat.active ? 'border-slate-700' : 'border-slate-800 opacity-60'
-              }`}>
-              {editingId === cat._id ? (
-                <>
-                  <input
-                    autoFocus
-                    type="text"
-                    value={editName}
-                    onChange={e => setEditName(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingId(null); }}
-                    className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none"
-                  />
-                  <button onClick={saveEdit} className="text-green-400 hover:text-green-300"><Check size={14} /></button>
-                  <button onClick={() => setEditingId(null)} className="text-slate-500 hover:text-slate-300"><X size={14} /></button>
-                </>
-              ) : (
-                <>
-                  <Tag size={13} className={cat.active ? 'text-amber-400' : 'text-slate-600'} />
-                  <span className="flex-1 text-sm text-[var(--pos-text-primary)] truncate">{cat.name}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    cat.active
-                      ? 'bg-green-500/15 text-green-400 border border-green-500/25'
-                      : 'bg-slate-700 text-slate-500 border border-slate-600'
-                  }`}>
-                    {cat.active ? 'Active' : 'Inactive'}
-                  </span>
-                  <button onClick={() => updateMutation.mutate({ id: cat._id, data: { active: !cat.active } })}
-                    className="p-1 rounded text-slate-500 hover:text-amber-400 transition" title={cat.active ? 'Deactivate' : 'Activate'}>
-                    {cat.active ? <ToggleRight size={16} className="text-green-400" /> : <ToggleLeft size={16} />}
-                  </button>
-                  <button onClick={() => startEdit(cat)}
-                    className="p-1 rounded text-slate-500 hover:text-[var(--pos-text-primary)] transition"><Edit2 size={13} /></button>
-                  <button
-                    onClick={() => { if (confirm(`Delete category "${cat.name}"?`)) deleteMutation.mutate(cat._id); }}
-                    className="p-1 rounded text-slate-500 hover:text-red-400 transition"><Trash2 size={13} /></button>
-                </>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-
-      <button onClick={onClose}
-        className="w-full bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-medium py-2.5 rounded-xl transition text-sm mt-2">
-        Done
-      </button>
-    </div>
-  );
-}
 
 // ─── Delete confirmation dialog ───────────────────────────────────────────────
 
@@ -847,7 +729,7 @@ export default function MenuManagement() {
   const { selectedStoreId, isStoreReady } = useStoreContext();
   const [activeCategory, setActiveCategory] = useState('All');
   const [slideOpen, setSlideOpen] = useState(false);
-  const [catSlideOpen, setCatSlideOpen] = useState(false);
+  const [catModalOpen, setCatModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
@@ -1013,7 +895,7 @@ export default function MenuManagement() {
             <p className="text-slate-500 text-sm mt-1">{items.length} items · {items.filter(i => i.isCombo).length} combos</p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setCatSlideOpen(true)}
+            <button onClick={() => setCatModalOpen(true)}
               className="flex items-center gap-2 border border-slate-600 hover:border-amber-500 text-slate-300 hover:text-amber-400 font-medium px-4 py-2.5 rounded-xl transition text-sm">
               <Tag size={15} />
               Categories
@@ -1098,10 +980,12 @@ export default function MenuManagement() {
         )}
       </div>
 
-      {/* Category management slide-over */}
-      <SlideOver open={catSlideOpen} onClose={() => setCatSlideOpen(false)} title="Manage Categories">
-        <CategoryManager categories={allCategories} onClose={() => setCatSlideOpen(false)} />
-      </SlideOver>
+      <CategoryManagerModal
+        open={catModalOpen}
+        onClose={() => setCatModalOpen(false)}
+        categories={allCategories}
+        menuItems={items}
+      />
 
       {/* Menu item slide-over */}
       <SlideOver open={slideOpen} onClose={closeSlide} title={editing ? 'Edit Menu Item' : 'Add Menu Item'}>

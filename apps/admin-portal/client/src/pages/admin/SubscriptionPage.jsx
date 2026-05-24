@@ -669,6 +669,20 @@ export default function SubscriptionPage() {
                 </div>
               )}
 
+              {tenant.subscriptionStatus === 'active' && latestSubscription?.endDate && (
+                <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2 text-sm text-amber-800">
+                  <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">
+                      Next billing date: {new Date(latestSubscription.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Please submit payment before this date to avoid service interruption.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {tenant.subscriptionStatus === 'expired' && !tenant.temporaryActivationRequestedAt && !tenant.temporaryActivationUsedForEndDate && (
                 <div className="mt-4 flex flex-wrap items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
                   <AlertTriangle size={16} className="text-amber-600 shrink-0" />

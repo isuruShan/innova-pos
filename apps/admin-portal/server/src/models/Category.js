@@ -9,7 +9,7 @@ const categorySchema = new mongoose.Schema(
       index: true,
     },
     storeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', default: null, index: true },
-    name: { type: String, required: true, trim: true },
+    name: { type: String, required: true, trim: true, maxlength: 100 },
     active: { type: Boolean, default: true },
     sortOrder: { type: Number, default: 0 },
 
