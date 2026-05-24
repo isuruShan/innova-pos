@@ -37,6 +37,8 @@ const menuItemSchema = new mongoose.Schema(
     isCombo: { type: Boolean, default: false },
     comboItems: { type: [comboItemSchema], default: [] },
     hasVariants: { type: Boolean, default: false },
+    /** ID of the default variant (from variants array) to show in listings */
+    defaultVariantId: { type: mongoose.Schema.Types.ObjectId, default: null },
     variantOptions: {
       type: [{
         name: { type: String, required: true },

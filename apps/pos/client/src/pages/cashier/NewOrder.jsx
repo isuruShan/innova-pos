@@ -223,6 +223,32 @@ function computeLoyaltyRewardDiscount(reward, cart, remainingOrderCap) {
 
 function MenuCard({ item, onAdd, compact = false }) {
   const imageUrl = item.images?.[0]?.url || item.image;
+  
+  // Get display price: use default variant price if set, otherwise show "from" lowest price
+  let displayPrice = item.price;
+  let hasMultipleVariants = false;
+  let pricePrefix = '';
+  
+  if (item.hasVariants && item.variants?.length > 0) {
+    hasMultipleVariants = true;
+    const availableVariants = item.variants.filter(v => v.available !== false);
+    if (availableVariants.length > 0) {
+      // Check for default variant
+      const defaultVariant = item.defaultVariantId 
+        ? availableVariants.find(v => String(v._id) === String(item.defaultVariantId))
+        : null;
+      
+      if (defaultVariant) {
+        displayPrice = defaultVariant.price;
+      } else {
+        // Show lowest price with "from" prefix
+        const prices = availableVariants.map(v => Number(v.price)).filter(p => !isNaN(p));
+        displayPrice = Math.min(...prices);
+        pricePrefix = 'from ';
+      }
+    }
+  }
+
   return (
     <button
       onClick={() => onAdd(item)}
@@ -250,6 +276,13 @@ function MenuCard({ item, onAdd, compact = false }) {
             </span>
           </div>
         )}
+        {hasMultipleVariants && (
+          <div className="absolute top-1.5 right-1.5">
+            <span className="bg-sky-500/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+              {item.variants.length} options
+            </span>
+          </div>
+        )}
         {!item.available && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
             <span className="text-xs text-red-400 font-semibold bg-red-500/20 border border-red-500/30 rounded-full px-2 py-0.5">Unavailable</span>
@@ -263,7 +296,10 @@ function MenuCard({ item, onAdd, compact = false }) {
             {item.comboItems.map(c => c.name).join(' + ')}
           </p>
         )}
-        <p className={`text-amber-400 font-bold ${compact ? 'text-[11px] mt-0.5' : 'mt-0.5'}`}>{formatPrice(item.price)}</p>
+        <p className={`text-amber-400 font-bold ${compact ? 'text-[11px] mt-0.5' : 'mt-0.5'}`}>
+          {pricePrefix && <span className="text-slate-500 font-normal text-[10px]">{pricePrefix}</span>}
+          {formatPrice(displayPrice)}
+        </p>
       </div>
     </button>
   );

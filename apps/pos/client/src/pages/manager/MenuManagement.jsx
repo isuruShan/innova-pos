@@ -24,7 +24,7 @@ import { MenuGridSkeleton } from '../../components/StoreSkeletons';
 const EMPTY_FORM = {
   name: '', category: '', price: '', description: '', images: [],
   available: true, isCombo: false, comboItems: [],
-  hasVariants: false, variantOptions: [], variants: [],
+  hasVariants: false, variantOptions: [], variants: [], defaultVariantId: null,
 };
 
 function menuQueryKey(storeId) {
@@ -266,6 +266,7 @@ export default function MenuManagement() {
       hasVariants: item.hasVariants || false,
       variantOptions: item.variantOptions || [],
       variants: item.variants || [],
+      defaultVariantId: item.defaultVariantId || null,
     });
     setFormError('');
     setFormOpen(true);
@@ -315,6 +316,7 @@ export default function MenuManagement() {
       hasVariants: form.hasVariants,
       variantOptions: form.hasVariants ? form.variantOptions : [],
       variants: form.hasVariants ? form.variants : [],
+      defaultVariantId: form.hasVariants ? form.defaultVariantId : null,
     };
     if (editing) updateMutation.mutate({ id: editing._id, data: payload });
     else createMutation.mutate(payload);

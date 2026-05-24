@@ -424,8 +424,9 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                         const idx = findVariantIndex(form.variants, size, flavor);
                         const v = idx >= 0 ? form.variants[idx] : null;
                         const available = v?.available !== false;
+                        const isDefault = v && form.defaultVariantId && String(form.defaultVariantId) === String(v._id);
                         return (
-                          <td key={flavor} className="p-2 border-b border-slate-800/50 align-top">
+                          <td key={flavor} className={`p-2 border-b border-slate-800/50 align-top ${isDefault ? 'bg-amber-500/10' : ''}`}>
                             {v ? (
                               <div className="space-y-1">
                                 <input
@@ -437,16 +438,32 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                                   placeholder="0.00"
                                   required={available}
                                   disabled={!available}
-                                  className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none disabled:opacity-40"
+                                  className={`w-full bg-slate-950 border text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none disabled:opacity-40 ${isDefault ? 'border-amber-500/50' : 'border-slate-800'}`}
                                 />
-                                <button
-                                  type="button"
-                                  onClick={() => toggleMatrixAvailable(size, flavor)}
-                                  className={`flex items-center gap-0.5 text-[10px] ${available ? 'text-green-400' : 'text-slate-500'}`}
-                                >
-                                  {available ? <ToggleRight size={12} /> : <ToggleLeft size={12} />}
-                                  {available ? 'On' : 'Off'}
-                                </button>
+                                <div className="flex items-center justify-between gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleMatrixAvailable(size, flavor)}
+                                    className={`flex items-center gap-0.5 text-[10px] ${available ? 'text-green-400' : 'text-slate-500'}`}
+                                  >
+                                    {available ? <ToggleRight size={12} /> : <ToggleLeft size={12} />}
+                                    {available ? 'On' : 'Off'}
+                                  </button>
+                                  {available && (
+                                    isDefault ? (
+                                      <span className="text-[9px] font-bold text-amber-400">★</span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => setForm((f) => ({ ...f, defaultVariantId: v._id }))}
+                                        className="text-[9px] text-slate-500 hover:text-amber-400"
+                                        title="Set as default"
+                                      >
+                                        ☆
+                                      </button>
+                                    )
+                                  )}
+                                </div>
                               </div>
                             ) : (
                               <span className="text-slate-600">—</span>
@@ -458,19 +475,39 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                   ))}
                 </tbody>
               </table>
-              <p className="text-[10px] text-slate-500 mt-2">{priceLabel} per cell</p>
+              <p className="text-[10px] text-slate-500 mt-2">{priceLabel} per cell · ★ = default variant shown in listings</p>
             </div>
           ) : (
             <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-              {form.variants.map((v, idx) => (
-                <div key={idx} className="bg-slate-900/80 rounded-xl p-3 border border-slate-850 space-y-2">
+              {form.variants.map((v, idx) => {
+                const isDefault = form.defaultVariantId && String(form.defaultVariantId) === String(v._id);
+                return (
+                <div key={idx} className={`bg-slate-900/80 rounded-xl p-3 border space-y-2 ${isDefault ? 'border-amber-500/50 ring-1 ring-amber-500/30' : 'border-slate-850'}`}>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-slate-200 truncate flex-1" title={v.name}>{v.name}</span>
-                    <button type="button" onClick={() => patchVariant(idx, { available: !v.available })}
-                      className={`flex items-center gap-1 text-[10px] font-medium transition ${v.available !== false ? 'text-green-400' : 'text-slate-500'}`}>
-                      {v.available !== false ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
-                      {v.available !== false ? 'Active' : 'Disabled'}
-                    </button>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="text-xs font-semibold text-slate-200 truncate" title={v.name}>{v.name}</span>
+                      {isDefault && (
+                        <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                          Default
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {v.available !== false && !isDefault && (
+                        <button
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, defaultVariantId: v._id }))}
+                          className="text-[10px] text-slate-400 hover:text-amber-400 font-medium transition"
+                        >
+                          Set default
+                        </button>
+                      )}
+                      <button type="button" onClick={() => patchVariant(idx, { available: !v.available })}
+                        className={`flex items-center gap-1 text-[10px] font-medium transition ${v.available !== false ? 'text-green-400' : 'text-slate-500'}`}>
+                        {v.available !== false ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+                        {v.available !== false ? 'Active' : 'Disabled'}
+                      </button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
                     <div className="flex gap-2">
@@ -513,7 +550,8 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </div>
