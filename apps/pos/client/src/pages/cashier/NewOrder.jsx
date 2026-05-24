@@ -17,6 +17,7 @@ import { mergeOrderLists } from '../../offline/mergeOrders.js';
 import { listPendingOrders } from '../../offline/idb.js';
 import { resolveLiveOrder, useSyncOfflineOrderSelection } from '../../offline/orderSelection.js';
 import { formatCurrency } from '../../utils/format';
+import { filterMenuItems } from '../../utils/menuItemSearch';
 import { useBranding } from '../../context/BrandingContext';
 import { useStoreContext } from '../../context/StoreContext';
 import { MenuGridSkeleton } from '../../components/StoreSkeletons';
@@ -450,6 +451,7 @@ function VariantSelectorModal({ item, onClose, onConfirm }) {
 export default function NewOrder() {
   const fohr = useFohrMode();
   const [activeCategory, setActiveCategory] = useState('All');
+  const [menuSearch, setMenuSearch] = useState('');
   const [cart, setCart] = useState([]);
   const [variantSelectionItem, setVariantSelectionItem] = useState(null);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
@@ -502,6 +504,7 @@ export default function NewOrder() {
       setSelectedPromoIds([]);
       setShowPromoList(false);
       setActiveCategory('All');
+      setMenuSearch('');
       setSelectedCustomer(null);
       setCustomerSearch('');
       setSelectedLoyaltyRewardId('');
@@ -530,6 +533,12 @@ export default function NewOrder() {
   const { data: menuItems = [], isPending: menuPending } = useQuery({
     queryKey: ['menu', selectedStoreId],
     queryFn: () => api.get('/menu').then(r => r.data),
+    enabled: isStoreReady,
+  });
+
+  const { data: categoryRows = [] } = useQuery({
+    queryKey: ['categories', selectedStoreId],
+    queryFn: () => api.get('/categories').then((r) => r.data),
     enabled: isStoreReady,
   });
 
@@ -765,15 +774,42 @@ export default function NewOrder() {
     },
   });
 
-  const categories = useMemo(() => {
-    const cats = [...new Set(menuItems.map(i => i.category))].filter(Boolean).sort();
-    return ['All', ...cats];
-  }, [menuItems]);
+  const categorySortMap = useMemo(() => {
+    const m = new Map();
+    categoryRows.filter((c) => c.active).forEach((c) => {
+      m.set(c.name, c.sortOrder ?? 0);
+    });
+    return m;
+  }, [categoryRows]);
 
-  const filtered = useMemo(() =>
-    activeCategory === 'All' ? menuItems : menuItems.filter(i => i.category === activeCategory),
-    [menuItems, activeCategory]
-  );
+  const categories = useMemo(() => {
+    const fromApi = categoryRows
+      .filter((c) => c.active)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name))
+      .map((c) => c.name);
+    const extras = [...new Set(menuItems.map((i) => i.category))]
+      .filter((c) => c && !fromApi.includes(c))
+      .sort();
+    return ['All', ...fromApi, ...extras];
+  }, [categoryRows, menuItems]);
+
+  const filtered = useMemo(() => {
+    let list = activeCategory === 'All'
+      ? menuItems
+      : menuItems.filter((i) => i.category === activeCategory);
+    list = filterMenuItems(list, menuSearch);
+    return [...list].sort((a, b) => {
+      if (activeCategory === 'All') {
+        const catA = categorySortMap.get(a.category) ?? 9999;
+        const catB = categorySortMap.get(b.category) ?? 9999;
+        if (catA !== catB) return catA - catB;
+        if (a.category !== b.category) return a.category.localeCompare(b.category);
+      }
+      const byOrder = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+      if (byOrder !== 0) return byOrder;
+      return a.name.localeCompare(b.name);
+    });
+  }, [menuItems, activeCategory, menuSearch, categorySortMap]);
 
   const addToCart = (item, selectedVariant = null) => {
     if (item.hasVariants && !selectedVariant) {
@@ -1048,21 +1084,45 @@ export default function NewOrder() {
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Menu */}
         <div className={`flex flex-col overflow-hidden border-slate-700/50 transition-all ${mobileCartOpen ? 'hidden' : 'flex-1 border-r'}`}>
-          {/* Category tabs */}
-          <div className="flex gap-2 px-4 py-3 overflow-x-auto border-b border-slate-700/50 bg-[var(--pos-panel)]/50">
-            {categories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
-                  activeCategory === cat
-                    ? 'bg-amber-500 text-[var(--pos-selection-text)] shadow-lg shadow-amber-500/20'
-                    : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+          {/* Category tabs + search */}
+          <div className="border-b border-slate-700/50 bg-[var(--pos-panel)]/50">
+            <div className="flex gap-2 px-4 py-3 overflow-x-auto">
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
+                    activeCategory === cat
+                      ? 'bg-amber-500 text-[var(--pos-selection-text)] shadow-lg shadow-amber-500/20'
+                      : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+            <div className="px-4 pb-3">
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  value={menuSearch}
+                  onChange={(e) => setMenuSearch(e.target.value)}
+                  placeholder="Search menu items…"
+                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg pl-9 pr-9 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500"
+                />
+                {menuSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setMenuSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    aria-label="Clear search"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Menu grid */}
@@ -1072,7 +1132,9 @@ export default function NewOrder() {
                 <MenuGridSkeleton />
               </div>
             ) : filtered.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-slate-500">No items in this category</div>
+              <div className="flex items-center justify-center h-full text-slate-500">
+                {menuSearch.trim() ? 'No items match your search' : 'No items in this category'}
+              </div>
             ) : (
               <div className={isCompact
                 ? 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 gap-2'
