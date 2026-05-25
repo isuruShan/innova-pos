@@ -15,6 +15,7 @@ import { useStoreContext } from '../../context/StoreContext';
 import { PromoListSkeleton } from '../../components/StoreSkeletons';
 import PosDateField from '../../components/PosDateField';
 import { useListSort } from '../../hooks/useListSort';
+import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 
 const PROMO_SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -464,6 +465,9 @@ export default function Promotions() {
   
   // Variant picker state for buyXgetY promo type
   const [buyXgetYVariantPicker, setBuyXgetYVariantPicker] = useState({ item: null, field: null });
+
+  const { data: paidAddons } = useTenantPaidAddons();
+  const loyaltyAddonActive = paidAddons?.loyalty === true;
 
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState([]);
@@ -1257,21 +1261,23 @@ export default function Promotions() {
             </>
           )}
 
-          <div>
-            <label className={labelCls}>Minimum loyalty tier (optional)</label>
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={form.minTierLevel}
-              onChange={(e) => setForm((f) => ({ ...f, minTierLevel: e.target.value }))}
-              placeholder="Leave empty — all customers"
-              className={inputCls}
-            />
-            <p className="text-xs text-slate-500 mt-1">
-              When set, only customers at this tier level or higher qualify (attach a customer on checkout to preview tier-gated promos).
-            </p>
-          </div>
+          {loyaltyAddonActive && (
+            <div>
+              <label className={labelCls}>Minimum loyalty tier (optional)</label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={form.minTierLevel}
+                onChange={(e) => setForm((f) => ({ ...f, minTierLevel: e.target.value }))}
+                placeholder="Leave empty — all customers"
+                className={inputCls}
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                When set, only customers at this tier level or higher qualify (attach a customer on checkout to preview tier-gated promos).
+              </p>
+            </div>
+          )}
 
           {/* Active toggle */}
           <div className="flex items-center justify-between py-1">

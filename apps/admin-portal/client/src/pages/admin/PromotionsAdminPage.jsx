@@ -661,18 +661,20 @@ export default function PromotionsAdminPage() {
                   placeholder="Leave empty for no cap"
                 />
               </label>
-              <label className="block text-xs text-gray-600">
-                Minimum loyalty tier (optional)
-                <input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={form.minTierLevel}
-                  onChange={(e) => setForm((f) => ({ ...f, minTierLevel: e.target.value }))}
-                  placeholder="All tiers"
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                />
-              </label>
+              {loyaltyAddonActive && (
+                <label className="block text-xs text-gray-600">
+                  Minimum loyalty tier (optional)
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={form.minTierLevel}
+                    onChange={(e) => setForm((f) => ({ ...f, minTierLevel: e.target.value }))}
+                    placeholder="All tiers"
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </label>
+              )}
 
               <label className="flex items-center gap-2 text-sm text-gray-800">
                 <input
