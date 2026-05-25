@@ -85,6 +85,7 @@ app.use('/api/suppliers',  require('./routes/suppliers'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/variant-criteria', require('./routes/variantCriteria'));
 app.use('/api/reports',    require('./routes/reports'));
+app.use('/api/reports/extended', require('./routes/reportsExtended'));
 app.use('/api/analytics',  require('./routes/analytics'));
 app.use('/api/promotions', require('./routes/promotions'));
 app.use('/api/upload',           require('./routes/upload'));

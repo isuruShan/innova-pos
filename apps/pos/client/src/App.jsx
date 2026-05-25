@@ -34,6 +34,7 @@ import FloorPlanViewPage from './pages/manager/FloorPlanViewPage';
 import ReservationsPage from './pages/manager/ReservationsPage';
 import WaitlistPage from './pages/manager/WaitlistPage';
 import TableAnalyticsPage from './pages/manager/TableAnalyticsPage';
+import ReportsPortal from './pages/manager/ReportsPortal';
 import SubscriptionBlocked from './pages/SubscriptionBlocked';
 
 const queryClient = new QueryClient({
@@ -126,6 +127,11 @@ export default function App() {
                 <Route path="/manager/dashboard" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
                     <Dashboard />
+                  </RoleRoute>
+                } />
+                <Route path="/manager/reports" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <ReportsPortal />
                   </RoleRoute>
                 } />
                 <Route path="/manager/menu" element={

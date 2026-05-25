@@ -13,6 +13,12 @@ export const MANAGER_NAV_GROUPS = [
     ],
   },
   {
+    title: 'Reporting',
+    items: [
+      { to: '/manager/reports', label: 'Reports Portal', icon: BarChart3 },
+    ],
+  },
+  {
     title: 'Menu & stock',
     items: [
       { to: '/manager/menu', label: 'Menu', icon: UtensilsCrossed },
