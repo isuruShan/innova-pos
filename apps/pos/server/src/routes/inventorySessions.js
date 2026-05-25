@@ -126,7 +126,7 @@ router.post('/:id/close', protect, authorize('manager', 'merchant_admin', 'super
       .sort({ createdAt: 1 });
 
     // Create notification for merchant admins if there were adjustments
-    if (session.adjustmentCount > 0) {
+    if (session.adjustmentCount > 0 && movements.length > 0) {
       const summary = movements.slice(0, 5).map(m => {
         if (!m.inventoryItemId) return null;
         const sign = m.quantity >= 0 ? '+' : '';
@@ -135,23 +135,26 @@ router.post('/:id/close', protect, authorize('manager', 'merchant_admin', 'super
 
       const moreSummary = movements.length > 5 ? ` and ${movements.length - 5} more` : '';
 
-      await Notification.create({
-        tenantId: req.tenantId,
-        type: 'inventory_session_closed',
-        title: 'Inventory Adjustment Session Closed',
-        message: `${req.user.name} closed an adjustment session with ${session.adjustmentCount} changes: ${summary}${moreSummary}`,
-        targetRoles: ['merchant_admin'],
-        data: {
-          sessionId: session._id,
-          userId: req.user.id,
-          userName: req.user.name,
-          adjustmentCount: session.adjustmentCount,
-          totalQuantityChanged: session.totalQuantityChanged,
-        },
-      });
+      // Only create notification if we have a valid summary
+      if (summary) {
+        await Notification.create({
+          tenantId: req.tenantId,
+          type: 'inventory_session_closed',
+          title: 'Inventory Adjustment Session Closed',
+          message: `${req.user.name} closed an adjustment session with ${session.adjustmentCount} changes: ${summary}${moreSummary}`,
+          targetRoles: ['merchant_admin'],
+          data: {
+            sessionId: session._id,
+            userId: req.user.id,
+            userName: req.user.name,
+            adjustmentCount: session.adjustmentCount,
+            totalQuantityChanged: session.totalQuantityChanged,
+          },
+        });
 
-      session.notificationSent = true;
-      await session.save();
+        session.notificationSent = true;
+        await session.save();
+      }
     }
 
     const populated = await InventorySession.findById(session._id)

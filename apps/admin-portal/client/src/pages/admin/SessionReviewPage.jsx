@@ -38,6 +38,7 @@ export default function SessionReviewPage() {
   });
 
   const filtered = useMemo(() => {
+    if (!Array.isArray(sessions)) return [];
     let result = sessions;
     
     if (statusFilter === 'reviewed') {
@@ -54,6 +55,9 @@ export default function SessionReviewPage() {
   }, [sessions, statusFilter, storeFilter]);
 
   const stats = useMemo(() => {
+    if (!Array.isArray(sessions)) {
+      return { total: 0, pending: 0, reviewed: 0, totalAdjustments: 0 };
+    }
     return {
       total: sessions.length,
       pending: sessions.filter((s) => !s.reviewedBy).length,

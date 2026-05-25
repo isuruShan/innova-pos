@@ -18,7 +18,7 @@ const inventorySchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    name: {
+    itemName: {
       type: String,
       required: true,
       trim: true,

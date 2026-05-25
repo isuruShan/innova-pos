@@ -2,19 +2,12 @@ import { useState, useMemo, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CalendarDays, Clock, Users, Phone, Mail, Search, Plus,
-  Check, X, AlertCircle, ChevronLeft, ChevronRight, MoreVertical, ArrowDown, ArrowUp,
+  Check, X, AlertCircle, ChevronLeft, ChevronRight, Filter, MoreVertical,
 } from 'lucide-react';
 import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
 import Navbar from '../../components/Navbar';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
-import { useListSort } from '../../hooks/useListSort';
-
-const RESERVATION_SORT_OPTIONS = [
-  { value: 'reservationTime', label: 'Time' },
-  { value: 'status', label: 'Status' },
-  { value: 'partySize', label: 'Party size' },
-];
 
 const STATUS_STYLES = {
   pending: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', label: 'Pending' },
@@ -144,7 +137,7 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
       guestName: form.guestName,
       guestPhone: form.guestPhone,
       guestEmail: form.guestEmail,
-      partySize: Math.max(1, Number(form.partySize) || 1),
+      partySize: form.partySize,
       reservationTime: dateTime.toISOString(),
       tableId: form.tableId || undefined,
       duration: form.duration,
@@ -340,7 +333,7 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, onDelete, isP
       guestName: form.guestName,
       guestPhone: form.guestPhone,
       guestEmail: form.guestEmail,
-      partySize: Math.max(1, Number(form.partySize) || 1),
+      partySize: form.partySize,
       reservationTime: dateTime.toISOString(),
       tableId: form.tableId || undefined,
       duration: form.duration,
@@ -475,35 +468,21 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, onDelete, isP
             </div>
           )}
 
-          <div className="flex justify-between gap-3 pt-2">
+          <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
-              onClick={() => {
-                if (confirm('Are you sure you want to delete this reservation?')) {
-                  onDelete(reservation._id);
-                }
-              }}
-              disabled={isDeleting}
-              className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/30 disabled:opacity-50"
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
             >
-              {isDeleting ? 'Deleting...' : 'Delete'}
+              Cancel
             </button>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isPending}
-                className="px-4 py-2 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600 disabled:opacity-50"
-              >
-                {isPending ? 'Updating...' : 'Update Reservation'}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="px-4 py-2 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600 disabled:opacity-50"
+            >
+              {isPending ? 'Updating...' : 'Update Reservation'}
+            </button>
           </div>
         </form>
       </div>
@@ -521,14 +500,13 @@ export default function ReservationsPage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingReservation, setEditingReservation] = useState(null);
-  const { sort, order, toggleSort, sortParams, setSort, setOrder } = useListSort('reservationTime', 'asc');
 
   const dateStr = selectedDate.toISOString().split('T')[0];
 
   // Fetch reservations
   const { data: reservationsData, isLoading } = useQuery({
-    queryKey: ['reservations', selectedStoreId, dateStr, sortParams],
-    queryFn: () => api.get('/reservations', { params: { date: dateStr, sort, order } }).then((r) => r.data),
+    queryKey: ['reservations', selectedStoreId, dateStr],
+    queryFn: () => api.get(`/reservations?date=${dateStr}`).then((r) => r.data),
     enabled: isStoreReady,
   });
   const reservations = reservationsData?.items || [];
@@ -590,24 +568,6 @@ export default function ReservationsPage() {
     statusMutation.mutate({ id, action });
   };
 
-  // Delete reservation
-  const deleteMutation = useMutation({
-    mutationFn: (id) => api.delete(`/reservations/${id}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['reservations'] });
-      setShowEditModal(false);
-      setEditingReservation(null);
-    },
-    onError: (err) => {
-      const message = err.response?.data?.message || 'Failed to delete reservation';
-      setEditError(message);
-    },
-  });
-
-  const handleDelete = (id) => {
-    deleteMutation.mutate(id);
-  };
-
   const handleEdit = (reservation) => {
     setEditingReservation(reservation);
     setShowEditModal(true);
@@ -620,20 +580,22 @@ export default function ReservationsPage() {
   };
 
   const filteredReservations = useMemo(() => {
-    return reservations.filter((r) => {
-      if (filterStatus !== 'all' && r.status !== filterStatus) return false;
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        if (
-          !(r.guestName || '').toLowerCase().includes(term) &&
-          !(r.guestPhone || '').includes(term) &&
-          !(r.guestEmail || '').toLowerCase().includes(term)
-        ) {
-          return false;
+    return reservations
+      .filter((r) => {
+        if (filterStatus !== 'all' && r.status !== filterStatus) return false;
+        if (searchTerm) {
+          const term = searchTerm.toLowerCase();
+          if (
+            !(r.guestName || '').toLowerCase().includes(term) &&
+            !(r.guestPhone || '').includes(term) &&
+            !(r.guestEmail || '').toLowerCase().includes(term)
+          ) {
+            return false;
+          }
         }
-      }
-      return true;
-    });
+        return true;
+      })
+      .sort((a, b) => new Date(a.reservationTime) - new Date(b.reservationTime));
   }, [reservations, filterStatus, searchTerm]);
 
   // Stats
@@ -753,35 +715,6 @@ export default function ReservationsPage() {
               </button>
             ))}
           </div>
-
-          <div className="flex items-center gap-2">
-            <label htmlFor="reservation-sort" className="text-xs text-slate-500">Sort by</label>
-            <select
-              id="reservation-sort"
-              value={sort}
-              onChange={(e) => {
-                const next = e.target.value;
-                if (next === sort) toggleSort(next);
-                else {
-                  setSort(next);
-                  setOrder('asc');
-                }
-              }}
-              className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-1.5"
-            >
-              {RESERVATION_SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-              className="p-2 rounded-xl bg-[var(--pos-panel)] border border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]"
-              title={order === 'asc' ? 'Ascending' : 'Descending'}
-            >
-              {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-            </button>
-          </div>
         </div>
 
         {/* Reservations List */}
@@ -833,9 +766,7 @@ export default function ReservationsPage() {
         tables={tables}
         reservation={editingReservation}
         onSubmit={handleEditSubmit}
-        onDelete={handleDelete}
         isPending={editMutation.isPending}
-        isDeleting={deleteMutation.isPending}
         error={editError}
       />
 

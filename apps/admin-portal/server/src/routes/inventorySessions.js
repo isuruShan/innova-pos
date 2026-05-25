@@ -66,7 +66,7 @@ router.get('/:id', protect, authorize('merchant_admin'), async (req, res) => {
       sessionId: session._id,
       tenantId,
     })
-      .populate('inventoryItemId', 'name unit')
+      .populate('inventoryItemId', 'itemName unit')
       .populate('createdBy', 'name email')
       .sort({ createdAt: 1 });
 
