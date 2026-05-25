@@ -90,7 +90,7 @@ export default function OrdersView() {
   const [orderTypeFilter, setOrderTypeFilter] = useState([]);
   const [paymentTypeFilter, setPaymentTypeFilter] = useState([]);
   // const [importModalOpen, setImportModalOpen] = useState(false); // Disabled - Coming Soon
-  const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
+  const { sort, order, toggleSort, sortParams, setSort, setOrder } = useListSort('createdAt', 'desc');
 
   const selectedStore = useMemo(
     () => stores.find((s) => normalizeStoreId(s._id) === normalizeStoreId(selectedStoreId)),
@@ -417,6 +417,45 @@ export default function OrdersView() {
                     {t.label}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Sorting (especially useful on mobile) */}
+            <div className="md:hidden">
+              <p className="text-xs font-medium text-slate-400 mb-2">Sort By</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: 'orderNumber', label: 'Order #' },
+                  { value: 'status', label: 'Status' },
+                  { value: 'total', label: 'Total' },
+                  { value: 'createdAt', label: 'Time' },
+                ].map(opt => {
+                  const active = sort === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        if (active) {
+                          setOrder(o => (o === 'asc' ? 'desc' : 'asc'));
+                        } else {
+                          setSort(opt.value);
+                          setOrder(opt.value === 'createdAt' ? 'desc' : 'asc');
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition flex items-center gap-1.5 ${
+                        active
+                          ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)] font-semibold'
+                          : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {active && (
+                        order === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

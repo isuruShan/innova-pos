@@ -466,8 +466,8 @@ export default function Promotions() {
   const [buyXgetYVariantPicker, setBuyXgetYVariantPicker] = useState({ item: null, field: null });
 
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState([]);
+  const [statusFilter, setStatusFilter] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -479,9 +479,29 @@ export default function Promotions() {
   });
 
   const activeFilterCount =
-    (typeFilter !== 'all' ? 1 : 0) +
-    (statusFilter !== 'all' ? 1 : 0) +
+    typeFilter.length +
+    statusFilter.length +
     (fromDate || toDate ? 1 : 0);
+
+  const toggleTypeFilter = (id) => {
+    if (id === 'all') {
+      setTypeFilter([]);
+    } else {
+      setTypeFilter(prev =>
+        prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+      );
+    }
+  };
+
+  const toggleStatusFilter = (id) => {
+    if (id === 'all') {
+      setStatusFilter([]);
+    } else {
+      setStatusFilter(prev =>
+        prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+      );
+    }
+  };
 
   const filteredPromotions = promotions.filter(promo => {
     if (search.trim()) {
@@ -490,26 +510,35 @@ export default function Promotions() {
       const descMatch = (promo.description || '').toLowerCase().includes(q);
       if (!nameMatch && !descMatch) return false;
     }
-    if (typeFilter !== 'all' && promo.type !== typeFilter) {
+    if (typeFilter.length > 0 && !typeFilter.includes(promo.type)) {
       return false;
     }
-    if (statusFilter !== 'all') {
+    if (statusFilter.length > 0) {
       const isPromoActive = isActive(promo);
       const now = new Date();
       const future = new Date(promo.startDate) > now;
-      if (statusFilter === 'active') {
-        if (!promo.active || future || !isPromoActive || promo.approvalStatus === 'pending' || promo.approvalStatus === 'rejected') return false;
-      } else if (statusFilter === 'disabled') {
-        if (promo.active) return false;
-      } else if (statusFilter === 'upcoming') {
-        if (!promo.active || !future || promo.approvalStatus === 'pending' || promo.approvalStatus === 'rejected') return false;
-      } else if (statusFilter === 'expired') {
-        if (!promo.active || future || isPromoActive || promo.approvalStatus === 'pending' || promo.approvalStatus === 'rejected') return false;
-      } else if (statusFilter === 'pending') {
-        if (promo.approvalStatus !== 'pending') return false;
-      } else if (statusFilter === 'rejected') {
-        if (promo.approvalStatus !== 'rejected') return false;
-      }
+      const matchesAny = statusFilter.some(filterId => {
+        if (filterId === 'active') {
+          return promo.active && !future && isPromoActive && promo.approvalStatus === 'approved';
+        }
+        if (filterId === 'disabled') {
+          return !promo.active;
+        }
+        if (filterId === 'upcoming') {
+          return promo.active && future && promo.approvalStatus === 'approved';
+        }
+        if (filterId === 'expired') {
+          return promo.active && !future && !isPromoActive && promo.approvalStatus === 'approved';
+        }
+        if (filterId === 'pending') {
+          return promo.approvalStatus === 'pending';
+        }
+        if (filterId === 'rejected') {
+          return promo.approvalStatus === 'rejected';
+        }
+        return false;
+      });
+      if (!matchesAny) return false;
     }
     if (fromDate) {
       const filterFrom = new Date(fromDate + 'T00:00:00');
@@ -780,13 +809,24 @@ export default function Promotions() {
             <div>
               <p className="text-xs font-medium text-slate-400 mb-2">Promotion Type</p>
               <div className="flex flex-wrap gap-2">
-                {[{ id: 'all', label: 'All Types' }, ...PROMO_TYPES].map(t => (
+                <button
+                  type="button"
+                  onClick={() => toggleTypeFilter('all')}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                    typeFilter.length === 0
+                      ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
+                      : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
+                  }`}
+                >
+                  All Types
+                </button>
+                {PROMO_TYPES.map(t => (
                   <button
                     key={t.id}
                     type="button"
-                    onClick={() => setTypeFilter(t.id)}
+                    onClick={() => toggleTypeFilter(t.id)}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                      typeFilter === t.id
+                      typeFilter.includes(t.id)
                         ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
                         : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
                     }`}
@@ -801,8 +841,18 @@ export default function Promotions() {
             <div>
               <p className="text-xs font-medium text-slate-400 mb-2">Status</p>
               <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => toggleStatusFilter('all')}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                    statusFilter.length === 0
+                      ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
+                      : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
+                  }`}
+                >
+                  All Statuses
+                </button>
                 {[
-                  { id: 'all', label: 'All Statuses' },
                   { id: 'active', label: 'Active' },
                   { id: 'disabled', label: 'Disabled' },
                   { id: 'upcoming', label: 'Upcoming' },
@@ -813,9 +863,9 @@ export default function Promotions() {
                   <button
                     key={s.id}
                     type="button"
-                    onClick={() => setStatusFilter(s.id)}
+                    onClick={() => toggleStatusFilter(s.id)}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                      statusFilter === s.id
+                      statusFilter.includes(s.id)
                         ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
                         : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
                     }`}
@@ -823,6 +873,40 @@ export default function Promotions() {
                     {s.label}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Sorting */}
+            <div>
+              <p className="text-xs font-medium text-slate-400 mb-2">Sort By</p>
+              <div className="flex flex-wrap gap-2">
+                {PROMO_SORT_OPTIONS.map(opt => {
+                  const active = sort === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        if (active) {
+                          setOrder(o => (o === 'asc' ? 'desc' : 'asc'));
+                        } else {
+                          setSort(opt.value);
+                          setOrder('asc');
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition flex items-center gap-1.5 ${
+                        active
+                          ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)] font-semibold'
+                          : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {active && (
+                        order === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -838,34 +922,6 @@ export default function Promotions() {
               </span>
             );
           })}
-          <div className="flex items-center gap-2 ml-auto w-full sm:w-auto mt-2 sm:mt-0">
-            <label htmlFor="promo-sort" className="text-xs text-slate-500">Sort by</label>
-            <select
-              id="promo-sort"
-              value={sort}
-              onChange={(e) => {
-                const next = e.target.value;
-                if (next === sort) toggleSort(next);
-                else {
-                  setSort(next);
-                  setOrder('asc');
-                }
-              }}
-              className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-1.5"
-            >
-              {PROMO_SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-              className="p-2 rounded-xl bg-[var(--pos-panel)] border border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]"
-              title={order === 'asc' ? 'Ascending' : 'Descending'}
-            >
-              {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-            </button>
-          </div>
         </div>
 
         {/* List */}
