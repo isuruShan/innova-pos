@@ -35,7 +35,7 @@ export default function MenuMixView({ dateFrom, dateTo, registerExport }) {
   const [sortOrder, setSortOrder] = useState('desc');
 
   // Fetch report data
-  const { data = [], isPending } = useQuery({
+  const { data: rawData, isPending } = useQuery({
     queryKey: ['report-menu-mix', selectedStoreId, dateFrom, dateTo],
     queryFn: () =>
       api
@@ -46,6 +46,7 @@ export default function MenuMixView({ dateFrom, dateTo, registerExport }) {
         .then((r) => r.data),
     enabled: Boolean(selectedStoreId && dateFrom && dateTo),
   });
+  const data = Array.isArray(rawData) ? rawData : [];
 
   // Extract unique categories for filter chips
   const categoriesList = useMemo(() => {

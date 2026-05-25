@@ -19,7 +19,7 @@ export default function HourlySalesView({ dateFrom, dateTo, registerExport }) {
   const [sortOrder, setSortOrder] = useState('asc');
 
   // Fetch hourly sales data
-  const { data = [], isPending } = useQuery({
+  const { data: rawData, isPending } = useQuery({
     queryKey: ['report-hourly-sales', selectedStoreId, dateFrom, dateTo],
     queryFn: () =>
       api
@@ -33,6 +33,7 @@ export default function HourlySalesView({ dateFrom, dateTo, registerExport }) {
         .then((r) => r.data),
     enabled: Boolean(selectedStoreId && dateFrom && dateTo),
   });
+  const data = Array.isArray(rawData) ? rawData : [];
 
   const handleSort = (field) => {
     if (sortField === field) {

@@ -34,7 +34,7 @@ export default function CashSessionsView({ dateFrom, dateTo, registerExport }) {
   const [sortOrder, setSortOrder] = useState('desc');
 
   // Fetch session data
-  const { data = [], isPending } = useQuery({
+  const { data: rawData, isPending } = useQuery({
     queryKey: ['report-cash-sessions', selectedStoreId, dateFrom, dateTo],
     queryFn: () =>
       api
@@ -45,6 +45,7 @@ export default function CashSessionsView({ dateFrom, dateTo, registerExport }) {
         .then((r) => r.data),
     enabled: Boolean(selectedStoreId && dateFrom && dateTo),
   });
+  const data = Array.isArray(rawData) ? rawData : [];
 
   // Extract unique cashiers for filter dropdown
   const cashiersList = useMemo(() => {

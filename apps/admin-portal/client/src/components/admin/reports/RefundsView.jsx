@@ -36,7 +36,7 @@ export default function RefundsView({ dateFrom, dateTo, registerExport }) {
   const [sortOrder, setSortOrder] = useState('desc');
 
   // Fetch refund data
-  const { data = [], isPending } = useQuery({
+  const { data: rawData, isPending } = useQuery({
     queryKey: ['report-refunds', selectedStoreId, dateFrom, dateTo],
     queryFn: () =>
       api
@@ -47,6 +47,7 @@ export default function RefundsView({ dateFrom, dateTo, registerExport }) {
         .then((r) => r.data),
     enabled: Boolean(selectedStoreId && dateFrom && dateTo),
   });
+  const data = Array.isArray(rawData) ? rawData : [];
 
   // Unique reason options compiled dynamically from data
   const uniqueReasons = useMemo(() => {

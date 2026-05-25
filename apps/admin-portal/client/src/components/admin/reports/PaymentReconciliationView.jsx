@@ -29,7 +29,7 @@ export default function PaymentReconciliationView({ dateFrom, dateTo, registerEx
   const [sortOrder, setSortOrder] = useState('desc');
 
   // Fetch reconciliation data
-  const { data = [], isPending } = useQuery({
+  const { data: rawData, isPending } = useQuery({
     queryKey: ['report-payment-reconciliation', selectedStoreId, dateFrom, dateTo],
     queryFn: () =>
       api
@@ -40,6 +40,7 @@ export default function PaymentReconciliationView({ dateFrom, dateTo, registerEx
         .then((r) => r.data),
     enabled: Boolean(selectedStoreId && dateFrom && dateTo),
   });
+  const data = Array.isArray(rawData) ? rawData : [];
 
   const handleSort = (field) => {
     if (sortField === field) {

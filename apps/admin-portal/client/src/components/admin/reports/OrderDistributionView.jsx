@@ -41,8 +41,8 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
     enabled: Boolean(selectedStoreId && dateFrom && dateTo),
   });
 
-  const byTypeData = data?.byType || [];
-  const bySourceData = data?.bySource || [];
+  const byTypeData = Array.isArray(data?.byType) ? data.byType : [];
+  const bySourceData = Array.isArray(data?.bySource) ? data.bySource : [];
 
   // Sorting handlers
   const handleSortType = (field) => {
