@@ -129,11 +129,12 @@ export default function App() {
                     <Dashboard />
                   </RoleRoute>
                 } />
-                <Route path="/manager/reports" element={
+                <Route path="/manager/reports/:reportType" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
                     <ReportsPortal />
                   </RoleRoute>
                 } />
+                <Route path="/manager/reports" element={<Navigate to="/manager/reports/menu-mix" replace />} />
                 <Route path="/manager/menu" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
                     <MenuManagement />

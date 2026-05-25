@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { User, DollarSign, Wallet, AlertTriangle, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import api from '../../../api/axios';
@@ -93,7 +93,7 @@ export default function CashSessionsView({ dateFrom, dateTo, registerExport }) {
   }, [filteredData, sortField, sortOrder]);
 
   // Export CSV mapping
-  useMemo(() => {
+  useEffect(() => {
     if (registerExport) {
       registerExport(() => {
         const headers = [

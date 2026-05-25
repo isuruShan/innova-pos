@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
 import { LayoutGrid, Globe, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
@@ -80,7 +80,7 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
   }, [bySourceData, sourceSortField, sourceSortOrder]);
 
   // Export CSV
-  useMemo(() => {
+  useEffect(() => {
     if (registerExport) {
       registerExport(() => {
         // We write out both distribution summaries in one CSV separated by a row

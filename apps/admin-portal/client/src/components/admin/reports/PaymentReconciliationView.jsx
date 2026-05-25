@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
 import { CreditCard, Wallet, HelpCircle, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
@@ -60,7 +60,7 @@ export default function PaymentReconciliationView({ dateFrom, dateTo, registerEx
   }, [data, sortField, sortOrder]);
 
   // Export CSV
-  useMemo(() => {
+  useEffect(() => {
     if (registerExport) {
       registerExport(() => {
         const headers = ['Payment Method', 'Orders Count', 'Settled Volume ($)', 'Avg Ticket ($)'];

@@ -38,7 +38,19 @@ const ADMIN_NAV_GROUPS = [
     items: [
       { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
       { label: 'Analytics', icon: BarChart3, to: '/analytics' },
-      { label: 'Reports', icon: ClipboardList, to: '/reports' },
+      { 
+        label: 'Reports', 
+        icon: ClipboardList, 
+        to: '/reports',
+        subItems: [
+          { label: 'Menu Mix', to: '/reports/menu-mix' },
+          { label: 'Order Distribution', to: '/reports/order-distribution' },
+          { label: 'Hourly Trends', to: '/reports/hourly-sales' },
+          { label: 'Payment Reconciliation', to: '/reports/payment-reconciliation' },
+          { label: 'Returns & Refunds', to: '/reports/refunds' },
+          { label: 'Drawer Cash Sessions', to: '/reports/cash-sessions' },
+        ],
+      },
       { label: 'Notifications', icon: Bell, to: '/notifications' },
       { label: 'Branding & Settings', icon: Palette, to: '/branding' },
       { 

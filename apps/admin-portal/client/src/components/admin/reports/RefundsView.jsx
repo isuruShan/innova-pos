@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, RotateCcw, AlertTriangle, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import api from '../../../api/axios';
@@ -115,7 +115,7 @@ export default function RefundsView({ dateFrom, dateTo, registerExport }) {
   }, [filteredData, sortField, sortOrder]);
 
   // Export CSV mapping
-  useMemo(() => {
+  useEffect(() => {
     if (registerExport) {
       registerExport(() => {
         const headers = [

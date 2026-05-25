@@ -1,13 +1,15 @@
 import { useRef, useState } from 'react';
 import {
   Link2, X, ChevronDown, ChevronUp, ToggleLeft, ToggleRight,
-  Upload, ImageIcon, Loader2,
+  Upload, ImageIcon, Loader2, Package,
 } from 'lucide-react';
 import CenteredModal from '../CenteredModal';
 import ItemVariantPickerModal from '../ItemVariantPickerModal';
+import IngredientsBuilder from './IngredientsBuilder';
 import { COMBO_CATEGORY_NAME } from '../../constants/categories';
 import { MENU_ITEM_LIMITS, VARIANT_CRITERIA } from '../../constants/menuItems';
 import { useBranding } from '../../context/BrandingContext';
+import { useStoreContext } from '../../context/StoreContext';
 import { formatCurrency, getItemDisplayPrice } from '../../utils/format';
 import {
   rebuildVariants,
@@ -641,6 +643,7 @@ export default function MenuItemFormModal({
   isPending,
 }) {
   const { currencySymbol } = useBranding();
+  const { selectedStoreId } = useStoreContext();
   const priceLabel = `Price (${currencySymbol})`;
 
   const footer = (
@@ -800,6 +803,19 @@ export default function MenuItemFormModal({
             <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${form.available ? 'left-6' : 'left-0.5'}`} />
           </button>
         </div>
+
+        {/* Ingredients section - only show when editing existing item */}
+        {editing?._id && !form.isCombo && (
+          <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-purple-500/20">
+            <p className="text-sm font-semibold text-purple-400 mb-3 flex items-center gap-1.5">
+              <Package size={14} /> Ingredients
+            </p>
+            <IngredientsBuilder
+              menuItemId={editing._id}
+              storeId={selectedStoreId}
+            />
+          </div>
+        )}
 
         {formError && (
           <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm">{formError}</div>

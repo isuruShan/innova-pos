@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Search, ArrowUp, ArrowDown, ArrowUpDown, Tag } from 'lucide-react';
@@ -109,7 +109,7 @@ export default function MenuMixView({ dateFrom, dateTo, registerExport }) {
   }, [filteredData]);
 
   // Expose export function to parent
-  useMemo(() => {
+  useEffect(() => {
     if (registerExport) {
       registerExport(() => {
         const headers = ['Item Name', 'Category', 'Quantity Sold', 'Total Revenue ($)'];

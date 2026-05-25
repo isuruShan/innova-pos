@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Download, SlidersHorizontal, CalendarRange, ChevronDown } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { Download } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { useStoreContext } from '../../context/StoreContext';
@@ -27,6 +28,7 @@ function addDays(d, n) {
 export default function ReportsPortal() {
   const { stores, selectedStoreId, isStoreReady } = useStoreContext();
   const selectedStore = stores.find((s) => s._id === selectedStoreId) || null;
+  const { reportType } = useParams();
 
   // Date Range State (defaults to last 7 days)
   const defaultRange = useMemo(() => {
@@ -37,14 +39,6 @@ export default function ReportsPortal() {
 
   const [dateFrom, setDateFrom] = useState(defaultRange.from);
   const [dateTo, setDateTo] = useState(defaultRange.to);
-
-  // Tabs & Navigation
-  // Parent tabs: 'sales' | 'loss-prevention'
-  const [activeParentTab, setActiveParentTab] = useState('sales');
-  // Child tabs:
-  // - For 'sales': 'menu-mix' | 'order-type' | 'hourly-sales' | 'payment-reconciliation'
-  // - For 'loss-prevention': 'refunds' | 'cash-sessions'
-  const [activeChildTab, setActiveChildTab] = useState('menu-mix');
 
   // Callback registration for exporting CSV
   const [exportCallback, setExportCallback] = useState(null);
@@ -72,16 +66,19 @@ export default function ReportsPortal() {
     }
   }, []);
 
-  const handleParentTabChange = (tab) => {
-    setActiveParentTab(tab);
-    if (tab === 'sales') {
-      setActiveChildTab('menu-mix');
-    } else {
-      setActiveChildTab('refunds');
-    }
+  const rangeInvalid = dateFrom && dateTo && dateFrom > dateTo;
+
+  // Map reportType to readable name
+  const reportLabels = {
+    'menu-mix': 'Menu Mix Report',
+    'order-distribution': 'Order Channel Distribution',
+    'hourly-sales': 'Hourly Sales Trends',
+    'payment-reconciliation': 'Payment Reconciliation Summary',
+    'refunds': 'Returns & Refunds Audit',
+    'cash-sessions': 'Drawer Cash Sessions',
   };
 
-  const rangeInvalid = dateFrom && dateTo && dateFrom > dateTo;
+  const activeTitle = reportLabels[reportType] || 'Business Reports';
 
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
@@ -91,7 +88,7 @@ export default function ReportsPortal() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--pos-text-primary)]">Reporting Portal</h1>
+            <h1 className="text-2xl font-bold text-[var(--pos-text-primary)]">{activeTitle}</h1>
             <p className="text-slate-500 text-sm mt-0.5">
               Generate detailed business insights and download audit sheets.
             </p>
@@ -101,7 +98,7 @@ export default function ReportsPortal() {
           {exportCallback && !rangeInvalid && isStoreReady && (
             <button
               onClick={() => exportCallback()}
-              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm transition"
+              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm transition cursor-pointer"
             >
               <Download size={15} />
               Export CSV
@@ -132,7 +129,7 @@ export default function ReportsPortal() {
                   <button
                     key={preset}
                     onClick={() => applyPreset(preset)}
-                    className="text-[9px] uppercase tracking-wider font-semibold text-slate-500 hover:text-slate-200 bg-slate-800/40 hover:bg-slate-800 px-1.5 py-0.5 rounded transition"
+                    className="text-[9px] uppercase tracking-wider font-semibold text-slate-500 hover:text-slate-250 bg-slate-800/40 hover:bg-slate-800 px-1.5 py-0.5 rounded transition cursor-pointer"
                   >
                     {preset === '7d' ? '7 Days' : preset === '30d' ? '30 Days' : preset}
                   </button>
@@ -174,104 +171,6 @@ export default function ReportsPortal() {
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="space-y-4">
-          {/* Main Parent Categories */}
-          <div className="flex border-b border-slate-800/80 gap-6">
-            <button
-              onClick={() => handleParentTabChange('sales')}
-              className={`pb-2.5 text-sm font-bold border-b-2 transition-all ${
-                activeParentTab === 'sales'
-                  ? 'border-amber-500 text-amber-500'
-                  : 'border-transparent text-slate-450 hover:text-slate-200'
-              }`}
-            >
-              Sales Performance
-            </button>
-            <button
-              onClick={() => handleParentTabChange('loss-prevention')}
-              className={`pb-2.5 text-sm font-bold border-b-2 transition-all ${
-                activeParentTab === 'loss-prevention'
-                  ? 'border-amber-500 text-amber-500'
-                  : 'border-transparent text-slate-450 hover:text-slate-200'
-              }`}
-            >
-              Loss Prevention & Operations
-            </button>
-          </div>
-
-          {/* Sub Categories Tabs */}
-          <div className="flex flex-wrap gap-2">
-            {activeParentTab === 'sales' ? (
-              <>
-                <button
-                  onClick={() => setActiveChildTab('menu-mix')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
-                    activeChildTab === 'menu-mix'
-                      ? 'bg-amber-500/10 text-amber-450 border border-amber-500/20'
-                      : 'bg-slate-900/20 hover:bg-slate-900/40 text-slate-400 hover:text-slate-250 border border-transparent'
-                  }`}
-                >
-                  Menu Mix
-                </button>
-                <button
-                  onClick={() => setActiveChildTab('order-type')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
-                    activeChildTab === 'order-type'
-                      ? 'bg-amber-500/10 text-amber-450 border border-amber-500/20'
-                      : 'bg-slate-900/20 hover:bg-slate-900/40 text-slate-400 hover:text-slate-250 border border-transparent'
-                  }`}
-                >
-                  Order Distribution
-                </button>
-                <button
-                  onClick={() => setActiveChildTab('hourly-sales')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
-                    activeChildTab === 'hourly-sales'
-                      ? 'bg-amber-500/10 text-amber-450 border border-amber-500/20'
-                      : 'bg-slate-900/20 hover:bg-slate-900/40 text-slate-400 hover:text-slate-250 border border-transparent'
-                  }`}
-                >
-                  Hourly Trends
-                </button>
-                <button
-                  onClick={() => setActiveChildTab('payment-reconciliation')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
-                    activeChildTab === 'payment-reconciliation'
-                      ? 'bg-amber-500/10 text-amber-450 border border-amber-500/20'
-                      : 'bg-slate-900/20 hover:bg-slate-900/40 text-slate-400 hover:text-slate-250 border border-transparent'
-                  }`}
-                >
-                  Payment Reconciliation
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => setActiveChildTab('refunds')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
-                    activeChildTab === 'refunds'
-                      ? 'bg-amber-500/10 text-amber-450 border border-amber-500/20'
-                      : 'bg-slate-900/20 hover:bg-slate-900/40 text-slate-400 hover:text-slate-250 border border-transparent'
-                  }`}
-                >
-                  Returns & Refunds
-                </button>
-                <button
-                  onClick={() => setActiveChildTab('cash-sessions')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
-                    activeChildTab === 'cash-sessions'
-                      ? 'bg-amber-500/10 text-amber-450 border border-amber-500/20'
-                      : 'bg-slate-900/20 hover:bg-slate-900/40 text-slate-400 hover:text-slate-250 border border-transparent'
-                  }`}
-                >
-                  Drawer Cash Sessions
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
         {/* View render block */}
         {!isStoreReady || rangeInvalid ? (
           <div className="bg-[var(--pos-panel)] border border-slate-800 rounded-2xl py-20 text-center text-slate-500">
@@ -279,42 +178,42 @@ export default function ReportsPortal() {
           </div>
         ) : (
           <div className="bg-[var(--pos-panel)] border border-slate-700/40 rounded-2xl p-5 sm:p-6 shadow-xl">
-            {activeParentTab === 'sales' && activeChildTab === 'menu-mix' && (
+            {reportType === 'menu-mix' && (
               <MenuMixView
                 dateFrom={dateFrom}
                 dateTo={dateTo}
                 registerExport={registerExport}
               />
             )}
-            {activeParentTab === 'sales' && activeChildTab === 'order-type' && (
+            {reportType === 'order-distribution' && (
               <OrderDistributionView
                 dateFrom={dateFrom}
                 dateTo={dateTo}
                 registerExport={registerExport}
               />
             )}
-            {activeParentTab === 'sales' && activeChildTab === 'hourly-sales' && (
+            {reportType === 'hourly-sales' && (
               <HourlySalesView
                 dateFrom={dateFrom}
                 dateTo={dateTo}
                 registerExport={registerExport}
               />
             )}
-            {activeParentTab === 'sales' && activeChildTab === 'payment-reconciliation' && (
+            {reportType === 'payment-reconciliation' && (
               <PaymentReconciliationView
                 dateFrom={dateFrom}
                 dateTo={dateTo}
                 registerExport={registerExport}
               />
             )}
-            {activeParentTab === 'loss-prevention' && activeChildTab === 'refunds' && (
+            {reportType === 'refunds' && (
               <RefundsView
                 dateFrom={dateFrom}
                 dateTo={dateTo}
                 registerExport={registerExport}
               />
             )}
-            {activeParentTab === 'loss-prevention' && activeChildTab === 'cash-sessions' && (
+            {reportType === 'cash-sessions' && (
               <CashSessionsView
                 dateFrom={dateFrom}
                 dateTo={dateTo}

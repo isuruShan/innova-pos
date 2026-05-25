@@ -137,11 +137,12 @@ export default function App() {
               <Layout><AnalyticsPage /></Layout>
             </PrivateRoute>
           } />
-          <Route path="/reports" element={
+          <Route path="/reports/:reportType" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><ReportsPortal /></Layout>
             </PrivateRoute>
           } />
+          <Route path="/reports" element={<Navigate to="/reports/menu-mix" replace />} />
           <Route path="/branding" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><BrandingPage /></Layout>

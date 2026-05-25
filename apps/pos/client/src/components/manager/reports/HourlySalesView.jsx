@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Clock, TrendingUp, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
@@ -63,7 +63,7 @@ export default function HourlySalesView({ dateFrom, dateTo, registerExport }) {
   }, [data]);
 
   // Export CSV
-  useMemo(() => {
+  useEffect(() => {
     if (registerExport) {
       registerExport(() => {
         const headers = ['Hour of Day', 'Orders Placed', 'Gross Sales ($)', 'Avg Ticket ($)'];

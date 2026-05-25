@@ -81,6 +81,7 @@ app.use('/api/menu',       require('./routes/menu'));
 app.use('/api/orders',     require('./routes/orders'));
 app.use('/api/tables',     require('./routes/tables'));
 app.use('/api/inventory',  require('./routes/inventory'));
+app.use('/api/ingredient-links', require('./routes/ingredientLinks'));
 app.use('/api/suppliers',  require('./routes/suppliers'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/variant-criteria', require('./routes/variantCriteria'));

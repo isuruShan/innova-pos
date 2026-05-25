@@ -15,7 +15,12 @@ export const MANAGER_NAV_GROUPS = [
   {
     title: 'Reporting',
     items: [
-      { to: '/manager/reports', label: 'Reports Portal', icon: BarChart3 },
+      { to: '/manager/reports/menu-mix', label: 'Menu Mix', icon: ClipboardList },
+      { to: '/manager/reports/order-distribution', label: 'Order Distribution', icon: BarChart3 },
+      { to: '/manager/reports/hourly-sales', label: 'Hourly Trends', icon: BarChart3 },
+      { to: '/manager/reports/payment-reconciliation', label: 'Payment Reconciliation', icon: Wallet },
+      { to: '/manager/reports/refunds', label: 'Returns & Refunds', icon: ClipboardList },
+      { to: '/manager/reports/cashier-sessions', label: 'Drawer Cash Sessions', icon: Wallet },
     ],
   },
   {

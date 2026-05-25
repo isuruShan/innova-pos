@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Download, CalendarRange } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { Download } from 'lucide-react';
 import { useStoreContext } from '../../context/StoreContext';
 import AdminDateField from '../../components/AdminDateField';
 
@@ -24,6 +25,7 @@ function addDays(d, n) {
 
 export default function ReportsPortal() {
   const { stores, selectedStoreId, selectStore, isStoreReady } = useStoreContext();
+  const { reportType } = useParams();
 
   // Date Range State (defaults to last 7 days)
   const defaultRange = useMemo(() => {
@@ -34,14 +36,6 @@ export default function ReportsPortal() {
 
   const [dateFrom, setDateFrom] = useState(defaultRange.from);
   const [dateTo, setDateTo] = useState(defaultRange.to);
-
-  // Tabs & Navigation
-  // Parent tabs: 'sales' | 'loss-prevention'
-  const [activeParentTab, setActiveParentTab] = useState('sales');
-  // Child tabs:
-  // - For 'sales': 'menu-mix' | 'order-type' | 'hourly-sales' | 'payment-reconciliation'
-  // - For 'loss-prevention': 'refunds' | 'cash-sessions'
-  const [activeChildTab, setActiveChildTab] = useState('menu-mix');
 
   // Callback registration for exporting CSV
   const [exportCallback, setExportCallback] = useState(null);
@@ -69,23 +63,26 @@ export default function ReportsPortal() {
     }
   }, []);
 
-  const handleParentTabChange = (tab) => {
-    setActiveParentTab(tab);
-    if (tab === 'sales') {
-      setActiveChildTab('menu-mix');
-    } else {
-      setActiveChildTab('refunds');
-    }
+  const rangeInvalid = dateFrom && dateTo && dateFrom > dateTo;
+
+  // Map reportType to readable name
+  const reportLabels = {
+    'menu-mix': 'Menu Mix Report',
+    'order-distribution': 'Order Channel Distribution',
+    'hourly-sales': 'Hourly Sales Trends',
+    'payment-reconciliation': 'Payment Reconciliation Summary',
+    'refunds': 'Returns & Refunds Audit',
+    'cash-sessions': 'Drawer Cash Sessions',
   };
 
-  const rangeInvalid = dateFrom && dateTo && dateFrom > dateTo;
+  const activeTitle = reportLabels[reportType] || 'Business Reports';
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Reports Portal</h2>
+          <h2 className="text-xl font-bold text-gray-900">{activeTitle}</h2>
           <p className="text-sm text-gray-500 mt-0.5">
             Generate detailed business insights and download audit sheets.
           </p>
@@ -95,7 +92,7 @@ export default function ReportsPortal() {
         {exportCallback && !rangeInvalid && isStoreReady && (
           <button
             onClick={() => exportCallback()}
-            className="flex items-center gap-2 bg-brand-teal hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition shadow-sm"
+            className="flex items-center gap-2 bg-brand-teal hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition shadow-sm cursor-pointer"
           >
             <Download size={15} />
             Export CSV
@@ -134,7 +131,7 @@ export default function ReportsPortal() {
                 <button
                   key={preset}
                   onClick={() => applyPreset(preset)}
-                  className="text-[9px] uppercase tracking-wider font-semibold text-gray-500 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded transition"
+                  className="text-[9px] uppercase tracking-wider font-semibold text-gray-500 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded transition cursor-pointer"
                 >
                   {preset === '7d' ? '7 Days' : preset === '30d' ? '30 Days' : preset}
                 </button>
@@ -176,104 +173,6 @@ export default function ReportsPortal() {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="space-y-4">
-        {/* Main Parent Categories */}
-        <div className="flex border-b border-gray-200 gap-6">
-          <button
-            onClick={() => handleParentTabChange('sales')}
-            className={`pb-2.5 text-sm font-bold border-b-2 transition-all ${
-              activeParentTab === 'sales'
-                ? 'border-brand-teal text-brand-teal'
-                : 'border-transparent text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            Sales Performance
-          </button>
-          <button
-            onClick={() => handleParentTabChange('loss-prevention')}
-            className={`pb-2.5 text-sm font-bold border-b-2 transition-all ${
-              activeParentTab === 'loss-prevention'
-                ? 'border-brand-teal text-brand-teal'
-                : 'border-transparent text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            Loss Prevention & Operations
-          </button>
-        </div>
-
-        {/* Sub Categories Tabs */}
-        <div className="flex flex-wrap gap-2">
-          {activeParentTab === 'sales' ? (
-            <>
-              <button
-                onClick={() => setActiveChildTab('menu-mix')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                  activeChildTab === 'menu-mix'
-                    ? 'bg-brand-teal text-white border-brand-teal shadow-sm'
-                    : 'bg-white hover:bg-gray-50 text-gray-600 border-gray-300'
-                }`}
-              >
-                Menu Mix
-              </button>
-              <button
-                onClick={() => setActiveChildTab('order-type')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                  activeChildTab === 'order-type'
-                    ? 'bg-brand-teal text-white border-brand-teal shadow-sm'
-                    : 'bg-white hover:bg-gray-50 text-gray-600 border-gray-300'
-                }`}
-              >
-                Order Distribution
-              </button>
-              <button
-                onClick={() => setActiveChildTab('hourly-sales')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                  activeChildTab === 'hourly-sales'
-                    ? 'bg-brand-teal text-white border-brand-teal shadow-sm'
-                    : 'bg-white hover:bg-gray-50 text-gray-600 border-gray-300'
-                }`}
-              >
-                Hourly Trends
-              </button>
-              <button
-                onClick={() => setActiveChildTab('payment-reconciliation')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                  activeChildTab === 'payment-reconciliation'
-                    ? 'bg-brand-teal text-white border-brand-teal shadow-sm'
-                    : 'bg-white hover:bg-gray-50 text-gray-600 border-gray-300'
-                }`}
-              >
-                Payment Reconciliation
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => setActiveChildTab('refunds')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                  activeChildTab === 'refunds'
-                    ? 'bg-brand-teal text-white border-brand-teal shadow-sm'
-                    : 'bg-white hover:bg-gray-50 text-gray-600 border-gray-300'
-                }`}
-              >
-                Returns & Refunds
-              </button>
-              <button
-                onClick={() => setActiveChildTab('cash-sessions')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
-                  activeChildTab === 'cash-sessions'
-                    ? 'bg-brand-teal text-white border-brand-teal shadow-sm'
-                    : 'bg-white hover:bg-gray-50 text-gray-600 border-gray-300'
-                }`}
-              >
-                Drawer Cash Sessions
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
       {/* View render block */}
       {!isStoreReady || rangeInvalid ? (
         <div className="bg-white border border-gray-200 rounded-xl py-20 text-center text-gray-400">
@@ -281,42 +180,42 @@ export default function ReportsPortal() {
         </div>
       ) : (
         <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 shadow-sm">
-          {activeParentTab === 'sales' && activeChildTab === 'menu-mix' && (
+          {reportType === 'menu-mix' && (
             <MenuMixView
               dateFrom={dateFrom}
               dateTo={dateTo}
               registerExport={registerExport}
             />
           )}
-          {activeParentTab === 'sales' && activeChildTab === 'order-type' && (
+          {reportType === 'order-distribution' && (
             <OrderDistributionView
               dateFrom={dateFrom}
               dateTo={dateTo}
               registerExport={registerExport}
             />
           )}
-          {activeParentTab === 'sales' && activeChildTab === 'hourly-sales' && (
+          {reportType === 'hourly-sales' && (
             <HourlySalesView
               dateFrom={dateFrom}
               dateTo={dateTo}
               registerExport={registerExport}
             />
           )}
-          {activeParentTab === 'sales' && activeChildTab === 'payment-reconciliation' && (
+          {reportType === 'payment-reconciliation' && (
             <PaymentReconciliationView
               dateFrom={dateFrom}
               dateTo={dateTo}
               registerExport={registerExport}
             />
           )}
-          {activeParentTab === 'loss-prevention' && activeChildTab === 'refunds' && (
+          {reportType === 'refunds' && (
             <RefundsView
               dateFrom={dateFrom}
               dateTo={dateTo}
               registerExport={registerExport}
             />
           )}
-          {activeParentTab === 'loss-prevention' && activeChildTab === 'cash-sessions' && (
+          {reportType === 'cash-sessions' && (
             <CashSessionsView
               dateFrom={dateFrom}
               dateTo={dateTo}
