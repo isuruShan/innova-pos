@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, Tag, ToggleRight, ToggleLeft,
   Gift, Package, Percent, Minus as MinusIcon, Hash,
-  Search, X, ArrowDown, ArrowUp,
+  Search, X, ArrowDown, ArrowUp, SlidersHorizontal, ChevronDown,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -468,12 +468,20 @@ export default function Promotions() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   const { data: promotions = [], isPending: promosPending } = useQuery({
     queryKey: ['promotions', selectedStoreId, sortParams],
     queryFn: () => api.get('/promotions', { params: { sort, order } }).then(r => r.data),
     enabled: isStoreReady,
   });
+
+  const activeFilterCount =
+    (typeFilter !== 'all' ? 1 : 0) +
+    (statusFilter !== 'all' ? 1 : 0) +
+    (fromDate || toDate ? 1 : 0);
 
   const filteredPromotions = promotions.filter(promo => {
     if (search.trim()) {
@@ -502,6 +510,16 @@ export default function Promotions() {
       } else if (statusFilter === 'rejected') {
         if (promo.approvalStatus !== 'rejected') return false;
       }
+    }
+    if (fromDate) {
+      const filterFrom = new Date(fromDate + 'T00:00:00');
+      const promoEnd = new Date(promo.endDate);
+      if (promoEnd < filterFrom) return false;
+    }
+    if (toDate) {
+      const filterTo = new Date(toDate + 'T23:59:59');
+      const promoStart = new Date(promo.startDate);
+      if (promoStart > filterTo) return false;
     }
     return true;
   });
@@ -684,57 +702,131 @@ export default function Promotions() {
           </button>
         </div>
 
-        {/* Search and Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-4">
-          <div className="relative flex-1">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+        {/* Search + Filter row */}
+        <div className="flex gap-2 mb-4">
+          <div className="flex-1 flex items-center gap-2 bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl px-3 py-2.5">
+            <Search size={15} className="text-slate-500 flex-shrink-0" />
             <input
               type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
               placeholder="Search name or description..."
-              className="w-full bg-[var(--pos-panel)] border border-slate-700/80 rounded-xl pl-9 pr-8 py-2.5 text-sm text-[var(--pos-text-primary)] focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-600"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
             />
             {search && (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-[var(--pos-text-primary)]"
-              >
-                <X size={14} />
-              </button>
+              <button onClick={() => setSearch('')}><X size={13} className="text-slate-500" /></button>
             )}
           </div>
-          <div className="flex gap-2">
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
-              title="Filter by promotion type"
-            >
-              <option value="all">All Types</option>
-              <option value="percentageDiscount">% Discount</option>
-              <option value="flatDiscount">Flat Discount</option>
-              <option value="flatPrice">Flat Price</option>
-              <option value="bundle">Bundle Deal</option>
-              <option value="buyXgetY">Buy X Get Y</option>
-            </select>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
-              title="Filter by status"
-            >
-              <option value="all">All Statuses</option>
-              <option value="active">Active</option>
-              <option value="disabled">Disabled</option>
-              <option value="upcoming">Upcoming</option>
-              <option value="expired">Expired</option>
-              <option value="pending">Pending Approval</option>
-              <option value="rejected">Rejected</option>
-            </select>
-          </div>
+
+          <button
+            onClick={() => setShowFilters(f => !f)}
+            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium transition ${
+              showFilters || activeFilterCount > 0
+                ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
+                : 'bg-[var(--pos-panel)] border-slate-700/50 text-slate-400 hover:text-[var(--pos-text-primary)]'
+            }`}
+          >
+            <SlidersHorizontal size={14} />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="bg-amber-500 text-[var(--pos-selection-text)] text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+            <ChevronDown size={13} className={`transition ${showFilters ? 'rotate-180' : ''}`} />
+          </button>
         </div>
+
+        {/* Expanded filters */}
+        {showFilters && (
+          <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-2xl p-4 mb-4 space-y-4">
+            {/* Date range */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <p className="text-xs font-medium text-slate-400">Date Range (Active Period)</p>
+                {(fromDate || toDate) && (
+                  <button
+                    type="button"
+                    onClick={() => { setFromDate(''); setToDate(''); }}
+                    className="text-xs text-amber-400 hover:text-amber-300 animate-fade-in"
+                  >
+                    Clear dates
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="text-[10px] text-slate-500 block mb-1">From</label>
+                  <PosDateField
+                    value={fromDate}
+                    onChange={setFromDate}
+                    max={toDate || undefined}
+                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[10px] text-slate-500 block mb-1">To</label>
+                  <PosDateField
+                    value={toDate}
+                    onChange={setToDate}
+                    min={fromDate || undefined}
+                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Promotion Type filter */}
+            <div>
+              <p className="text-xs font-medium text-slate-400 mb-2">Promotion Type</p>
+              <div className="flex flex-wrap gap-2">
+                {[{ id: 'all', label: 'All Types' }, ...PROMO_TYPES].map(t => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTypeFilter(t.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                      typeFilter === t.id
+                        ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
+                        : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Status filter */}
+            <div>
+              <p className="text-xs font-medium text-slate-400 mb-2">Status</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: 'all', label: 'All Statuses' },
+                  { id: 'active', label: 'Active' },
+                  { id: 'disabled', label: 'Disabled' },
+                  { id: 'upcoming', label: 'Upcoming' },
+                  { id: 'expired', label: 'Expired' },
+                  { id: 'pending', label: 'Pending Approval' },
+                  { id: 'rejected', label: 'Rejected' },
+                ].map(s => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setStatusFilter(s.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                      statusFilter === s.id
+                        ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
+                        : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Promotion type legend */}
         <div className="flex flex-wrap items-center gap-2 mb-5">
