@@ -28,7 +28,6 @@ export const MANAGER_NAV_GROUPS = [
     title: 'Menu & stock',
     items: [
       { to: '/manager/menu', label: 'Menu', icon: UtensilsCrossed },
-      { to: '/manager/cafe-tables', label: 'Café tables & QR', icon: Table },
       { to: '/manager/inventory', label: 'Inventory', icon: Package },
       { to: '/manager/purchase-orders', label: 'Purchase Orders', icon: FileText },
       { to: '/manager/goods-receipts', label: 'Goods Receipts', icon: FileCheck },

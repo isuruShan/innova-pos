@@ -128,9 +128,10 @@ router.post('/:id/close', protect, authorize('manager', 'merchant_admin', 'super
     // Create notification for merchant admins if there were adjustments
     if (session.adjustmentCount > 0) {
       const summary = movements.slice(0, 5).map(m => {
+        if (!m.inventoryItemId) return null;
         const sign = m.quantity >= 0 ? '+' : '';
-        return `${m.inventoryItemId?.itemName}: ${sign}${m.quantity} ${m.inventoryItemId?.unit}`;
-      }).join(', ');
+        return `${m.inventoryItemId.itemName}: ${sign}${m.quantity} ${m.inventoryItemId.unit}`;
+      }).filter(Boolean).join(', ');
 
       const moreSummary = movements.length > 5 ? ` and ${movements.length - 5} more` : '';
 

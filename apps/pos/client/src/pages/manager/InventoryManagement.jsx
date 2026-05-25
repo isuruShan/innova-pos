@@ -7,11 +7,13 @@ import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
 import Badge from '../../components/Badge';
+import Toast from '../../components/Toast';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { useStoreContext } from '../../context/StoreContext';
 import { InventoryTableSkeleton } from '../../components/StoreSkeletons';
 import SortableTh from '../../components/SortableTh';
 import { useListSort } from '../../hooks/useListSort';
+import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import InventoryAdjustments from '../../components/inventory/InventoryAdjustments';
 import InventoryMovements from '../../components/inventory/InventoryMovements';
 import ConsumptionReport from '../../components/inventory/ConsumptionReport';
@@ -99,6 +101,7 @@ export default function InventoryManagement() {
   const [customUnit, setCustomUnit] = useState('');
   const qc = useQueryClient();
   const { sort, order, toggleSort, sortParams } = useListSort('name', 'asc');
+  const { toast, showToast, clearToast } = useToast();
 
   const { data: items = [], isPending: invPending } = useQuery({
     queryKey: ['inventory', selectedStoreId, sortParams],
@@ -116,14 +119,30 @@ export default function InventoryManagement() {
 
   const createMutation = useMutation({
     mutationFn: (data) => api.post('/inventory', data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['inventory'] }); closeSlide(); },
-    onError: (e) => setFormError(e.response?.data?.message || 'Failed to save'),
+    onSuccess: () => { 
+      qc.invalidateQueries({ queryKey: ['inventory'] }); 
+      closeSlide(); 
+      showToast('Item added successfully', 'success');
+    },
+    onError: (e) => {
+      const msg = getApiErrorMessage(e, 'Failed to save item');
+      setFormError(msg);
+      showToast(msg, 'error');
+    },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => api.put(`/inventory/${id}`, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['inventory'] }),
-    onError: (e) => setFormError(e.response?.data?.message || 'Failed to save'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['inventory'] });
+      closeSlide();
+      showToast('Item updated successfully', 'success');
+    },
+    onError: (e) => {
+      const msg = getApiErrorMessage(e, 'Failed to update item');
+      setFormError(msg);
+      showToast(msg, 'error');
+    },
   });
 
   const deleteMutation = useMutation({
@@ -508,6 +527,8 @@ export default function InventoryManagement() {
           </div>
         </form>
       </SlideOver>
+      
+      {toast && <Toast message={toast.message} variant={toast.variant} onClose={clearToast} />}
     </div>
   );
 }

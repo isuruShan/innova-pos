@@ -302,7 +302,7 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
   );
 }
 
-function EditReservationModal({ isOpen, onClose, tables, onSubmit, isPending, error, reservation }) {
+function EditReservationModal({ isOpen, onClose, tables, onSubmit, onDelete, isPending, isDeleting, error, reservation }) {
   const [form, setForm] = useState({
     guestName: '',
     guestPhone: '',
@@ -475,21 +475,35 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, isPending, er
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex justify-between gap-3 pt-2">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
+              onClick={() => {
+                if (confirm('Are you sure you want to delete this reservation?')) {
+                  onDelete(reservation._id);
+                }
+              }}
+              disabled={isDeleting}
+              className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/30 disabled:opacity-50"
             >
-              Cancel
+              {isDeleting ? 'Deleting...' : 'Delete'}
             </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="px-4 py-2 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600 disabled:opacity-50"
-            >
-              {isPending ? 'Updating...' : 'Update Reservation'}
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isPending}
+                className="px-4 py-2 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600 disabled:opacity-50"
+              >
+                {isPending ? 'Updating...' : 'Update Reservation'}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -574,6 +588,24 @@ export default function ReservationsPage() {
 
   const handleAction = (id, action) => {
     statusMutation.mutate({ id, action });
+  };
+
+  // Delete reservation
+  const deleteMutation = useMutation({
+    mutationFn: (id) => api.delete(`/reservations/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reservations'] });
+      setShowEditModal(false);
+      setEditingReservation(null);
+    },
+    onError: (err) => {
+      const message = err.response?.data?.message || 'Failed to delete reservation';
+      setEditError(message);
+    },
+  });
+
+  const handleDelete = (id) => {
+    deleteMutation.mutate(id);
   };
 
   const handleEdit = (reservation) => {
@@ -801,7 +833,9 @@ export default function ReservationsPage() {
         tables={tables}
         reservation={editingReservation}
         onSubmit={handleEditSubmit}
+        onDelete={handleDelete}
         isPending={editMutation.isPending}
+        isDeleting={deleteMutation.isPending}
         error={editError}
       />
 

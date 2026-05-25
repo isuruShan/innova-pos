@@ -7,6 +7,8 @@ import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
 import { useAuth } from '../../context/AuthContext';
 import Badge from '../Badge';
+import Toast from '../Toast';
+import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 
 const REASON_OPTIONS = [
   { value: 'count_correction', label: 'Count Correction' },
@@ -23,6 +25,7 @@ export default function InventoryAdjustments() {
   const [closingNotes, setClosingNotes] = useState('');
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const qc = useQueryClient();
+  const { toast, showToast, clearToast } = useToast();
 
   // Fetch active session
   const { data: activeSession, isPending: sessionLoading } = useQuery({
@@ -60,6 +63,10 @@ export default function InventoryAdjustments() {
       qc.invalidateQueries({ queryKey: ['stock-movements'] });
       setShowCloseDialog(false);
       setClosingNotes('');
+      showToast('Session closed successfully', 'success');
+    },
+    onError: (err) => {
+      showToast(getApiErrorMessage(err, 'Failed to close session'), 'error');
     },
   });
 
@@ -239,6 +246,8 @@ export default function InventoryAdjustments() {
           </div>
         </div>
       )}
+      
+      {toast && <Toast message={toast.message} variant={toast.variant} onClose={clearToast} />}
     </div>
   );
 }
