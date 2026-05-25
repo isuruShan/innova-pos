@@ -38,6 +38,7 @@ import AccountingPage from './pages/admin/AccountingPage';
 import CustomersAdminPage from './pages/admin/CustomersAdminPage';
 import PromotionsAdminPage from './pages/admin/PromotionsAdminPage';
 import NotificationsPage from './pages/admin/NotificationsPage';
+import ReportsPortal from './pages/admin/ReportsPortal';
 const PrivateRoute = ({ children, roles }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
@@ -134,6 +135,11 @@ export default function App() {
           <Route path="/analytics" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><AnalyticsPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/reports" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><ReportsPortal /></Layout>
             </PrivateRoute>
           } />
           <Route path="/branding" element={

@@ -38,6 +38,7 @@ const ADMIN_NAV_GROUPS = [
     items: [
       { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
       { label: 'Analytics', icon: BarChart3, to: '/analytics' },
+      { label: 'Reports', icon: ClipboardList, to: '/reports' },
       { label: 'Notifications', icon: Bell, to: '/notifications' },
       { label: 'Branding & Settings', icon: Palette, to: '/branding' },
       { 
