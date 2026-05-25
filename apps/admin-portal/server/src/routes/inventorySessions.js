@@ -3,11 +3,10 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const { protect, authorize } = require('../middleware/auth');
 
-// Import POS models (assuming they're accessible)
-// If not, we'll need to connect to the POS database
-const InventorySession = require('../../../pos/server/src/models/InventorySession');
-const StockMovement = require('../../../pos/server/src/models/StockMovement');
-const Inventory = require('../../../pos/server/src/models/Inventory');
+// Import models from admin-portal (same collections as POS)
+const InventorySession = require('../models/InventorySession');
+const StockMovement = require('../models/StockMovement');
+const Inventory = require('../models/Inventory');
 
 /**
  * GET /api/inventory-sessions
