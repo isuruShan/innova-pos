@@ -12,7 +12,7 @@ const Inventory = require('../models/Inventory');
  * GET /api/inventory-sessions
  * List all inventory adjustment sessions (merchant admin only)
  */
-router.get('/', protect, authorize(['merchant_admin']), async (req, res) => {
+router.get('/', protect, authorize('merchant_admin'), async (req, res) => {
   try {
     const { tenantId, user } = req;
     const { storeId, status, userId, from, to } = req.query;
@@ -45,7 +45,7 @@ router.get('/', protect, authorize(['merchant_admin']), async (req, res) => {
  * GET /api/inventory-sessions/:id
  * Get single session with all movements
  */
-router.get('/:id', protect, authorize(['merchant_admin']), async (req, res) => {
+router.get('/:id', protect, authorize('merchant_admin'), async (req, res) => {
   try {
     const { tenantId } = req;
 
@@ -84,7 +84,7 @@ router.get('/:id', protect, authorize(['merchant_admin']), async (req, res) => {
  * POST /api/inventory-sessions/:id/review
  * Mark session as reviewed
  */
-router.post('/:id/review', protect, authorize(['merchant_admin']), async (req, res) => {
+router.post('/:id/review', protect, authorize('merchant_admin'), async (req, res) => {
   try {
     const { tenantId, user } = req;
 
@@ -120,7 +120,7 @@ router.post('/:id/review', protect, authorize(['merchant_admin']), async (req, r
  * GET /api/inventory-sessions/stats/summary
  * Get summary statistics for inventory sessions
  */
-router.get('/stats/summary', protect, authorize(['merchant_admin']), async (req, res) => {
+router.get('/stats/summary', protect, authorize('merchant_admin'), async (req, res) => {
   try {
     const { tenantId } = req;
     const { storeId, from, to } = req.query;

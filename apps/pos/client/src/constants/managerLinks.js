@@ -49,7 +49,6 @@ export const MANAGER_NAV_GROUPS = [
     title: 'Sales',
     items: [
       { to: '/manager/orders', label: 'Orders', icon: ClipboardList },
-      { to: '/manager/cashier-sessions', label: 'Cash sessions', icon: Wallet },
     ],
   },
   {

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Plus, Edit2, Trash2, Package, Check, X, AlertTriangle, Truck,
+  Plus, Edit2, Trash2, Package, Check, X, AlertTriangle, Truck, Search,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -17,6 +17,22 @@ import InventoryMovements from '../../components/inventory/InventoryMovements';
 import ConsumptionReport from '../../components/inventory/ConsumptionReport';
 
 const EMPTY_FORM = { itemName: '', unit: 'pcs', quantity: '', minThreshold: '', suppliers: [] };
+
+const PREDEFINED_UNITS = [
+  { value: 'pcs', label: 'Pieces (pcs)' },
+  { value: 'kg', label: 'Kilogram (kg)' },
+  { value: 'g', label: 'Gram (g)' },
+  { value: 'L', label: 'Liter (L)' },
+  { value: 'mL', label: 'Milliliter (mL)' },
+  { value: 'oz', label: 'Ounce (oz)' },
+  { value: 'lb', label: 'Pound (lb)' },
+  { value: 'box', label: 'Box' },
+  { value: 'bag', label: 'Bag' },
+  { value: 'bottle', label: 'Bottle' },
+  { value: 'can', label: 'Can' },
+  { value: 'pack', label: 'Pack' },
+  { value: 'other', label: 'Other (custom)' },
+];
 
 const getStockStatus = (qty, min) => {
   if (qty <= 0) return { label: 'Out of Stock', variant: 'critical' };
@@ -79,6 +95,8 @@ export default function InventoryManagement() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
   const [filter, setFilter] = useState('all');
+  const [supplierSearch, setSupplierSearch] = useState('');
+  const [customUnit, setCustomUnit] = useState('');
   const qc = useQueryClient();
   const { sort, order, toggleSort, sortParams } = useListSort('name', 'asc');
 
@@ -113,20 +131,37 @@ export default function InventoryManagement() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['inventory'] }),
   });
 
-  const openAdd = () => { setEditing(null); setForm(EMPTY_FORM); setFormError(''); setSlideOpen(true); };
+  const openAdd = () => { 
+    setEditing(null); 
+    setForm(EMPTY_FORM); 
+    setFormError(''); 
+    setSlideOpen(true); 
+    setSupplierSearch(''); 
+    setCustomUnit(''); 
+  };
   const openEdit = (item) => {
     setEditing(item);
+    const unitExists = PREDEFINED_UNITS.some(u => u.value === item.unit);
     setForm({
       itemName: item.itemName,
-      unit: item.unit,
+      unit: unitExists ? item.unit : 'other',
       quantity: item.quantity,
       minThreshold: item.minThreshold,
       suppliers: item.suppliers?.map(s => s._id) || [],
     });
+    setCustomUnit(unitExists ? '' : item.unit);
     setFormError('');
     setSlideOpen(true);
+    setSupplierSearch('');
   };
-  const closeSlide = () => { setSlideOpen(false); setEditing(null); setForm(EMPTY_FORM); setFormError(''); };
+  const closeSlide = () => { 
+    setSlideOpen(false); 
+    setEditing(null); 
+    setForm(EMPTY_FORM); 
+    setFormError(''); 
+    setSupplierSearch(''); 
+    setCustomUnit(''); 
+  };
 
   const toggleSupplier = (id) => {
     setForm(f => ({
@@ -140,8 +175,11 @@ export default function InventoryManagement() {
   const handleSubmit = (e) => {
     e.preventDefault();
     setFormError('');
+    const finalUnit = form.unit === 'other' ? customUnit.trim() : form.unit;
+    if (!finalUnit) return setFormError('Please enter a custom unit');
     const payload = {
       ...form,
+      unit: finalUnit,
       quantity: parseFloat(form.quantity),
       minThreshold: parseFloat(form.minThreshold),
     };
@@ -150,6 +188,19 @@ export default function InventoryManagement() {
     if (isNaN(payload.minThreshold) || payload.minThreshold < 0) return setFormError('Threshold must be 0 or more');
     if (editing) updateMutation.mutate({ id: editing._id, data: payload });
     else createMutation.mutate(payload);
+  };
+
+  const filteredSuppliers = useMemo(() => {
+    if (!supplierSearch.trim()) return suppliers;
+    const search = supplierSearch.toLowerCase();
+    return suppliers.filter(s => 
+      s.name.toLowerCase().includes(search) || 
+      s.contact?.toLowerCase().includes(search)
+    );
+  }, [suppliers, supplierSearch]);
+
+  const removeSupplier = (id) => {
+    setForm(f => ({ ...f, suppliers: f.suppliers.filter(s => s !== id) }));
   };
 
   const filtered = items.filter(item => {
@@ -327,10 +378,24 @@ export default function InventoryManagement() {
 
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">Unit *</label>
-            <input type="text" value={form.unit}
+            <select value={form.unit}
               onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
-              placeholder="e.g. pcs, kg, L" required
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
+              required
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+              {PREDEFINED_UNITS.map(u => (
+                <option key={u.value} value={u.value}>{u.label}</option>
+              ))}
+            </select>
+            {form.unit === 'other' && (
+              <input
+                type="text"
+                value={customUnit}
+                onChange={e => setCustomUnit(e.target.value)}
+                placeholder="Enter custom unit (e.g. tray, dozen)"
+                required
+                className="mt-2 w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+              />
+            )}
           </div>
 
           <div>
@@ -360,26 +425,67 @@ export default function InventoryManagement() {
                 No suppliers added yet. Add suppliers from the Suppliers page first.
               </p>
             ) : (
-              <div className="bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl p-3 flex flex-wrap gap-2">
-                {suppliers.map(s => {
-                  const selected = form.suppliers.includes(s._id);
-                  return (
-                    <button
-                      key={s._id}
-                      type="button"
-                      onClick={() => toggleSupplier(s._id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition ${
-                        selected
-                          ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
-                          : 'text-slate-400 border-slate-700 hover:border-slate-500 hover:text-[var(--pos-text-primary)]'
-                      }`}
-                    >
-                      {selected && <Check size={11} />}
-                      <Truck size={11} />
-                      {s.name}
-                    </button>
-                  );
-                })}
+              <div className="space-y-2">
+                {/* Selected suppliers as chips */}
+                {form.suppliers.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {form.suppliers.map(sId => {
+                      const supplier = suppliers.find(s => s._id === sId);
+                      if (!supplier) return null;
+                      return (
+                        <span
+                          key={sId}
+                          className="inline-flex items-center gap-1.5 bg-purple-500/20 text-purple-300 border border-purple-500/40 rounded-full px-3 py-1.5 text-sm font-medium"
+                        >
+                          <Truck size={12} />
+                          {supplier.name}
+                          <button
+                            type="button"
+                            onClick={() => removeSupplier(sId)}
+                            className="ml-1 text-purple-300 hover:text-purple-100 transition"
+                          >
+                            <X size={14} />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+                
+                {/* Searchable dropdown */}
+                <div className="relative">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                    <input
+                      type="text"
+                      value={supplierSearch}
+                      onChange={e => setSupplierSearch(e.target.value)}
+                      placeholder="Search suppliers to add..."
+                      className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+                    />
+                  </div>
+                  {supplierSearch && filteredSuppliers.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                      {filteredSuppliers
+                        .filter(s => !form.suppliers.includes(s._id))
+                        .map(s => (
+                          <button
+                            key={s._id}
+                            type="button"
+                            onClick={() => {
+                              setForm(f => ({ ...f, suppliers: [...f.suppliers, s._id] }));
+                              setSupplierSearch('');
+                            }}
+                            className="w-full text-left px-4 py-2.5 hover:bg-slate-700/50 transition flex items-center gap-2 text-sm text-[var(--pos-text-primary)]"
+                          >
+                            <Truck size={14} className="text-purple-400" />
+                            <span>{s.name}</span>
+                            {s.contact && <span className="text-slate-500 text-xs ml-auto">{s.contact}</span>}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

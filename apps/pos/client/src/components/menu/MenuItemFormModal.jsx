@@ -317,6 +317,8 @@ function VariantImagePicker({ images, onChange }) {
 
 function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, priceLabel }) {
   const [newValueInput, setNewValueInput] = useState({});
+  const [customVariantType, setCustomVariantType] = useState('');
+  const [showCustomTypeInput, setShowCustomTypeInput] = useState(false);
 
   const hasGroup = (name) => form.variantOptions.some(
     (opt) => opt.name.toLowerCase() === name.toLowerCase(),
@@ -331,6 +333,11 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
     const newOptions = [...form.variantOptions, { name: criteriaName, values: initialValues }];
     const nextVariants = rebuildVariants(newOptions, form.variants);
     setForm((f) => ({ ...f, variantOptions: newOptions, variants: nextVariants }));
+    
+    // If it's a custom type, save it
+    if (!VARIANT_CRITERIA.includes(criteriaName) && !matched) {
+      saveCriteriaMutation.mutate({ name: criteriaName, values: [] });
+    }
   };
 
   const removeOptionGroup = (idx) => {
@@ -385,13 +392,27 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
     (o) => !VARIANT_CRITERIA.includes(o.name),
   );
   const showMatrix = sizes.length > 0 && flavors.length > 0 && legacyGroups.length === 0;
+  
+  // Get all available criteria (system + saved custom)
+  const allAvailableCriteria = [
+    ...VARIANT_CRITERIA,
+    ...savedCriteria.map(sc => sc.name).filter(name => !VARIANT_CRITERIA.includes(name))
+  ];
+
+  const addCustomVariantType = () => {
+    const trimmed = customVariantType.trim();
+    if (!trimmed) return;
+    addOptionGroup(trimmed);
+    setCustomVariantType('');
+    setShowCustomTypeInput(false);
+  };
 
   return (
     <div className="space-y-4 bg-slate-900/40 p-4 border border-slate-700/60 rounded-2xl">
       <h3 className="text-sm font-semibold text-amber-400">Variant options</h3>
 
       <div className="flex flex-wrap gap-2">
-        {VARIANT_CRITERIA.filter((c) => !hasGroup(c)).map((c) => (
+        {allAvailableCriteria.filter((c) => !hasGroup(c)).map((c) => (
           <button
             key={c}
             type="button"
@@ -401,24 +422,73 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
             + Add {c}
           </button>
         ))}
+        
+        {/* Custom variant type button/input */}
+        {!showCustomTypeInput ? (
+          <button
+            type="button"
+            onClick={() => setShowCustomTypeInput(true)}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-dashed border-amber-500/40 text-amber-400 hover:border-amber-500 hover:bg-amber-500/5 transition"
+          >
+            + Custom Type...
+          </button>
+        ) : (
+          <div className="flex gap-1">
+            <input
+              type="text"
+              value={customVariantType}
+              onChange={(e) => setCustomVariantType(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addCustomVariantType();
+                }
+                if (e.key === 'Escape') {
+                  setShowCustomTypeInput(false);
+                  setCustomVariantType('');
+                }
+              }}
+              placeholder="Type name (e.g. Topping, Style)"
+              autoFocus
+              className="bg-slate-900 border border-amber-500/50 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 w-40"
+            />
+            <button
+              type="button"
+              onClick={addCustomVariantType}
+              disabled={!customVariantType.trim()}
+              className="bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white text-xs px-3 py-1.5 rounded-lg transition"
+            >
+              Add
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowCustomTypeInput(false);
+                setCustomVariantType('');
+              }}
+              className="text-slate-500 hover:text-slate-300 text-xs px-2"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="space-y-3">
         {form.variantOptions.map((group, groupIdx) => {
-          const isLegacy = !VARIANT_CRITERIA.includes(group.name);
+          const isSystemType = VARIANT_CRITERIA.includes(group.name);
+          const isCustomType = !isSystemType;
           return (
             <div key={groupIdx} className="bg-[var(--pos-surface-inset)] rounded-xl p-3 border border-slate-800 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-slate-200">
                   {group.name}
-                  {isLegacy && <span className="ml-2 text-[10px] text-slate-500 font-normal">(legacy)</span>}
+                  {isCustomType && <span className="ml-2 text-[10px] text-amber-400 font-normal">(custom)</span>}
                 </span>
-                {!isLegacy && (
-                  <button type="button" onClick={() => removeOptionGroup(groupIdx)}
-                    className="text-xs text-red-400 hover:text-red-300 font-medium">
-                    Remove
-                  </button>
-                )}
+                <button type="button" onClick={() => removeOptionGroup(groupIdx)}
+                  className="text-xs text-red-400 hover:text-red-300 font-medium">
+                  Remove
+                </button>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {group.values.map((val, valIdx) => (
