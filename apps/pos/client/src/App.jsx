@@ -19,6 +19,8 @@ import KitchenDisplay from './pages/kitchen/KitchenDisplay';
 import Dashboard from './pages/manager/Dashboard';
 import MenuManagement from './pages/manager/MenuManagement';
 import InventoryManagement from './pages/manager/InventoryManagement';
+import PurchaseOrders from './pages/manager/PurchaseOrders';
+import GoodsReceipts from './pages/manager/GoodsReceipts';
 import SupplierManagement from './pages/manager/SupplierManagement';
 import OrdersView from './pages/manager/OrdersView';
 import Promotions from './pages/manager/Promotions';
@@ -173,6 +175,16 @@ export default function App() {
                 <Route path="/manager/inventory" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
                     <InventoryManagement />
+                  </RoleRoute>
+                } />
+                <Route path="/manager/purchase-orders" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <PurchaseOrders />
+                  </RoleRoute>
+                } />
+                <Route path="/manager/goods-receipts" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <GoodsReceipts />
                   </RoleRoute>
                 } />
                 <Route path="/manager/suppliers" element={

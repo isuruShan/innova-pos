@@ -30,7 +30,7 @@ export default function ReportsPortal() {
   // Date Range State (defaults to last 7 days)
   const defaultRange = useMemo(() => {
     const end = new Date();
-    const start = addDays(end, -6);
+    const start = addDays(end, -29);
     return { from: toYMD(start), to: toYMD(end) };
   }, []);
 

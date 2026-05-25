@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getPosUrl } from '@innovapos/app-urls';
 import {
   LayoutDashboard, Users, Palette, CreditCard, Building2,
-  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3, Sparkles, Landmark,
+  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3, Sparkles, Landmark, Package,
 } from 'lucide-react';
 import api from '../../api/axios';
 import NotificationBell from '../NotificationBell';
@@ -71,6 +71,7 @@ const ADMIN_NAV_GROUPS = [
           { label: 'Pending Stores', to: '/stores/pending' },
         ],
       },
+      { label: 'Inventory Sessions', icon: Package, to: '/inventory-sessions' },
     ],
   },
   {

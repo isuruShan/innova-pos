@@ -111,7 +111,9 @@ app.use('/api/promotions', require('./routes/promotions'));
 app.use('/api/menu', require('./routes/menu'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/reports/extended', require('./routes/reportsExtended'));
 app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/inventory-sessions', require('./routes/inventorySessions'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/accounting', require('./routes/accounting'));
 

@@ -14,6 +14,7 @@ import SortableTh from '../../components/SortableTh';
 import { useListSort } from '../../hooks/useListSort';
 import InventoryAdjustments from '../../components/inventory/InventoryAdjustments';
 import InventoryMovements from '../../components/inventory/InventoryMovements';
+import ConsumptionReport from '../../components/inventory/ConsumptionReport';
 
 const EMPTY_FORM = { itemName: '', unit: 'pcs', quantity: '', minThreshold: '', suppliers: [] };
 
@@ -179,6 +180,7 @@ export default function InventoryManagement() {
             <p className="text-slate-500 text-sm mt-1">
               {activeTab === 'stock' && `${items.length} items tracked`}
               {activeTab === 'adjustments' && 'Make manual stock adjustments'}
+              {activeTab === 'consumption' && 'View theoretical vs actual usage'}
               {activeTab === 'movements' && 'View stock movement history'}
             </p>
           </div>
@@ -196,6 +198,7 @@ export default function InventoryManagement() {
           {[
             { key: 'stock', label: 'Stock Levels' },
             { key: 'adjustments', label: 'Adjustments' },
+            { key: 'consumption', label: 'Consumption' },
             { key: 'movements', label: 'Movements' },
           ].map(tab => (
             <button
@@ -308,6 +311,7 @@ export default function InventoryManagement() {
         )}
 
         {activeTab === 'adjustments' && <InventoryAdjustments />}
+        {activeTab === 'consumption' && <ConsumptionReport />}
         {activeTab === 'movements' && <InventoryMovements />}
       </div>
 

@@ -38,6 +38,7 @@ import AccountingPage from './pages/admin/AccountingPage';
 import CustomersAdminPage from './pages/admin/CustomersAdminPage';
 import PromotionsAdminPage from './pages/admin/PromotionsAdminPage';
 import NotificationsPage from './pages/admin/NotificationsPage';
+import SessionReviewPage from './pages/admin/SessionReviewPage';
 import ReportsPortal from './pages/admin/ReportsPortal';
 const PrivateRoute = ({ children, roles }) => {
   const { user } = useAuth();
@@ -201,6 +202,11 @@ export default function App() {
           <Route path="/notifications" element={
             <PrivateRoute roles={['merchant_admin', 'superadmin']}>
               <Layout><NotificationsPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/inventory-sessions" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><SessionReviewPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/profile" element={
