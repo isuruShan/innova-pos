@@ -2,13 +2,14 @@ import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Tag, Check, X,
-  Search, GripVertical, AlertTriangle,
+  Search, GripVertical, AlertTriangle, Download, Upload,
 } from 'lucide-react';
 import api from '../api/axios';
 import CenteredModal from './CenteredModal';
 import ConfirmDialog from './ConfirmDialog';
 import Toast from './Toast';
 import SortableTh from './SortableTh';
+import ImportModal from './ImportModal';
 import { useListSort } from '../hooks/useListSort';
 import { useDragReorder, reorderByDrag } from '../hooks/useDragReorder';
 import { useToast, getApiErrorMessage } from '../hooks/useToast';
@@ -16,6 +17,11 @@ import {
   PLACEHOLDER_CATEGORY_NAME,
   isHiddenFromCategoryManager,
 } from '../constants/categories';
+import {
+  exportCategoriesToCSV,
+  getCategoryImportFields,
+  validateCategoryRow
+} from '../utils/csvExportImport';
 
 const CATEGORY_NAME_MAX = 100;
 
@@ -61,6 +67,7 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
   const [editName, setEditName] = useState('');
   const [validationError, setValidationError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const { sort, order, toggleSort } = useListSort('sortOrder', 'asc');
 
   const catKey = categoriesQueryKey(selectedStoreId);
@@ -276,6 +283,49 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
 
   const deleteProductCount = deleteTarget ? (productCounts[deleteTarget.name] || 0) : 0;
 
+  // Export handler
+  const handleExportCategories = useCallback(() => {
+    exportCategoriesToCSV(manageableCategories);
+    showToast(`Exported ${manageableCategories.length} categories`, 'success');
+  }, [manageableCategories, showToast]);
+
+  // Import handler
+  const handleImportCategories = useCallback(async (csvData, mapping, onProgress) => {
+    const errors = [];
+    let successCount = 0;
+    
+    for (let i = 0; i < csvData.length; i++) {
+      const row = csvData[i];
+      const { category, errors: rowErrors } = validateCategoryRow(row, mapping, i);
+      
+      if (rowErrors.length > 0) {
+        errors.push({ rowIndex: i, message: rowErrors.join('; ') });
+        onProgress({ total: csvData.length, current: i + 1, errors });
+        continue;
+      }
+      
+      try {
+        await api.post('/categories', category);
+        successCount++;
+      } catch (error) {
+        errors.push({ 
+          rowIndex: i, 
+          message: error.response?.data?.message || error.message 
+        });
+      }
+      
+      onProgress({ total: csvData.length, current: i + 1, errors });
+    }
+    
+    await qc.invalidateQueries({ queryKey: catKey });
+    
+    return {
+      total: csvData.length,
+      success: successCount,
+      errors
+    };
+  }, [catKey, qc]);
+
   return (
     <>
       <CenteredModal
@@ -286,6 +336,28 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
         ariaLabel="Manage categories"
       >
         <div className="space-y-4">
+          {/* Export/Import Buttons */}
+          <div className="flex items-center gap-2 pb-3 border-b border-slate-700">
+            <button
+              type="button"
+              onClick={handleExportCategories}
+              className="flex items-center gap-2 text-sm bg-slate-700 hover:bg-slate-600 text-green-400 px-3 py-1.5 rounded-lg transition"
+            >
+              <Download size={14} />
+              Export
+            </button>
+            <button
+              type="button"
+              onClick={() => setImportModalOpen(true)}
+              className="flex items-center gap-2 text-sm bg-slate-700 hover:bg-slate-600 text-blue-400 px-3 py-1.5 rounded-lg transition"
+            >
+              <Upload size={14} />
+              Import
+            </button>
+            <div className="flex-1" />
+            <p className="text-xs text-slate-500">{manageableCategories.length} categories</p>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">New Category</label>
             <div className="flex gap-2">
@@ -452,6 +524,15 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
           </div>
         </div>
       </CenteredModal>
+
+      <ImportModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        title="Import Categories"
+        fields={getCategoryImportFields()}
+        onImport={handleImportCategories}
+        templateName="categories"
+      />
 
       <ConfirmDialog
         open={!!deleteTarget}

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Link2,
   ChevronDown, ChevronUp, Tag, GripVertical, Search, LayoutGrid, List,
+  Download, Upload,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -11,6 +12,7 @@ import ConfirmDialog from '../../components/ConfirmDialog';
 import Toast from '../../components/Toast';
 import MenuItemFormModal from '../../components/menu/MenuItemFormModal';
 import MenuItemTable from '../../components/menu/MenuItemTable';
+import ImportModal from '../../components/ImportModal';
 import { COMBO_CATEGORY_NAME, isSelectableMenuCategory } from '../../constants/categories';
 import { useDragReorder, reorderByDrag } from '../../hooks/useDragReorder';
 import { useListSort } from '../../hooks/useListSort';
@@ -19,6 +21,11 @@ import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { formatCurrency, getItemDisplayPrice } from '../../utils/format';
 import { compareSortValues, buildCategorySortMap, scopeMenuItemsByCategory, sortMenuItemsForDisplay } from '../../utils/menuItemSearch';
 import { useStoreContext } from '../../context/StoreContext';
+import { 
+  exportMenuItemsToCSV, 
+  getMenuItemImportFields, 
+  validateMenuItemRow 
+} from '../../utils/csvExportImport';
 import { MenuGridSkeleton } from '../../components/StoreSkeletons';
 
 const EMPTY_FORM = {
@@ -78,6 +85,7 @@ export default function MenuManagement() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [menuSearch, setMenuSearch] = useState('');
   const [viewMode, setViewMode] = useState('table');
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
   const { sort, order, toggleSort } = useListSort('sortOrder', 'asc');
@@ -387,6 +395,50 @@ export default function MenuManagement() {
   const isPending = createMutation.isPending || updateMutation.isPending;
   const filterTabs = ['All', ...categoryNames];
 
+  // Export handler
+  const handleExportMenuItems = useCallback(() => {
+    const itemsToExport = activeCategory === 'All' ? items : items.filter(i => i.category === activeCategory);
+    exportMenuItemsToCSV(itemsToExport);
+    showToast(`Exported ${itemsToExport.length} menu items`, 'success');
+  }, [items, activeCategory, showToast]);
+
+  // Import handler
+  const handleImportMenuItems = useCallback(async (csvData, mapping, onProgress) => {
+    const errors = [];
+    let successCount = 0;
+    
+    for (let i = 0; i < csvData.length; i++) {
+      const row = csvData[i];
+      const { item, errors: rowErrors } = validateMenuItemRow(row, mapping, i);
+      
+      if (rowErrors.length > 0) {
+        errors.push({ rowIndex: i, message: rowErrors.join('; ') });
+        onProgress({ total: csvData.length, current: i + 1, errors });
+        continue;
+      }
+      
+      try {
+        await api.post('/menu', item);
+        successCount++;
+      } catch (error) {
+        errors.push({ 
+          rowIndex: i, 
+          message: error.response?.data?.message || error.message 
+        });
+      }
+      
+      onProgress({ total: csvData.length, current: i + 1, errors });
+    }
+    
+    await qc.invalidateQueries({ queryKey: menuKey });
+    
+    return {
+      total: csvData.length,
+      success: successCount,
+      errors
+    };
+  }, [menuKey, qc]);
+
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
       <Navbar groups={MANAGER_NAV_GROUPS} />
@@ -398,6 +450,16 @@ export default function MenuManagement() {
             <p className="text-slate-500 text-sm mt-1">{items.length} items · {items.filter((i) => i.isCombo).length} combos</p>
           </div>
           <div className="flex items-center gap-2">
+            <button type="button" onClick={handleExportMenuItems}
+              className="flex items-center gap-2 border border-slate-600 hover:border-green-500 text-slate-300 hover:text-green-400 font-medium px-4 py-2.5 rounded-xl transition text-sm">
+              <Download size={15} />
+              Export
+            </button>
+            <button type="button" onClick={() => setImportModalOpen(true)}
+              className="flex items-center gap-2 border border-slate-600 hover:border-blue-500 text-slate-300 hover:text-blue-400 font-medium px-4 py-2.5 rounded-xl transition text-sm">
+              <Upload size={15} />
+              Import
+            </button>
             <button type="button" onClick={() => setCatModalOpen(true)}
               className="flex items-center gap-2 border border-slate-600 hover:border-amber-500 text-slate-300 hover:text-amber-400 font-medium px-4 py-2.5 rounded-xl transition text-sm">
               <Tag size={15} />
@@ -625,6 +687,15 @@ export default function MenuManagement() {
           </div>
         )}
       </ConfirmDialog>
+
+      <ImportModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        title="Import Menu Items"
+        fields={getMenuItemImportFields()}
+        onImport={handleImportMenuItems}
+        templateName="menu_items"
+      />
 
       <Toast toast={toast} onDismiss={clearToast} />
     </div>

@@ -8,6 +8,7 @@ import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
+import { Link } from 'react-router-dom';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { getQrOrderWebOrigin } from '@innovapos/app-urls';
 
@@ -984,6 +985,13 @@ export default function FloorPlanEditorPage() {
               Sync Tables
             </button>
 
+            <Link
+              to="/manager/floor-plan"
+              className="px-4 py-2 rounded-lg bg-slate-700 text-slate-350 hover:bg-slate-600 font-semibold text-sm flex items-center gap-2 transition border border-slate-600"
+            >
+              Exit Editor
+            </Link>
+
             <button
               onClick={handleSave}
               disabled={!isDirty || saveMutation.isPending}
@@ -1005,10 +1013,10 @@ export default function FloorPlanEditorPage() {
                 ref={canvasRef}
                 className={`relative transition-all ${isDragOver ? 'ring-2 ring-amber-400 ring-inset bg-amber-500/5' : ''}`}
                 style={{
-                  width: `${(plan.gridWidth || 20) * 50 * zoom}px`,
-                  height: `${(plan.gridHeight || 15) * 50 * zoom}px`,
-                  minWidth: '600px',
-                  minHeight: '400px',
+                  width: '100%',
+                  height: '100%',
+                  minWidth: `${(plan.gridWidth || 20) * 50 * zoom}px`,
+                  minHeight: `${(plan.gridHeight || 15) * 50 * zoom}px`,
                   backgroundImage: showGrid
                     ? 'linear-gradient(to right, var(--pos-grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--pos-grid-line) 1px, transparent 1px)'
                     : 'none',

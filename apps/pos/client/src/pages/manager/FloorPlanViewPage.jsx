@@ -1,11 +1,13 @@
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Users, Clock, AlertCircle, Utensils, Edit3 } from 'lucide-react';
+import { Users, Clock, AlertCircle, Utensils, Edit3, List, X, Edit2, QrCode } from 'lucide-react';
 import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
+import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
+import { getQrOrderWebOrigin } from '@innovapos/app-urls';
 
 const STATUS_STYLES = {
   available: {
@@ -88,9 +90,139 @@ function Zone({ zone }) {
   );
 }
 
+function TableEditModal({ isOpen, onClose, table, qrOrderEnabled, tenantId, storeId, onSave }) {
+  const [label, setLabel] = useState('');
+  const [capacity, setCapacity] = useState(4);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && table) {
+      setLabel(table.label || '');
+      setCapacity(table.capacity || 4);
+      setError('');
+    }
+  }, [isOpen, table]);
+
+  const qrUrl = qrOrderEnabled && table?._id 
+    ? `${getQrOrderWebOrigin()}/${tenantId}/${storeId}/${table._id}` 
+    : null;
+  const qrSrc = qrUrl 
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}` 
+    : null;
+
+  const handleSubmit = async () => {
+    if (!label.trim() || label.length > 20) {
+      return setError('Table name required (max 20 characters)');
+    }
+    if (capacity < 1 || capacity > 20) {
+      return setError('Capacity must be 1-20');
+    }
+    setSaving(true);
+    try {
+      await onSave({ label: label.trim(), capacity });
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to save');
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-[var(--pos-panel)] rounded-2xl border border-slate-700 max-w-md w-full p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-[var(--pos-text-primary)]">Edit Table</h3>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm text-slate-400 block mb-1.5">Table Name *</label>
+            <input
+              type="text"
+              maxLength={20}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+            <p className="text-xs text-slate-500 mt-1">{label.length}/20 characters</p>
+          </div>
+
+          <div>
+            <label className="text-sm text-slate-400 block mb-1.5">Capacity *</label>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={capacity}
+              onChange={(e) => setCapacity(parseInt(e.target.value) || 1)}
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
+
+          {qrOrderEnabled && qrSrc ? (
+            <div className="border border-slate-700 rounded-lg p-4 bg-[var(--pos-surface-inset)]">
+              <p className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+                <QrCode size={16} /> QR Code for Guest Ordering
+              </p>
+              <div className="bg-white p-2 rounded-lg inline-block">
+                <img src={qrSrc} alt="QR Code" width={200} height={200} />
+              </div>
+              <p className="text-xs text-slate-500 mt-2 break-all font-mono">{qrUrl}</p>
+            </div>
+          ) : (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+              <p className="text-sm font-semibold text-amber-400 mb-1.5 flex items-center gap-2">
+                <QrCode size={16} /> QR Ordering Not Enabled
+              </p>
+              <p className="text-xs text-slate-400">
+                Enable QR ordering in the admin portal (Subscriptions → Add-ons) to generate QR codes that let guests order directly from their phones.
+              </p>
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={onClose}
+              disabled={saving}
+              className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium px-4 py-2.5 rounded-lg transition text-sm disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={saving}
+              className="flex-1 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-4 py-2.5 rounded-lg transition text-sm disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FloorPlanViewPage() {
   const { selectedStoreId, isStoreReady, stores } = useStoreContext();
   const selectedStore = stores.find((s) => String(s._id) === String(selectedStoreId));
+  const qc = useQueryClient();
+  const { user } = useAuth();
+
+  const [showTableList, setShowTableList] = useState(false);
+  const [editingTableId, setEditingTableId] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   // Fetch floor plan
   const { data: floorPlan, isLoading } = useQuery({
@@ -163,13 +295,22 @@ export default function FloorPlanViewPage() {
             <Utensils size={24} className="text-amber-400" />
             Floor Plan
           </h1>
-          <Link
-            to="/manager/floor-plan/edit"
-            className="px-4 py-2 rounded-lg bg-amber-500 text-white font-semibold flex items-center gap-2 hover:bg-amber-600"
-          >
-            <Edit3 size={18} />
-            Edit Layout
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowTableList(!showTableList)}
+              className="px-4 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 font-semibold text-sm flex items-center gap-2 transition"
+            >
+              <List size={18} />
+              Tables List
+            </button>
+            <Link
+              to="/manager/floor-plan/edit"
+              className="px-4 py-2 rounded-lg bg-amber-500 text-white font-semibold flex items-center gap-2 hover:bg-amber-600"
+            >
+              <Edit3 size={18} />
+              Edit Layout
+            </Link>
+          </div>
         </div>
 
         {/* Stats */}
@@ -212,10 +353,10 @@ export default function FloorPlanViewPage() {
             </div>
           ) : floorPlan ? (
             <div
-              className="relative mx-auto"
+              className="relative w-full h-full"
               style={{
-                width: `${floorPlan.gridWidth * 50}px`,
-                height: `${floorPlan.gridHeight * 50}px`,
+                minWidth: `${floorPlan.gridWidth * 50}px`,
+                minHeight: `${floorPlan.gridHeight * 50}px`,
                 backgroundImage:
                   'linear-gradient(to right, var(--pos-grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--pos-grid-line) 1px, transparent 1px)',
                 backgroundSize: '50px 50px',
@@ -243,6 +384,95 @@ export default function FloorPlanViewPage() {
           )}
         </div>
       </div>
+
+      {/* Table List Sidebar */}
+      {showTableList && (
+        <div className="fixed right-0 top-0 bottom-0 w-80 bg-[var(--pos-panel)] border-l border-slate-700 shadow-2xl z-40 overflow-y-auto">
+          <div className="p-4 border-b border-slate-700 flex justify-between items-center sticky top-0 bg-[var(--pos-panel)] z-10">
+            <h3 className="font-bold text-[var(--pos-text-primary)] flex items-center gap-2">
+              <List size={18} />
+              All Tables ({tables.length})
+            </h3>
+            <button 
+              onClick={() => setShowTableList(false)} 
+              className="text-slate-500 hover:text-slate-300 transition p-1 rounded-lg hover:bg-slate-700"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <div className="p-4 space-y-2">
+            {tables.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-slate-500 text-sm">No tables created yet.</p>
+                <p className="text-slate-600 text-xs mt-1">Add tables from the Café Tables page.</p>
+              </div>
+            ) : (
+              tables.map((table) => {
+                const onPlan = floorPlan?.tables?.some(t => String(t.tableId) === String(table._id));
+                return (
+                  <div
+                    key={table._id}
+                    className="bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg p-3 hover:border-amber-500/50 transition cursor-pointer group"
+                    onClick={() => setEditingTableId(table._id)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-[var(--pos-text-primary)]">{table.label}</span>
+                          {onPlan && (
+                            <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded border border-green-500/30">
+                              On Plan
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <Users size={12} />
+                            {table.capacity || 4}
+                          </span>
+                          <span>•</span>
+                          <span className={table.active ? 'text-green-400' : 'text-slate-600'}>
+                            {table.active ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                      </div>
+                      <Edit3 size={14} className="text-slate-500 group-hover:text-amber-400 transition" />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Table Edit Modal */}
+      <TableEditModal
+        isOpen={!!editingTableId}
+        onClose={() => setEditingTableId(null)}
+        table={tables.find(t => t._id === editingTableId)}
+        qrOrderEnabled={selectedStore?.qrOrderingEnabled}
+        tenantId={user?.tenantId}
+        storeId={selectedStoreId}
+        onSave={async (data) => {
+          await api.put(`/tables/${editingTableId}`, data);
+          qc.invalidateQueries({ queryKey: ['pos-tables'] });
+          setEditingTableId(null);
+          setErrorMessage('Table updated successfully');
+          setTimeout(() => setErrorMessage(null), 3000);
+        }}
+      />
+
+      {/* Status Toast */}
+      {errorMessage && (
+        <div className={`fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 max-w-md ${
+          errorMessage.startsWith('Created') || errorMessage.includes('success')
+            ? 'bg-green-500 text-white'
+            : 'bg-red-500 text-white'
+        }`}>
+          {errorMessage}
+        </div>
+      )}
     </div>
   );
 }

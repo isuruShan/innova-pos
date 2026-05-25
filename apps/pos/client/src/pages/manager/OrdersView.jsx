@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Search, SlidersHorizontal, RefreshCw, ChevronDown, X,
-  ArrowDown, ArrowUp, ArrowUpDown,
+  ArrowDown, ArrowUp, ArrowUpDown, Download, Upload,
 } from 'lucide-react';
 import { useListSort } from '../../hooks/useListSort';
 import api from '../../api/axios';
@@ -11,11 +11,17 @@ import Navbar from '../../components/Navbar';
 import Badge from '../../components/Badge';
 import OrderTypeBadge from '../../components/OrderTypeBadge';
 import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
+import ImportModal from '../../components/ImportModal';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { formatCurrency, formatDateTime, formatPaymentTypeLabel } from '../../utils/format';
 import { useStoreContext, normalizeStoreId } from '../../context/StoreContext';
 import { StatsRowSkeleton, OrdersTableSkeleton } from '../../components/StoreSkeletons';
 import PosDateField from '../../components/PosDateField';
+import { 
+  exportOrdersToCSV, 
+  getOrderImportFields, 
+  validateOrderRow 
+} from '../../utils/csvExportImport';
 
 const ORDER_TYPE_OPTIONS = [
   { value: 'dine-in',   label: 'Dine-In' },
@@ -83,6 +89,7 @@ export default function OrdersView() {
   const [statusFilter, setStatusFilter]     = useState([]);
   const [orderTypeFilter, setOrderTypeFilter] = useState([]);
   const [paymentTypeFilter, setPaymentTypeFilter] = useState([]);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
 
   const selectedStore = useMemo(
@@ -167,6 +174,49 @@ export default function OrdersView() {
     return { total: orders.length, completed: completed.length, revenue, discounts };
   }, [orders]);
 
+  // Export handler
+  const handleExportOrders = () => {
+    exportOrdersToCSV(orders);
+    alert(`Exported ${orders.length} orders`);
+  };
+
+  // Import handler
+  const handleImportOrders = async (csvData, mapping, onProgress) => {
+    const errors = [];
+    let successCount = 0;
+    
+    for (let i = 0; i < csvData.length; i++) {
+      const row = csvData[i];
+      const { order: orderData, errors: rowErrors } = validateOrderRow(row, mapping, i);
+      
+      if (rowErrors.length > 0) {
+        errors.push({ rowIndex: i, message: rowErrors.join('; ') });
+        onProgress({ total: csvData.length, current: i + 1, errors });
+        continue;
+      }
+      
+      try {
+        await api.post('/orders', orderData);
+        successCount++;
+      } catch (error) {
+        errors.push({ 
+          rowIndex: i, 
+          message: error.response?.data?.message || error.message 
+        });
+      }
+      
+      onProgress({ total: csvData.length, current: i + 1, errors });
+    }
+    
+    await refetch();
+    
+    return {
+      total: csvData.length,
+      success: successCount,
+      errors
+    };
+  };
+
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
       <Navbar groups={MANAGER_NAV_GROUPS} />
@@ -176,6 +226,20 @@ export default function OrdersView() {
         <div className="flex items-center justify-between mb-5">
           <h1 className="text-xl font-bold text-[var(--pos-text-primary)]">Orders</h1>
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportOrders}
+              className="px-3 py-2 rounded-xl border border-slate-600 text-sm text-green-400 hover:bg-green-500/10 transition flex items-center gap-2"
+            >
+              <Download size={15} />
+              Export
+            </button>
+            <button
+              onClick={() => setImportModalOpen(true)}
+              className="px-3 py-2 rounded-xl border border-slate-600 text-sm text-blue-400 hover:bg-blue-500/10 transition flex items-center gap-2"
+            >
+              <Upload size={15} />
+              Import
+            </button>
             <button
               onClick={() => refetch()}
               disabled={isFetching}
@@ -463,6 +527,15 @@ export default function OrdersView() {
           </div>
         )}
       </div>
+
+      <ImportModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        title="Import Orders"
+        fields={getOrderImportFields()}
+        onImport={handleImportOrders}
+        templateName="orders"
+      />
 
       <OrderDetailSlideOver
         order={liveSelected}
