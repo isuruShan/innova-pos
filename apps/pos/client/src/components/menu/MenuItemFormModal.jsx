@@ -72,7 +72,25 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
   };
 
   const handleVariantSelect = (item, variant) => {
-    addItem(item, variant);
+    if (variantPickerItem?._replaceCombo) {
+      // Replace existing variant in combo
+      const { menuItem: oldMenuItemId, variantId: oldVariantId } = variantPickerItem._replaceCombo;
+      const displayName = `${item.name} (${variant.attributes?.map(a => a.value).join(' / ') || variant.name})`;
+      const price = variant.price;
+      
+      onChange(
+        comboItems.map((c) =>
+          c.menuItem === oldMenuItemId && (c.variantId || null) === (oldVariantId || null)
+            ? { ...c, menuItem: item._id, variantId: variant._id, name: displayName, variantName: variant.name, price: Number(price) }
+            : c
+        )
+      );
+      setVariantPickerItem(null);
+      setPendingQty(1);
+    } else {
+      // Add new item
+      addItem(item, variant);
+    }
   };
 
   const remove = (menuItem, variantId) => onChange(
@@ -96,7 +114,22 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
               <div className="flex-1 min-w-0">
                 <span className="text-sm text-slate-200 truncate block" title={ci.name}>{ci.name}</span>
                 {ci.variantId && (
-                  <span className="text-xs text-sky-400">variant selected</span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-sky-400">variant selected</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const item = allItems.find(i => i._id === ci.menuItem);
+                        if (item) {
+                          setPendingQty(ci.qty);
+                          setVariantPickerItem({ ...item, _replaceCombo: { menuItem: ci.menuItem, variantId: ci.variantId } });
+                        }
+                      }}
+                      className="text-xs text-amber-400 hover:text-amber-300 underline"
+                    >
+                      change
+                    </button>
+                  </div>
                 )}
               </div>
               <div className="flex items-center gap-1">
@@ -119,7 +152,7 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
             <option value="">— Select item —</option>
             {available.map((i) => {
               const { price, prefix, hasVariants } = getItemDisplayPrice(i);
-              const label = `${i.name} (${prefix}${formatCurrency(price)})${hasVariants ? ' ★' : ''}`;
+              const label = `${i.name} (${prefix}${formatCurrency(price)})${hasVariants ? ' 🔸' : ''}`;
               return (
                 <option key={i._id} value={i._id} title={label}>
                   {label.length > 60 ? `${label.slice(0, 57)}…` : label}
@@ -137,7 +170,7 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
       ) : (
         <p className="text-xs text-slate-600 italic">No more items available to add.</p>
       )}
-      <p className="text-xs text-slate-600">★ = item has variants (click Add to select)</p>
+      <p className="text-xs text-slate-600">🔸 = item has variants (click Add to select specific variant)</p>
 
       {/* Variant picker modal */}
       {variantPickerItem && (
@@ -599,7 +632,7 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                                   </button>
                                   {available && (
                                     isDefault ? (
-                                      <span className="text-[9px] font-bold text-amber-400">★</span>
+                                      <span className="text-[9px] font-bold text-amber-400">🔸</span>
                                     ) : (
                                       <button
                                         type="button"
@@ -623,7 +656,7 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                   ))}
                 </tbody>
               </table>
-              <p className="text-[10px] text-slate-500 mt-2">{priceLabel} per cell · ★ = default variant shown in listings</p>
+              <p className="text-[10px] text-slate-500 mt-2">{priceLabel} per cell · 🔸 = default variant shown in listings</p>
             </div>
           ) : (
             <div className="space-y-3 max-h-80 overflow-y-auto pr-1">

@@ -169,13 +169,28 @@ function BundleItemsField({ bundleItems, onChange, menuItems }) {
                 const { price, prefix, hasVariants } = getItemDisplayPrice(m);
                 return (
                   <option key={m._id} value={m._id}>
-                    {m.name}{hasVariants ? ' ★' : ''} ({prefix}{formatCurrency(price)})
+                    {m.name}{hasVariants ? ' 🔸' : ''} ({prefix}{formatCurrency(price)})
                   </option>
                 );
               })}
             </select>
             {bi.variantId && (
-              <span className="text-xs text-sky-400 ml-1">variant: {bi.name}</span>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs text-sky-400">variant: {bi.name}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const item = menuItems.find(m => m._id === bi.menuItem);
+                    if (item) {
+                      setVariantPickerItem(item);
+                      setVariantPickerIndex(i);
+                    }
+                  }}
+                  className="text-xs text-amber-400 hover:text-amber-300 underline"
+                >
+                  change
+                </button>
+              </div>
             )}
           </div>
           <input
@@ -193,7 +208,7 @@ function BundleItemsField({ bundleItems, onChange, menuItems }) {
         className="flex items-center gap-1.5 text-sm text-amber-400 hover:text-amber-300 transition mt-1">
         <Plus size={13} /> Add item
       </button>
-      <p className="text-xs text-slate-600">★ = item has variants (selecting will prompt for variant)</p>
+      <p className="text-xs text-slate-600">🔸 = item has variants (selecting will prompt for variant choice)</p>
 
       {/* Variant picker modal */}
       {variantPickerItem && (
@@ -313,12 +328,30 @@ function ApplicableItemsField({
               <button type="button" onClick={() => removeCategory(c)} className="ml-0.5 hover:text-[var(--pos-text-primary)] leading-none">×</button>
             </span>
           ))}
-          {itemIds.map((id, i) => (
-            <span key={`${id}-${i}`} className="flex items-center gap-1 bg-slate-700 border border-slate-600 text-slate-200 text-xs px-2.5 py-1 rounded-full">
-              {itemNames[i]}
-              <button type="button" onClick={() => removeItemAt(i)} className="ml-0.5 hover:text-[var(--pos-text-primary)] leading-none">×</button>
-            </span>
-          ))}
+          {itemIds.map((id, i) => {
+            const hasVariant = applicableVariantIds && applicableVariantIds[i];
+            const item = menuItems.find(m => String(m._id) === String(id));
+            return (
+              <span key={`${id}-${i}`} className="flex items-center gap-1.5 bg-slate-700 border border-slate-600 text-slate-200 text-xs px-2.5 py-1 rounded-full">
+                {hasVariant && <span className="text-blue-400">🔸</span>}
+                {itemNames[i]}
+                {hasVariant && item?.hasVariants && (
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setVariantPickerItem(item);
+                      // Store the index so we can update the correct variant when selected
+                      setVariantPickerItem({ ...item, _replaceIndex: i });
+                    }}
+                    className="text-amber-400 hover:text-amber-300 underline text-[10px]"
+                  >
+                    change
+                  </button>
+                )}
+                <button type="button" onClick={() => removeItemAt(i)} className="ml-0.5 hover:text-[var(--pos-text-primary)] leading-none">×</button>
+              </span>
+            );
+          })}
         </div>
       )}
 
@@ -374,8 +407,8 @@ function ApplicableItemsField({
                       <span className="text-base leading-none">🍔</span>
                       <span className={isSelected ? 'text-amber-400 font-medium' : 'text-slate-300'}>{m.name}</span>
                       {m.hasVariants && (
-                        <span className="text-[10px] bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded-full border border-amber-500/20 font-semibold shrink-0">
-                          Variants
+                        <span className="text-[10px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded-full border border-blue-500/20 font-semibold shrink-0 flex items-center gap-0.5">
+                          🔸 Variants
                         </span>
                       )}
                       {m.category && <span className="text-xs text-slate-600">{m.category}</span>}
@@ -393,7 +426,24 @@ function ApplicableItemsField({
         <ItemVariantPickerModal
           item={variantPickerItem}
           onClose={() => setVariantPickerItem(null)}
-          onSelect={selectItem}
+          onSelect={(item, variant) => {
+            if (variantPickerItem._replaceIndex !== undefined) {
+              // Replace existing variant
+              const idx = variantPickerItem._replaceIndex;
+              const displayName = `${item.name} (${variant.attributes?.map(a => a.value).join(' / ') || variant.name})`;
+              const nextIds = [...itemIds];
+              const nextNames = [...itemNames];
+              const nextVarIds = [...(applicableVariantIds || [])];
+              nextIds[idx] = item._id;
+              nextNames[idx] = displayName;
+              nextVarIds[idx] = variant._id;
+              onChange(nextIds, nextNames, categoryNames, nextVarIds);
+            } else {
+              // New selection
+              selectItem(item, variant);
+            }
+            setVariantPickerItem(null);
+          }}
           allowAllVariants={true}
           title="Select Variant"
         />
@@ -811,11 +861,23 @@ export default function Promotions() {
                     <option value="">Select…</option>
                     {menuItems.map(m => {
                       const { hasVariants } = getItemDisplayPrice(m);
-                      return <option key={m._id} value={m._id}>{m.name}{hasVariants ? ' ★' : ''}</option>;
+                      return <option key={m._id} value={m._id}>{m.name}{hasVariants ? ' 🔸' : ''}</option>;
                     })}
                   </select>
                   {form.buyVariantId && (
-                    <span className="text-xs text-sky-400 mt-1 block">Variant: {form.buyItemName}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-sky-400">Variant: {form.buyItemName}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const item = menuItems.find(m => m._id === form.buyItem);
+                          if (item) setBuyXgetYVariantPicker({ item, field: 'buy' });
+                        }}
+                        className="text-xs text-amber-400 hover:text-amber-300 underline"
+                      >
+                        change variant
+                      </button>
+                    </div>
                   )}
                 </div>
                 <div>
@@ -839,11 +901,23 @@ export default function Promotions() {
                     <option value="">Select…</option>
                     {menuItems.map(m => {
                       const { hasVariants } = getItemDisplayPrice(m);
-                      return <option key={m._id} value={m._id}>{m.name}{hasVariants ? ' ★' : ''}</option>;
+                      return <option key={m._id} value={m._id}>{m.name}{hasVariants ? ' 🔸' : ''}</option>;
                     })}
                   </select>
                   {form.getFreeVariantId && (
-                    <span className="text-xs text-sky-400 mt-1 block">Variant: {form.getFreeItemName}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-sky-400">Variant: {form.getFreeItemName}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const item = menuItems.find(m => m._id === form.getFreeItem);
+                          if (item) setBuyXgetYVariantPicker({ item, field: 'free' });
+                        }}
+                        className="text-xs text-amber-400 hover:text-amber-300 underline"
+                      >
+                        change variant
+                      </button>
+                    </div>
                   )}
                 </div>
                 <div>
@@ -851,7 +925,7 @@ export default function Promotions() {
                   <input type="number" min="1" {...field('getFreeQty')} className={inputCls} />
                 </div>
               </div>
-              <p className="text-xs text-slate-600">★ = item has variants (selecting will prompt for variant)</p>
+              <p className="text-xs text-slate-600">🔸 = item has variants (selecting will prompt for variant choice)</p>
             </>
           )}
 

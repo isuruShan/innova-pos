@@ -173,6 +173,11 @@ export default function RewardScopeCombobox({
                     >
                       {m.name}
                     </span>
+                    {m.hasVariants && (
+                      <span className="text-[10px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded-full border border-blue-500/20 font-semibold shrink-0 flex items-center gap-0.5">
+                        🔸 Variants
+                      </span>
+                    )}
                     {m.category ? <span className="text-xs text-slate-600">{m.category}</span> : null}
                     {itemIds.some((id) => String(id) === String(m._id)) ? (
                       <span className="ml-auto text-amber-400 text-xs">✓</span>

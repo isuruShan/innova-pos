@@ -212,8 +212,8 @@ export default function RewardScopeCombobox({
                         {m.name}
                       </span>
                       {m.hasVariants && (
-                        <span className="text-[10px] bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20 font-semibold shrink-0">
-                          Variants
+                        <span className="text-[10px] bg-blue-500/10 text-blue-600 px-1.5 py-0.5 rounded-full border border-blue-500/20 font-semibold shrink-0 flex items-center gap-0.5">
+                          🔸 Variants
                         </span>
                       )}
                       {m.category ? <span className="text-xs text-gray-500">{m.category}</span> : null}
@@ -250,22 +250,38 @@ export default function RewardScopeCombobox({
               </button>
             </span>
           ))}
-          {itemIds.map((id, i) => (
-            <span
-              key={`item-${String(id)}-${i}`}
-              className="inline-flex items-center gap-1 bg-gray-100 border border-gray-200 text-gray-800 text-xs px-2.5 py-1 rounded-full"
-            >
-              {itemNames[i] ?? 'Item'}
-              <button
-                type="button"
-                onClick={() => removeItemAt(i)}
-                className="ml-0.5 hover:text-gray-950 leading-none"
-                aria-label="Remove item"
+          {itemIds.map((id, i) => {
+            const hasVariant = applicableVariantIds && applicableVariantIds[i];
+            const item = menuItems.find(m => String(m._id) === String(id));
+            return (
+              <span
+                key={`item-${String(id)}-${i}`}
+                className="inline-flex items-center gap-1.5 bg-gray-100 border border-gray-200 text-gray-800 text-xs px-2.5 py-1 rounded-full"
               >
-                ×
-              </button>
-            </span>
-          ))}
+                {hasVariant && <span className="text-blue-600">🔸</span>}
+                {itemNames[i] ?? 'Item'}
+                {hasVariant && item?.hasVariants && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVariantPickerItem({ ...item, _replaceIndex: i });
+                    }}
+                    className="text-brand-orange hover:text-brand-orange/80 underline text-[10px]"
+                  >
+                    change
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeItemAt(i)}
+                  className="ml-0.5 hover:text-gray-950 leading-none"
+                  aria-label="Remove item"
+                >
+                  ×
+                </button>
+              </span>
+            );
+          })}
         </div>
       ) : (
         <p className="text-xs text-gray-500">
@@ -277,7 +293,28 @@ export default function RewardScopeCombobox({
         <ItemVariantPickerModal
           item={variantPickerItem}
           onClose={() => setVariantPickerItem(null)}
-          onSelect={selectItem}
+          onSelect={(item, variant) => {
+            if (variantPickerItem._replaceIndex !== undefined) {
+              // Replace existing variant
+              const idx = variantPickerItem._replaceIndex;
+              const displayName = `${item.name} (${variant.attributes?.map(a => a.value).join(' / ') || variant.name})`;
+              const nextIds = [...itemIds];
+              const nextNames = [...itemNames];
+              const nextVarIds = [...(applicableVariantIds || [])];
+              nextIds[idx] = item._id;
+              nextNames[idx] = displayName;
+              nextVarIds[idx] = variant._id;
+              onPatch({
+                applicableItems: nextIds,
+                applicableItemNames: nextNames,
+                applicableVariantIds: nextVarIds,
+              });
+            } else {
+              // New selection
+              selectItem(item, variant);
+            }
+            setVariantPickerItem(null);
+          }}
           allowAllVariants={true}
           title="Select Variant"
         />
