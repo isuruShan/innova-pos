@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { StoreProvider } from './context/StoreContext';
@@ -59,6 +60,17 @@ const RootRedirect = () => {
 };
 
 export default function App() {
+  // Prevent scroll from changing number input values
+  useEffect(() => {
+    const handleWheel = (e) => {
+      if (e.target.type === 'number' && document.activeElement === e.target) {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('wheel', handleWheel, { passive: false });
+    return () => document.removeEventListener('wheel', handleWheel);
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>
