@@ -54,6 +54,7 @@ export default function PromotionsAdminPage() {
   const [search, setSearch] = useState('');
   const [approvalFilter, setApprovalFilter] = useState('all');
   const [activeFilter, setActiveFilter] = useState('active');
+  const [typeFilter, setTypeFilter] = useState('all');
   const toast = useToast();
   const [storeFilter, setStoreFilter] = useState('');
   const [slide, setSlide] = useState(null);
@@ -67,7 +68,7 @@ export default function PromotionsAdminPage() {
 
   useEffect(() => {
     setListPage(1);
-  }, [search, approvalFilter, storeFilter, activeFilter, sort, order]);
+  }, [search, approvalFilter, storeFilter, activeFilter, typeFilter, sort, order]);
 
   const listParams = () => {
     const p = {};
@@ -78,11 +79,12 @@ export default function PromotionsAdminPage() {
     if (activeFilter === 'active') p.active = 'true';
     else if (activeFilter === 'inactive') p.active = 'false';
     else if (activeFilter === 'all') p.showAll = 'true';
+    if (typeFilter !== 'all') p.type = typeFilter;
     return p;
   };
 
   const { data: promoList = { items: [], page: 1, pages: 1, total: 0 }, isPending, isFetching } = useQuery({
-    queryKey: ['admin-promotions', search, approvalFilter, storeFilter, activeFilter, listPage, sortParams],
+    queryKey: ['admin-promotions', search, approvalFilter, storeFilter, activeFilter, typeFilter, listPage, sortParams],
     queryFn: () =>
       api
         .get('/promotions', { params: { ...listParams(), page: listPage, limit: 25, sort, order } })
@@ -424,6 +426,19 @@ export default function PromotionsAdminPage() {
             <option value="active">Active only</option>
             <option value="inactive">Inactive only</option>
             <option value="all">All promotions</option>
+          </select>
+          <select
+            value={typeFilter}
+            onChange={(e) => { setTypeFilter(e.target.value); setListPage(1); }}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            title="Filter by promotion type"
+          >
+            <option value="all">All types</option>
+            <option value="percentageDiscount">% Discount</option>
+            <option value="flatDiscount">Flat Discount</option>
+            <option value="flatPrice">Flat Price</option>
+            <option value="bundle">Bundle Deal</option>
+            <option value="buyXgetY">Buy X Get Y</option>
           </select>
         </div>
         <div className="relative flex-1 max-w-md">

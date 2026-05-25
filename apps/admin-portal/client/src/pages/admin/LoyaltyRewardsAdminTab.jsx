@@ -39,6 +39,8 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
   const [search, setSearch] = useState('');
   const [approvalFilter, setApprovalFilter] = useState('all');
   const [storeFilter, setStoreFilter] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [rewardTypeFilter, setRewardTypeFilter] = useState('all');
   const [editor, setEditor] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [rejectFor, setRejectFor] = useState(null);
@@ -49,7 +51,7 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
 
   useEffect(() => {
     setListPage(1);
-  }, [search, approvalFilter, storeFilter, sort, order]);
+  }, [search, approvalFilter, storeFilter, activeFilter, rewardTypeFilter, sort, order]);
 
   useEffect(() => {
     if (!initialRewardId || editor !== null) return;
@@ -84,11 +86,14 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
     if (approvalFilter !== 'all') p.approvalStatus = approvalFilter;
     if (storeFilter === 'tenant') p.storeId = 'tenant';
     else if (storeFilter) p.storeId = storeFilter;
+    if (activeFilter === 'active') p.active = 'true';
+    else if (activeFilter === 'inactive') p.active = 'false';
+    if (rewardTypeFilter !== 'all') p.rewardType = rewardTypeFilter;
     return p;
   };
 
   const { data: rewardList = { items: [], page: 1, pages: 1, total: 0 }, isPending, isFetching } = useQuery({
-    queryKey: ['admin-loyalty-rewards-tab', search, approvalFilter, storeFilter, listPage, sortParams],
+    queryKey: ['admin-loyalty-rewards-tab', search, approvalFilter, storeFilter, activeFilter, rewardTypeFilter, listPage, sortParams],
     queryFn: () =>
       api
         .get('/loyalty/rewards', { params: { ...queryParams(), page: listPage, limit: 25, sort, order } })
@@ -291,6 +296,27 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
                 {s.name}
               </option>
             ))}
+          </select>
+          <select
+            value={activeFilter}
+            onChange={(e) => { setActiveFilter(e.target.value); setListPage(1); }}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            title="Filter by active state"
+          >
+            <option value="all">All states</option>
+            <option value="active">Active only</option>
+            <option value="inactive">Inactive only</option>
+          </select>
+          <select
+            value={rewardTypeFilter}
+            onChange={(e) => { setRewardTypeFilter(e.target.value); setListPage(1); }}
+            className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            title="Filter by reward type"
+          >
+            <option value="all">All reward types</option>
+            <option value="order_discount_amount">Fixed amount off order</option>
+            <option value="order_discount_percent">Percent off order</option>
+            <option value="free_item">Free item</option>
           </select>
         </div>
         <div className="relative flex-1 max-w-md">

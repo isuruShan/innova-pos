@@ -42,6 +42,9 @@ router.get('/', protect, authorize('merchant_admin'), tenantScope, async (req, r
       const q = new RegExp(String(req.query.search).trim(), 'i');
       filter.$or = [{ name: q }, { description: q }];
     }
+    if (req.query.type) {
+      filter.type = req.query.type;
+    }
     const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 100 });
     const total = await Promotion.countDocuments(filter);
     const sort = parseSortQuery(req, {

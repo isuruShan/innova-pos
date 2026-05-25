@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Gift, Plus } from 'lucide-react';
+import { Gift, Plus, Search, X } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
@@ -37,6 +37,10 @@ export default function LoyaltyRewardsPage() {
   const [formError, setFormError] = useState('');
   const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
 
+  const [search, setSearch] = useState('');
+  const [rewardTypeFilter, setRewardTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+
   const { data: paidAddons } = useTenantPaidAddons();
   const loyaltyAddonActive = paidAddons?.loyalty === true;
 
@@ -44,6 +48,32 @@ export default function LoyaltyRewardsPage() {
     queryKey: ['loyalty-rewards', sortParams],
     queryFn: () => api.get('/loyalty/rewards', { params: { sort, order } }).then((r) => r.data),
     enabled: loyaltyAddonActive,
+  });
+
+  const filteredRows = rows.filter((r) => {
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      const nameMatch = (r.name || '').toLowerCase().includes(q);
+      const descMatch = (r.description || '').toLowerCase().includes(q);
+      if (!nameMatch && !descMatch) return false;
+    }
+    if (rewardTypeFilter !== 'all' && r.rewardType !== rewardTypeFilter) {
+      return false;
+    }
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'active') {
+        if (!r.active || r.approvalStatus !== 'approved') return false;
+      } else if (statusFilter === 'disabled') {
+        if (r.active) return false;
+      } else if (statusFilter === 'pending') {
+        if (r.approvalStatus !== 'pending') return false;
+      } else if (statusFilter === 'rejected') {
+        if (r.approvalStatus !== 'rejected') return false;
+      } else if (statusFilter === 'approved') {
+        if (r.approvalStatus !== 'approved') return false;
+      }
+    }
+    return true;
   });
 
   const { data: menuItems = [] } = useQuery({
@@ -120,11 +150,66 @@ export default function LoyaltyRewardsPage() {
             : 'You can create rewards directly or approve requests from managers in Approvals.'}
         </p>
 
+        {/* Search and Filters */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-5">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search rewards..."
+              className="w-full bg-[var(--pos-panel)] border border-slate-700/80 rounded-xl pl-9 pr-8 py-2.5 text-sm text-[var(--pos-text-primary)] focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-600"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-[var(--pos-text-primary)]"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <select
+              value={rewardTypeFilter}
+              onChange={(e) => setRewardTypeFilter(e.target.value)}
+              className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              title="Filter by reward type"
+            >
+              <option value="all">All Types</option>
+              <option value="order_discount_amount">Fixed amount off order</option>
+              <option value="order_discount_percent">Percent off order</option>
+              <option value="free_item">Free item</option>
+            </select>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              title="Filter by status"
+            >
+              <option value="all">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="disabled">Disabled</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+        </div>
+
         <div className="bg-[var(--pos-panel)] rounded-2xl border border-slate-700/50 overflow-hidden">
           {isPending ? (
             <p className="p-8 text-center text-slate-500">Loading…</p>
           ) : rows.length === 0 ? (
             <p className="p-8 text-center text-slate-500">No rewards yet</p>
+          ) : filteredRows.length === 0 ? (
+            <div className="text-center py-20 text-slate-600">
+              <Search size={44} className="mx-auto mb-4 opacity-20" />
+              <p className="text-lg font-semibold">No matches found</p>
+              <p className="text-sm mt-1 opacity-60">Try adjusting your filters or search query</p>
+            </div>
           ) : (
             <table className="w-full text-sm">
               <thead>
@@ -138,7 +223,7 @@ export default function LoyaltyRewardsPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {filteredRows.map((r) => (
                   <tr key={r._id} className="border-b border-slate-800/50">
                     <td className="px-4 py-3 text-[var(--pos-text-primary)]">{r.name}</td>
                     <td className="px-4 py-3 text-slate-400 text-xs">

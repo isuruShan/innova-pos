@@ -242,6 +242,14 @@ router.get('/rewards', authorize('merchant_admin'), async (req, res) => {
       const q = new RegExp(String(req.query.search).trim(), 'i');
       filter.$or = [{ name: q }, { description: q }];
     }
+    if (req.query.active === 'true') {
+      filter.active = true;
+    } else if (req.query.active === 'false') {
+      filter.active = false;
+    }
+    if (req.query.rewardType) {
+      filter.rewardType = req.query.rewardType;
+    }
     const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 100 });
     const total = await LoyaltyReward.countDocuments(filter);
     const sort = parseSortQuery(req, {
