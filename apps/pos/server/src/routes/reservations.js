@@ -425,53 +425,52 @@ router.put(
 );
 
 /**
- * PUT /reservations/:id/status - Update reservation status
+ * PUT & PATCH /reservations/:id/status - Update reservation status
  */
-router.put(
-  '/:id/status',
-  authorize('cashier', 'manager', 'merchant_admin'),
-  async (req, res) => {
-    try {
-      const { status, cancelReason } = req.body;
-      const validStatuses = ['pending', 'confirmed', 'reminded', 'arrived', 'seated', 'completed', 'no_show', 'cancelled'];
+const updateStatus = async (req, res) => {
+  try {
+    const { status, cancelReason } = req.body;
+    const validStatuses = ['pending', 'confirmed', 'reminded', 'arrived', 'seated', 'completed', 'no_show', 'cancelled'];
 
-      if (!validStatuses.includes(status)) {
-        return res.status(400).json({ message: 'Invalid status' });
-      }
-
-      const reservation = await Reservation.findOne({
-        _id: req.params.id,
-        tenantId: req.tenantId,
-      });
-
-      if (!reservation) {
-        return res.status(404).json({ message: 'Reservation not found' });
-      }
-
-      reservation.status = status;
-      reservation.updatedBy = req.user.id;
-
-      // Set timestamps based on status
-      const now = new Date();
-      if (status === 'arrived' && !reservation.arrivedAt) {
-        reservation.arrivedAt = now;
-      } else if (status === 'seated' && !reservation.seatedAt) {
-        reservation.seatedAt = now;
-        if (!reservation.arrivedAt) reservation.arrivedAt = now;
-      } else if (status === 'completed' && !reservation.completedAt) {
-        reservation.completedAt = now;
-      } else if (status === 'cancelled') {
-        reservation.cancelledAt = now;
-        reservation.cancelReason = cancelReason || '';
-      }
-
-      await reservation.save();
-      res.json(reservation);
-    } catch (err) {
-      sendRouteError(res, err, { req });
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
     }
+
+    const reservation = await Reservation.findOne({
+      _id: req.params.id,
+      tenantId: req.tenantId,
+    });
+
+    if (!reservation) {
+      return res.status(404).json({ message: 'Reservation not found' });
+    }
+
+    reservation.status = status;
+    reservation.updatedBy = req.user.id;
+
+    // Set timestamps based on status
+    const now = new Date();
+    if (status === 'arrived' && !reservation.arrivedAt) {
+      reservation.arrivedAt = now;
+    } else if (status === 'seated' && !reservation.seatedAt) {
+      reservation.seatedAt = now;
+      if (!reservation.arrivedAt) reservation.arrivedAt = now;
+    } else if (status === 'completed' && !reservation.completedAt) {
+      reservation.completedAt = now;
+    } else if (status === 'cancelled') {
+      reservation.cancelledAt = now;
+      reservation.cancelReason = cancelReason || '';
+    }
+
+    await reservation.save();
+    res.json(reservation);
+  } catch (err) {
+    sendRouteError(res, err, { req });
   }
-);
+};
+
+router.put('/:id/status', authorize('cashier', 'manager', 'merchant_admin'), updateStatus);
+router.patch('/:id/status', authorize('cashier', 'manager', 'merchant_admin'), updateStatus);
 
 /**
  * PUT /reservations/:id/assign-table - Assign or reassign table

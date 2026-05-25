@@ -1,13 +1,16 @@
 # Import/Export Implementation Guide
 
-## ✅ COMPLETED - All Features Implemented!
+## ✅ Implementation Status
 
-### Implementation Summary
+### Fully Working
+1. **Menu Items** ✅ - Export & Import
+2. **Categories** ✅ - Export & Import
+3. **Orders Export** ✅ - Export with filters
 
-All import/export functionality has been successfully implemented for:
-1. **Menu Items** ✅
-2. **Categories** ✅  
-3. **Orders** ✅
+### Coming Soon
+4. **Orders Import** ⏸️ - Temporarily disabled pending analytics enhancements
+
+> **Note**: Order import has been disabled to add support for historical dates, menu item linking, and analytics compatibility. Export functionality works perfectly.
 
 ---
 
@@ -68,25 +71,41 @@ All import/export functionality has been successfully implemented for:
 
 ---
 
-## ✅ ORDERS - Fully Implemented
+## ⏸️ ORDERS - Export Only (Import Coming Soon)
 
 **Location**: `/apps/pos/client/src/pages/manager/OrdersView.jsx`
 
+**Status**: Export fully working, Import temporarily disabled
+
 **Features**:
 - ✅ Export button (exports filtered orders)
-- ✅ Import button with field mapping
-- ✅ Template download
-- ✅ Validation for order types, payment types, and status
-- ✅ Error file generation
+- ⏸️ Import button shows "Coming Soon" message
 
-**Fields Supported**:
-- Order Number * (required)
+**Why Import is Disabled**:
+Order import requires enhancements to work properly with analytics and reporting:
+- Need to support historical dates (not just import date)
+- Need to link imported items to existing menu items for category reports
+- Need to capture financial breakdown (subtotal, tax, service fee)
+- Need to ensure compatibility with analytics ETL pipeline
+
+**Export Fields**:
+- Order Number
 - Customer Name
-- Order Type * (required: dine-in, takeaway, uber-eats, pickme)
-- Payment Type * (required: cash, card, online, bank_transfer)
-- Total Amount * (required)
-- Status * (required: pending, preparing, ready, completed, cancelled)
-- Items * (required, format: "Name x Qty; Name2 x Qty2")
+- Order Type
+- Payment Type
+- Status
+- Total Amount
+- Discount Total
+- Items (format: "Name x Qty; Name2 x Qty2")
+- Created At
+- Created By
+
+**Planned Import Enhancements**:
+- Historical date support (import orders with past dates)
+- Smart item name matching to link with menu database
+- Financial breakdown fields (subtotal, tax, service fee)
+- Auto-complete imported orders to "completed" status
+- Analytics compatibility validation
 
 ---
 
@@ -396,9 +415,8 @@ const handleImportOrders = useCallback(async (csvData, mapping, onProgress) => {
 1. ✅ Navigate to Orders page
 2. ✅ Apply filters (date range, status, type)
 3. ✅ Click "Export" → Downloads filtered orders
-4. ✅ Click "Import" → Opens import modal
-5. ✅ Test with invalid order types → Validation errors shown
-6. ✅ Test items format → "Name x Qty; Name2 x Qty2" parsing works
+4. ⏸️ Click "Import (Coming Soon)" → Shows coming soon message
+5. ⏸️ Import functionality disabled pending analytics enhancements
 
 ---
 
@@ -419,18 +437,25 @@ const handleImportOrders = useCallback(async (csvData, mapping, onProgress) => {
 
 ---
 
-## 🎉 Success!
+## 🎉 Current Status
 
-All import/export functionality has been successfully implemented and tested. Users can now:
+Import/export functionality has been successfully implemented with the following status:
+
+- ✅ **Menu Items**: Export and import fully working
+- ✅ **Categories**: Export and import fully working  
+- ✅ **Orders Export**: Fully working with filters
+- ⏸️ **Orders Import**: Temporarily disabled (coming soon with analytics enhancements)
+
+Users can now:
 - ✅ Export their entire catalog to CSV
 - ✅ Import menu items from external sources
 - ✅ Bulk manage categories
 - ✅ Export order history for analysis
-- ✅ Import historical orders
+- ⏸️ Import orders (coming soon with enhanced compatibility)
 - ✅ Use field mapping for flexible CSV formats
 - ✅ Handle errors gracefully with error file generation
 
-The system is production-ready for import/export operations!
+The system is production-ready for menu and category import/export. Order import will be enabled after analytics compatibility enhancements are complete.
 
 1. Click "Import" button on respective page
 2. **Step 1: Upload**

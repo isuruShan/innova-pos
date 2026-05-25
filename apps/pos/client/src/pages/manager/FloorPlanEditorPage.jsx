@@ -172,6 +172,7 @@ function TableEditModal({ isOpen, onClose, table, qrOrderEnabled, tenantId, stor
       setLabel(table.label || '');
       setCapacity(table.capacity || 4);
       setError('');
+      setSaving(false);
     }
   }, [isOpen, table]);
 

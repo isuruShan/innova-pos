@@ -89,7 +89,7 @@ export default function OrdersView() {
   const [statusFilter, setStatusFilter]     = useState([]);
   const [orderTypeFilter, setOrderTypeFilter] = useState([]);
   const [paymentTypeFilter, setPaymentTypeFilter] = useState([]);
-  const [importModalOpen, setImportModalOpen] = useState(false);
+  // const [importModalOpen, setImportModalOpen] = useState(false); // Disabled - Coming Soon
   const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
 
   const selectedStore = useMemo(
@@ -180,8 +180,8 @@ export default function OrdersView() {
     alert(`Exported ${orders.length} orders`);
   };
 
-  // Import handler
-  const handleImportOrders = async (csvData, mapping, onProgress) => {
+  // Import handler - Coming Soon (disabled until analytics compatibility is added)
+  /* const handleImportOrders = async (csvData, mapping, onProgress) => {
     const errors = [];
     let successCount = 0;
     
@@ -215,7 +215,7 @@ export default function OrdersView() {
       success: successCount,
       errors
     };
-  };
+  }; */
 
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
@@ -234,11 +234,12 @@ export default function OrdersView() {
               Export
             </button>
             <button
-              onClick={() => setImportModalOpen(true)}
-              className="px-3 py-2 rounded-xl border border-slate-600 text-sm text-blue-400 hover:bg-blue-500/10 transition flex items-center gap-2"
+              onClick={() => alert('Order Import is coming soon! This feature is being enhanced to support historical dates and full analytics compatibility.')}
+              className="px-3 py-2 rounded-xl border border-slate-600 text-sm text-slate-500 hover:bg-slate-500/10 transition flex items-center gap-2"
+              title="Coming Soon"
             >
               <Upload size={15} />
-              Import
+              Import (Coming Soon)
             </button>
             <button
               onClick={() => refetch()}
@@ -528,6 +529,7 @@ export default function OrdersView() {
         )}
       </div>
 
+      {/* Order Import - Coming Soon (disabled until analytics compatibility is added)
       <ImportModal
         open={importModalOpen}
         onClose={() => setImportModalOpen(false)}
@@ -536,6 +538,7 @@ export default function OrdersView() {
         onImport={handleImportOrders}
         templateName="orders"
       />
+      */}
 
       <OrderDetailSlideOver
         order={liveSelected}
