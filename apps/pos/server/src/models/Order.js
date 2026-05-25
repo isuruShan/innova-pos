@@ -163,6 +163,7 @@ orderSchema.pre('save', async function () {
 // Compound unique index: orderNumber unique per tenant
 orderSchema.index({ tenantId: 1, orderNumber: 1 }, { unique: true });
 orderSchema.index({ tenantId: 1, storeId: 1, status: 1 });
+orderSchema.index({ tenantId: 1, storeId: 1, status: 1, createdAt: 1 });
 orderSchema.index({ tenantId: 1, status: 1 });
 orderSchema.index({ tenantId: 1, createdAt: -1 });
 orderSchema.index({ tenantId: 1, storeId: 1, tableId: 1, status: 1 });

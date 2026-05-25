@@ -124,27 +124,34 @@ router.get(
         }
       }
 
-      const groupByType = await Order.aggregate([
+      const [facetResult] = await Order.aggregate([
         { $match: match },
         {
-          $group: {
-            _id: '$orderType',
-            ordersCount: { $sum: 1 },
-            revenue: { $sum: '$totalAmount' },
+          $facet: {
+            byType: [
+              {
+                $group: {
+                  _id: '$orderType',
+                  ordersCount: { $sum: 1 },
+                  revenue: { $sum: '$totalAmount' },
+                },
+              },
+            ],
+            bySource: [
+              {
+                $group: {
+                  _id: '$orderSource',
+                  ordersCount: { $sum: 1 },
+                  revenue: { $sum: '$totalAmount' },
+                },
+              },
+            ],
           },
         },
       ]);
 
-      const groupBySource = await Order.aggregate([
-        { $match: match },
-        {
-          $group: {
-            _id: '$orderSource',
-            ordersCount: { $sum: 1 },
-            revenue: { $sum: '$totalAmount' },
-          },
-        },
-      ]);
+      const groupByType = facetResult?.byType || [];
+      const groupBySource = facetResult?.bySource || [];
 
       res.json({
         byType: groupByType.map(g => ({
@@ -305,54 +312,95 @@ router.get(
       const { since, until, reason, cashierId } = req.query;
 
       const storeFilter = buildStoreFilter(req);
-      const orders = await Order.find({
+      const match = {
         tenantId: req.tenantId,
         ...storeFilter,
         'returns.0': { $exists: true },
-      })
-        .populate('returns.returnedBy', 'name email')
-        .populate('returns.approvedBy', 'name email')
-        .select('orderNumber returns')
-        .lean();
+      };
 
-      let allRefunds = [];
-      orders.forEach(o => {
-        o.returns.forEach(r => {
-          allRefunds.push({
-            orderId: o._id,
-            orderNumber: o.orderNumber,
-            returnedAt: r.returnedAt,
-            returnedBy: r.returnedBy,
-            approvedBy: r.approvedBy,
-            reason: r.reason || 'No reason provided',
-            refundAmount: r.refundAmount,
-            items: r.items,
-          });
-        });
-      });
+      const pipeline = [
+        { $match: match },
+        { $unwind: '$returns' },
+      ];
 
-      // Filters
-      if (since) {
-        const sDate = new Date(since);
-        allRefunds = allRefunds.filter(r => new Date(r.returnedAt) >= sDate);
-      }
-      if (until) {
-        const uDate = new Date(until);
-        allRefunds = allRefunds.filter(r => new Date(r.returnedAt) <= uDate);
+      const returnMatch = {};
+      if (since || until) {
+        returnMatch['returns.returnedAt'] = {};
+        if (since) returnMatch['returns.returnedAt'].$gte = new Date(since);
+        if (until) returnMatch['returns.returnedAt'].$lte = new Date(until);
       }
       if (reason) {
-        const rSearch = String(reason).trim().toLowerCase();
-        allRefunds = allRefunds.filter(r => r.reason.toLowerCase().includes(rSearch));
+        returnMatch['returns.reason'] = { $regex: String(reason).trim(), $options: 'i' };
       }
       if (cashierId) {
-        allRefunds = allRefunds.filter(r =>
-          String(r.returnedBy?._id) === String(cashierId) ||
-          String(r.approvedBy?._id) === String(cashierId)
-        );
+        const mongoose = require('mongoose');
+        const cashierObjId = new mongoose.Types.ObjectId(cashierId);
+        returnMatch.$or = [
+          { 'returns.returnedBy': cashierObjId },
+          { 'returns.approvedBy': cashierObjId },
+        ];
       }
 
-      // Sort chronological descending
-      allRefunds.sort((a, b) => new Date(b.returnedAt) - new Date(a.returnedAt));
+      if (Object.keys(returnMatch).length > 0) {
+        pipeline.push({ $match: returnMatch });
+      }
+
+      pipeline.push({ $sort: { 'returns.returnedAt': -1 } });
+
+      pipeline.push(
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'returns.returnedBy',
+            foreignField: '_id',
+            as: 'returnedByPopulated',
+          },
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'returns.approvedBy',
+            foreignField: '_id',
+            as: 'approvedByPopulated',
+          },
+        }
+      );
+
+      pipeline.push({
+        $project: {
+          _id: 0,
+          orderId: '$_id',
+          orderNumber: 1,
+          returnedAt: '$returns.returnedAt',
+          returnedBy: {
+            $cond: {
+              if: { $gt: [{ $size: '$returnedByPopulated' }, 0] },
+              then: {
+                _id: { $arrayElemAt: ['$returnedByPopulated._id', 0] },
+                name: { $arrayElemAt: ['$returnedByPopulated.name', 0] },
+                email: { $arrayElemAt: ['$returnedByPopulated.email', 0] },
+              },
+              else: null,
+            },
+          },
+          approvedBy: {
+            $cond: {
+              if: { $gt: [{ $size: '$approvedByPopulated' }, 0] },
+              then: {
+                _id: { $arrayElemAt: ['$approvedByPopulated._id', 0] },
+                name: { $arrayElemAt: ['$approvedByPopulated.name', 0] },
+                email: { $arrayElemAt: ['$approvedByPopulated.email', 0] },
+              },
+              else: null,
+            },
+          },
+          reason: { $ifNull: ['$returns.reason', 'No reason provided'] },
+          refundAmount: '$returns.refundAmount',
+          items: '$returns.items',
+        },
+      });
+
+      const allRefunds = await Order.aggregate(pipeline);
       res.json(allRefunds);
     } catch (err) {
       sendRouteError(res, err, { req });
