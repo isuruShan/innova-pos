@@ -215,3 +215,109 @@ export function printReceipt(order, { branding, store, paymentType, cashTender }
     w.close();
   }
 }
+
+/**
+ * Print kitchen ticket (order preparation slip)
+ * Simpler format focused on items, quantities, and prep notes
+ */
+export function printKitchenTicket(order, { branding, store }) {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Kitchen Ticket #${escapeHtml(String(order.orderNumber))}</title>
+<style>
+  @page { margin: 4mm; size: auto; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: ui-monospace, 'Cascadia Code', 'Segoe UI', Arial, sans-serif;
+    font-size: 12px;
+    line-height: 1.3;
+    color: #111;
+    max-width: 72mm;
+    margin: 0 auto;
+    padding: 8px;
+  }
+  .hdr { text-align: center; margin-bottom: 8px; border-bottom: 2px solid #000; padding-bottom: 6px; }
+  .biz { font-size: 16px; font-weight: 700; margin: 0; }
+  .store-line { margin: 2px 0 0; font-size: 11px; color: #333; }
+  .ticket-label { font-size: 14px; font-weight: 700; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .meta { text-align: center; font-size: 11px; margin: 8px 0; padding: 6px 0; border-bottom: 1px solid #333; }
+  .meta p { margin: 2px 0; }
+  .order-num { font-size: 28px; font-weight: 900; margin: 8px 0; letter-spacing: 0.02em; }
+  .order-type { display: inline-block; background: #000; color: #fff; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; }
+  .items { margin-top: 12px; }
+  .item { padding: 8px 0; border-bottom: 1px dashed #999; }
+  .item:last-child { border-bottom: 2px solid #000; }
+  .item-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .item-name { font-size: 14px; font-weight: 700; }
+  .item-qty { font-size: 18px; font-weight: 900; background: #000; color: #fff; padding: 2px 8px; border-radius: 4px; }
+  .item-variant { font-size: 11px; color: #333; margin-top: 2px; padding-left: 8px; }
+  .item-variant::before { content: '↳ '; }
+  .notes { margin-top: 12px; padding: 8px; background: #f0f0f0; border: 1px solid #999; border-radius: 4px; }
+  .notes-title { font-weight: 700; font-size: 11px; text-transform: uppercase; margin-bottom: 4px; }
+  .notes-text { font-size: 11px; }
+  .ftr { text-align: center; font-size: 10px; margin-top: 12px; padding-top: 8px; border-top: 1px dashed #999; color: #666; }
+  .timestamp { text-align: center; font-size: 10px; color: #666; margin-top: 8px; }
+</style>
+</head>
+<body>
+  <header class="hdr">
+    <p class="biz">${escapeHtml(branding.businessName || 'POS')}</p>
+    ${store?.name ? `<p class="store-line">${escapeHtml(store.name)}</p>` : ''}
+    <p class="ticket-label">Kitchen Ticket</p>
+  </header>
+  <div class="meta">
+    <p class="order-num">#${escapeHtml(String(order.orderNumber).padStart(3, '0'))}</p>
+    <p><span class="order-type">${escapeHtml(String(order.orderType || 'dine-in').replace(/-/g, ' '))}</span></p>
+    ${order.tableNumber ? `<p style="font-weight: 700; font-size: 13px; margin-top: 4px;">TABLE ${escapeHtml(order.tableNumber)}</p>` : ''}
+    ${order.reference ? `<p style="font-size: 11px; margin-top: 2px;">Ref: ${escapeHtml(order.reference)}</p>` : ''}
+    ${order.customerName ? `<p style="font-size: 11px;">Customer: ${escapeHtml(order.customerName)}</p>` : ''}
+  </div>
+  <div class="items">
+    ${(order.items || []).map((item) => {
+      const variantHtml = item.variantName 
+        ? `<div class="item-variant">${escapeHtml(item.variantName)}</div>` 
+        : '';
+      const comboHtml = item.isCombo && item.comboItems?.length 
+        ? `<div class="item-variant">Combo: ${item.comboItems.map(c => `${escapeHtml(c.name)} x${c.qty}`).join(', ')}</div>`
+        : '';
+      return `
+    <div class="item">
+      <div class="item-header">
+        <div class="item-name">${escapeHtml(item.name)}</div>
+        <div class="item-qty">×${escapeHtml(String(item.qty))}</div>
+      </div>
+      ${variantHtml}
+      ${comboHtml}
+    </div>`;
+    }).join('')}
+  </div>
+  ${order.notes ? `
+  <div class="notes">
+    <div class="notes-title">Special Instructions</div>
+    <div class="notes-text">${escapeHtml(order.notes)}</div>
+  </div>` : ''}
+  <div class="timestamp">
+    Printed: ${escapeHtml(new Date().toLocaleString())}
+  </div>
+  <footer class="ftr">Prepare with care</footer>
+</body>
+</html>`;
+
+  const w = window.open('', '_blank', 'width=380,height=720');
+  if (!w) {
+    console.warn('[Kitchen Ticket Print] Popup blocked or failed to open');
+    return;
+  }
+  
+  try {
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    w.print();
+  } catch (err) {
+    console.error('[Kitchen Ticket Print] Error during print:', err);
+    w.close();
+  }
+}

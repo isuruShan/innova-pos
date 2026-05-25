@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import {
   Clock, ChevronRight, ChevronLeft, RefreshCw,
-  Link2, Eye, CalendarDays, Search, X,
+  Link2, Eye, CalendarDays, Search, X, Printer, Receipt,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -21,7 +21,7 @@ import { useStoreContext } from '../../context/StoreContext';
 import { useBranding } from '../../context/BrandingContext';
 import { formatCurrency } from '../../utils/format';
 import { KanbanSkeleton } from '../../components/StoreSkeletons';
-import { printReceipt } from '../../utils/receiptPrint';
+import { printReceipt, printKitchenTicket } from '../../utils/receiptPrint';
 import { shouldPrintReceiptForUpdatedOrder } from '../../utils/receiptPolicy';
 import PosDateField from '../../components/PosDateField';
 
@@ -90,9 +90,36 @@ function ElapsedBadge({ createdAt, status }) {
   );
 }
 
-function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId }) {
+function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selectedStore }) {
   const meta = STATUS_META[order.status];
   const isBusy = busyId === order._id;
+
+  const handlePrintReceipt = (e) => {
+    e.stopPropagation();
+    try {
+      printReceipt(order, {
+        branding,
+        store: selectedStore,
+        paymentType: order.paymentType,
+      });
+    } catch (err) {
+      console.error('[Print Receipt] Error:', err);
+      alert('Failed to print receipt');
+    }
+  };
+
+  const handlePrintKitchen = (e) => {
+    e.stopPropagation();
+    try {
+      printKitchenTicket(order, {
+        branding,
+        store: selectedStore,
+      });
+    } catch (err) {
+      console.error('[Print Kitchen Ticket] Error:', err);
+      alert('Failed to print kitchen ticket');
+    }
+  };
 
   return (
     <div className={`bg-[var(--pos-panel)] rounded-xl border ${meta.border} overflow-hidden flex flex-col`}>
@@ -174,6 +201,26 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId }) {
         <span className="text-xs text-slate-600">{order.createdBy?.name || '—'}</span>
       </div>
 
+      {/* Print buttons */}
+      <div className="px-3 pb-2 flex gap-1.5">
+        <button
+          onClick={handlePrintReceipt}
+          className="flex-1 flex items-center justify-center gap-1 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 text-xs font-medium py-1.5 rounded-lg transition"
+          title="Print customer receipt"
+        >
+          <Receipt size={12} />
+          Receipt
+        </button>
+        <button
+          onClick={handlePrintKitchen}
+          className="flex-1 flex items-center justify-center gap-1 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-orange-400 text-xs font-medium py-1.5 rounded-lg transition"
+          title="Print kitchen ticket"
+        >
+          <Printer size={12} />
+          Kitchen
+        </button>
+      </div>
+
       {/* Status action buttons */}
       {(meta.next || meta.prev) && (
         <div className="px-3 pb-3 flex gap-1.5">
@@ -208,7 +255,7 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId }) {
   );
 }
 
-function Column({ status, orders, onAdvanceStatus, onViewEdit, busyId }) {
+function Column({ status, orders, onAdvanceStatus, onViewEdit, busyId, branding, selectedStore }) {
   const meta = STATUS_META[status];
   return (
     <div className="flex flex-col min-w-0 min-h-0">
@@ -232,6 +279,8 @@ function Column({ status, orders, onAdvanceStatus, onViewEdit, busyId }) {
               onAdvanceStatus={onAdvanceStatus}
               onViewEdit={onViewEdit}
               busyId={busyId}
+              branding={branding}
+              selectedStore={selectedStore}
             />
           ))
         )}
@@ -555,6 +604,8 @@ export default function OrderBoard() {
                 onAdvanceStatus={handleAdvanceStatus}
                 onViewEdit={setSelectedOrder}
                 busyId={busyId}
+                branding={branding}
+                selectedStore={selectedStore}
               />
             ))}
           </div>

@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Plus, Minus, Trash2, Save, Link2, Hash, AlertTriangle, Tag, CheckCircle, Loader2, Clock, XCircle, ChevronRight } from 'lucide-react';
+import { X, Plus, Minus, Trash2, Save, Link2, Hash, AlertTriangle, Tag, CheckCircle, Loader2, Clock, XCircle, ChevronRight, Printer, Receipt } from 'lucide-react';
 import api from '../api/axios';
 import { formatCurrency, formatDateTime as fmtDT } from '../utils/format';
 import SlideOver from './SlideOver';
 import Badge from './Badge';
 import { ORDER_TYPES, ORDER_TYPE_MAP } from './OrderTypeBadge';
 import { useStoreContext } from '../context/StoreContext';
+import { useBranding } from '../context/BrandingContext';
+import { printReceipt, printKitchenTicket } from '../utils/receiptPrint';
 import { buildCategorySortMap, resolveMenuDisplayItems } from '../utils/menuItemSearch';
 import OptionPickerModal, { MenuItemPickerModal, TablePickerModal } from './OptionPickerModal';
 
@@ -246,6 +248,7 @@ function AddItemRow({ menuItems, existingIds, onAdd }) {
 
 export default function OrderDetailSlideOver({ order, onClose, canCancel = true, hidePricing = false }) {
   const qc = useQueryClient();
+  const branding = useBranding();
   const { selectedStoreId, isStoreReady, stores } = useStoreContext();
   const selectedStore =
     stores.find((s) => String(s._id) === String(selectedStoreId)) || stores.find((s) => s.isDefault) || null;
@@ -712,6 +715,45 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
 
         {/* Actions */}
         <div className="space-y-2 pt-1">
+          {/* Print Options */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                try {
+                  printReceipt(order, {
+                    branding,
+                    store: selectedStore,
+                    paymentType: order.paymentType,
+                  });
+                } catch (err) {
+                  console.error('[Print Receipt] Error:', err);
+                  alert('Failed to print receipt');
+                }
+              }}
+              className="flex-1 flex items-center justify-center gap-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 font-semibold py-2.5 rounded-xl transition text-sm"
+            >
+              <Receipt size={15} />
+              Customer Receipt
+            </button>
+            <button
+              onClick={() => {
+                try {
+                  printKitchenTicket(order, {
+                    branding,
+                    store: selectedStore,
+                  });
+                } catch (err) {
+                  console.error('[Print Kitchen Ticket] Error:', err);
+                  alert('Failed to print kitchen ticket');
+                }
+              }}
+              className="flex-1 flex items-center justify-center gap-2 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-orange-400 font-semibold py-2.5 rounded-xl transition text-sm"
+            >
+              <Printer size={15} />
+              Kitchen Ticket
+            </button>
+          </div>
+          
           {/* Save edits */}
           {isEditable && dirty && (
             <button
