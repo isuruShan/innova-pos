@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const MenuItem = require('../models/MenuItem');
 const CashierSession = require('../models/CashierSession');
@@ -10,6 +11,32 @@ const { resolveSelectedStore, buildStoreFilter } = require('../middleware/storeS
 const router = express.Router();
 
 const readRoles = ['manager', 'merchant_admin', 'superadmin'];
+
+const castToObjectId = (id) => {
+  if (!id) return id;
+  return typeof id === 'string' ? new mongoose.Types.ObjectId(id) : id;
+};
+
+const getCastedMatch = (req, status = 'completed') => {
+  const storeFilter = buildStoreFilter(req);
+  const match = {
+    tenantId: castToObjectId(req.tenantId),
+  };
+  if (status) {
+    match.status = status;
+  }
+  if (storeFilter.storeId) {
+    match.storeId = castToObjectId(storeFilter.storeId);
+  } else if (storeFilter.$or) {
+    match.$or = storeFilter.$or.map(cond => {
+      if (cond.storeId) {
+        return { storeId: castToObjectId(cond.storeId) };
+      }
+      return cond;
+    });
+  }
+  return match;
+};
 
 /**
  * GET /api/reports/extended/menu-mix
@@ -25,12 +52,7 @@ router.get(
     try {
       const { since, until, search, categories } = req.query;
 
-      const storeFilter = buildStoreFilter(req);
-      const match = {
-        tenantId: req.tenantId,
-        ...storeFilter,
-        status: 'completed',
-      };
+      const match = getCastedMatch(req, 'completed');
 
       const dateFilter = {};
       if (since) dateFilter.$gte = new Date(since);
@@ -93,12 +115,7 @@ router.get(
     try {
       const { since, until, orderTypes, orderSources } = req.query;
 
-      const storeFilter = buildStoreFilter(req);
-      const match = {
-        tenantId: req.tenantId,
-        ...storeFilter,
-        status: 'completed',
-      };
+      const match = getCastedMatch(req, 'completed');
 
       const dateFilter = {};
       if (since) dateFilter.$gte = new Date(since);
@@ -185,12 +202,7 @@ router.get(
     try {
       const { since, until, timezone = 'Asia/Colombo' } = req.query;
 
-      const storeFilter = buildStoreFilter(req);
-      const match = {
-        tenantId: req.tenantId,
-        ...storeFilter,
-        status: 'completed',
-      };
+      const match = getCastedMatch(req, 'completed');
 
       const dateFilter = {};
       if (since) dateFilter.$gte = new Date(since);
@@ -256,12 +268,7 @@ router.get(
     try {
       const { since, until } = req.query;
 
-      const storeFilter = buildStoreFilter(req);
-      const match = {
-        tenantId: req.tenantId,
-        ...storeFilter,
-        status: 'completed',
-      };
+      const match = getCastedMatch(req, 'completed');
 
       const dateFilter = {};
       if (since) dateFilter.$gte = new Date(since);
@@ -311,12 +318,8 @@ router.get(
     try {
       const { since, until, reason, cashierId } = req.query;
 
-      const storeFilter = buildStoreFilter(req);
-      const match = {
-        tenantId: req.tenantId,
-        ...storeFilter,
-        'returns.0': { $exists: true },
-      };
+      const match = getCastedMatch(req, null);
+      match['returns.0'] = { $exists: true };
 
       const pipeline = [
         { $match: match },
