@@ -125,6 +125,11 @@ export default function BrandingPage() {
   const handleLogoChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Invalid file type. Please select an image.');
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
     const preview = URL.createObjectURL(file);
     setLogoPreview(preview);
     const webp = await optimizeToWebP(file);

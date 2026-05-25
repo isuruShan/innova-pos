@@ -164,6 +164,11 @@ export default function PaymentProviderSettingsPage() {
   const handleLogoChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Invalid file type. Please select an image.');
+      e.target.value = '';
+      return;
+    }
     try {
       const webp = await optimizeToWebP(file);
       setLogoFile(webp);

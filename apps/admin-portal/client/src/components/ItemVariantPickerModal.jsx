@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { X, Check } from 'lucide-react';
-import { formatCurrency } from '../utils/format';
 
 /**
- * Reusable variant picker modal for selecting a specific variant of a menu item.
- * Used in combo building, promotions, loyalty rewards, etc.
+ * Reusable variant picker modal for admin portal promotions, loyalty rewards, etc.
+ * Uses standard light theme colors.
  * 
  * @param {Object} item - Menu item with variants data
  * @param {function} onClose - Close handler
- * @param {function} onSelect - (item, variant) => void - called when variant is confirmed
+ * @param {function} onSelect - (item, variant) => void - called when variant is confirmed (variant is null if selecting entire product)
  * @param {string} title - Optional custom title
+ * @param {boolean} allowAllVariants - If true, displays a button to select all variants
  */
 export default function ItemVariantPickerModal({ item, onClose, onSelect, title, allowAllVariants = false }) {
   const [selections, setSelections] = useState({});
@@ -47,25 +47,25 @@ export default function ItemVariantPickerModal({ item, onClose, onSelect, title,
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/70"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50"
       onClick={onClose}
     >
       <div
-        className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl"
+        className="bg-white border border-gray-200 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-700/60 shrink-0">
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-200 shrink-0">
           <div className="min-w-0">
-            <h3 className="text-base font-bold text-[var(--pos-text-primary)]">
+            <h3 className="text-base font-bold text-gray-900">
               {title || 'Select Variant'}
             </h3>
-            <p className="text-sm text-amber-400 truncate">{item.name}</p>
+            <p className="text-sm text-brand-orange truncate font-medium">{item.name}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition shrink-0"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition shrink-0"
             aria-label="Close"
           >
             <X size={18} />
@@ -76,7 +76,7 @@ export default function ItemVariantPickerModal({ item, onClose, onSelect, title,
         <div className="flex-1 overflow-y-auto overscroll-contain p-5 space-y-5">
           {options.map((opt) => (
             <div key={opt.name} className="space-y-2">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">
                 {opt.name}
               </span>
               <div className="flex flex-wrap gap-2">
@@ -87,10 +87,10 @@ export default function ItemVariantPickerModal({ item, onClose, onSelect, title,
                       key={val}
                       type="button"
                       onClick={() => handleSelect(opt.name, val)}
-                      className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition ${
+                      className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
                         active
-                          ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)] shadow-lg'
-                          : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600 hover:bg-slate-700'
+                          ? 'bg-brand-orange border-brand-orange text-white shadow-sm'
+                          : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
                       }`}
                     >
                       {val}
@@ -103,33 +103,33 @@ export default function ItemVariantPickerModal({ item, onClose, onSelect, title,
         </div>
 
         {/* Selected variant preview & confirm */}
-        <div className="border-t border-slate-700/60 p-4 shrink-0 space-y-3">
+        <div className="border-t border-gray-200 p-4 bg-gray-50 shrink-0 space-y-3">
           {selectedVariant ? (
-            <div className="bg-[var(--pos-surface-inset)] rounded-xl p-3 border border-slate-800 flex items-center gap-3">
-              <div className="w-12 h-12 bg-slate-800 rounded-lg overflow-hidden border border-slate-700 shrink-0">
+            <div className="bg-white rounded-xl p-3 border border-gray-200 flex items-center gap-3">
+              <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shrink-0">
                 {selectedVariant.image ? (
                   <img src={selectedVariant.image} alt="" className="w-full h-full object-cover" />
                 ) : item.images?.[0]?.url || item.image ? (
                   <img src={item.images?.[0]?.url || item.image} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xl">🍔</div>
+                  <div className="w-full h-full flex items-center justify-center text-xl bg-gray-50">🍔</div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-[var(--pos-text-primary)] truncate">
+                <p className="text-sm font-semibold text-gray-900 truncate">
                   {selectedVariant.name || item.name}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-gray-500">
                   {selectedVariant.attributes?.map((a) => a.value).join(' / ')}
                 </p>
               </div>
-              <span className="text-amber-400 font-bold shrink-0">
-                {formatCurrency(selectedVariant.price)}
+              <span className="text-brand-orange font-bold shrink-0">
+                {selectedVariant.price != null ? `Rs. ${Number(selectedVariant.price).toLocaleString()}` : ''}
               </span>
             </div>
           ) : (
-            <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-slate-800 text-center">
-              <p className="text-sm text-slate-500">Select all options to see variant</p>
+            <div className="bg-white rounded-xl p-4 border border-gray-200 text-center">
+              <p className="text-sm text-gray-400">Select all options to see variant details</p>
             </div>
           )}
 
@@ -140,7 +140,7 @@ export default function ItemVariantPickerModal({ item, onClose, onSelect, title,
                 onSelect?.(item, null);
                 onClose?.();
               }}
-              className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 font-semibold rounded-xl transition flex items-center justify-center gap-2 text-xs"
+              className="w-full py-2 bg-white hover:bg-gray-50 text-brand-orange border border-gray-300 font-semibold rounded-lg transition flex items-center justify-center gap-2 text-xs"
             >
               Select Entire Product (All Variants)
             </button>
@@ -150,7 +150,7 @@ export default function ItemVariantPickerModal({ item, onClose, onSelect, title,
             type="button"
             onClick={handleConfirm}
             disabled={!canConfirm}
-            className="w-full py-3 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-700 disabled:text-slate-500 text-[var(--pos-selection-text)] font-bold rounded-xl transition flex items-center justify-center gap-2"
+            className="w-full py-2.5 bg-brand-orange hover:bg-brand-orange/95 disabled:bg-gray-300 disabled:text-gray-500 text-white font-bold rounded-lg transition flex items-center justify-center gap-2 text-sm"
           >
             <Check size={18} />
             Confirm Selection

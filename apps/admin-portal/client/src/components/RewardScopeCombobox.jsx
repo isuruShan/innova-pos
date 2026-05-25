@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, X } from 'lucide-react';
+import ItemVariantPickerModal from './ItemVariantPickerModal';
 
 /**
  * Search + dropdown (categories + products). Selected scope shown only as tags below the search.
@@ -10,10 +11,12 @@ export default function RewardScopeCombobox({
   categoryNames = [],
   itemIds = [],
   itemNames = [],
+  applicableVariantIds = [],
   onPatch,
 }) {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
+  const [variantPickerItem, setVariantPickerItem] = useState(null);
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -52,20 +55,43 @@ export default function RewardScopeCombobox({
     setOpen(false);
   };
 
-  const selectItem = (m) => {
+  const selectItem = (m, variant = null) => {
     const ids = itemIds || [];
     const names = itemNames || [];
-    const idx = ids.findIndex((id) => String(id) === String(m._id));
-    let nextIds;
-    let nextNames;
-    if (idx >= 0) {
-      nextIds = ids.filter((_, i) => i !== idx);
-      nextNames = names.filter((_, i) => i !== idx);
+    const varIds = applicableVariantIds || [];
+
+    let nextIds, nextNames, nextVarIds;
+
+    if (variant) {
+      const displayName = `${m.name} (${variant.attributes?.map(a => a.value).join(' / ') || variant.name})`;
+      const existingIdx = varIds.findIndex((vid, idx) => String(vid) === String(variant._id) && String(ids[idx]) === String(m._id));
+      if (existingIdx >= 0) {
+        nextIds = ids.filter((_, i) => i !== existingIdx);
+        nextNames = names.filter((_, i) => i !== existingIdx);
+        nextVarIds = varIds.filter((_, i) => i !== existingIdx);
+      } else {
+        nextIds = [...ids, m._id];
+        nextNames = [...names, displayName];
+        nextVarIds = [...varIds, variant._id];
+      }
     } else {
-      nextIds = [...ids, m._id];
-      nextNames = [...names, m.name];
+      const existingIdx = ids.findIndex((id, idx) => String(id) === String(m._id) && !varIds[idx]);
+      if (existingIdx >= 0) {
+        nextIds = ids.filter((_, i) => i !== existingIdx);
+        nextNames = names.filter((_, i) => i !== existingIdx);
+        nextVarIds = varIds.filter((_, i) => i !== existingIdx);
+      } else {
+        nextIds = [...ids, m._id];
+        nextNames = [...names, m.name];
+        nextVarIds = [...varIds, null];
+      }
     }
-    onPatch({ applicableItems: nextIds, applicableItemNames: nextNames });
+
+    onPatch({
+      applicableItems: nextIds,
+      applicableItemNames: nextNames,
+      applicableVariantIds: nextVarIds,
+    });
     setSearch('');
     setOpen(false);
   };
@@ -73,13 +99,21 @@ export default function RewardScopeCombobox({
   const removeCategory = (name) =>
     onPatch({ applicableCategories: categoryNames.filter((c) => c !== name) });
 
-  const removeItem = (id) => {
-    const idx = itemIds.findIndex((i) => String(i) === String(id));
-    if (idx < 0) return;
+  const removeItemAt = (index) => {
     onPatch({
-      applicableItems: itemIds.filter((_, i) => i !== idx),
-      applicableItemNames: itemNames.filter((_, i) => i !== idx),
+      applicableItems: itemIds.filter((_, i) => i !== index),
+      applicableItemNames: itemNames.filter((_, i) => i !== index),
+      applicableVariantIds: (applicableVariantIds || []).filter((_, i) => i !== index),
     });
+  };
+
+  const handleItemClick = (m) => {
+    if (m.hasVariants && m.variants?.length > 0) {
+      setVariantPickerItem(m);
+      setOpen(false);
+    } else {
+      selectItem(m, null);
+    }
   };
 
   const totalSelected = categoryNames.length + itemIds.length;
@@ -160,29 +194,35 @@ export default function RewardScopeCombobox({
                 <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50 sticky top-0">
                   Products
                 </div>
-                {matchItems.map((m) => (
-                  <button
-                    key={m._id}
-                    type="button"
-                    onMouseDown={() => selectItem(m)}
-                    className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50 transition"
-                  >
-                    <span className="text-base leading-none">🍔</span>
-                    <span
-                      className={
-                        itemIds.some((id) => String(id) === String(m._id))
-                          ? 'text-brand-teal font-medium'
-                          : 'text-gray-800'
-                      }
+                {matchItems.map((m) => {
+                  const isSelected = itemIds.some((id) => String(id) === String(m._id));
+                  return (
+                    <button
+                      key={m._id}
+                      type="button"
+                      onMouseDown={() => handleItemClick(m)}
+                      className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50 transition"
                     >
-                      {m.name}
-                    </span>
-                    {m.category ? <span className="text-xs text-gray-500">{m.category}</span> : null}
-                    {itemIds.some((id) => String(id) === String(m._id)) ? (
-                      <span className="ml-auto text-brand-teal text-xs">✓</span>
-                    ) : null}
-                  </button>
-                ))}
+                      <span className="text-base leading-none">🍔</span>
+                      <span
+                        className={
+                          isSelected ? 'text-brand-teal font-medium' : 'text-gray-800'
+                        }
+                      >
+                        {m.name}
+                      </span>
+                      {m.hasVariants && (
+                        <span className="text-[10px] bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20 font-semibold shrink-0">
+                          Variants
+                        </span>
+                      )}
+                      {m.category ? <span className="text-xs text-gray-500">{m.category}</span> : null}
+                      {isSelected ? (
+                        <span className="ml-auto text-brand-teal text-xs">✓</span>
+                      ) : null}
+                    </button>
+                  );
+                })}
               </>
             )}
           </div>
@@ -212,13 +252,13 @@ export default function RewardScopeCombobox({
           ))}
           {itemIds.map((id, i) => (
             <span
-              key={`item-${String(id)}`}
+              key={`item-${String(id)}-${i}`}
               className="inline-flex items-center gap-1 bg-gray-100 border border-gray-200 text-gray-800 text-xs px-2.5 py-1 rounded-full"
             >
               {itemNames[i] ?? 'Item'}
               <button
                 type="button"
-                onClick={() => removeItem(id)}
+                onClick={() => removeItemAt(i)}
                 className="ml-0.5 hover:text-gray-950 leading-none"
                 aria-label="Remove item"
               >
@@ -231,6 +271,16 @@ export default function RewardScopeCombobox({
         <p className="text-xs text-gray-500">
           Nothing selected — applies to the whole order when discount type allows.
         </p>
+      )}
+
+      {variantPickerItem && (
+        <ItemVariantPickerModal
+          item={variantPickerItem}
+          onClose={() => setVariantPickerItem(null)}
+          onSelect={selectItem}
+          allowAllVariants={true}
+          title="Select Variant"
+        />
       )}
     </div>
   );

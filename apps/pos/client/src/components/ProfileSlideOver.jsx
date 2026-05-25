@@ -106,6 +106,11 @@ export default function ProfileSlideOver({ open, onClose }) {
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Invalid file type. Please select an image.');
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
     setError('');
     try {

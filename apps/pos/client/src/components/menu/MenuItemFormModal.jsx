@@ -161,6 +161,11 @@ function MenuGalleryAppend({ onAppend }) {
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Invalid file type. Please select an image.');
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
     try {
       const { optimizeImage } = await import('../../utils/imageUpload');
@@ -271,6 +276,11 @@ function VariantImagePicker({ images, onChange }) {
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Invalid file type. Please select an image.');
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
     try {
       const { optimizeImage } = await import('../../utils/imageUpload');

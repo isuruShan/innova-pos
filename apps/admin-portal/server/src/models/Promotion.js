@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const bundleItemSchema = new mongoose.Schema({
   menuItem: { type: mongoose.Schema.Types.ObjectId, ref: 'MenuItem', required: true },
+  variantId: { type: mongoose.Schema.Types.ObjectId, default: null },
   name: { type: String, default: '' },
   qty: { type: Number, default: 1, min: 1 },
 }, { _id: false });
@@ -41,11 +42,14 @@ const promotionSchema = new mongoose.Schema(
     buyItem: { type: mongoose.Schema.Types.ObjectId, ref: 'MenuItem' },
     buyItemName: { type: String, default: '' },
     buyQty: { type: Number, default: 1 },
+    buyVariantId: { type: mongoose.Schema.Types.ObjectId, default: null },
     getFreeItem: { type: mongoose.Schema.Types.ObjectId, ref: 'MenuItem' },
     getFreeItemName: { type: String, default: '' },
     getFreeQty: { type: Number, default: 1 },
+    getFreeVariantId: { type: mongoose.Schema.Types.ObjectId, default: null },
 
     applicableItems: [{ type: mongoose.Schema.Types.ObjectId, ref: 'MenuItem' }],
+    applicableVariantIds: [{ type: mongoose.Schema.Types.ObjectId, default: null }],
     applicableItemNames: [{ type: String }],
     applicableCategories: [{ type: String }],
     flatPrice: { type: Number, default: 0 },

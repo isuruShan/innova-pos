@@ -14,11 +14,21 @@
  *   - item's category is in applicableCategories
  */
 function inScope(item, promo) {
-  const ids  = (promo.applicableItems      || []).map(id => id.toString());
-  const cats = (promo.applicableCategories || []);
+  const ids  = promo.applicableItems || [];
+  const cats = promo.applicableCategories || [];
+  const varIds = promo.applicableVariantIds || [];
+
   if (!ids.length && !cats.length) return true;
-  if (ids.includes(item.menuItem?.toString())) return true;
   if (item.category && cats.includes(item.category)) return true;
+
+  for (let i = 0; i < ids.length; i++) {
+    if (ids[i].toString() === item.menuItem?.toString()) {
+      const targetVarId = varIds[i];
+      if (!targetVarId || targetVarId.toString() === item.variantId?.toString()) {
+        return true;
+      }
+    }
+  }
   return false;
 }
 
@@ -36,13 +46,21 @@ function applyPromotions(items, promotions) {
         if (validItems.length !== promo.bundleItems.length) break; // malformed promo
         const times = Math.min(
           ...validItems.map(bi => {
-            const ci = items.find(i => i.menuItem?.toString() === bi.menuItem?.toString());
+            const ci = items.find(i => {
+              const itemMatch = i.menuItem?.toString() === bi.menuItem?.toString();
+              const variantMatch = !bi.variantId || i.variantId?.toString() === bi.variantId?.toString();
+              return itemMatch && variantMatch;
+            });
             return ci ? Math.floor(ci.qty / bi.qty) : 0;
           })
         );
         if (times <= 0) break;
         const normalPrice = validItems.reduce((sum, bi) => {
-          const ci = items.find(i => i.menuItem?.toString() === bi.menuItem?.toString());
+          const ci = items.find(i => {
+            const itemMatch = i.menuItem?.toString() === bi.menuItem?.toString();
+            const variantMatch = !bi.variantId || i.variantId?.toString() === bi.variantId?.toString();
+            return itemMatch && variantMatch;
+          });
           return sum + (ci ? ci.price * bi.qty : 0);
         }, 0);
         discountAmount = Math.max(0, (normalPrice - promo.bundlePrice) * times);
@@ -51,9 +69,17 @@ function applyPromotions(items, promotions) {
 
       case 'buyXgetY': {
         if (!promo.buyItem || !promo.getFreeItem) break;
-        const buyItem  = items.find(i => i.menuItem?.toString() === promo.buyItem.toString());
+        const buyItem  = items.find(i => {
+          const itemMatch = i.menuItem?.toString() === promo.buyItem.toString();
+          const variantMatch = !promo.buyVariantId || i.variantId?.toString() === promo.buyVariantId.toString();
+          return itemMatch && variantMatch;
+        });
         if (!buyItem || buyItem.qty < promo.buyQty) break;
-        const freeItem = items.find(i => i.menuItem?.toString() === promo.getFreeItem.toString());
+        const freeItem = items.find(i => {
+          const itemMatch = i.menuItem?.toString() === promo.getFreeItem.toString();
+          const variantMatch = !promo.getFreeVariantId || i.variantId?.toString() === promo.getFreeVariantId.toString();
+          return itemMatch && variantMatch;
+        });
         if (!freeItem) break;
         const times = Math.floor(buyItem.qty / promo.buyQty);
         discountAmount = freeItem.price * promo.getFreeQty * times;

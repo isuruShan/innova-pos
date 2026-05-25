@@ -80,6 +80,7 @@ const EMPTY_FORM = {
   buyItem: '',       buyItemName: '', buyQty: '1', buyVariantId: null,
   getFreeItem: '',   getFreeItemName: '', getFreeQty: '1', getFreeVariantId: null,
   applicableItems: [], applicableItemNames: [], applicableCategories: [],
+  applicableVariantIds: [],
   flatPrice: '',  discountAmount: '', discountPercent: '',
   minOrderAmount: '', maxDiscountAmount: '',
   minTierLevel: '',
@@ -212,19 +213,24 @@ function BundleItemsField({ bundleItems, onChange, menuItems }) {
 
 // ─── Applicable items: search-based combobox (by category AND/OR by product) ──
 function ApplicableItemsField({
-  itemIds, itemNames, categoryNames,
-  onChange,   // (itemIds, itemNames, categoryNames) => void
-  menuItems,
-  categories,
+  itemIds = [], itemNames = [], categoryNames = [], applicableVariantIds = [],
+  onChange,   // (itemIds, itemNames, categoryNames, applicableVariantIds) => void
+  menuItems = [],
+  categories = [],
   required = false,
 }) {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
+  const [variantPickerItem, setVariantPickerItem] = useState(null);
   const containerRef = useRef(null);
 
   const q = search.trim().toLowerCase();
   const matchCats  = categories.filter(c => c.name.toLowerCase().includes(q));
-  const matchItems = menuItems.filter(m => m.name.toLowerCase().includes(q));
+  const matchItems = menuItems.filter(m => {
+    const name = (m.name || '').toLowerCase();
+    const cat = (m.category || '').toLowerCase();
+    return name.includes(q) || cat.includes(q);
+  });
   const showDrop   = open && q.length > 0 && (matchCats.length > 0 || matchItems.length > 0);
 
   // Close on outside click
@@ -240,26 +246,53 @@ function ApplicableItemsField({
     const next = categoryNames.includes(name)
       ? categoryNames.filter(c => c !== name)
       : [...categoryNames, name];
-    onChange(itemIds, itemNames, next);
+    onChange(itemIds, itemNames, next, applicableVariantIds);
     setSearch(''); setOpen(false);
   };
 
-  const selectItem = (m) => {
-    let nextIds, nextNames;
-    if (itemIds.includes(m._id)) {
-      nextIds   = itemIds.filter(id => id !== m._id);
-      nextNames = itemNames.filter(n => n !== m.name);
+  const selectItem = (m, variant = null) => {
+    const ids = itemIds || [];
+    const names = itemNames || [];
+    const varIds = applicableVariantIds || [];
+
+    let nextIds, nextNames, nextVarIds;
+
+    if (variant) {
+      const displayName = `${m.name} (${variant.attributes?.map(a => a.value).join(' / ') || variant.name})`;
+      const existingIdx = varIds.findIndex((vid, idx) => String(vid) === String(variant._id) && String(ids[idx]) === String(m._id));
+      if (existingIdx >= 0) {
+        nextIds = ids.filter((_, i) => i !== existingIdx);
+        nextNames = names.filter((_, i) => i !== existingIdx);
+        nextVarIds = varIds.filter((_, i) => i !== existingIdx);
+      } else {
+        nextIds = [...ids, m._id];
+        nextNames = [...names, displayName];
+        nextVarIds = [...varIds, variant._id];
+      }
     } else {
-      nextIds   = [...itemIds,   m._id];
-      nextNames = [...itemNames, m.name];
+      const existingIdx = ids.findIndex((id, idx) => String(id) === String(m._id) && !varIds[idx]);
+      if (existingIdx >= 0) {
+        nextIds = ids.filter((_, i) => i !== existingIdx);
+        nextNames = names.filter((_, i) => i !== existingIdx);
+        nextVarIds = varIds.filter((_, i) => i !== existingIdx);
+      } else {
+        nextIds = [...ids, m._id];
+        nextNames = [...names, m.name];
+        nextVarIds = [...varIds, null];
+      }
     }
-    onChange(nextIds, nextNames, categoryNames);
+
+    onChange(nextIds, nextNames, categoryNames, nextVarIds);
     setSearch(''); setOpen(false);
   };
 
-  const removeCategory = (name) => onChange(itemIds, itemNames, categoryNames.filter(c => c !== name));
-  const removeItem = (id, name) =>
-    onChange(itemIds.filter(i => i !== id), itemNames.filter(n => n !== name), categoryNames);
+  const removeCategory = (name) => onChange(itemIds, itemNames, categoryNames.filter(c => c !== name), applicableVariantIds);
+  const removeItemAt = (index) => {
+    const nextIds = itemIds.filter((_, i) => i !== index);
+    const nextNames = itemNames.filter((_, i) => i !== index);
+    const nextVarIds = (applicableVariantIds || []).filter((_, i) => i !== index);
+    onChange(nextIds, nextNames, categoryNames, nextVarIds);
+  };
 
   const totalSelected = itemIds.length + categoryNames.length;
 
@@ -281,9 +314,9 @@ function ApplicableItemsField({
             </span>
           ))}
           {itemIds.map((id, i) => (
-            <span key={id} className="flex items-center gap-1 bg-slate-700 border border-slate-600 text-slate-200 text-xs px-2.5 py-1 rounded-full">
+            <span key={`${id}-${i}`} className="flex items-center gap-1 bg-slate-700 border border-slate-600 text-slate-200 text-xs px-2.5 py-1 rounded-full">
               {itemNames[i]}
-              <button type="button" onClick={() => removeItem(id, itemNames[i])} className="ml-0.5 hover:text-[var(--pos-text-primary)] leading-none">×</button>
+              <button type="button" onClick={() => removeItemAt(i)} className="ml-0.5 hover:text-[var(--pos-text-primary)] leading-none">×</button>
             </span>
           ))}
         </div>
@@ -326,20 +359,45 @@ function ApplicableItemsField({
             {matchItems.length > 0 && (
               <>
                 <div className="px-3 py-1.5 text-xs font-semibold text-slate-500 bg-slate-800/60 sticky top-0">Products</div>
-                {matchItems.map(m => (
-                  <button key={m._id} type="button" onMouseDown={() => selectItem(m)}
-                    className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-slate-700/50 transition">
-                    <span className="text-base leading-none">🍔</span>
-                    <span className={itemIds.includes(m._id) ? 'text-amber-400 font-medium' : 'text-slate-300'}>{m.name}</span>
-                    {m.category && <span className="text-xs text-slate-600">{m.category}</span>}
-                    {itemIds.includes(m._id) && <span className="ml-auto text-amber-400 text-xs">✓</span>}
-                  </button>
-                ))}
+                {matchItems.map(m => {
+                  const isSelected = itemIds.some(id => String(id) === String(m._id));
+                  return (
+                    <button key={m._id} type="button" onMouseDown={() => {
+                      if (m.hasVariants && m.variants?.length > 0) {
+                        setVariantPickerItem(m);
+                        setOpen(false);
+                      } else {
+                        selectItem(m, null);
+                      }
+                    }}
+                      className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-slate-700/50 transition">
+                      <span className="text-base leading-none">🍔</span>
+                      <span className={isSelected ? 'text-amber-400 font-medium' : 'text-slate-300'}>{m.name}</span>
+                      {m.hasVariants && (
+                        <span className="text-[10px] bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded-full border border-amber-500/20 font-semibold shrink-0">
+                          Variants
+                        </span>
+                      )}
+                      {m.category && <span className="text-xs text-slate-600">{m.category}</span>}
+                      {isSelected && <span className="ml-auto text-amber-400 text-xs">✓</span>}
+                    </button>
+                  );
+                })}
               </>
             )}
           </div>
         )}
       </div>
+
+      {variantPickerItem && (
+        <ItemVariantPickerModal
+          item={variantPickerItem}
+          onClose={() => setVariantPickerItem(null)}
+          onSelect={selectItem}
+          allowAllVariants={true}
+          title="Select Variant"
+        />
+      )}
     </div>
   );
 }
@@ -429,6 +487,7 @@ export default function Promotions() {
       applicableItems: promo.applicableItems || [],
       applicableItemNames: promo.applicableItemNames || [],
       applicableCategories: promo.applicableCategories || [],
+      applicableVariantIds: promo.applicableVariantIds || [],
       flatPrice: promo.flatPrice ?? '',
       discountAmount: promo.discountAmount ?? '',
       discountPercent: promo.discountPercent ?? '',
@@ -490,6 +549,7 @@ export default function Promotions() {
       applicableItems: form.applicableItems,
       applicableItemNames: form.applicableItemNames,
       applicableCategories: form.applicableCategories,
+      applicableVariantIds: form.applicableVariantIds || [],
       flatPrice: +form.flatPrice || 0,
       discountAmount: +form.discountAmount || 0,
       discountPercent: +form.discountPercent || 0,
@@ -498,6 +558,10 @@ export default function Promotions() {
         form.maxDiscountAmount === '' || form.maxDiscountAmount == null
           ? null
           : Math.max(0, +form.maxDiscountAmount || 0),
+      minTierLevel:
+        form.minTierLevel === '' || form.minTierLevel == null
+          ? null
+          : Math.max(1, Number(form.minTierLevel) || 1),
     };
 
     if (editing) updateMutation.mutate({ id: editing._id, d: payload });
@@ -799,7 +863,8 @@ export default function Promotions() {
                   itemIds={form.applicableItems}
                   itemNames={form.applicableItemNames}
                   categoryNames={form.applicableCategories}
-                  onChange={(ids, names, cats) => setForm(f => ({ ...f, applicableItems: ids, applicableItemNames: names, applicableCategories: cats }))}
+                  applicableVariantIds={form.applicableVariantIds}
+                  onChange={(ids, names, cats, varIds) => setForm(f => ({ ...f, applicableItems: ids, applicableItemNames: names, applicableCategories: cats, applicableVariantIds: varIds }))}
                   menuItems={menuItems}
                   categories={categories}
                   required
@@ -826,7 +891,8 @@ export default function Promotions() {
                   itemIds={form.applicableItems}
                   itemNames={form.applicableItemNames}
                   categoryNames={form.applicableCategories}
-                  onChange={(ids, names, cats) => setForm(f => ({ ...f, applicableItems: ids, applicableItemNames: names, applicableCategories: cats }))}
+                  applicableVariantIds={form.applicableVariantIds}
+                  onChange={(ids, names, cats, varIds) => setForm(f => ({ ...f, applicableItems: ids, applicableItemNames: names, applicableCategories: cats, applicableVariantIds: varIds }))}
                   menuItems={menuItems}
                   categories={categories}
                 />
@@ -857,7 +923,8 @@ export default function Promotions() {
                   itemIds={form.applicableItems}
                   itemNames={form.applicableItemNames}
                   categoryNames={form.applicableCategories}
-                  onChange={(ids, names, cats) => setForm(f => ({ ...f, applicableItems: ids, applicableItemNames: names, applicableCategories: cats }))}
+                  applicableVariantIds={form.applicableVariantIds}
+                  onChange={(ids, names, cats, varIds) => setForm(f => ({ ...f, applicableItems: ids, applicableItemNames: names, applicableCategories: cats, applicableVariantIds: varIds }))}
                   menuItems={menuItems}
                   categories={categories}
                 />

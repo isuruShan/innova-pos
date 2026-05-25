@@ -30,6 +30,11 @@ function AddonEditDrawer({ row, onClose, onSaved }) {
   const handleScreenshotUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Invalid file type. Please select an image.');
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
     try {
       const fd = new FormData();

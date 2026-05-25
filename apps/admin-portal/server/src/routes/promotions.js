@@ -17,10 +17,16 @@ router.get('/', protect, authorize('merchant_admin'), tenantScope, async (req, r
       { active: false },
     );
     const showAll = req.query.showAll === 'true' || req.query.status === 'all';
-    if (!showAll && req.query.active !== 'false') {
+    const isPendingOrRejected = req.query.pending === 'true' ||
+                               req.query.approvalStatus === 'pending' ||
+                               req.query.approvalStatus === 'rejected';
+
+    if (req.query.active === 'true' && !isPendingOrRejected) {
       filter.active = true;
     } else if (req.query.active === 'false') {
       filter.active = false;
+    } else if (!showAll && !req.query.active && !isPendingOrRejected) {
+      filter.active = true;
     }
     if (req.query.pending === 'true') {
       filter.approvalStatus = 'pending';
