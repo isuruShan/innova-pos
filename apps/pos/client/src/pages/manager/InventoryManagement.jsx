@@ -12,6 +12,8 @@ import { useStoreContext } from '../../context/StoreContext';
 import { InventoryTableSkeleton } from '../../components/StoreSkeletons';
 import SortableTh from '../../components/SortableTh';
 import { useListSort } from '../../hooks/useListSort';
+import InventoryAdjustments from '../../components/inventory/InventoryAdjustments';
+import InventoryMovements from '../../components/inventory/InventoryMovements';
 
 const EMPTY_FORM = { itemName: '', unit: 'pcs', quantity: '', minThreshold: '', suppliers: [] };
 
@@ -70,6 +72,7 @@ function SupplierPills({ suppliers }) {
 
 export default function InventoryManagement() {
   const { selectedStoreId, isStoreReady } = useStoreContext();
+  const [activeTab, setActiveTab] = useState('stock');
   const [slideOpen, setSlideOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -167,39 +170,69 @@ export default function InventoryManagement() {
           <div>
             <h1 className="text-2xl font-bold text-[var(--pos-text-primary)] flex items-center gap-2">
               Inventory
-              {lowCount > 0 && (
+              {activeTab === 'stock' && lowCount > 0 && (
                 <span className="flex items-center gap-1 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 text-xs font-semibold px-2.5 py-1 rounded-full">
                   <AlertTriangle size={12} /> {lowCount} need attention
                 </span>
               )}
             </h1>
-            <p className="text-slate-500 text-sm mt-1">{items.length} items tracked</p>
+            <p className="text-slate-500 text-sm mt-1">
+              {activeTab === 'stock' && `${items.length} items tracked`}
+              {activeTab === 'adjustments' && 'Make manual stock adjustments'}
+              {activeTab === 'movements' && 'View stock movement history'}
+            </p>
           </div>
-          <button onClick={openAdd}
-            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/20 text-sm">
-            <Plus size={16} />
-            Add Item
-          </button>
+          {activeTab === 'stock' && (
+            <button onClick={openAdd}
+              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/20 text-sm">
+              <Plus size={16} />
+              Add Item
+            </button>
+          )}
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex gap-2 mb-5">
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6 border-b border-slate-700/50 pb-0">
           {[
-            { key: 'all', label: 'All' },
-            { key: 'ok', label: 'OK' },
-            { key: 'low', label: 'Low' },
-            { key: 'critical', label: 'Critical' },
-          ].map(f => (
-            <button key={f.key} onClick={() => setFilter(f.key)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
-                filter === f.key
-                  ? 'bg-amber-500 text-[var(--pos-selection-text)]'
-                  : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700'
-              }`}>
-              {f.label}
+            { key: 'stock', label: 'Stock Levels' },
+            { key: 'adjustments', label: 'Adjustments' },
+            { key: 'movements', label: 'Movements' },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-4 py-2.5 text-sm font-medium transition border-b-2 ${
+                activeTab === tab.key
+                  ? 'border-amber-500 text-amber-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-300'
+              }`}
+            >
+              {tab.label}
             </button>
           ))}
         </div>
+
+        {/* Tab Content */}
+        {activeTab === 'stock' && (
+          <>
+            {/* Filter tabs */}
+            <div className="flex gap-2 mb-5">
+              {[
+                { key: 'all', label: 'All' },
+                { key: 'ok', label: 'OK' },
+                { key: 'low', label: 'Low' },
+                { key: 'critical', label: 'Critical' },
+              ].map(f => (
+                <button key={f.key} onClick={() => setFilter(f.key)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
+                    filter === f.key
+                      ? 'bg-amber-500 text-[var(--pos-selection-text)]'
+                      : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700'
+                  }`}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
 
         {pageLoading ? (
           <InventoryTableSkeleton />
@@ -271,6 +304,11 @@ export default function InventoryManagement() {
             </div>
           </div>
         )}
+          </>
+        )}
+
+        {activeTab === 'adjustments' && <InventoryAdjustments />}
+        {activeTab === 'movements' && <InventoryMovements />}
       </div>
 
       <SlideOver open={slideOpen} onClose={closeSlide} title={editing ? 'Edit Inventory Item' : 'Add Inventory Item'}>
