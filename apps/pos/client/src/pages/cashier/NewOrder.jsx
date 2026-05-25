@@ -35,13 +35,25 @@ const formatPrice = formatCurrency;
 // Normalize any value to a comparable string (handles ObjectId, string, null)
 const sid = (v) => (v == null ? '' : v.toString());
 
-/** Mirror of server/src/utils/applyPromotions.js — supports applicableCategories */
+/** Mirror of server/src/utils/applyPromotions.js — supports applicableCategories and variants */
 function inScope(item, promo) {
-  const ids  = (promo.applicableItems      || []).map(sid);
-  const cats =  promo.applicableCategories || [];
+  const ids  = promo.applicableItems || [];
+  const cats = promo.applicableCategories || [];
+  const varIds = promo.applicableVariantIds || [];
+
   if (!ids.length && !cats.length) return true;
-  if (ids.includes(sid(item.menuItem))) return true;
   if (item.category && cats.includes(item.category)) return true;
+
+  // Check item ID with optional variant matching
+  for (let i = 0; i < ids.length; i++) {
+    if (sid(ids[i]) === sid(item.menuItem)) {
+      const targetVarId = varIds[i];
+      // Match if no variant specified OR variant IDs match
+      if (!targetVarId || sid(targetVarId) === sid(item.variantId)) {
+        return true;
+      }
+    }
+  }
   return false;
 }
 
@@ -57,12 +69,20 @@ function calcPromotionDiscounts(cart, promotions) {
         const validItems = promo.bundleItems.filter(bi => bi.menuItem);
         if (validItems.length !== promo.bundleItems.length) break;
         const times = Math.min(...validItems.map(bi => {
-          const ci = cart.find(i => sid(i.menuItem) === sid(bi.menuItem));
+          const ci = cart.find(i => {
+            const itemMatch = sid(i.menuItem) === sid(bi.menuItem);
+            const variantMatch = !bi.variantId || sid(i.variantId) === sid(bi.variantId);
+            return itemMatch && variantMatch;
+          });
           return ci ? Math.floor(ci.qty / bi.qty) : 0;
         }));
         if (times <= 0) break;
         const normal = validItems.reduce((s, bi) => {
-          const ci = cart.find(i => sid(i.menuItem) === sid(bi.menuItem));
+          const ci = cart.find(i => {
+            const itemMatch = sid(i.menuItem) === sid(bi.menuItem);
+            const variantMatch = !bi.variantId || sid(i.variantId) === sid(bi.variantId);
+            return itemMatch && variantMatch;
+          });
           return s + (ci ? ci.price * bi.qty : 0);
         }, 0);
         disc = Math.max(0, (normal - promo.bundlePrice) * times);
@@ -70,8 +90,16 @@ function calcPromotionDiscounts(cart, promotions) {
       }
       case 'buyXgetY': {
         if (!promo.buyItem || !promo.getFreeItem) break;
-        const buy  = cart.find(i => sid(i.menuItem) === sid(promo.buyItem));
-        const free = cart.find(i => sid(i.menuItem) === sid(promo.getFreeItem));
+        const buy = cart.find(i => {
+          const itemMatch = sid(i.menuItem) === sid(promo.buyItem);
+          const variantMatch = !promo.buyVariantId || sid(i.variantId) === sid(promo.buyVariantId);
+          return itemMatch && variantMatch;
+        });
+        const free = cart.find(i => {
+          const itemMatch = sid(i.menuItem) === sid(promo.getFreeItem);
+          const variantMatch = !promo.getFreeVariantId || sid(i.variantId) === sid(promo.getFreeVariantId);
+          return itemMatch && variantMatch;
+        });
         if (!buy || buy.qty < promo.buyQty || !free) break;
         disc = free.price * promo.getFreeQty * Math.floor(buy.qty / promo.buyQty);
         break;
@@ -123,30 +151,57 @@ function calcPromotionDiscounts(cart, promotions) {
   return applied;
 }
 
-/** IDs of cart items that a promotion "touches" (covers). */
+/** IDs of cart items that a promotion "touches" (covers). 
+ * Returns composite keys: "menuItemId:variantId" for proper variant-level tracking.
+ */
 function getPromoTouchedItemIds(promo, cart) {
-  const ids  = (promo.applicableItems      || []).map(sid);
-  const cats =  promo.applicableCategories || [];
+  const makeKey = (item) => `${sid(item.menuItem)}:${sid(item.variantId || '')}`;
+  
   switch (promo.type) {
-    case 'bundle':
-      return new Set(
-        (promo.bundleItems || [])
-          .filter(bi => bi.menuItem && cart.some(i => sid(i.menuItem) === sid(bi.menuItem)))
-          .map(bi => sid(bi.menuItem))
-      );
-    case 'buyXgetY':
-      return new Set(
-        [promo.buyItem, promo.getFreeItem]
-          .filter(id => id && cart.some(i => sid(i.menuItem) === sid(id)))
-          .map(sid)
-      );
+    case 'bundle': {
+      const touched = new Set();
+      (promo.bundleItems || []).forEach(bi => {
+        if (!bi.menuItem) return;
+        const cartItem = cart.find(i => {
+          const itemMatch = sid(i.menuItem) === sid(bi.menuItem);
+          const variantMatch = !bi.variantId || sid(i.variantId) === sid(bi.variantId);
+          return itemMatch && variantMatch;
+        });
+        if (cartItem) touched.add(makeKey(cartItem));
+      });
+      return touched;
+    }
+    case 'buyXgetY': {
+      const touched = new Set();
+      // Check buy item with variant
+      const buyItem = cart.find(i => {
+        const itemMatch = sid(i.menuItem) === sid(promo.buyItem);
+        const variantMatch = !promo.buyVariantId || sid(i.variantId) === sid(promo.buyVariantId);
+        return itemMatch && variantMatch;
+      });
+      if (buyItem) touched.add(makeKey(buyItem));
+      // Check free item with variant
+      const freeItem = cart.find(i => {
+        const itemMatch = sid(i.menuItem) === sid(promo.getFreeItem);
+        const variantMatch = !promo.getFreeVariantId || sid(i.variantId) === sid(promo.getFreeVariantId);
+        return itemMatch && variantMatch;
+      });
+      if (freeItem) touched.add(makeKey(freeItem));
+      return touched;
+    }
     default: {
+      // flatPrice, flatDiscount, percentageDiscount - use inScope which now checks variants
+      const ids  = promo.applicableItems || [];
+      const cats = promo.applicableCategories || [];
       const hasScope = ids.length > 0 || cats.length > 0;
-      if (!hasScope) return new Set(cart.map(i => sid(i.menuItem)));
+      
+      if (!hasScope) {
+        // Applies to whole order - touch all cart items
+        return new Set(cart.map(makeKey));
+      }
+      // Filter by inScope which properly checks variants
       return new Set(
-        cart
-          .filter(i => ids.includes(sid(i.menuItem)) || cats.includes(i.category))
-          .map(i => sid(i.menuItem))
+        cart.filter(i => inScope(i, promo)).map(makeKey)
       );
     }
   }
@@ -176,11 +231,23 @@ function autoSelectBestPromos(cart, promotions) {
 }
 
 function rewardAppliesToLine(item, reward) {
-  const ids = (reward.applicableItems || []).map(sid);
+  const ids = reward.applicableItems || [];
   const cats = reward.applicableCategories || [];
+  const varIds = reward.applicableVariantIds || [];
+  
   if (!ids.length && !cats.length) return true;
-  if (ids.includes(sid(item.menuItem))) return true;
   if (item.category && cats.includes(item.category)) return true;
+  
+  // Check item ID with optional variant matching
+  for (let i = 0; i < ids.length; i++) {
+    if (sid(ids[i]) === sid(item.menuItem)) {
+      const targetVarId = varIds[i];
+      // Match if no variant specified OR variant IDs match
+      if (!targetVarId || sid(targetVarId) === sid(item.variantId)) {
+        return true;
+      }
+    }
+  }
   return false;
 }
 

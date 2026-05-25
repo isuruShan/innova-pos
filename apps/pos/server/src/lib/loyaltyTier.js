@@ -42,11 +42,23 @@ function lowestTier(tiers) {
 }
 
 function rewardAppliesToLine(item, reward) {
-  const ids = (reward.applicableItems || []).map((id) => String(id));
+  const ids = reward.applicableItems || [];
   const cats = reward.applicableCategories || [];
+  const varIds = reward.applicableVariantIds || [];
+  
   if (!ids.length && !cats.length) return true;
-  if (ids.includes(String(item.menuItem))) return true;
   if (item.category && cats.includes(item.category)) return true;
+  
+  // Check item ID with optional variant matching
+  for (let i = 0; i < ids.length; i++) {
+    if (String(ids[i]) === String(item.menuItem)) {
+      const targetVarId = varIds[i];
+      // Match if no variant specified OR variant IDs match
+      if (!targetVarId || String(targetVarId) === String(item.variantId)) {
+        return true;
+      }
+    }
+  }
   return false;
 }
 
