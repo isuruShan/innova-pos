@@ -146,7 +146,22 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
       patch.approvedAt = null;
       await notifyMerchantAdmins(req.tenantId, {
         type: 'promotion_pending',
-        tiexisting = await Promotion.findOne(
+        title: 'Promotion updated — needs approval',
+        body: `"${patch.name || existing.name}" was edited and needs approval again.`,
+        meta: { resourceType: 'promotion', resourceId: String(existing._id) },
+      });
+    }
+
+    const promo = await Promotion.findByIdAndUpdate(existing._id, patch, { new: true, runValidators: true });
+    res.json(promo);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+router.post('/:id/approve', protect, authorize('merchant_admin'), tenantScope, resolveSelectedStore, async (req, res) => {
+  try {
+    const existing = await Promotion.findOne(
       { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) }
     );
     if (!existing) return res.status(404).json({ message: 'Promotion not found' });
@@ -172,28 +187,27 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
         $push: { changeHistory: changeEntry },
       },
       { new: true },
-    
-router.post('/:id/approve', protect, authorize('merchant_admin'), tenantScope, resolveSelectedStore, async (req, res) => {
-  try {
-    const promo = await Promotion.findOneAndUpdate(
-      { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) },
-      {
-        approvalStatus: 'approved',
-        approvedBy: req.user.id,
-        approvedAt: new Date(),
-        rejectionReason: '',
-        active: req.body.active !== false,
-        updatedBy: req.user.id,
-      },
-      { new: true },
     );
-    if (!promo) return res.status(404).json({ message: 'Promotion not found' });
 
     if (promo.createdBy) {
       await createNotification(req.tenantId, promo.createdBy, {
         type: 'promotion_approved',
         title: 'Promotion approved',
-        boexisting = await Promotion.findOne(
+        body: `Your promotion "${promo.name}" was approved.`,
+        meta: { resourceType: 'promotion', resourceId: String(promo._id) },
+      });
+    }
+
+    res.json(promo);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+router.post('/:id/reject', protect, authorize('merchant_admin'), tenantScope, resolveSelectedStore, async (req, res) => {
+  try {
+    const reason = String(req.body.rejectionReason || '').trim() || 'No reason provided';
+    const existing = await Promotion.findOne(
       { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) }
     );
     if (!existing) return res.status(404).json({ message: 'Promotion not found' });
@@ -217,21 +231,7 @@ router.post('/:id/approve', protect, authorize('merchant_admin'), tenantScope, r
         $push: { changeHistory: changeEntry },
       },
       { new: true },
-    
-router.post('/:id/reject', protect, authorize('merchant_admin'), tenantScope, resolveSelectedStore, async (req, res) => {
-  try {
-    const reason = String(req.body.rejectionReason || '').trim() || 'No reason provided';
-    const promo = await Promotion.findOneAndUpdate(
-      { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) },
-      {
-        approvalStatus: 'rejected',
-        rejectionReason: reason,
-        active: false,
-        updatedBy: req.user.id,
-      },
-      { new: true },
     );
-    if (!promo) return res.status(404).json({ message: 'Promotion not found' });
 
     if (promo.createdBy) {
       await createNotification(req.tenantId, promo.createdBy, {
