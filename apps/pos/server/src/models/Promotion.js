@@ -7,6 +7,15 @@ const bundleItemSchema = new mongoose.Schema({
   qty: { type: Number, default: 1, min: 1 },
 }, { _id: false });
 
+const changeHistoryEntrySchema = new mongoose.Schema({
+  changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  changedAt: { type: Date, default: Date.now },
+  action: { type: String, enum: ['created', 'updated', 'approved', 'rejected'], required: true },
+  previousValues: { type: mongoose.Schema.Types.Mixed },
+  newValues: { type: mongoose.Schema.Types.Mixed },
+  reason: { type: String, default: '' },
+}, { _id: true });
+
 const promotionSchema = new mongoose.Schema(
   {
     tenantId: {
@@ -63,6 +72,9 @@ const promotionSchema = new mongoose.Schema(
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    
+    /** Change history for approval tracking */
+    changeHistory: [changeHistoryEntrySchema],
   },
   { timestamps: true }
 );

@@ -21,6 +21,8 @@ import MerchantStoresPage from './pages/superadmin/MerchantStoresPage';
 import PaymentProviderSettingsPage from './pages/superadmin/PaymentProviderSettingsPage';
 import PaidAddonsPage from './pages/superadmin/PaidAddonsPage';
 import PlatformUberSettings from './pages/superadmin/PlatformUberSettings';
+import SuspendedActivitiesPage from './pages/superadmin/SuspendedActivitiesPage';
+import ScheduledBannersPage from './pages/superadmin/ScheduledBannersPage';
 import MerchantSubscriptionGate from './components/MerchantSubscriptionGate';
 
 // Merchant admin pages
@@ -136,6 +138,16 @@ export default function App() {
           <Route path="/merchants/:id" element={
             <PrivateRoute roles={['superadmin']}>
               <Layout><MerchantWorkspacePage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/superadmin/suspended-activities" element={
+            <PrivateRoute roles={['superadmin']}>
+              <Layout><SuspendedActivitiesPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/superadmin/banners" element={
+            <PrivateRoute roles={['superadmin']}>
+              <Layout><ScheduledBannersPage /></Layout>
             </PrivateRoute>
           } />
 

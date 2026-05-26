@@ -53,7 +53,13 @@ router.get('/', protect, authorize('merchant_admin'), tenantScope, async (req, r
       endDate: 'endDate',
       status: 'active',
     }, { createdAt: -1 });
-    const promotions = await Promotion.find(filter).sort(sort).skip(skip).limit(limit);
+    const promotions = await Promotion.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .populate('createdBy', 'name email')
+      .populate('updatedBy', 'name email')
+      .populate('changeHistory.changedBy', 'name email');
     res.json(paginated(promotions, total, page, limit));
   } catch (err) {
     sendRouteError(res, err, { req });

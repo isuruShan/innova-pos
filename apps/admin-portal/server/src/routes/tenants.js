@@ -3,7 +3,7 @@ const Tenant = require('../models/Tenant');
 const User = require('../models/User');
 const Subscription = require('../models/Subscription');
 const SubscriptionPlan = require('../models/SubscriptionPlan');
-const { authenticateJWT, authorize, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
+const { authenticateJWT, authorize, emitAudit, sendRouteError, invalidateTenantSubscriptionCache } = require('@innovapos/shared-middleware');
 const { tenantPlanAudience } = require('../utils/planAudience');
 const { presignObjectKey } = require('../utils/s3Runtime');
 const { sendEmail } = require('../utils/mailer');
@@ -132,6 +132,110 @@ router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
   }
 });
 
+// GET /tenants/suspended-activities — list suspended/expired tenants and count post-suspension activity (superadmin only)
+router.get('/suspended-activities', authenticateJWT, authorize('superadmin'), async (req, res) => {
+  try {
+    const Order = require('../models/Order');
+    const CashierSession = require('../models/CashierSession');
+    const Subscription = require('../models/Subscription');
+
+    const now = new Date();
+    const tenants = await Tenant.find({
+      $or: [
+        { status: { $in: ['suspended', 'cancelled'] } },
+        { subscriptionStatus: { $in: ['expired', 'cancelled'] } },
+        { subscriptionStatus: 'trial', trialEndsAt: { $lt: now } }
+      ],
+      $and: [
+        {
+          $or: [
+            { temporaryActivationUntil: null },
+            { temporaryActivationUntil: { $lt: now } }
+          ]
+        }
+      ]
+    }).populate('assignedPlanId').lean();
+
+    const enriched = [];
+    for (const tenant of tenants) {
+      let deactivationDate = tenant.updatedAt;
+      if (tenant.status === 'suspended') {
+        deactivationDate = tenant.updatedAt;
+      } else if (tenant.subscriptionStatus === 'trial' || tenant.suspensionReason === 'trial_ended') {
+        deactivationDate = tenant.trialEndsAt || tenant.updatedAt;
+      } else {
+        const latestSub = await Subscription.findOne({ tenantId: tenant._id }).sort({ endDate: -1 }).lean();
+        if (latestSub && latestSub.endDate) {
+          deactivationDate = latestSub.endDate;
+        } else {
+          deactivationDate = tenant.trialEndsAt || tenant.updatedAt;
+        }
+      }
+
+      const orderCount = await Order.countDocuments({
+        tenantId: tenant._id,
+        createdAt: { $gt: deactivationDate }
+      });
+
+      const lastOrder = await Order.findOne({
+        tenantId: tenant._id,
+        createdAt: { $gt: deactivationDate }
+      }).sort({ createdAt: -1 }).select('createdAt').lean();
+
+      const sessionCount = await CashierSession.countDocuments({
+        tenantId: tenant._id,
+        createdAt: { $gt: deactivationDate }
+      });
+
+      const lastSession = await CashierSession.findOne({
+        tenantId: tenant._id,
+        createdAt: { $gt: deactivationDate }
+      }).sort({ createdAt: -1 }).select('createdAt').lean();
+
+      enriched.push({
+        _id: tenant._id,
+        businessName: tenant.businessName,
+        slug: tenant.slug,
+        status: tenant.status,
+        subscriptionStatus: tenant.subscriptionStatus,
+        suspensionReason: tenant.suspensionReason,
+        deactivationDate,
+        assignedPlan: tenant.assignedPlanId ? tenant.assignedPlanId.name : 'No Plan',
+        activity: {
+          ordersCount: orderCount,
+          lastOrderDate: lastOrder ? lastOrder.createdAt : null,
+          sessionsCount: sessionCount,
+          lastSessionDate: lastSession ? lastSession.createdAt : null,
+          hasActivity: orderCount > 0 || sessionCount > 0
+        }
+      });
+    }
+
+    res.json(enriched);
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
+// GET /tenants/:id/billing-breakdowns — compute breakdowns for current plan and next cycle (superadmin only)
+router.get('/:id/billing-breakdowns', authenticateJWT, authorize('superadmin'), async (req, res) => {
+  try {
+    const { computeSubscriptionRenewalExpected } = require('../lib/addonBilling');
+    const tenant = await Tenant.findById(req.params.id).populate('assignedPlanId').populate('pendingPlanId').lean();
+    if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+    const currentBreakdown = await computeSubscriptionRenewalExpected(tenant, tenant.assignedPlanId);
+    const nextBreakdown = await computeSubscriptionRenewalExpected(tenant, null);
+
+    res.json({
+      currentCycle: currentBreakdown,
+      nextCycle: nextBreakdown
+    });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 // GET /tenants/:id — single tenant with subscription info
 router.get('/:id', authenticateJWT, async (req, res) => {
   try {
@@ -142,6 +246,7 @@ router.get('/:id', authenticateJWT, async (req, res) => {
 
     let tenant = await Tenant.findById(req.params.id)
       .populate('assignedPlanId', 'name code amount currency billingCycle durationDays isActive')
+      .populate('pendingPlanId', 'name code amount currency billingCycle durationDays isActive')
       .lean();
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
     [tenant] = await attachFreshTenantLogos([tenant]);
@@ -178,6 +283,8 @@ router.put('/:id/plan', authenticateJWT, authorize('superadmin'), async (req, re
     tenant.assignedBy = req.user.id;
     tenant.updatedBy = req.user.id;
     await tenant.save();
+
+    await invalidateTenantSubscriptionCache(tenant._id);
 
     await emitAudit({
       req,
@@ -235,6 +342,8 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
 
     const tenant = await Tenant.findByIdAndUpdate(req.params.id, update, { new: true });
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+    await invalidateTenantSubscriptionCache(tenant._id);
 
     if (status === 'suspended') {
       await notifySubscriptionEvent(tenant._id, {

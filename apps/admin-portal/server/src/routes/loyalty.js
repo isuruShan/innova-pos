@@ -258,7 +258,14 @@ router.get('/rewards', authorize('merchant_admin'), async (req, res) => {
       pointsCost: 'pointsCost',
       status: 'active',
     }, { createdAt: -1 });
-    const rows = await LoyaltyReward.find(filter).sort(sort).skip(skip).limit(limit).lean();
+    const rows = await LoyaltyReward.find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .populate('createdBy', 'name email')
+      .populate('updatedBy', 'name email')
+      .populate('changeHistory.changedBy', 'name email')
+      .lean();
     res.json(paginated(rows, total, page, limit));
   } catch (err) {
     sendRouteError(res, err, { req });

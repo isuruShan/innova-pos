@@ -222,7 +222,11 @@ router.get('/rewards', authorize('cashier', 'manager', 'merchant_admin'), resolv
       pointsCost: 'pointsCost',
       status: 'active',
     }, { createdAt: -1 });
-    const rows = await LoyaltyReward.find(filter).sort(sort);
+    const rows = await LoyaltyReward.find(filter)
+      .sort(sort)
+      .populate('createdBy', 'name email')
+      .populate('updatedBy', 'name email')
+      .populate('changeHistory.changedBy', 'name email');
     res.json(rows);
   } catch (err) {
     sendRouteError(res, err, { req });
@@ -244,6 +248,15 @@ router.post('/rewards', authorize('manager', 'merchant_admin'), resolveSelectedS
     delete body.approvedAt;
     delete body.tenantId;
 
+    const changeHistory = [{
+      changedBy: req.user.id,
+      changedAt: new Date(),
+      action: 'created',
+      previousValues: {},
+      newValues: body,
+      reason: 'Initial creation',
+    }];
+
     const doc = await LoyaltyReward.create({
       ...body,
       tenantId: req.tenantId,
@@ -251,6 +264,7 @@ router.post('/rewards', authorize('manager', 'merchant_admin'), resolveSelectedS
       approvalStatus,
       active: active && approvalStatus === 'approved',
       createdBy: req.user.id,
+      changeHistory,
       ...(approvalStatus === 'approved' ? { approvedBy: req.user.id, approvedAt: new Date() } : {}),
     });
 
@@ -278,10 +292,26 @@ router.put('/rewards/:id', authorize('manager', 'merchant_admin'), resolveSelect
     });
     if (!existing) return res.status(404).json({ message: 'Reward not found' });
 
-    const patch = { ...req.body, updatedBy: req.user.id };
-    delete patch.approvedBy;
-    delete patch.approvedAt;
-    delete patch.tenantId;
+    const body = { ...req.body };
+    delete body.approvedBy;
+    delete body.approvedAt;
+    delete body.tenantId;
+
+    const previousValues = existing.toObject();
+    const changeEntry = {
+      changedBy: req.user.id,
+      changedAt: new Date(),
+      action: 'updated',
+      previousValues,
+      newValues: body,
+      reason: 'Manager update',
+    };
+
+    const patch = { 
+      ...body, 
+      updatedBy: req.user.id,
+      $push: { changeHistory: changeEntry },
+    };
 
     if (req.user.role === 'manager') {
       patch.approvalStatus = 'pending';
@@ -291,7 +321,7 @@ router.put('/rewards/:id', authorize('manager', 'merchant_admin'), resolveSelect
       await notifyMerchantAdmins(req.tenantId, {
         type: 'reward_pending',
         title: 'Loyalty reward updated — needs approval',
-        body: `"${patch.name || existing.name}" was edited and needs approval again.`,
+        body: `"${body.name || existing.name}" was edited and needs approval again.`,
         meta: { resourceType: 'loyalty_reward', resourceId: String(existing._id) },
       });
     }
@@ -305,8 +335,22 @@ router.put('/rewards/:id', authorize('manager', 'merchant_admin'), resolveSelect
 
 router.post('/rewards/:id/approve', authorize('merchant_admin'), resolveSelectedStore, async (req, res) => {
   try {
-    const doc = await LoyaltyReward.findOneAndUpdate(
-      { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) },
+    const existing = await LoyaltyReward.findOne(
+      { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) }
+    );
+    if (!existing) return res.status(404).json({ message: 'Reward not found' });
+
+    const changeEntry = {
+      changedBy: req.user.id,
+      changedAt: new Date(),
+      action: 'approved',
+      previousValues: { approvalStatus: existing.approvalStatus },
+      newValues: { approvalStatus: 'approved', active: req.body.active !== false },
+      reason: 'Admin approval',
+    };
+
+    const doc = await LoyaltyReward.findByIdAndUpdate(
+      existing._id,
       {
         approvalStatus: 'approved',
         approvedBy: req.user.id,
@@ -314,10 +358,10 @@ router.post('/rewards/:id/approve', authorize('merchant_admin'), resolveSelected
         rejectionReason: '',
         active: req.body.active !== false,
         updatedBy: req.user.id,
+        $push: { changeHistory: changeEntry },
       },
       { new: true },
     );
-    if (!doc) return res.status(404).json({ message: 'Reward not found' });
 
     if (doc.createdBy) {
       await createNotification(req.tenantId, doc.createdBy, {
@@ -337,13 +381,28 @@ router.post('/rewards/:id/approve', authorize('merchant_admin'), resolveSelected
 router.post('/rewards/:id/reject', authorize('merchant_admin'), resolveSelectedStore, async (req, res) => {
   try {
     const reason = String(req.body.rejectionReason || '').trim() || 'No reason provided';
-    const doc = await LoyaltyReward.findOneAndUpdate(
-      { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) },
+    const existing = await LoyaltyReward.findOne(
+      { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) }
+    );
+    if (!existing) return res.status(404).json({ message: 'Reward not found' });
+
+    const changeEntry = {
+      changedBy: req.user.id,
+      changedAt: new Date(),
+      action: 'rejected',
+      previousValues: { approvalStatus: existing.approvalStatus },
+      newValues: { approvalStatus: 'rejected', active: false },
+      reason,
+    };
+
+    const doc = await LoyaltyReward.findByIdAndUpdate(
+      existing._id,
       {
         approvalStatus: 'rejected',
         rejectionReason: reason,
         active: false,
         updatedBy: req.user.id,
+        $push: { changeHistory: changeEntry },
       },
       { new: true },
     );

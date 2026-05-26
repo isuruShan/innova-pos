@@ -23,6 +23,16 @@ export default function MerchantWorkspacePage() {
     paymentMethods: ['cash'],
   });
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_workspace_admins') || 'table');
+  const [activeTab, setActiveTab] = useState('current');
+
+  const { data: breakdowns, isLoading: breakdownsLoading } = useQuery({
+    queryKey: ['tenant-billing-breakdowns', id],
+    queryFn: async () => {
+      const { data } = await api.get(`/tenants/${id}/billing-breakdowns`);
+      return data;
+    },
+    enabled: Boolean(id),
+  });
 
   const { data: tenant, isLoading: tenantLoading } = useQuery({
     queryKey: ['tenant-workspace', id],
@@ -183,6 +193,39 @@ export default function MerchantWorkspacePage() {
         </div>
       </div>
 
+      {/* Subscription Status Card */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+        <h3 className="font-semibold text-gray-900">Subscription Status</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Status</span>
+            <span className="text-base font-bold capitalize text-gray-800">{tenant.subscriptionStatus}</span>
+          </div>
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Trial Ends At</span>
+            <span className="text-base font-bold text-gray-800 font-mono">
+              {tenant.trialEndsAt ? new Date(tenant.trialEndsAt).toLocaleDateString() : 'N/A'}
+            </span>
+          </div>
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Next Plan Change</span>
+            <span className="text-base font-bold text-gray-800">
+              {tenant.pendingPlanId ? (
+                <span>
+                  {tenant.pendingPlanId.name} on{' '}
+                  <span className="font-mono text-xs text-gray-500">
+                    {new Date(tenant.pendingPlanEffectiveAt).toLocaleDateString()}
+                  </span>
+                </span>
+              ) : (
+                'None Scheduled'
+              )}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Plan Assignment */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
         <h3 className="font-semibold text-gray-900">Plan Assignment</h3>
         <div className="flex flex-col sm:flex-row gap-2">
@@ -209,6 +252,39 @@ export default function MerchantWorkspacePage() {
             {tenant.planLocked ? 'Unlock plan' : 'Lock plan'}
           </button>
         </div>
+      </div>
+
+      {/* Billing Cycle Breakdowns Tabs */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+          <h3 className="font-semibold text-gray-900">Payment Breakdowns</h3>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('current')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                activeTab === 'current' ? 'bg-brand-teal text-white' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Current Cycle
+            </button>
+            <button
+              onClick={() => setActiveTab('next')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                activeTab === 'next' ? 'bg-brand-teal text-white' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Next Cycle
+            </button>
+          </div>
+        </div>
+
+        {breakdownsLoading ? (
+          <div className="py-8 text-center text-sm text-gray-500">Loading breakdowns...</div>
+        ) : activeTab === 'current' ? (
+          <BillingBreakdownPanel breakdown={breakdowns?.currentCycle} />
+        ) : (
+          <BillingBreakdownPanel breakdown={breakdowns?.nextCycle} />
+        )}
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -457,3 +533,95 @@ function StoreCard({ store, onSave }) {
     </div>
   );
 }
+
+function BillingBreakdownPanel({ breakdown }) {
+  if (!breakdown || !breakdown.plan) {
+    return (
+      <div className="p-6 text-center text-sm text-gray-500 bg-gray-50 rounded-xl border border-gray-150">
+        No subscription details found for this cycle.
+      </div>
+    );
+  }
+
+  const { plan, addons = [], storesDetail = [], usersDetail = [], total = 0, currency = 'LKR' } = breakdown;
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-slate-900 text-white rounded-xl p-4 flex items-center justify-between shadow-sm">
+        <div>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Base Plan</span>
+          <span className="text-base font-bold">{plan.name}</span>
+          <span className="text-xs text-slate-400 block capitalize mt-0.5">{plan.billingCycle} cycle</span>
+        </div>
+        <div className="text-right">
+          <span className="text-lg font-black">{currency} {Number(plan.amount).toLocaleString()}</span>
+        </div>
+      </div>
+
+      <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm divide-y divide-gray-100">
+        {storesDetail.length > 0 && (
+          <div className="p-4 space-y-2">
+            <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Locations & Branches</h4>
+            <div className="space-y-1.5">
+              {storesDetail.map((s, idx) => (
+                <div key={idx} className="flex justify-between items-center text-sm">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-orange"></span>
+                    <span className="text-gray-800 font-medium">{s.name}</span>
+                    <span className="text-xs text-gray-400">({s.city || 'Active Branch'})</span>
+                  </div>
+                  <span className="font-mono text-gray-600">
+                    {s.isFree ? 'Included' : `${currency} ${Number(s.cost).toLocaleString()}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {usersDetail.length > 0 && (
+          <div className="p-4 space-y-2">
+            <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">User Licenses & Seats</h4>
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+              {usersDetail.map((u, idx) => (
+                <div key={idx} className="flex justify-between items-center text-sm">
+                  <div>
+                    <div className="text-gray-800 font-medium">{u.name}</div>
+                    <div className="text-xs text-gray-400 capitalize">{u.role?.replace('_', ' ')} · {u.email}</div>
+                  </div>
+                  <span className="font-mono text-gray-600">
+                    {u.isFree ? 'Included' : `${currency} ${Number(u.cost).toLocaleString()}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {addons.length > 0 && (
+          <div className="p-4 space-y-2">
+            <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Activated Add-ons & Seat Extras</h4>
+            <div className="space-y-1.5">
+              {addons.map((add, idx) => (
+                <div key={idx} className="flex justify-between items-center text-sm">
+                  <span className="text-gray-800 font-medium">{add.label}</span>
+                  <span className="font-mono text-gray-600">
+                    {currency} {Number(add.amount).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="p-4 bg-gray-50/50 flex justify-between items-center">
+          <span className="text-sm font-bold text-gray-900">Total Cycle Cost</span>
+          <span className="text-xl font-black text-brand-teal">
+            {currency} {Number(total).toLocaleString()}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+

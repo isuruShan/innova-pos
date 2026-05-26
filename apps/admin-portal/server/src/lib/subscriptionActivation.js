@@ -4,6 +4,7 @@ const Tenant = require('../models/Tenant');
 const Subscription = require('../models/Subscription');
 const { notifyMerchantAdmins, notifySuperAdmins } = require('./notificationHelpers');
 const { notifySubscriptionEvent } = require('./subscriptionNotify');
+const { invalidateTenantSubscriptionCache } = require('@innovapos/shared-middleware');
 
 /**
  * Tenant is on trial (or expired after trial) and should move to paid access immediately on payment.
@@ -40,6 +41,7 @@ async function endTenantTrialOnPaidPurchase(tenantId, { activatedBy = null } = {
   tenant.subscriptionDeactivationNotifiedForEndDate = null;
   if (activatedBy) tenant.updatedBy = activatedBy;
   await tenant.save();
+  await invalidateTenantSubscriptionCache(tenant._id);
   return tenant;
 }
 
@@ -104,6 +106,7 @@ async function activateSubscriptionForTenant(tenantId, plan, options = {}) {
     tenant.suspensionReason = '';
     tenant.updatedBy = activatedBy;
     await tenant.save();
+    await invalidateTenantSubscriptionCache(tenant._id);
 
     return { tenant, subscription, newEnd, pendingMatch: false, convertedFromTrial: true };
   }
@@ -175,6 +178,7 @@ async function activateSubscriptionForTenant(tenantId, plan, options = {}) {
   tenant.suspensionReason = '';
   tenant.updatedBy = activatedBy;
   await tenant.save();
+  await invalidateTenantSubscriptionCache(tenant._id);
 
   return { tenant, subscription, newEnd, pendingMatch, convertedFromTrial: false };
 }
@@ -245,6 +249,7 @@ async function applyDuePendingPlanSwitches() {
     tenant.pendingPlanPaymentReceived = false;
     tenant.suspensionReason = '';
     await tenant.save();
+    await invalidateTenantSubscriptionCache(tenant._id);
     applied += 1;
 
     await notifyMerchantAdmins(tenant._id, {

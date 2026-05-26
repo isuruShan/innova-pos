@@ -9,6 +9,8 @@ import {
 import api from '../../api/axios';
 import NotificationBell from '../NotificationBell';
 import SubscriptionDueBanner from '../SubscriptionDueBanner';
+import SubscriptionEndedBanner from '../SubscriptionEndedBanner';
+import TrialBanners from '../TrialBanners';
 import { useAuth } from '../../context/AuthContext';
 
 const SUPERADMIN_NAV_GROUPS = [
@@ -18,6 +20,8 @@ const SUPERADMIN_NAV_GROUPS = [
       { label: 'Dashboard', icon: LayoutDashboard, to: '/superadmin/dashboard' },
       { label: 'Merchants', icon: Building2, to: '/merchants' },
       { label: 'Applications', icon: ClipboardList, to: '/applications' },
+      { label: 'Suspended Activities', icon: ClipboardList, to: '/superadmin/suspended-activities' },
+      { label: 'Trial Banners', icon: Palette, to: '/superadmin/banners' },
     ],
   },
   {
@@ -333,7 +337,8 @@ export default function Layout({ children }) {
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-          {!isSuperAdmin && <SubscriptionDueBanner />}
+          {!isSuperAdmin && (subscriptionLocked ? <SubscriptionEndedBanner /> : <SubscriptionDueBanner />)}
+          {!isSuperAdmin && <TrialBanners />}
           {children}
         </main>
       </div>

@@ -1,36 +1,48 @@
-import { LogOut, CreditCard } from 'lucide-react';
-import { adminPath } from '@innovapos/app-urls';
+import { useEffect, useState } from 'react';
+import { LogOut, AlertOctagon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import api from '../api/axios';
 
 export default function SubscriptionBlocked() {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
+  const [supportPhone, setSupportPhone] = useState('+94 77 123 4567'); // fallback
+
+  useEffect(() => {
+    api.get('/platform-contact/public')
+      .then((res) => {
+        if (res.data?.primaryPhone) {
+          setSupportPhone(res.data.primaryPhone);
+        }
+      })
+      .catch(() => {
+        // fallback remains
+      });
+  }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-6">
-      <div className="max-w-md w-full bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center space-y-4">
-        <div className="mx-auto w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-amber-700">
-          <CreditCard size={22} />
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 p-6">
+      <div className="max-w-md w-full bg-slate-900/80 backdrop-blur-md rounded-3xl border border-red-500/20 shadow-2xl p-8 text-center space-y-6">
+        <div className="mx-auto w-16 h-16 rounded-full bg-red-950/50 border border-red-500/30 flex items-center justify-center text-red-500 animate-pulse">
+          <AlertOctagon size={32} />
         </div>
-        <h1 className="text-lg font-bold text-gray-900">Subscription inactive</h1>
-        <p className="text-sm text-gray-600">
-          {user?.role === 'merchant_admin'
-            ? 'Your merchant subscription is inactive. Renew in the admin portal to restore POS access.'
-            : 'Your organization’s subscription is inactive. Ask your administrator to renew in the admin portal.'}
-        </p>
-        {user?.role === 'merchant_admin' && (
-          <a
-            href={adminPath('/subscription')}
-            className="inline-flex items-center justify-center w-full py-2.5 rounded-lg bg-brand-orange text-white text-sm font-semibold"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open Subscription in admin portal
+        <div className="space-y-2">
+          <h1 className="text-2xl font-black tracking-tight text-white">Subscription Over</h1>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            Your subscription has ended. Please contact your administrator or support for assistance.
+          </p>
+        </div>
+        
+        <div className="bg-slate-950/60 rounded-xl p-4 border border-slate-800 text-left">
+          <span className="text-xs text-slate-500 block uppercase tracking-wider font-bold mb-1">Cafinity Support</span>
+          <a href={`tel:${supportPhone}`} className="text-red-400 font-semibold hover:text-red-300 transition-colors">
+            {supportPhone}
           </a>
-        )}
+        </div>
+
         <button
           type="button"
           onClick={logout}
-          className="inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-lg shadow-red-600/20 transition-all active:scale-[0.98]"
         >
           <LogOut size={16} />
           Sign out

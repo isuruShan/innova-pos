@@ -46,6 +46,21 @@ api.interceptors.response.use(
       return Promise.reject(err);
     }
 
+    if (err.response?.status === 402) {
+      const userRaw = localStorage.getItem('pos_user');
+      if (userRaw) {
+        try {
+          const userObj = JSON.parse(userRaw);
+          userObj.subscriptionActive = false;
+          localStorage.setItem('pos_user', JSON.stringify(userObj));
+        } catch (e) {
+          // ignore
+        }
+      }
+      window.dispatchEvent(new Event('subscription-inactive'));
+      return Promise.reject(err);
+    }
+
     if (err.response?.status === 401 && !isLoginCall) {
       localStorage.removeItem('pos_token');
       localStorage.removeItem('pos_user');

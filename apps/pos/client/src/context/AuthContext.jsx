@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import api from '../api/axios';
 import { processSyncQueue } from '../offline/sync';
@@ -21,6 +21,19 @@ export const AuthProvider = ({ children }) => {
       return null;
     }
   });
+
+  useEffect(() => {
+    const handleSubscriptionInactive = () => {
+      setUser((prev) => {
+        if (!prev) return null;
+        return { ...prev, subscriptionActive: false };
+      });
+    };
+    window.addEventListener('subscription-inactive', handleSubscriptionInactive);
+    return () => {
+      window.removeEventListener('subscription-inactive', handleSubscriptionInactive);
+    };
+  }, []);
 
   const login = useCallback(async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });

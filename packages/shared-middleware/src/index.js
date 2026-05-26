@@ -48,20 +48,7 @@ const tenantScope = (req, res, next) => {
   next();
 };
 
-/**
- * Blocks POS access when subscription is inactive (all roles except superadmin).
- */
-const requireActiveSubscription = (req, res, next) => {
-  if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
-  if (req.user.role === 'superadmin') return next();
-  if (req.user.subscriptionActive === false) {
-    return res.status(402).json({
-      message: 'Subscription inactive. Renew your subscription in the admin portal.',
-      code: 'SUBSCRIPTION_INACTIVE',
-    });
-  }
-  next();
-};
+
 
 /**
  * Emits an audit event to the audit-service.
@@ -101,6 +88,9 @@ const emitAudit = async ({
 const {
   requireTenantServiceWhenInactive,
   requireActiveSubscriptionForPos,
+  requireActiveSubscription,
+  invalidateTenantSubscriptionCache,
+  getSubscriptionActiveFromDb,
   isSubscriptionServiceRoute,
 } = require('./tenantAccess');
 const { resolveUploadProxyTimeoutMs } = require('./uploadTimeout');
@@ -112,6 +102,8 @@ module.exports = {
   requireActiveSubscription,
   requireTenantServiceWhenInactive,
   requireActiveSubscriptionForPos,
+  invalidateTenantSubscriptionCache,
+  getSubscriptionActiveFromDb,
   isSubscriptionServiceRoute,
   emitAudit,
   getClientErrorPayload,

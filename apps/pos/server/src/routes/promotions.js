@@ -36,7 +36,11 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
       endDate: 'endDate',
       status: 'active',
     }, { createdAt: -1 });
-    const promotions = await Promotion.find(filter).sort(sort);
+    const promotions = await Promotion.find(filter)
+      .sort(sort)
+      .populate('createdBy', 'name email')
+      .populate('updatedBy', 'name email')
+      .populate('changeHistory.changedBy', 'name email');
     res.json(promotions);
   } catch (err) {
     sendRouteError(res, err, { req });
@@ -68,11 +72,21 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
     delete body.approvedBy;
     delete body.approvedAt;
 
+    const changeHistory = [{
+      changedBy: req.user.id,
+      changedAt: new Date(),
+      action: 'created',
+      previousValues: {},
+      newValues: body,
+      reason: 'Initial creation',
+    }];
+
     const promo = await Promotion.create({
       ...body,
       tenantId: req.tenantId,
       storeId,
       createdBy: req.user.id,
+      changeHistory,
       ...(isManager
         ? { approvalStatus: 'pending', active: false }
         : { approvalStatus: 'approved', approvedBy: req.user.id, approvedAt: new Date() }),
@@ -108,7 +122,22 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
     delete body.approvedAt;
     delete body.tenantId;
 
-    let patch = { ...body, updatedBy: req.user.id };
+    // Track changes
+    const previousValues = existing.toObject();
+    const changeEntry = {
+      changedBy: req.user.id,
+      changedAt: new Date(),
+      action: 'updated',
+      previousValues,
+      newValues: body,
+      reason: 'Manager update',
+    };
+
+    let patch = { 
+      ...body, 
+      updatedBy: req.user.id,
+      $push: { changeHistory: changeEntry },
+    };
 
     if (req.user.role === 'manager') {
       patch.approvalStatus = 'pending';
@@ -117,19 +146,33 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
       patch.approvedAt = null;
       await notifyMerchantAdmins(req.tenantId, {
         type: 'promotion_pending',
-        title: 'Promotion updated — needs approval',
-        body: `"${patch.name || existing.name}" was edited and needs approval again.`,
-        meta: { resourceType: 'promotion', resourceId: String(existing._id) },
-      });
-    }
+        tiexisting = await Promotion.findOne(
+      { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) }
+    );
+    if (!existing) return res.status(404).json({ message: 'Promotion not found' });
 
-    const promo = await Promotion.findByIdAndUpdate(existing._id, patch, { new: true, runValidators: true });
-    res.json(promo);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-});
+    const changeEntry = {
+      changedBy: req.user.id,
+      changedAt: new Date(),
+      action: 'approved',
+      previousValues: { approvalStatus: existing.approvalStatus },
+      newValues: { approvalStatus: 'approved', active: req.body.active !== false },
+      reason: 'Admin approval',
+    };
 
+    const promo = await Promotion.findByIdAndUpdate(
+      existing._id,
+      {
+        approvalStatus: 'approved',
+        approvedBy: req.user.id,
+        approvedAt: new Date(),
+        rejectionReason: '',
+        active: req.body.active !== false,
+        updatedBy: req.user.id,
+        $push: { changeHistory: changeEntry },
+      },
+      { new: true },
+    
 router.post('/:id/approve', protect, authorize('merchant_admin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const promo = await Promotion.findOneAndUpdate(
@@ -150,17 +193,31 @@ router.post('/:id/approve', protect, authorize('merchant_admin'), tenantScope, r
       await createNotification(req.tenantId, promo.createdBy, {
         type: 'promotion_approved',
         title: 'Promotion approved',
-        body: `Your promotion "${promo.name}" was approved.`,
-        meta: { resourceType: 'promotion', resourceId: String(promo._id) },
-      });
-    }
+        boexisting = await Promotion.findOne(
+      { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) }
+    );
+    if (!existing) return res.status(404).json({ message: 'Promotion not found' });
 
-    res.json(promo);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-});
+    const changeEntry = {
+      changedBy: req.user.id,
+      changedAt: new Date(),
+      action: 'rejected',
+      previousValues: { approvalStatus: existing.approvalStatus },
+      newValues: { approvalStatus: 'rejected', active: false },
+      reason,
+    };
 
+    const promo = await Promotion.findByIdAndUpdate(
+      existing._id,
+      {
+        approvalStatus: 'rejected',
+        rejectionReason: reason,
+        active: false,
+        updatedBy: req.user.id,
+        $push: { changeHistory: changeEntry },
+      },
+      { new: true },
+    
 router.post('/:id/reject', protect, authorize('merchant_admin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const reason = String(req.body.rejectionReason || '').trim() || 'No reason provided';

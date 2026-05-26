@@ -230,7 +230,7 @@ async function previewAdditionalStoreCharge(tenantId, plan) {
 /**
  * Expected bank-transfer amount for subscription renewal (plan + active paid add-ons).
  */
-async function computeSubscriptionRenewalExpected(tenant) {
+async function computeSubscriptionRenewalExpected(tenant, planOverride = null) {
   const { resolveNextBillingPlan } = require('./resolveBillingPlan');
   const t = await Tenant.findById(tenant._id || tenant)
     .populate('assignedPlanId')
@@ -238,7 +238,7 @@ async function computeSubscriptionRenewalExpected(tenant) {
     .lean();
   if (!t) return { plan: null, addons: [], total: 0, currency: 'LKR' };
 
-  const plan = await resolveNextBillingPlan(t);
+  const plan = planOverride || (await resolveNextBillingPlan(t));
   if (!plan) return { plan: null, addons: [], total: 0, currency: 'LKR' };
 
   const addons = [];

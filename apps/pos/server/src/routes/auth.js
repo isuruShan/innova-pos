@@ -131,7 +131,11 @@ router.get('/me', protect, async (req, res) => {
       .populate('storeIds', '_id')
       .select('-password -resetPasswordToken -resetPasswordExpires');
     if (!user) return res.status(404).json({ message: 'User not found' });
-    let payload = buildPayload(user, req.user.subscriptionActive);
+
+    const { getSubscriptionActiveFromDb } = require('@innovapos/shared-middleware');
+    const subActive = await getSubscriptionActiveFromDb(user.tenantId);
+
+    let payload = buildPayload(user, subActive);
     payload = await withFreshProfileImage(payload, user);
     res.json(payload);
   } catch (err) {
