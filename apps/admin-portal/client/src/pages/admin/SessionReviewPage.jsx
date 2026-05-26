@@ -19,7 +19,10 @@ export default function SessionReviewPage() {
 
   const { data: stores = [] } = useQuery({
     queryKey: ['stores'],
-    queryFn: () => api.get('/stores').then((r) => r.data),
+    queryFn: () => api.get('/stores').then((r) => {
+      const data = r.data;
+      return Array.isArray(data) ? data : (data?.items || []);
+    }),
   });
 
   const { data: sessionDetail, isPending: detailPending } = useQuery({
