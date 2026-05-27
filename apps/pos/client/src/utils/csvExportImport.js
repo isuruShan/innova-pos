@@ -36,7 +36,7 @@ export function downloadCSV(filename, csvContent) {
 }
 
 /**
- * Export menu items to CSV
+ * Export menu items to CSV with variant support
  */
 export function exportMenuItemsToCSV(items) {
   const headers = [
@@ -48,20 +48,53 @@ export function exportMenuItemsToCSV(items) {
     'Sort Order',
     'Is Combo',
     'Has Variants',
+    'Variant Options',
+    'Variants',
+    'Default Variant',
     'Image URL'
   ];
   
-  const rows = items.map((item) => [
-    item.name,
-    item.category,
-    item.price || 0,
-    item.description || '',
-    item.available ? 'Yes' : 'No',
-    item.sortOrder || 0,
-    item.isCombo ? 'Yes' : 'No',
-    item.hasVariants ? 'Yes' : 'No',
-    item.images?.[0]?.url || item.image || ''
-  ]);
+  const rows = items.map((item) => {
+    let variantOptionsStr = '';
+    let variantsStr = '';
+    let defaultVariantName = '';
+    
+    if (item.hasVariants && item.variantOptions?.length > 0) {
+      // Encode variant options: Size:Small,Large|Flavor:Vanilla,Mocha
+      variantOptionsStr = item.variantOptions
+        .map(opt => `${opt.name}:${(opt.values || []).join(',')}`)
+        .join('|');
+      
+      // Encode variants: Small / Vanilla:4.00:1|Large / Vanilla:5.00:1
+      // Format: name:price:available (available: 1=true, 0=false)
+      if (item.variants?.length > 0) {
+        variantsStr = item.variants
+          .map(v => `${v.name}:${v.price || 0}:${v.available !== false ? '1' : '0'}`)
+          .join('|');
+        
+        // Find default variant name
+        if (item.defaultVariantId) {
+          const defaultV = item.variants.find(v => String(v._id) === String(item.defaultVariantId));
+          if (defaultV) defaultVariantName = defaultV.name;
+        }
+      }
+    }
+    
+    return [
+      item.name,
+      item.category,
+      item.price || 0,
+      item.description || '',
+      item.available ? 'Yes' : 'No',
+      item.sortOrder || 0,
+      item.isCombo ? 'Yes' : 'No',
+      item.hasVariants ? 'Yes' : 'No',
+      variantOptionsStr,
+      variantsStr,
+      defaultVariantName,
+      item.images?.[0]?.url || item.image || ''
+    ];
+  });
 
   const csvContent = arrayToCSV(headers, rows);
   downloadCSV('menu_items', csvContent);
@@ -195,10 +228,14 @@ export function getMenuItemImportFields() {
   return [
     { key: 'name', label: 'Name *', required: true, type: 'text' },
     { key: 'category', label: 'Category *', required: true, type: 'text' },
-    { key: 'price', label: 'Price *', required: true, type: 'number' },
+    { key: 'price', label: 'Price', required: false, type: 'number' },
     { key: 'description', label: 'Description', required: false, type: 'text' },
     { key: 'available', label: 'Available', required: false, type: 'boolean' },
     { key: 'sortOrder', label: 'Sort Order', required: false, type: 'number' },
+    { key: 'hasVariants', label: 'Has Variants', required: false, type: 'boolean' },
+    { key: 'variantOptions', label: 'Variant Options', required: false, type: 'text' },
+    { key: 'variants', label: 'Variants', required: false, type: 'text' },
+    { key: 'defaultVariant', label: 'Default Variant', required: false, type: 'text' },
     { key: 'imageUrl', label: 'Image URL', required: false, type: 'text' }
   ];
 }
@@ -230,7 +267,67 @@ export function getOrderImportFields() {
 }
 
 /**
- * Validate and transform menu item row
+ * Parse variant options string: "Size:Small,Large|Flavor:Vanilla,Mocha"
+ */
+function parseVariantOptions(str) {
+  if (!str || !str.trim()) return [];
+  
+  return str.split('|').map(part => {
+    const [name, ...valuesParts] = part.split(':');
+    const valuesStr = valuesParts.join(':'); // Handle values with colons
+    const values = valuesStr ? valuesStr.split(',').map(v => v.trim()).filter(Boolean) : [];
+    return { name: name.trim(), values };
+  }).filter(opt => opt.name && opt.values.length > 0);
+}
+
+/**
+ * Parse variants string: "Small / Vanilla:4.00:1|Large / Vanilla:5.00:1"
+ */
+function parseVariants(str, variantOptions) {
+  if (!str || !str.trim()) return [];
+  
+  const variants = [];
+  const parts = str.split('|');
+  
+  for (const part of parts) {
+    const lastColon = part.lastIndexOf(':');
+    const secondLastColon = part.lastIndexOf(':', lastColon - 1);
+    
+    if (secondLastColon === -1) continue; // Invalid format
+    
+    const name = part.substring(0, secondLastColon).trim();
+    const priceStr = part.substring(secondLastColon + 1, lastColon).trim();
+    const availableStr = part.substring(lastColon + 1).trim();
+    
+    const price = parseFloat(priceStr);
+    if (isNaN(price)) continue; // Skip invalid price
+    
+    // Build attributes from name by matching variant option values
+    const attributes = [];
+    for (const opt of variantOptions) {
+      for (const val of opt.values) {
+        if (name.includes(val)) {
+          attributes.push({ name: opt.name, value: val });
+          break;
+        }
+      }
+    }
+    
+    variants.push({
+      name,
+      price,
+      available: availableStr === '1' || availableStr.toLowerCase() === 'true',
+      attributes,
+      description: '',
+      images: []
+    });
+  }
+  
+  return variants;
+}
+
+/**
+ * Validate and transform menu item row with variant support
  */
 export function validateMenuItemRow(row, mapping, rowIndex) {
   const errors = [];
@@ -252,13 +349,48 @@ export function validateMenuItemRow(row, mapping, rowIndex) {
     item.category = category;
   }
 
-  // Price (required, must be valid number)
+  // Check if this has variants
+  const hasVariantsStr = row[mapping.hasVariants]?.trim().toLowerCase();
+  const hasVariants = hasVariantsStr === 'yes' || hasVariantsStr === 'true' || hasVariantsStr === '1';
+  item.hasVariants = hasVariants;
+
+  // Price (required only if no variants)
   const priceStr = row[mapping.price]?.trim();
   const price = parseFloat(priceStr);
-  if (isNaN(price) || price < 0) {
-    errors.push(`Row ${rowIndex + 1}: Price must be a valid positive number`);
+  
+  if (hasVariants) {
+    // For variant items, base price can be 0
+    item.price = 0;
+    
+    // Parse variant options
+    const variantOptionsStr = row[mapping.variantOptions]?.trim();
+    const variantOptions = parseVariantOptions(variantOptionsStr);
+    
+    if (variantOptions.length === 0) {
+      errors.push(`Row ${rowIndex + 1}: Variant options are required when Has Variants is Yes`);
+    } else {
+      item.variantOptions = variantOptions;
+      
+      // Parse variants
+      const variantsStr = row[mapping.variants]?.trim();
+      const variants = parseVariants(variantsStr, variantOptions);
+      
+      if (variants.length === 0) {
+        errors.push(`Row ${rowIndex + 1}: At least one variant is required when Has Variants is Yes`);
+      } else {
+        item.variants = variants;
+        
+        // Note: Default variant cannot be set during import since variant IDs
+        // are generated by the server. User can set default after import.
+      }
+    }
   } else {
-    item.price = price;
+    // Regular item - price is required
+    if (isNaN(price) || price < 0) {
+      errors.push(`Row ${rowIndex + 1}: Price must be a valid positive number`);
+    } else {
+      item.price = price;
+    }
   }
 
   // Optional fields

@@ -402,7 +402,7 @@ export default function MenuManagement() {
     showToast(`Exported ${itemsToExport.length} menu items`, 'success');
   }, [items, activeCategory, showToast]);
 
-  // Import handler with auto-category creation
+  // Import handler with auto-category creation and variant support
   const handleImportMenuItems = useCallback(async (csvData, mapping, onProgress) => {
     const errors = [];
     let successCount = 0;
@@ -449,7 +449,15 @@ export default function MenuManagement() {
           item.category = existingCategoriesMap.get(categoryLower);
         }
         
-        // Now create the menu item
+        // Clean up variant data if present (remove temporary IDs)
+        if (item.hasVariants && item.variants) {
+          item.variants = item.variants.map(v => {
+            const { _id, ...rest } = v; // Remove _id if present
+            return rest;
+          });
+        }
+        
+        // Create the menu item
         await api.post('/menu', item);
         successCount++;
       } catch (error) {
