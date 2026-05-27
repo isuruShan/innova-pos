@@ -1,4 +1,4 @@
-# Deploy to production EC2 when main is updated.
+# Deploy to dev EC2 when main is updated.
 #
 # Required GitHub repository secrets:
 #   EC2_HOST      — public IP or hostname of the EC2 instance
@@ -13,7 +13,7 @@
 #   - chmod +x scripts/deploy-production.sh
 #   - optional: deploy.env at repo root for VITE_* build variables
 
-name: Deploy production (EC2)
+name: Deploy dev (EC2 PM2)
 
 on:
   push:
