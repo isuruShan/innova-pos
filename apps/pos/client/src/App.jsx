@@ -39,6 +39,7 @@ import WaitlistPage from './pages/manager/WaitlistPage';
 import TableAnalyticsPage from './pages/manager/TableAnalyticsPage';
 import ReportsPortal from './pages/manager/ReportsPortal';
 import SubscriptionBlocked from './pages/SubscriptionBlocked';
+import SubscriptionExpiredPage from './pages/SubscriptionExpiredPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 10_000 } },
@@ -93,6 +94,7 @@ export default function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/subscription-expired" element={<SubscriptionExpiredPage />} />
                 <Route path="/" element={<RootRedirect />} />
 
                 <Route path="/cashier/order" element={

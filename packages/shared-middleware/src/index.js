@@ -94,6 +94,7 @@ const {
   isSubscriptionServiceRoute,
 } = require('./tenantAccess');
 const { resolveUploadProxyTimeoutMs } = require('./uploadTimeout');
+const { subscriptionCheck, allowSubscriptionPageAccess, checkExpiryWarning } = require('./subscriptionCheck');
 
 module.exports = {
   authenticateJWT,
@@ -105,6 +106,9 @@ module.exports = {
   invalidateTenantSubscriptionCache,
   getSubscriptionActiveFromDb,
   isSubscriptionServiceRoute,
+  subscriptionCheck,
+  allowSubscriptionPageAccess,
+  checkExpiryWarning,
   emitAudit,
   getClientErrorPayload,
   logRouteError,

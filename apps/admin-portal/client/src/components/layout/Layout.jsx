@@ -11,6 +11,7 @@ import NotificationBell from '../NotificationBell';
 import SubscriptionDueBanner from '../SubscriptionDueBanner';
 import SubscriptionEndedBanner from '../SubscriptionEndedBanner';
 import TrialBanners from '../TrialBanners';
+import ExpiryWarningBanner from '../ExpiryWarningBanner';
 import { useAuth } from '../../context/AuthContext';
 
 const SUPERADMIN_NAV_GROUPS = [
@@ -337,6 +338,7 @@ export default function Layout({ children }) {
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+          {!isSuperAdmin && <ExpiryWarningBanner />}
           {!isSuperAdmin && (subscriptionLocked ? <SubscriptionEndedBanner /> : <SubscriptionDueBanner />)}
           {!isSuperAdmin && <TrialBanners />}
           {children}

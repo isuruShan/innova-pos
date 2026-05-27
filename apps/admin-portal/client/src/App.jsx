@@ -6,6 +6,7 @@ import { TenantCurrencyProvider } from './context/TenantCurrencyContext';
 import LoginPage from './pages/LoginPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import SubscriptionExpiredPage from './pages/SubscriptionExpiredPage';
 import Layout from './components/layout/Layout';
 import ForcePasswordResetGate from './components/auth/ForcePasswordResetGate';
 
@@ -23,6 +24,7 @@ import PaidAddonsPage from './pages/superadmin/PaidAddonsPage';
 import PlatformUberSettings from './pages/superadmin/PlatformUberSettings';
 import SuspendedActivitiesPage from './pages/superadmin/SuspendedActivitiesPage';
 import ScheduledBannersPage from './pages/superadmin/ScheduledBannersPage';
+import MigrationsPage from './pages/superadmin/MigrationsPage';
 import MerchantSubscriptionGate from './components/MerchantSubscriptionGate';
 
 // Merchant admin pages
@@ -82,6 +84,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/subscription-expired" element={<SubscriptionExpiredPage />} />
           <Route path="/" element={<RootRedirect />} />
 
           {/* Superadmin routes */}
@@ -148,6 +151,11 @@ export default function App() {
           <Route path="/superadmin/banners" element={
             <PrivateRoute roles={['superadmin']}>
               <Layout><ScheduledBannersPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/superadmin/migrations" element={
+            <PrivateRoute roles={['superadmin']}>
+              <Layout><MigrationsPage /></Layout>
             </PrivateRoute>
           } />
 

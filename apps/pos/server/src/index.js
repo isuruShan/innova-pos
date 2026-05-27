@@ -76,6 +76,7 @@ app.use('/api', express.json({ limit: '10mb' }));
 
 // Routes
 app.use('/api/auth',       require('./routes/auth'));
+app.use('/api/subscription', require('./routes/subscription'));
 app.use('/api/scheduled-banners', require('./routes/scheduledBanners'));
 app.use('/api/users',      require('./routes/users'));
 app.use('/api/menu',       require('./routes/menu'));

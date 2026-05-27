@@ -89,6 +89,7 @@ app.use('/api', attachUserIfToken, requireTenantServiceWhenInactive);
 app.use('/api/auth',            require('./routes/auth'));
 app.use('/api/applications',    require('./routes/applications'));
 app.use('/api/tenants',         require('./routes/tenants'));
+app.use('/api/migrations',      require('./routes/migrations')); // Super admin: database migrations
 app.use('/api/scheduled-banners', require('./routes/scheduledBanners'));
 app.use('/api/paid-addons', require('./routes/paidAddons'));
 app.use('/api/subscriptions/checkout', require('./routes/subscriptionCheckout'));
