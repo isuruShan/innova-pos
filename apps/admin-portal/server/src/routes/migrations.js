@@ -5,12 +5,12 @@
 
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('@innovapos/shared-middleware');
+const { authenticateJWT, authorize } = require('@innovapos/shared-middleware');
 const fs = require('fs').promises;
 const path = require('path');
 
 // Get list of available migrations
-router.get('/', protect, authorize('superadmin'), async (req, res) => {
+router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {
     const migrationsDir = path.join(__dirname, '../../../scripts/migrations');
     const files = await fs.readdir(migrationsDir);
@@ -36,7 +36,7 @@ router.get('/', protect, authorize('superadmin'), async (req, res) => {
 });
 
 // Execute a specific migration
-router.post('/execute/:migrationName', protect, authorize('superadmin'), async (req, res) => {
+router.post('/execute/:migrationName', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {
     const { migrationName } = req.params;
     const migrationPath = path.join(
