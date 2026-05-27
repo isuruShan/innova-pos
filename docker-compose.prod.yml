@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  app:
+    image: ghcr.io/isurushan/innova-pos-app:latest
+    container_name: innovapos-app
+    restart: always
+    environment:
+      - NODE_ENV=production
+      # - MONGO_URI=mongodb://mongodb:27017/innovapos
+      # - REDIS_URL=redis://redis:6379
+      - CLOUD_PROVIDER=azure
+      - AZURE_KEY_VAULT_URL=https://cafinity-prod-key.vault.azure.net/
+      - AZURE_KEY_VAULT_SECRET_NAME=innovapos-production-env
+    volumes:
+      - uploads-data:/app/apps/pos/server/uploads
+      - logs-data:/app/logs
+    depends_on:
+      - mongodb
+      - redis
+
+  nginx:
+    image: ghcr.io/isurushan/innova-pos-nginx:latest
+    container_name: innovapos-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - uploads-data:/usr/share/nginx/html/uploads:ro
+      # Mount SSL certificates from VM host (Certbot standalone/renewed on host)
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - app
+
+  mongodb:
+    image: mongo:6.0
+    container_name: innovapos-mongodb
+    restart: always
+    volumes:
+      - mongo-data:/data/db
+
+  redis:
+    image: redis:7.0-alpine
+    container_name: innovapos-redis
+    restart: always
+
+volumes:
+  mongo-data:
+  uploads-data:
+  logs-data:
