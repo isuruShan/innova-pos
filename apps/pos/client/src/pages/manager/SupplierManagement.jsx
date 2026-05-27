@@ -11,6 +11,8 @@ import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { useStoreContext } from '../../context/StoreContext';
 import { SupplierCardsSkeleton } from '../../components/StoreSkeletons';
 import { useListSort } from '../../hooks/useListSort';
+import { useBranding } from '../../context/BrandingContext';
+import PosPhoneField, { validatePosPhoneField, phoneDisplayFromParts, parseStoredPhone } from '../../components/PosPhoneField';
 
 const SUPPLIER_SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -19,7 +21,18 @@ const SUPPLIER_SORT_OPTIONS = [
 
 const EMPTY_FORM = { name: '', contactPerson: '', email: '', phone: '', address: '', notes: '' };
 
-function SupplierForm({ form, setForm, onSubmit, onCancel, isPending, error, editing }) {
+function SupplierForm({
+  form,
+  setForm,
+  phoneField,
+  setPhoneField,
+  onSubmit,
+  onCancel,
+  isPending,
+  error,
+  editing,
+  phoneError
+}) {
   const field = (key, label, placeholder, icon, type = 'text') => (
     <div>
       <label className="block text-sm font-medium text-slate-300 mb-1.5">{label}</label>
@@ -40,7 +53,16 @@ function SupplierForm({ form, setForm, onSubmit, onCancel, isPending, error, edi
     <form onSubmit={onSubmit} className="space-y-4">
       {field('name', 'Supplier Name *', 'e.g. Fresh Foods Co.', <Truck size={14} className="text-slate-500 flex-shrink-0" />)}
       {field('contactPerson', 'Contact Person', 'e.g. John Smith', <User size={14} className="text-slate-500 flex-shrink-0" />)}
-      {field('phone', 'Phone', 'e.g. +94 77 123 4567', <Phone size={14} className="text-slate-500 flex-shrink-0" />)}
+      
+      <PosPhoneField
+        countryIso={phoneField.countryIso}
+        nationalDigits={phoneField.nationalDigits}
+        onCountryIsoChange={(iso) => setPhoneField((p) => ({ ...p, countryIso: iso }))}
+        onNationalDigitsChange={(d) => setPhoneField((p) => ({ ...p, nationalDigits: d }))}
+        error={phoneError}
+        label="Phone"
+      />
+
       {field('email', 'Email', 'e.g. orders@freshfoods.com', <Mail size={14} className="text-slate-500 flex-shrink-0" />, 'email')}
       {field('address', 'Address', 'Street, City', <MapPin size={14} className="text-slate-500 flex-shrink-0" />)}
 
@@ -158,9 +180,12 @@ function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded }) {
 
 export default function SupplierManagement() {
   const { selectedStoreId, isStoreReady } = useStoreContext();
+  const branding = useBranding();
   const [slideOpen, setSlideOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [phoneField, setPhoneField] = useState({ countryIso: 'LK', nationalDigits: '' });
+  const [phoneError, setPhoneError] = useState('');
   const [formError, setFormError] = useState('');
   const [expandedId, setExpandedId] = useState(null);
   const [expandedItems, setExpandedItems] = useState({});
@@ -192,7 +217,14 @@ export default function SupplierManagement() {
     onSuccess: () => { invalidate(); qc.invalidateQueries({ queryKey: ['inventory'] }); },
   });
 
-  const openAdd = () => { setEditing(null); setForm(EMPTY_FORM); setFormError(''); setSlideOpen(true); };
+  const openAdd = () => {
+    setEditing(null);
+    setForm(EMPTY_FORM);
+    setPhoneField({ countryIso: branding?.countryIso || 'LK', nationalDigits: '' });
+    setPhoneError('');
+    setFormError('');
+    setSlideOpen(true);
+  };
   const openEdit = (supplier) => {
     setEditing(supplier);
     setForm({
@@ -203,17 +235,43 @@ export default function SupplierManagement() {
       address: supplier.address || '',
       notes: supplier.notes || '',
     });
+    setPhoneField(parseStoredPhone(supplier.phone, branding?.countryIso || 'LK'));
+    setPhoneError('');
     setFormError('');
     setSlideOpen(true);
   };
-  const closeSlide = () => { setSlideOpen(false); setEditing(null); setForm(EMPTY_FORM); setFormError(''); };
+  const closeSlide = () => {
+    setSlideOpen(false);
+    setEditing(null);
+    setForm(EMPTY_FORM);
+    setPhoneField({ countryIso: branding?.countryIso || 'LK', nationalDigits: '' });
+    setPhoneError('');
+    setFormError('');
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setFormError('');
+    setPhoneError('');
     if (!form.name.trim()) return setFormError('Supplier name is required');
-    if (editing) updateMutation.mutate({ id: editing._id, data: form });
-    else createMutation.mutate(form);
+
+    // Run phone validation if phone number is provided
+    if (phoneField.nationalDigits.trim()) {
+      const err = validatePosPhoneField(phoneField.countryIso, phoneField.nationalDigits);
+      if (err) {
+        setPhoneError(err);
+        return;
+      }
+    }
+
+    const phoneDisplay = phoneDisplayFromParts(phoneField.countryIso, phoneField.nationalDigits);
+    const dataToSubmit = {
+      ...form,
+      phone: phoneDisplay,
+    };
+
+    if (editing) updateMutation.mutate({ id: editing._id, data: dataToSubmit });
+    else createMutation.mutate(dataToSubmit);
   };
 
   const handleDelete = (id) => {
@@ -315,11 +373,14 @@ export default function SupplierManagement() {
         <SupplierForm
           form={form}
           setForm={setForm}
+          phoneField={phoneField}
+          setPhoneField={setPhoneField}
           onSubmit={handleSubmit}
           onCancel={closeSlide}
           isPending={createMutation.isPending || updateMutation.isPending}
           error={formError}
           editing={editing}
+          phoneError={phoneError}
         />
       </SlideOver>
     </div>
