@@ -4,12 +4,13 @@ const PurchaseOrder = require('../models/PurchaseOrder');
 const Inventory = require('../models/Inventory');
 const Supplier = require('../models/Supplier');
 const { protect, tenantScope } = require('../middleware/auth');
+const { resolveSelectedStore, buildStoreFilter } = require('../middleware/storeScope');
 
 /**
  * GET /purchase-orders
  * List all purchase orders with optional filters
  */
-router.get('/', protect, tenantScope, async (req, res) => {
+router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { status, supplierId, from, to } = req.query;
     const { tenantId, storeId } = req;
@@ -40,7 +41,7 @@ router.get('/', protect, tenantScope, async (req, res) => {
  * GET /purchase-orders/:id
  * Get single purchase order by ID
  */
-router.get('/:id', protect, tenantScope, async (req, res) => {
+router.get('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
     const order = await PurchaseOrder.findOne({
@@ -67,7 +68,7 @@ router.get('/:id', protect, tenantScope, async (req, res) => {
  * POST /purchase-orders
  * Create new purchase order
  */
-router.post('/', protect, tenantScope, async (req, res) => {
+router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { tenantId, storeId, user } = req;
     const { supplierId, items, expectedDate, notes } = req.body;
@@ -146,7 +147,7 @@ router.post('/', protect, tenantScope, async (req, res) => {
  * PUT /purchase-orders/:id
  * Update purchase order (only if draft or sent status)
  */
-router.put('/:id', protect, tenantScope, async (req, res) => {
+router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
     const { supplierId, items, expectedDate, notes, status } = req.body;
@@ -223,7 +224,7 @@ router.put('/:id', protect, tenantScope, async (req, res) => {
  * POST /purchase-orders/:id/send
  * Mark purchase order as sent
  */
-router.post('/:id/send', protect, tenantScope, async (req, res) => {
+router.post('/:id/send', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { tenantId, storeId, user } = req;
 
@@ -261,7 +262,7 @@ router.post('/:id/send', protect, tenantScope, async (req, res) => {
  * DELETE /purchase-orders/:id
  * Delete purchase order (only if draft)
  */
-router.delete('/:id', protect, tenantScope, async (req, res) => {
+router.delete('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
 
