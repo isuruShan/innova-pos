@@ -368,7 +368,7 @@ logs/
 
 ---
 
-## Security checklist
+## Security checklist One
 
 - Restrict security groups; prefer ALB + TLS.
 - Rotate `JWT_SECRET` and `INTERNAL_SERVICE_KEY` via secret versions; redeploy/restart processes.
