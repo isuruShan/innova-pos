@@ -76,7 +76,7 @@ router.get('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
  */
 router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const { tenantId, storeId, user } = req;
+    const { tenantId, storeId } = req;
     const { type, purchaseOrderId, supplierId, items, receiptDate, notes, returnReason } = req.body;
 
     if (!supplierId || !items || items.length === 0) {
@@ -163,7 +163,7 @@ router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) =>
       receiptDate: receiptDate ? new Date(receiptDate) : new Date(),
       notes: notes || '',
       returnReason: type === 'return' ? (returnReason || '') : '',
-      createdBy: user._id,
+      createdBy: req.user.id,
     });
 
     await receipt.save();
@@ -184,7 +184,7 @@ router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) =>
  */
 router.post('/:id/confirm', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const { tenantId, storeId, user } = req;
+    const { tenantId, storeId } = req;
 
     const receipt = await GoodsReceipt.findOne({
       _id: req.params.id,
@@ -249,7 +249,7 @@ router.post('/:id/confirm', protect, tenantScope, resolveSelectedStore, async (r
         notes: receipt.notes || (receipt.type === 'return' ? receipt.returnReason : ''),
         purchaseOrderId: receipt.purchaseOrderId || null,
         goodsReceiptId: receipt._id,
-        createdBy: user._id,
+        createdBy: req.user.id,
       });
 
       await movement.save();
@@ -293,7 +293,7 @@ router.post('/:id/confirm', protect, tenantScope, resolveSelectedStore, async (r
     // Mark receipt as confirmed
     receipt.status = 'confirmed';
     receipt.confirmedAt = new Date();
-    receipt.confirmedBy = user._id;
+    receipt.confirmedBy = req.user.id;
 
     await receipt.save();
     await receipt.populate('supplierId', 'name email phone');

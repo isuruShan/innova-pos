@@ -70,7 +70,7 @@ router.get('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
  */
 router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const { tenantId, storeId, user } = req;
+    const { tenantId, storeId } = req;
     const { supplierId, items, expectedDate, notes } = req.body;
 
     if (!supplierId || !items || items.length === 0) {
@@ -129,7 +129,7 @@ router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) =>
       totalAmount,
       expectedDate: expectedDate ? new Date(expectedDate) : null,
       notes: notes || '',
-      createdBy: user._id,
+      createdBy: req.user.id,
     });
 
     await order.save();
@@ -226,7 +226,7 @@ router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
  */
 router.post('/:id/send', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const { tenantId, storeId, user } = req;
+    const { tenantId, storeId } = req;
 
     const order = await PurchaseOrder.findOne({
       _id: req.params.id,
@@ -244,7 +244,7 @@ router.post('/:id/send', protect, tenantScope, resolveSelectedStore, async (req,
 
     order.status = 'sent';
     order.sentAt = new Date();
-    order.sentBy = user._id;
+    order.sentBy = req.user.id;
 
     await order.save();
     await order.populate('supplierId', 'name email phone');
