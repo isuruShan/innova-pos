@@ -102,16 +102,36 @@ jobs:
             set -euo pipefail
             APP_PATH="${{ secrets.PROD_EC2_APP_PATH }}"
             cd "$APP_PATH"
-            
+
+            SUDO=''
+            if [ "$(id -u)" -ne 0 ]; then
+              SUDO='sudo'
+            fi
+
+            if ! command -v docker >/dev/null 2>&1; then
+              echo 'Docker not found on VM. Installing Docker Engine and Compose plugin...'
+              $SUDO apt-get update
+              $SUDO apt-get install -y ca-certificates curl gnupg lsb-release
+              $SUDO mkdir -p /etc/apt/keyrings
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+              $SUDO apt-get update
+              $SUDO apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+            fi
+
+            if ! command -v docker-compose >/dev/null 2>&1 && command -v docker >/dev/null 2>&1; then
+              echo 'Docker compose plugin available via docker compose'
+            fi
+
             # Log into GHCR on VM using github actor and runner's token
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo "${{ secrets.GITHUB_TOKEN }}" | $SUDO docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
             # Rename compose file to default name
             mv -f docker-compose.prod.yml docker-compose.yml
 
             # Pull latest images and restart containers
-            docker compose pull
-            docker compose up -d --remove-orphans
-            
+            $SUDO docker compose pull
+            $SUDO docker compose up -d --remove-orphans
+
             # Prune old images
-            docker image prune -f
+            $SUDO docker image prune -f
