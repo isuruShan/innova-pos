@@ -402,10 +402,17 @@ export default function MenuManagement() {
     showToast(`Exported ${itemsToExport.length} menu items`, 'success');
   }, [items, activeCategory, showToast]);
 
-  // Import handler
+  // Import handler with auto-category creation
   const handleImportMenuItems = useCallback(async (csvData, mapping, onProgress) => {
     const errors = [];
     let successCount = 0;
+    const createdCategories = new Set(); // Track categories created during this import
+    
+    // Build a map of existing categories (case-insensitive)
+    const existingCategoriesMap = new Map();
+    allCategories.forEach(cat => {
+      existingCategoriesMap.set(cat.name.toLowerCase(), cat.name);
+    });
     
     for (let i = 0; i < csvData.length; i++) {
       const row = csvData[i];
@@ -418,6 +425,31 @@ export default function MenuManagement() {
       }
       
       try {
+        // Check if category exists (case-insensitive)
+        const categoryLower = item.category.toLowerCase();
+        
+        if (!existingCategoriesMap.has(categoryLower) && !createdCategories.has(categoryLower)) {
+          // Category doesn't exist - create it first
+          try {
+            await api.post('/categories', { 
+              name: item.category, // Use the exact case from CSV
+              active: true,
+              sortOrder: 0
+            });
+            // Track that we created this category
+            existingCategoriesMap.set(categoryLower, item.category);
+            createdCategories.add(categoryLower);
+          } catch (catError) {
+            // If category creation fails, log it but try to create the product anyway
+            // (in case category was created by another concurrent import)
+            console.warn(`Failed to create category "${item.category}":`, catError.message);
+          }
+        } else if (existingCategoriesMap.has(categoryLower)) {
+          // Use the existing category name (preserves original case)
+          item.category = existingCategoriesMap.get(categoryLower);
+        }
+        
+        // Now create the menu item
         await api.post('/menu', item);
         successCount++;
       } catch (error) {
@@ -430,14 +462,27 @@ export default function MenuManagement() {
       onProgress({ total: csvData.length, current: i + 1, errors });
     }
     
-    await qc.invalidateQueries({ queryKey: menuKey });
+    // Refresh both menu and categories after import
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: menuKey }),
+      qc.invalidateQueries({ queryKey: ['categories', 'all', selectedStoreId] })
+    ]);
+    
+    // Show info about created categories
+    if (createdCategories.size > 0) {
+      const categoryList = Array.from(createdCategories).map(cat => 
+        existingCategoriesMap.get(cat)
+      ).join(', ');
+      showToast(`Created ${createdCategories.size} new categories: ${categoryList}`, 'success');
+    }
     
     return {
       total: csvData.length,
       success: successCount,
-      errors
+      errors,
+      categoriesCreated: createdCategories.size
     };
-  }, [menuKey, qc]);
+  }, [menuKey, qc, allCategories, selectedStoreId, showToast]);
 
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
