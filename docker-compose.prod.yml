@@ -7,6 +7,9 @@ services:
     restart: always
     environment:
       - NODE_ENV=production
+      # Externalized DB/Cache connections (set via host env or docker .env from Key Vault)
+      - MONGO_URI=${MONGO_URI}
+      - REDIS_URL=${REDIS_URL}
       # - MONGO_URI=mongodb://mongodb:27017/innovapos
       # - REDIS_URL=redis://redis:6379
       - CLOUD_PROVIDER=azure
@@ -15,9 +18,7 @@ services:
     volumes:
       - uploads-data:/app/apps/pos/server/uploads
       - logs-data:/app/logs
-    depends_on:
-      - mongodb
-      - redis
+    # depends_on removed — MongoDB and Redis are externalized
 
   nginx:
     image: ghcr.io/isurushan/innova-pos-nginx:latest
@@ -33,19 +34,6 @@ services:
     depends_on:
       - app
 
-  mongodb:
-    image: mongo:6.0
-    container_name: innovapos-mongodb
-    restart: always
-    volumes:
-      - mongo-data:/data/db
-
-  redis:
-    image: redis:7.0-alpine
-    container_name: innovapos-redis
-    restart: always
-
 volumes:
-  mongo-data:
   uploads-data:
   logs-data:
