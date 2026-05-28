@@ -58,7 +58,10 @@ COPY --from=builder /app/apps/pos/client/dist /usr/share/nginx/html/pos
 COPY --from=builder /app/apps/admin-portal/client/dist /usr/share/nginx/html/admin
 COPY --from=builder /app/apps/public-web/client/dist /usr/share/nginx/html/public-web
 COPY --from=builder /app/apps/qr-order/client/dist /usr/share/nginx/html/qr-order
+
+# Dynamically switch between dev and production config directories
+ARG NGINX_CONFIG_DIR=docker/nginx
 # Copy configuration files
-COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf
-COPY docker/nginx/conf.d/ /etc/nginx/conf.d/
+COPY ${NGINX_CONFIG_DIR}/nginx.conf /etc/nginx/nginx.conf
+COPY ${NGINX_CONFIG_DIR}/conf.d/ /etc/nginx/conf.d/
 EXPOSE 80 443

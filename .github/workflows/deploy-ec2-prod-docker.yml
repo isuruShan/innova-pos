@@ -1,157 +1,4 @@
-# name: Deploy production (Docker Compose)
-
-# on:
-#   push:
-#     branches: [prod]
-#   workflow_dispatch:
-
-# concurrency:
-#   group: deploy-ec2-prod-docker
-#   cancel-in-progress: true
-
-# env:
-#   REGISTRY: ghcr.io
-#   IMAGE_NAME: ${{ github.repository }}
-
-# jobs:
-#   build-and-push:
-#     name: Build & Push Images to GHCR
-#     runs-on: ubuntu-latest
-#     permissions:
-#       contents: read
-#       packages: write
-
-#     steps:
-#       - name: Checkout repository
-#         uses: actions/checkout@v4
-
-#       - name: Log in to GHCR
-#         uses: docker/login-action@v3
-#         with:
-#           registry: ${{ env.REGISTRY }}
-#           username: ${{ github.actor }}
-#           password: ${{ secrets.GITHUB_TOKEN }}
-
-#       - name: Downcase repository name
-#         run: |
-#           echo "IMAGE_NAME_LOWER=$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-
-#       - name: Set up QEMU
-#         uses: docker/setup-qemu-action@v3
-
-#       - name: Set up Docker Buildx
-#         uses: docker/setup-buildx-action@v3
-
-#       - name: Build and push App Image
-#         uses: docker/build-push-action@v5
-#         with:
-#           context: .
-#           target: app
-#           push: true
-#           tags: |
-#             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-app:latest
-#             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-app:${{ github.sha }}
-#           cache-from: type=gha
-#           cache-to: type=gha,mode=max
-
-#       - name: Build and push Nginx Image
-#         uses: docker/build-push-action@v5
-#         with:
-#           context: .
-#           target: nginx
-#           push: true
-#           tags: |
-#             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-nginx:latest
-#             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-nginx:${{ github.sha }}
-#           build-args: |
-#             VITE_POS_URL=${{ secrets.PROD_VITE_POS_URL }}
-#             VITE_ADMIN_URL=${{ secrets.PROD_VITE_ADMIN_URL }}
-#             VITE_PUBLIC_WEB_URL=${{ secrets.PROD_VITE_PUBLIC_WEB_URL }}
-#             VITE_QR_ORDER_WEB_ORIGIN=${{ secrets.PROD_VITE_QR_ORDER_WEB_ORIGIN }}
-#             VITE_API_URL=${{ secrets.PROD_VITE_API_URL }}
-#             VITE_PUBLIC_WEB_API_URL=${{ secrets.PROD_VITE_PUBLIC_WEB_API_URL }}
-#             VITE_QR_ORDER_API_URL=${{ secrets.PROD_VITE_QR_ORDER_API_URL }}
-#           cache-from: type=gha
-#           cache-to: type=gha,mode=max
-
-#   deploy:
-#     name: Deploy to VM via SSH
-#     needs: build-and-push
-#     runs-on: ubuntu-latest
-
-#     steps:
-#       - name: Checkout repository
-#         uses: actions/checkout@v4
-
-#       - name: Copy docker-compose.prod.yml to VM
-#         uses: appleboy/scp-action@v0.1.7
-#         with:
-#           host: ${{ secrets.PROD_EC2_HOST }}
-#           username: ${{ secrets.PROD_EC2_USER }}
-#           key: ${{ secrets.PROD_EC2_SSH_KEY }}
-#           source: "docker-compose.prod.yml"
-#           target: "${{ secrets.PROD_EC2_APP_PATH }}"
-
-#       - name: Run Deploy Command on VM via SSH
-#         uses: appleboy/ssh-action@v1.2.0
-#         with:
-#           host: ${{ secrets.PROD_EC2_HOST }}
-#           username: ${{ secrets.PROD_EC2_USER }}
-#           key: ${{ secrets.PROD_EC2_SSH_KEY }}
-#           script: |
-#             set -euo pipefail
-#             APP_PATH="${{ secrets.PROD_EC2_APP_PATH }}"
-#             cd "$APP_PATH"
-
-#             SUDO=''
-#             if [ "$(id -u)" -ne 0 ]; then
-#               SUDO='sudo'
-#             fi
-
-#             if ! command -v docker >/dev/null 2>&1; then
-#               echo 'Docker not found on VM. Installing Docker Engine and Compose plugin...'
-#               $SUDO apt-get update
-#               $SUDO apt-get install -y ca-certificates curl gnupg lsb-release
-#               $SUDO mkdir -p /etc/apt/keyrings
-#               curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-#               echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-#               $SUDO apt-get update
-#               $SUDO apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-#             fi
-
-#             if ! command -v docker-compose >/dev/null 2>&1 && command -v docker >/dev/null 2>&1; then
-#               echo 'Docker compose plugin available via docker compose'
-#             fi
-
-#             # Log into GHCR on VM using github actor and runner's token
-#             echo "${{ secrets.GITHUB_TOKEN }}" | $SUDO docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-#             # Rename compose file to default name
-#             mv -f docker-compose.prod.yml docker-compose.yml
-
-#             # Pull latest images and restart containers
-#             $SUDO docker compose pull
-#             $SUDO docker compose up -d --remove-orphans
-
-#             # Prune old images
-#             $SUDO docker image prune -f
-
-# Deploy to dev EC2 when main is updated.
-#
-# Required GitHub repository secrets:
-#   EC2_HOST      — public IP or hostname of the EC2 instance
-#   EC2_USER      — SSH user (e.g. ec2-user on Amazon Linux)
-#   EC2_SSH_KEY   — private key (PEM) for that user
-#   EC2_APP_PATH  — absolute path to the git clone on the server
-#                   (e.g. /home/ec2-user/InnovaSoltions/innova-pos)
-#
-# On the EC2 host (once):
-#   - git clone with deploy access (deploy key or HTTPS token)
-#   - Node 20+, pnpm (corepack), pm2 globally
-#   - chmod +x scripts/deploy-production.sh
-#   - optional: deploy.env at repo root for VITE_* build variables
-
-name: Deploy prod (EC2 PM2)
+name: Deploy production (Docker Compose)
 
 on:
   push:
@@ -159,31 +6,129 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-ec2-production
+  group: deploy-ec2-prod-docker
   cancel-in-progress: true
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
-  deploy:
-    name: SSH deploy to EC2
+  build-and-push:
+    name: Build & Push Images to GHCR
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
 
     steps:
-      - name: Run deploy script on EC2
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Downcase repository name
+        run: |
+          echo "IMAGE_NAME_LOWER=$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push App Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: app
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-app:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-app:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Nginx Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: nginx
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-nginx:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-nginx:${{ github.sha }}
+          build-args: |
+            NGINX_CONFIG_DIR=docker/nginx/prod
+            VITE_POS_URL=${{ secrets.PROD_VITE_POS_URL }}
+            VITE_ADMIN_URL=${{ secrets.PROD_VITE_ADMIN_URL }}
+            VITE_PUBLIC_WEB_URL=${{ secrets.PROD_VITE_PUBLIC_WEB_URL }}
+            VITE_QR_ORDER_WEB_ORIGIN=${{ secrets.PROD_VITE_QR_ORDER_WEB_ORIGIN }}
+            VITE_API_URL=${{ secrets.PROD_VITE_API_URL }}
+            VITE_PUBLIC_WEB_API_URL=${{ secrets.PROD_VITE_PUBLIC_WEB_API_URL }}
+            VITE_QR_ORDER_API_URL=${{ secrets.PROD_VITE_QR_ORDER_API_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to VM via SSH
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose.prod.yml to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PROD_EC2_HOST }}
+          username: ${{ secrets.PROD_EC2_USER }}
+          key: ${{ secrets.PROD_EC2_SSH_KEY }}
+          source: "docker-compose.prod.yml"
+          target: "${{ secrets.PROD_EC2_APP_PATH }}"
+
+      - name: Run Deploy Command on VM via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script_stop: true
-          command_timeout: 40m
+          host: ${{ secrets.PROD_EC2_HOST }}
+          username: ${{ secrets.PROD_EC2_USER }}
+          key: ${{ secrets.PROD_EC2_SSH_KEY }}
           script: |
             set -euo pipefail
-            APP_PATH="${{ secrets.EC2_APP_PATH }}"
-            if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
-              echo "EC2_APP_PATH secret is missing or not a directory: $APP_PATH" >&2
-              exit 1
-            fi
+            APP_PATH="${{ secrets.PROD_EC2_APP_PATH }}"
             cd "$APP_PATH"
-            bash ./scripts/deploy-production.sh
+            
+            SUDO=''
+            if [ "$(id -u)" -ne 0 ]; then
+              SUDO='sudo'
+            fi
 
+            if ! command -v docker >/dev/null 2>&1; then
+              echo 'Docker not found on VM. Installing Docker Engine and Compose plugin...'
+              $SUDO apt-get update
+              $SUDO apt-get install -y ca-certificates curl gnupg lsb-release
+              $SUDO mkdir -p /etc/apt/keyrings
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+              $SUDO apt-get update
+              $SUDO apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+            fi
+            
+            # Log into GHCR on VM
+            echo "${{ secrets.GITHUB_TOKEN }}" | $SUDO docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Rename compose file to default name
+            mv -f docker-compose.prod.yml docker-compose.yml
+
+            # Pull latest images and restart containers
+            $SUDO docker compose pull
+            $SUDO docker compose up -d --remove-orphans
+            
+            # Prune old images
+            $SUDO docker image prune -f
