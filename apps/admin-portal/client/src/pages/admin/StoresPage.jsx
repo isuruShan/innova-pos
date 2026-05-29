@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader, X, ArrowLeft, Plus, Search, Star, Trash2, Clock, ChevronDown, Check, Filter, ArrowUpDown } from 'lucide-react';
 import api from '../../api/axios';
+import useSwipeDismiss from '../../hooks/useSwipeDismiss';
 import { fieldAttrs, PLACEHOLDERS } from '../../utils/formFields';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -53,6 +54,7 @@ const formatAddress = (addr) => {
 function MultiSelectDropdown({ label, options, selected, onChange, icon: Icon }) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
+  const { style, bind } = useSwipeDismiss({ onClose: () => setIsOpen(false), open: isOpen });
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -96,7 +98,11 @@ function MultiSelectDropdown({ label, options, selected, onChange, icon: Icon })
       {isOpen && (
         <>
           <div className="fixed inset-0 z-20 sm:hidden bg-transparent" onClick={() => setIsOpen(false)} />
-          <div className="fixed inset-x-0 bottom-0 z-25 w-full rounded-t-3xl border-t border-gray-200 bg-white shadow-xl py-4 px-4 animate-slide-up sm:absolute sm:inset-auto sm:right-0 sm:left-0 sm:mt-2 sm:w-56 sm:rounded-xl sm:border sm:border-gray-150 sm:shadow-lg sm:py-1.5 sm:px-0 sm:animate-none">
+          <div
+            className="fixed inset-x-0 bottom-0 z-25 w-full rounded-t-3xl border-t border-gray-200 bg-white shadow-xl py-4 px-4 animate-slide-up sm:absolute sm:inset-auto sm:right-0 sm:left-0 sm:mt-2 sm:w-56 sm:rounded-xl sm:border sm:border-gray-150 sm:shadow-lg sm:py-1.5 sm:px-0 sm:animate-none"
+            {...bind}
+            style={style}
+          >
             <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-3 sm:hidden" />
             <div className="px-3 py-1.5 border-b border-gray-100 flex items-center justify-between">
               <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">{label} Options</span>
@@ -146,6 +152,7 @@ function MultiSelectDropdown({ label, options, selected, onChange, icon: Icon })
 function SortDropdown({ sort, order, onSortChange, options }) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
+  const { style, bind } = useSwipeDismiss({ onClose: () => setIsOpen(false), open: isOpen });
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -177,7 +184,11 @@ function SortDropdown({ sort, order, onSortChange, options }) {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-20 sm:hidden bg-transparent" onClick={() => setIsOpen(false)} />
-          <div className="fixed inset-x-0 bottom-0 z-25 w-full rounded-t-3xl border-t border-gray-200 bg-white shadow-xl py-4 px-4 animate-slide-up sm:absolute sm:inset-auto sm:right-0 sm:mt-2 sm:w-56 sm:rounded-xl sm:border sm:border-gray-150 sm:shadow-lg sm:py-1 sm:px-0 sm:animate-none">
+          <div
+            className="fixed inset-x-0 bottom-0 z-25 w-full rounded-t-3xl border-t border-gray-200 bg-white shadow-xl py-4 px-4 animate-slide-up sm:absolute sm:inset-auto sm:right-0 sm:mt-2 sm:w-56 sm:rounded-xl sm:border sm:border-gray-150 sm:shadow-lg sm:py-1 sm:px-0 sm:animate-none"
+            {...bind}
+            style={style}
+          >
             <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-3 sm:hidden" />
             <div className="px-3 py-1.5 border-b border-gray-100">
               <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">Sort By</span>

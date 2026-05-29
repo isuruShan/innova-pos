@@ -5,6 +5,7 @@ import { Bell } from 'lucide-react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { notificationPathForPos } from '../utils/notificationRoutes';
+import useSwipeDismiss from '../hooks/useSwipeDismiss';
 
 export default function NotificationBell() {
   const qc = useQueryClient();
@@ -12,6 +13,8 @@ export default function NotificationBell() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const { style, bind } = useSwipeDismiss({ onClose: () => setOpen(false), open });
+
 
   const { data: countData } = useQuery({
     queryKey: ['notifications-unread-count'],
@@ -83,7 +86,11 @@ export default function NotificationBell() {
         <>
           {/* Backdrop on mobile */}
           <div className="fixed inset-0 z-[199] md:hidden bg-transparent" onClick={() => setOpen(false)} />
-          <div className="fixed inset-x-0 bottom-0 z-[200] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl max-h-[80vh] py-4 animate-slide-up flex flex-col md:absolute md:inset-auto md:right-0 md:top-11 md:w-80 md:rounded-2xl md:border md:border-slate-700/60 md:py-0 md:shadow-2xl md:max-h-[min(70vh,24rem)] md:overflow-hidden md:animate-none">
+          <div
+            className="fixed inset-x-0 bottom-0 z-[200] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl max-h-[80vh] py-4 animate-slide-up flex flex-col md:absolute md:inset-auto md:right-0 md:top-11 md:w-80 md:rounded-2xl md:border md:border-slate-700/60 md:shadow-2xl md:max-h-[min(70vh,24rem)] md:overflow-hidden md:animate-none"
+            {...bind}
+            style={style}
+          >
             <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden shrink-0" />
             <div className="px-3 py-2 border-b border-slate-700/50 flex items-center justify-between">
               <span className="text-sm font-semibold text-[var(--pos-text-primary)]">Notifications</span>

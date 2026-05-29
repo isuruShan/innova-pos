@@ -15,6 +15,8 @@ import WaiterCallBar from './WaiterCallBar';
 import QrOrderUpdateBar from './QrOrderUpdateBar';
 import UberOrdersBar from './uber/UberOrdersBar';
 import TrialBanners from './TrialBanners';
+import useSwipeDismiss from '../hooks/useSwipeDismiss';
+
 
 const ROLE_BADGE = {
   cashier: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
@@ -27,9 +29,11 @@ export function AvatarMenu({ user, onLogout }) {
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const ref = useRef(null);
+  const { style, bind } = useSwipeDismiss({ onClose: () => setOpen(false), open });
 
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
@@ -53,8 +57,12 @@ export function AvatarMenu({ user, onLogout }) {
           <>
             {/* Backdrop on mobile */}
             <div className="fixed inset-0 z-[199] md:hidden bg-transparent" onClick={() => setOpen(false)} />
-            <div className="fixed inset-x-0 bottom-0 z-[200] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/50 overflow-y-auto max-h-[80vh] py-4 animate-slide-up md:absolute md:inset-auto md:right-0 md:top-11 md:w-60 md:rounded-2xl md:border md:border-slate-700/60 md:shadow-2xl md:max-h-none md:overflow-hidden md:py-0 md:animate-none">
-              <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden" />
+            <div
+              className="fixed inset-x-0 bottom-0 z-[200] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/50 overflow-y-auto max-h-[80vh] py-4 animate-slide-up md:absolute md:inset-auto md:right-0 md:top-11 md:w-60 md:rounded-2xl md:border md:border-slate-700/60 md:shadow-2xl md:max-h-none md:overflow-hidden md:py-0 md:animate-none"
+              {...bind}
+              style={style}
+            >
+              <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden shrink-0" />
               {/* User info header */}
               <div className="px-4 py-3 border-b border-slate-700/50 flex items-center gap-3">
                 <AvatarDisplay user={user} size="md" />
@@ -122,6 +130,8 @@ export function AvatarMenu({ user, onLogout }) {
 function StoreSwitcher({ stores, selectedStoreId, selectStore }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const { style, bind } = useSwipeDismiss({ onClose: () => setOpen(false), open });
+
 
   const storeListActiveFg = useMemo(
     () => tintedRowTextColor('#f59e0b', '#151f2e', 0.15),
@@ -169,8 +179,10 @@ function StoreSwitcher({ stores, selectedStoreId, selectStore }) {
           <div
             className="fixed inset-x-0 bottom-0 z-[120] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-y-auto max-h-[80vh] py-4 animate-slide-up md:absolute md:inset-auto md:right-0 md:top-full md:mt-1.5 md:w-[18rem] md:rounded-xl md:border md:border-slate-600/80 md:py-1 md:shadow-2xl md:max-h-none md:overflow-hidden md:animate-none"
             role="listbox"
+            {...bind}
+            style={style}
           >
-            <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden" />
+            <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden shrink-0" />
             <div className="px-3 py-2 border-b border-slate-700/60">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Switch location</p>
             </div>
@@ -260,7 +272,9 @@ function NavDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const { style, bind } = useSwipeDismiss({ onClose: () => setOpen(false), open });
   const filtered = filterLinksForRole(items, userRole);
+
 
   useEffect(() => {
     const handler = (e) => {
@@ -308,8 +322,10 @@ function NavDropdown({
           <div
             className="fixed inset-x-0 bottom-0 z-[120] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-y-auto max-h-[80vh] py-4 animate-slide-up md:absolute md:inset-auto md:left-0 md:top-full md:mt-1.5 md:min-w-[12rem] md:max-w-[18rem] md:rounded-xl md:border md:border-slate-600/80 md:shadow-2xl md:max-h-none md:overflow-hidden md:py-1 md:animate-none"
             role="menu"
+            {...bind}
+            style={style}
           >
-            <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden" />
+            <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden shrink-0" />
             {filtered.map((link) => {
               const itemActive = linkMatchesPath(location.pathname, link.to);
               return (
@@ -461,7 +477,9 @@ export default function Navbar({ links = [], groups: groupsProp }) {
             </button>
           </div>
         ) : null}
-        <CashierSessionNavButton />
+        <div className="hidden md:block">
+          <CashierSessionNavButton />
+        </div>
         {user?.tenantId && stores.length > 0 && (
           <StoreSwitcher
             stores={stores}
@@ -545,6 +563,13 @@ export default function Navbar({ links = [], groups: groupsProp }) {
         </div>
       )}
     </nav>
+    {/* Mobile fixed bottom bar for session summary */}
+    {user?.tenantId && (user?.role === 'cashier' || user?.role === 'manager') ? (
+      <div className="md:hidden fixed bottom-0 inset-x-0 bg-[var(--pos-panel)] border-t border-[color-mix(in_srgb,var(--pos-text-primary)_12%,transparent)] backdrop-blur-md px-4 py-2.5 z-[110] flex items-center justify-between shadow-lg shadow-black/40">
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Session Summary</span>
+        <CashierSessionNavButton />
+      </div>
+    ) : null}
     <TrialBanners />
     </>
   );

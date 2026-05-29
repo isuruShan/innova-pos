@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { X, Search } from 'lucide-react';
 import { filterMenuItems } from '../utils/menuItemSearch';
+import useSwipeDismiss from '../hooks/useSwipeDismiss';
+
 
 /**
  * Touch-friendly option picker modal for POS.
@@ -27,6 +29,8 @@ export default function OptionPickerModal({
   columns = 2,
   closeOnSelect = true,
 }) {
+  const { style, bind } = useSwipeDismiss({ onClose, open });
+
   if (!open) return null;
 
   const handleSelect = (optionValue) => {
@@ -51,7 +55,10 @@ export default function OptionPickerModal({
       <div
         className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        {...bind}
+        style={style}
       >
+        <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mt-3 md:hidden shrink-0" />
         {/* Header */}
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-700/60 shrink-0">
           <div className="min-w-0">
@@ -164,7 +171,10 @@ export function MenuItemPickerModal({
     [available, search],
   );
 
+  const { style, bind } = useSwipeDismiss({ onClose, open });
+
   if (!open) return null;
+
 
   return (
     <div
@@ -174,7 +184,10 @@ export function MenuItemPickerModal({
       <div
         className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        {...bind}
+        style={style}
       >
+        <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mt-3 md:hidden shrink-0" />
         {/* Header */}
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-700/60 shrink-0">
           <div>
@@ -300,7 +313,10 @@ export function TablePickerModal({
   onSelect,
   currentOrderId,
 }) {
+  const { style, bind } = useSwipeDismiss({ onClose, open });
+
   if (!open) return null;
+
 
   const activeTables = tables.filter((t) => t.active !== false);
 
@@ -312,7 +328,10 @@ export function TablePickerModal({
       <div
         className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        {...bind}
+        style={style}
       >
+        <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mt-3 md:hidden shrink-0" />
         {/* Header */}
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-700/60 shrink-0">
           <div>
@@ -517,7 +536,10 @@ export function CustomerPickerModal({
     });
   };
 
+  const { style, bind } = useSwipeDismiss({ onClose: handleClose, open });
+
   if (!open) return null;
+
 
   const searchQ = searchQuery.trim();
 
@@ -529,7 +551,10 @@ export function CustomerPickerModal({
       <div
         className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        {...bind}
+        style={style}
       >
+        <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mt-3 md:hidden shrink-0" />
         {/* Header */}
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-700/60 shrink-0">
           <div>

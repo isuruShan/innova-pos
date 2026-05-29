@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { X, Check, Sparkles } from 'lucide-react';
+import useSwipeDismiss from '../../hooks/useSwipeDismiss';
+
 import { buildPlanCardBackground, buildPlanTagBackground, planUsesLightText } from '../../utils/planAppearance';
 
 export default function PlanChangeModal({ open, onClose, plans, currentPlanId, onSelect, isPending }) {
   const [selected, setSelected] = useState('');
+  const { style, bind } = useSwipeDismiss({ onClose, open });
 
   if (!open) return null;
+
 
   const handleConfirm = () => {
     if (!selected) return;
@@ -15,7 +19,12 @@ export default function PlanChangeModal({ open, onClose, plans, currentPlanId, o
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button type="button" className="absolute inset-0 bg-black/50" onClick={onClose} aria-label="Close" />
-      <div className="relative w-full max-w-3xl max-h-[90vh] overflow-hidden bg-white rounded-2xl shadow-xl flex flex-col">
+      <div
+        className="relative w-full max-w-3xl max-h-[90vh] overflow-hidden bg-white rounded-2xl shadow-xl flex flex-col"
+        {...bind}
+        style={style}
+      >
+        <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mt-3 sm:hidden shrink-0" />
         <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-gray-200">
           <div>
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">

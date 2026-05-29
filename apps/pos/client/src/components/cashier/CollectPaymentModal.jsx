@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatCurrency } from '../../utils/format';
 import OrderTypeBadge from '../OrderTypeBadge';
 import { useBranding } from '../../context/BrandingContext';
+import useSwipeDismiss from '../../hooks/useSwipeDismiss';
 
 function formatMethodLabel(method) {
   const label = String(method || '').replace(/_/g, ' ');
@@ -40,6 +41,7 @@ export default function CollectPaymentModal({
   cashDenominations = null,
 }) {
   const branding = useBranding();
+  const { style, bind } = useSwipeDismiss({ onClose, open });
   const [paymentType, setPaymentType] = useState(initialPaymentType || availablePaymentMethods[0] || 'cash');
   const [cashReceivedInput, setCashReceivedInput] = useState('');
   const [addedNotes, setAddedNotes] = useState([]);
@@ -110,7 +112,12 @@ export default function CollectPaymentModal({
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/70 flex items-end sm:items-center justify-center p-3 sm:p-4">
-      <div className="w-full max-w-lg bg-[var(--pos-panel)] border border-slate-600/80 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl shadow-black/50 max-h-[92vh] overflow-y-auto">
+      <div
+        className="w-full max-w-lg bg-[var(--pos-panel)] border border-slate-600/80 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl shadow-black/50 max-h-[92vh] overflow-y-auto"
+        {...bind}
+        style={style}
+      >
+        <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden shrink-0" />
         <h3 className="text-[var(--pos-text-primary)] font-bold text-xl sm:text-2xl tracking-tight">
           Collect payment
         </h3>

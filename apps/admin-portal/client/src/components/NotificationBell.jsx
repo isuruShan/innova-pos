@@ -4,12 +4,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bell } from 'lucide-react';
 import api from '../api/axios';
 import { notificationPathForAdmin } from '../utils/notificationRoutes';
+import useSwipeDismiss from '../hooks/useSwipeDismiss';
 
 export default function NotificationBell() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const { style, bind } = useSwipeDismiss({ onClose: () => setOpen(false), open });
+
 
   const { data: countData } = useQuery({
     queryKey: ['notifications-unread-count'],
@@ -80,7 +83,11 @@ export default function NotificationBell() {
         <>
           {/* Backdrop on mobile */}
           <div className="fixed inset-0 z-[199] sm:hidden bg-transparent" onClick={() => setOpen(false)} />
-          <div className="fixed inset-x-0 bottom-0 z-[200] w-full rounded-t-3xl border-t border-gray-200 bg-white shadow-2xl max-h-[80vh] py-4 animate-slide-up flex flex-col sm:absolute sm:inset-auto sm:right-0 sm:top-11 sm:w-80 sm:rounded-xl sm:border sm:border-gray-200 sm:shadow-xl sm:max-h-[min(70vh,24rem)] sm:overflow-hidden sm:py-0 sm:animate-none">
+          <div
+            className="fixed inset-x-0 bottom-0 z-[200] w-full rounded-t-3xl border-t border-gray-200 bg-white shadow-2xl max-h-[80vh] py-4 animate-slide-up flex flex-col sm:absolute sm:inset-auto sm:right-0 sm:top-11 sm:w-80 sm:rounded-xl sm:border sm:border-gray-200 sm:shadow-xl sm:max-h-[min(70vh,24rem)] sm:overflow-hidden sm:py-0 sm:animate-none"
+            {...bind}
+            style={style}
+          >
             <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
             <div className="px-3 py-2 border-b border-gray-200 flex items-center justify-between bg-gray-50">
               <span className="text-sm font-semibold text-gray-900">Notifications</span>

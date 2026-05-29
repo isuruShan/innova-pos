@@ -5,6 +5,7 @@ import { Plus, Loader, UserCheck, UserX, Key, X, Pencil, Search, ArrowLeft, Cloc
 import TooltipWrap from '../../components/common/TooltipWrap';
 import { useToast } from '../../context/ToastContext';
 import api from '../../api/axios';
+import useSwipeDismiss from '../../hooks/useSwipeDismiss';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
 import ListPagination from '../../components/common/ListPagination';
 import SortableTh from '../../components/common/SortableTh';
@@ -44,6 +45,8 @@ const SORT_OPTIONS = [
 function MultiSelectDropdown({ label, options, selected, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const { style, bind } = useSwipeDismiss({ onClose: () => setOpen(false), open });
+
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener('mousedown', handler);
@@ -64,7 +67,11 @@ function MultiSelectDropdown({ label, options, selected, onChange }) {
       {open && (
         <>
           <div className="fixed inset-0 z-40 sm:hidden bg-transparent" onClick={() => setOpen(false)} />
-          <div className="fixed inset-x-0 bottom-0 z-50 w-full rounded-t-3xl border-t border-gray-200 bg-white shadow-xl py-4 px-4 animate-slide-up sm:absolute sm:inset-auto sm:top-full sm:left-0 sm:mt-1 sm:w-auto sm:min-w-[170px] sm:rounded-xl sm:border sm:border-gray-200 sm:shadow-lg sm:py-1 sm:px-0 sm:animate-none">
+          <div
+            className="fixed inset-x-0 bottom-0 z-50 w-full rounded-t-3xl border-t border-gray-200 bg-white shadow-xl py-4 px-4 animate-slide-up sm:absolute sm:inset-auto sm:top-full sm:left-0 sm:mt-1 sm:w-auto sm:min-w-[170px] sm:rounded-xl sm:border sm:border-gray-200 sm:shadow-lg sm:py-1 sm:px-0 sm:animate-none"
+            {...bind}
+            style={style}
+          >
             <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-3 sm:hidden" />
             <div className="max-h-60 overflow-y-auto space-y-0.5">
               {options.map((opt) => (

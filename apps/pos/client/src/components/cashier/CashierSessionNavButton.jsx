@@ -2,11 +2,14 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Wallet, ChevronDown } from 'lucide-react';
 import { formatCurrency, formatTime } from '../../utils/format';
 import { useCashierSession } from './cashierSessionContext';
+import useSwipeDismiss from '../../hooks/useSwipeDismiss';
 
 export default function CashierSessionNavButton() {
   const ctx = useCashierSession();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const { style, bind } = useSwipeDismiss({ onClose: () => setOpen(false), open });
+
 
   useEffect(() => {
     const onDoc = (e) => {
@@ -110,8 +113,10 @@ export default function CashierSessionNavButton() {
             className="fixed inset-x-0 bottom-0 z-[120] w-full rounded-t-3xl border-t border-slate-700 bg-[var(--pos-panel)] shadow-2xl overflow-y-auto max-h-[80vh] py-4 px-4 animate-slide-up md:absolute md:inset-auto md:right-0 md:top-full md:mt-1.5 md:w-[19rem] md:rounded-xl md:border md:border-slate-600/80 md:py-2 md:px-3 md:shadow-2xl md:max-h-none md:overflow-visible md:animate-none"
             role="dialog"
             aria-label="Cashier session details"
+            {...bind}
+            style={style}
           >
-            <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden" />
+            <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden shrink-0" />
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">Drawer session</p>
             <ul className="space-y-2 text-sm text-slate-300">
               <li className="flex justify-between gap-2">

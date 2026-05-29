@@ -1,4 +1,6 @@
 import { X } from 'lucide-react';
+import useSwipeDismiss from '../hooks/useSwipeDismiss';
+
 
 /**
  * Centered modal — solid overlay (no blur), matches merchant admin dialog pattern.
@@ -12,7 +14,10 @@ export default function CenteredModal({
   maxWidth = 'max-w-lg',
   ariaLabel,
 }) {
+  const { style, bind } = useSwipeDismiss({ onClose, open });
+
   if (!open) return null;
+
 
   return (
     <div
@@ -25,7 +30,10 @@ export default function CenteredModal({
       <div
         className={`bg-[var(--pos-panel)] rounded-xl border border-slate-700 shadow-xl w-full ${maxWidth} max-h-[90vh] flex flex-col`}
         onClick={(e) => e.stopPropagation()}
+        {...bind}
+        style={style}
       >
+        <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mt-3 md:hidden shrink-0" />
         {(title || onClose) && (
           <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-700 shrink-0">
             {title ? (

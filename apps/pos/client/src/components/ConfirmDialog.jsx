@@ -1,4 +1,6 @@
 import { Loader, AlertTriangle, CheckCircle, Trash2 } from 'lucide-react';
+import useSwipeDismiss from '../hooks/useSwipeDismiss';
+
 
 const VARIANT_STYLES = {
   danger: { bg: 'bg-red-600 hover:bg-red-700', icon: AlertTriangle, iconClass: 'text-red-400', ring: 'ring-red-500/20' },
@@ -22,7 +24,10 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }) {
+  const { style, bind } = useSwipeDismiss({ onClose: onCancel, open });
+
   if (!open) return null;
+
 
   const { bg, icon: Icon, iconClass, ring } = VARIANT_STYLES[variant] || VARIANT_STYLES.danger;
 
@@ -33,7 +38,12 @@ export default function ConfirmDialog({
       aria-modal="true"
       onClick={(e) => { if (e.target === e.currentTarget) onCancel?.(); }}
     >
-      <div className="bg-[var(--pos-panel)] rounded-xl max-w-sm w-full shadow-xl border border-slate-700 overflow-hidden">
+      <div
+        className="bg-[var(--pos-panel)] rounded-xl max-w-sm w-full shadow-xl border border-slate-700 overflow-hidden"
+        {...bind}
+        style={style}
+      >
+        <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mt-3 md:hidden shrink-0" />
         <div className="px-6 pt-6 pb-4">
           <div className={`w-11 h-11 rounded-xl ${ring} ring-4 bg-[var(--pos-surface)] flex items-center justify-center mb-4`}>
             <Icon size={22} className={iconClass} />
