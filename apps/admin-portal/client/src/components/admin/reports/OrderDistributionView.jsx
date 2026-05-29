@@ -126,7 +126,7 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
   return (
     <div className="space-y-6">
       {/* Overview stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white border border-gray-250 rounded-xl px-4 py-3 flex items-center gap-3">
           <div className="p-2 bg-brand-orange/10 text-brand-orange rounded-lg">
             <LayoutGrid size={18} />
@@ -191,7 +191,7 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
             </div>
 
             {/* Table */}
-            <div className="sm:col-span-3 overflow-hidden border border-gray-200 rounded-xl">
+            <div className="sm:col-span-3 overflow-x-auto border border-gray-200 rounded-xl">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-gray-50 text-gray-550 border-b border-gray-200">
@@ -272,7 +272,7 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
             </div>
 
             {/* Table */}
-            <div className="sm:col-span-3 overflow-hidden border border-gray-200 rounded-xl">
+            <div className="sm:col-span-3 overflow-x-auto border border-gray-200 rounded-xl">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-gray-50 text-gray-550 border-b border-gray-200">

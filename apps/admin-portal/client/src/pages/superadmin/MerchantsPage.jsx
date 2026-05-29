@@ -83,10 +83,10 @@ export default function MerchantsPage() {
           <option value="7">Due within 7 days</option>
           <option value="30">Due within 30 days</option>
         </select>
-        <button onClick={() => refetch()} className="flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-          <RefreshCw size={14} />
-        </button>
-        <div className="sm:ml-auto">
+        <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto sm:ml-auto">
+          <button onClick={() => refetch()} className="flex items-center justify-center p-2.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 min-h-[40px] shrink-0" title="Refresh">
+            <RefreshCw size={14} />
+          </button>
           <ViewModeToggle mode={viewMode} setMode={onViewModeChange} />
         </div>
       </div>

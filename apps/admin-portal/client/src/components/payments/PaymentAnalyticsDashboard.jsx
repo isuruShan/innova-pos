@@ -178,26 +178,27 @@ export default function PaymentAnalyticsDashboard({ onPendingClick }) {
 
         {/* Custom date inputs */}
         {(preset === 'custom' || showCustom) && (
-          <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-gray-100">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-3 pt-3 border-t border-gray-100">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <label className="text-xs font-medium text-gray-500 shrink-0">From</label>
               <input
                 type="date"
                 value={customFrom}
                 max={customTo || undefined}
                 onChange={(e) => setCustomFrom(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
               />
             </div>
-            <span className="text-gray-400">→</span>
-            <div className="flex items-center gap-2">
+            <span className="text-gray-400 hidden sm:inline">→</span>
+            <span className="text-gray-400 text-xs text-center sm:hidden">to</span>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <label className="text-xs font-medium text-gray-500 shrink-0">To</label>
               <input
                 type="date"
                 value={customTo}
                 min={customFrom || undefined}
                 onChange={(e) => setCustomTo(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
               />
             </div>
             {(customFrom || customTo) && (
@@ -219,7 +220,7 @@ export default function PaymentAnalyticsDashboard({ onPendingClick }) {
       )}
 
       {/* ── Stat cards ──────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={TrendingUp}   label="Total revenue"   value={formatMoney('LKR', t.totalRevenue || 0)} sub={`${rangeLabel}`}   color="orange" />
         <StatCard icon={CheckCircle}  label="Verified"        value={(t.verified || 0).toLocaleString()} sub={`of ${totalAll} total`}  color="green"  />
         <StatCard icon={Clock}        label="Pending review"  value={(t.pending  || 0).toLocaleString()} sub={t.pending > 0 ? 'Needs attention' : 'Queue clear'} color={t.pending > 0 ? 'yellow' : 'green'} />
@@ -321,29 +322,31 @@ export default function PaymentAnalyticsDashboard({ onPendingClick }) {
       {/* ── Top merchants + Recent activity ──────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <SectionCard title="Top merchants by revenue" sub={rangeLabel}>
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-gray-400 border-b border-gray-100">
-                <th className="text-left pb-2 font-medium">#</th>
-                <th className="text-left pb-2 font-medium">Merchant</th>
-                <th className="text-right pb-2 font-medium">Revenue</th>
-                <th className="text-right pb-2 font-medium">Txns</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {(data?.topMerchants || []).map((m, i) => (
-                <tr key={m._id} className="hover:bg-gray-50">
-                  <td className="py-2 text-gray-400">{i + 1}</td>
-                  <td className="py-2 font-medium text-gray-900 truncate max-w-[120px]">{m.name}</td>
-                  <td className="py-2 text-right tabular-nums text-gray-800">{formatMoney('LKR', m.revenue)}</td>
-                  <td className="py-2 text-right text-gray-500">{m.count}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-gray-400 border-b border-gray-100">
+                  <th className="text-left pb-2 font-medium">#</th>
+                  <th className="text-left pb-2 font-medium">Merchant</th>
+                  <th className="text-right pb-2 font-medium">Revenue</th>
+                  <th className="text-right pb-2 font-medium">Txns</th>
                 </tr>
-              ))}
-              {!(data?.topMerchants?.length) && (
-                <tr><td colSpan={4} className="py-8 text-center text-gray-400">No data in this period</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {(data?.topMerchants || []).map((m, i) => (
+                  <tr key={m._id} className="hover:bg-gray-50">
+                    <td className="py-2 text-gray-400">{i + 1}</td>
+                    <td className="py-2 font-medium text-gray-900 truncate max-w-[120px]">{m.name}</td>
+                    <td className="py-2 text-right tabular-nums text-gray-800">{formatMoney('LKR', m.revenue)}</td>
+                    <td className="py-2 text-right text-gray-500">{m.count}</td>
+                  </tr>
+                ))}
+                {!(data?.topMerchants?.length) && (
+                  <tr><td colSpan={4} className="py-8 text-center text-gray-400">No data in this period</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </SectionCard>
 
         <SectionCard title="Recent verified payments" sub={rangeLabel}>

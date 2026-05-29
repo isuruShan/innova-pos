@@ -547,30 +547,32 @@ export default function AccountingPage() {
                   <h2 className="text-lg font-semibold text-gray-900">Payroll runs</h2>
                   <p className="text-xs text-gray-600">Calculate wages and release salaries for store staff.</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <select
-                    value={payrollParams.month}
-                    onChange={(e) => setPayrollParams({ ...payrollParams, month: Number(e.target.value) })}
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
-                  >
-                    {[...Array(12)].map((_, i) => (
-                      <option key={i + 1} value={i + 1}>
-                        {new Date(2000, i, 1).toLocaleString('default', { month: 'long' })}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={payrollParams.year}
-                    onChange={(e) => setPayrollParams({ ...payrollParams, year: Number(e.target.value) })}
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
-                  >
-                    {[2025, 2026, 2027].map((y) => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+                  <div className="flex gap-2">
+                    <select
+                      value={payrollParams.month}
+                      onChange={(e) => setPayrollParams({ ...payrollParams, month: Number(e.target.value) })}
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm min-h-[40px]"
+                    >
+                      {[...Array(12)].map((_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          {new Date(2000, i, 1).toLocaleString('default', { month: 'long' })}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={payrollParams.year}
+                      onChange={(e) => setPayrollParams({ ...payrollParams, year: Number(e.target.value) })}
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm min-h-[40px]"
+                    >
+                      {[2025, 2026, 2027].map((y) => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
                   <button
                     onClick={() => calculatePayrollMutation.mutate(payrollParams)}
-                    className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-500 transition-colors"
+                    className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-500 transition-colors w-full sm:w-auto text-center cursor-pointer min-h-[40px]"
                   >
                     Calculate Draft Payroll
                   </button>
@@ -673,7 +675,7 @@ export default function AccountingPage() {
           {activeTab === 'reports' && (
             <div className="space-y-6">
               {/* Filter Banner */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm flex flex-wrap gap-4 items-center justify-between">
+              <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 shadow-sm flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
                 <div className="flex gap-2">
                   <button
                     onClick={() => setReportType('pl')}
@@ -701,36 +703,36 @@ export default function AccountingPage() {
                   </button>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                   {reportType !== 'bs' ? (
-                    <>
-                      <label className="text-xs text-gray-500 font-semibold">
+                    <div className="flex gap-3 w-full sm:w-auto">
+                      <label className="text-xs text-gray-500 font-semibold flex-1 sm:flex-initial">
                         From
                         <input
                           type="date"
                           value={reportFilters.start}
                           onChange={(e) => setReportFilters({ ...reportFilters, start: e.target.value })}
-                          className="mt-1 block rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+                          className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm min-h-[40px]"
                         />
                       </label>
-                      <label className="text-xs text-gray-500 font-semibold">
+                      <label className="text-xs text-gray-500 font-semibold flex-1 sm:flex-initial">
                         To
                         <input
                           type="date"
                           value={reportFilters.end}
                           onChange={(e) => setReportFilters({ ...reportFilters, end: e.target.value })}
-                          className="mt-1 block rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+                          className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm min-h-[40px]"
                         />
                       </label>
-                    </>
+                    </div>
                   ) : (
-                    <label className="text-xs text-gray-500 font-semibold">
+                    <label className="text-xs text-gray-500 font-semibold w-full sm:w-auto">
                       As Of Date
                       <input
                         type="date"
                         value={reportFilters.date}
                         onChange={(e) => setReportFilters({ ...reportFilters, date: e.target.value })}
-                        className="mt-1 block rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+                        className="mt-1 block w-full sm:w-48 rounded-lg border border-gray-300 px-3 py-1.5 text-sm min-h-[40px]"
                       />
                     </label>
                   )}

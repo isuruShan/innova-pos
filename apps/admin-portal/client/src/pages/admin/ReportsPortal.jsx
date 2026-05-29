@@ -92,7 +92,7 @@ export default function ReportsPortal() {
         {exportCallback && !rangeInvalid && isStoreReady && (
           <button
             onClick={() => exportCallback()}
-            className="flex items-center gap-2 bg-brand-teal hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition shadow-sm cursor-pointer"
+            className="flex items-center justify-center gap-2 bg-brand-teal hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition shadow-sm cursor-pointer w-full sm:w-auto"
           >
             <Download size={15} />
             Export CSV
@@ -138,8 +138,8 @@ export default function ReportsPortal() {
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex-1">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <div className="w-full sm:flex-1">
               <AdminDateField
                 value={dateFrom}
                 onChange={setDateFrom}
@@ -147,8 +147,8 @@ export default function ReportsPortal() {
                 className="w-full bg-white border border-gray-300 text-gray-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-brand-teal/30"
               />
             </div>
-            <span className="text-gray-400 text-xs">to</span>
-            <div className="flex-1">
+            <span className="text-gray-400 text-xs text-center sm:text-left">to</span>
+            <div className="w-full sm:flex-1">
               <AdminDateField
                 value={dateTo}
                 onChange={setDateTo}

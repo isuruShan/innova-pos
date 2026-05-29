@@ -194,7 +194,7 @@ export default function AnalyticsPage() {
               </button>
             ))}
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <label className="text-[11px] text-gray-500">From
               <AdminDateField value={dateFrom} onChange={setDateFrom} max={dateTo} className="mt-0.5 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-xs" />
             </label>
@@ -212,13 +212,13 @@ export default function AnalyticsPage() {
         <p className="text-sm text-gray-500 text-center py-12">Loading analytics…</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard label="Period revenue" value={formatCurrency(data?.totalRevenue || 0)} icon={DollarSign} color="orange" />
             <StatCard label="Orders (period)" value={data?.orderCount ?? 0} icon={ShoppingBag} color="blue" />
             <StatCard label="Best seller" value={data?.bestSeller?.name || 'N/A'} icon={Award} color="purple" sub={data?.bestSeller ? `${data.bestSeller.qty} sold` : undefined} />
             <StatCard label="Avg order value" value={formatCurrency(data?.avgOrderValue || 0)} icon={TrendingUp} color="green" />
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard label="Today (so far)" value={formatCurrency(data?.todayRevenue ?? 0)} icon={Sun} sub={`${data?.todayOrders ?? 0} orders`} />
             <StatCard label="Discounts (period)" value={formatCurrency(data?.totalDiscounts ?? 0)} icon={Percent} color="red" />
             <StatCard label="Peak day" value={peakDay ? formatCurrency(peakDay.revenue) : '—'} icon={Trophy} color="green" sub={peakDay ? `${peakDay.label}` : undefined} />
@@ -308,7 +308,7 @@ export default function AnalyticsPage() {
                           />
                         </div>
                       </div>
-                      <span className="text-xs font-semibold text-gray-700 w-20 text-right tabular-nums">
+                      <span className="text-xs font-semibold text-gray-700 min-w-[5rem] shrink-0 text-right tabular-nums">
                         {formatCurrency(item.revenue)}
                       </span>
                     </div>

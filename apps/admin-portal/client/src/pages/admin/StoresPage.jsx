@@ -750,7 +750,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                 <label className="block text-xs text-gray-500 mb-1">Street 2 (Optional)</label>
                 <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" placeholder="Street 2" value={form.address.street2} onChange={(e) => setForm((p) => ({ ...p, address: { ...p.address, street2: e.target.value } }))} maxLength={100} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">City</label>
                   <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" placeholder="City" value={form.address.city} onChange={(e) => setForm((p) => ({ ...p, address: { ...p.address, city: e.target.value } }))} maxLength={50} />
@@ -760,7 +760,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                   <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" placeholder="State" value={form.address.state} onChange={(e) => setForm((p) => ({ ...p, address: { ...p.address, state: e.target.value } }))} maxLength={50} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Postal / Zip Code</label>
                   <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" placeholder="Postal Code" value={form.address.postalCode} onChange={(e) => setForm((p) => ({ ...p, address: { ...p.address, postalCode: e.target.value } }))} maxLength={20} />
@@ -845,7 +845,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                 />
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center justify-between sm:justify-start gap-2 shrink-0 w-full sm:w-auto">
               {workspaceMode && isSuperAdmin && (
                 <button
                   type="button"
@@ -1177,7 +1177,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                   <label className="block text-xs text-gray-500 mb-1">Street 2 (Optional)</label>
                   <input className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" placeholder="Street 2" value={editForm.address.street2} onChange={(e) => setEditForm((p) => ({ ...p, address: { ...p.address, street2: e.target.value } }))} maxLength={100} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">City</label>
                     <input className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" placeholder="City" value={editForm.address.city} onChange={(e) => setEditForm((p) => ({ ...p, address: { ...p.address, city: e.target.value } }))} maxLength={50} />
@@ -1187,7 +1187,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                     <input className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" placeholder="State" value={editForm.address.state} onChange={(e) => setEditForm((p) => ({ ...p, address: { ...p.address, state: e.target.value } }))} maxLength={50} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Postal / Zip Code</label>
                     <input className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange" placeholder="Postal Code" value={editForm.address.postalCode} onChange={(e) => setEditForm((p) => ({ ...p, address: { ...p.address, postalCode: e.target.value } }))} maxLength={20} />
@@ -1208,7 +1208,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Payment Methods</label>
                 <p className="text-xs text-gray-500 mb-3">Cash is always required. Select additional payment types accepted at this location.</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {['cash', 'card', 'bank_transfer', 'mobile_wallet'].map((m) => (
                     <label key={m} className="flex items-center gap-2 p-3 rounded-lg border border-gray-200 hover:border-brand-orange transition-colors cursor-pointer">
                       <input
@@ -1230,7 +1230,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">POS Cashier Screen Layout</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {[
                     { id: 'default', label: 'Standard', sub: 'Larger cards, wider cart' },
                     { id: 'compact', label: 'Compact Grid', sub: 'Small squares, 1/3 cart + images' },

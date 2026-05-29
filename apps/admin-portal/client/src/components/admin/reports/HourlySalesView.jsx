@@ -176,7 +176,7 @@ export default function HourlySalesView({ dateFrom, dateTo, registerExport }) {
 
         {/* Hour-by-Hour Sorting Table */}
         <div className="xl:col-span-2 bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col justify-between">
-          <div className="overflow-y-auto max-h-[360px]">
+          <div className="overflow-auto max-h-[360px]">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-gray-50 text-gray-500 border-b border-gray-200 sticky top-0 z-10">

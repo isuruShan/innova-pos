@@ -479,7 +479,7 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-900">User Management</h2>
           <p className="text-sm text-gray-500 mt-0.5">
@@ -487,7 +487,7 @@ export default function UsersPage() {
           </p>
         </div>
         <button onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover w-full sm:w-auto text-center"
         >
           <Plus size={15} />
           Add user
@@ -499,8 +499,8 @@ export default function UsersPage() {
           <ViewModeToggle mode={viewMode} setMode={(mode) => { setViewMode(mode); localStorage.setItem('view_mode_admin_users', mode); }} />
 
           <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 min-w-[180px] max-w-sm">
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2">
+              <div className="relative w-full sm:w-auto sm:flex-1 max-w-sm">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="search"
@@ -534,7 +534,7 @@ export default function UsersPage() {
                   setSort(f);
                   setOrder(o);
                 }}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-700 hover:bg-gray-50 cursor-pointer"
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-700 hover:bg-gray-50 cursor-pointer w-full sm:w-auto"
                 title="Sort by"
               >
                 {SORT_OPTIONS.map((o) => (
@@ -546,7 +546,7 @@ export default function UsersPage() {
                 <button
                   type="button"
                   onClick={() => { setRoleFilters([]); setStoreFilters([]); setSearch(''); setPage(1); }}
-                  className="text-xs text-red-500 hover:underline flex items-center gap-1"
+                  className="text-xs text-red-500 hover:underline flex items-center gap-1 py-1"
                 >
                   <X size={12} /> Clear filters
                 </button>

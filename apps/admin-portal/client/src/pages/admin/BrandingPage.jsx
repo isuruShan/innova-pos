@@ -237,7 +237,7 @@ export default function BrandingPage() {
 
   return (
     <div>
-      <div className="max-w-3xl space-y-6">
+      <div className="max-w-3xl space-y-6 pb-24">
       <div>
         <h2 className="text-xl font-bold text-gray-900">Branding & Settings</h2>
         <p className="text-sm text-gray-500 mt-0.5">Customize your POS appearance and business details</p>
@@ -248,7 +248,7 @@ export default function BrandingPage() {
         <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Palette size={16} className="text-brand-orange" /> Logo
         </h3>
-        <div className="flex items-center gap-6">
+        <div className="flex flex-col sm:flex-row items-center gap-6">
           <div className="relative w-24 h-24 shrink-0">
             <div className="w-full h-full rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
               {logoPreview || form.logoUrl ? (
@@ -278,9 +278,9 @@ export default function BrandingPage() {
               )}
             </div>
           </div>
-          <div>
+          <div className="text-center sm:text-left w-full sm:w-auto">
             <input ref={fileRef} type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
-            <div className="flex gap-2">
+            <div className="flex justify-center sm:justify-start gap-2">
               <button onClick={() => fileRef.current?.click()}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
                 Choose image

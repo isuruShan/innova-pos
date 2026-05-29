@@ -11,8 +11,22 @@
 }
 
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply bg-gray-50 text-gray-900 antialiased overscroll-y-contain;
+  }
+  /* Prevent automatic Safari zoom on input focus on iOS by setting text-base (16px) on mobile */
+  input[type="text"], 
+  input[type="email"], 
+  input[type="password"], 
+  input[type="number"], 
+  input[type="date"], 
+  select, 
+  textarea {
+    @apply text-base sm:text-sm;
   }
 }
 

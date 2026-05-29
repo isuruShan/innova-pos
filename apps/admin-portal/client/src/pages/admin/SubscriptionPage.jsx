@@ -411,7 +411,7 @@ export default function SubscriptionPage() {
               <h3 className="font-semibold text-gray-900 mb-4 text-sm">
                 {tenant.subscriptionStatus === 'trial' ? 'Account status' : 'Current Plan'}
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
                   <p className="text-xs text-gray-400">Status</p>
                   <p className="font-semibold capitalize text-gray-900 mt-0.5">{tenant.subscriptionStatus}</p>
@@ -497,21 +497,23 @@ export default function SubscriptionPage() {
               )}
 
               {tenant.subscriptionStatus === 'expired' && !tenant.temporaryActivationRequestedAt && !tenant.temporaryActivationUsedForEndDate && (
-                <div className="mt-4 flex flex-wrap items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
-                  <AlertTriangle size={16} className="text-amber-600 shrink-0" />
-                  <div className="flex-1">
-                    <p className="font-semibold text-amber-900">Request a 1-day activation</p>
-                    <p className="text-xs text-amber-700 mt-1">
-                      {subscriptionEnd ? `Next expiry: ${subscriptionEnd.toLocaleDateString()} (subscription ended).` : 'Subscription ended.'}
-                      {' '}
-                      Super admin can enable a temporary override while you arrange payment.
-                    </p>
+                <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+                  <div className="flex items-start gap-2 flex-1">
+                    <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-amber-900">Request a 1-day activation</p>
+                      <p className="text-xs text-amber-700 mt-1">
+                        {subscriptionEnd ? `Next expiry: ${subscriptionEnd.toLocaleDateString()} (subscription ended).` : 'Subscription ended.'}
+                        {' '}
+                        Super admin can enable a temporary override while you arrange payment.
+                      </p>
+                    </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => requestActivationMutation.mutate()}
                     disabled={requestActivationMutation.isPending}
-                    className="px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60 cursor-pointer"
+                    className="px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60 cursor-pointer w-full sm:w-auto text-center shrink-0"
                   >
                     {requestActivationMutation.isPending ? 'Requesting…' : 'Request 1 day'}
                   </button>
@@ -534,7 +536,7 @@ export default function SubscriptionPage() {
           )}
 
           {plans.length > 1 && !tenant?.planLocked && (
-            <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+            <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
               <div>
                 <h3 className="font-semibold text-gray-900 text-sm">Subscription plan</h3>
                 <p className="text-xs text-gray-500 mt-1">Switch plans at the end of your current billing period.</p>
@@ -542,7 +544,7 @@ export default function SubscriptionPage() {
               <button
                 type="button"
                 onClick={() => setPlanModalOpen(true)}
-                className="px-4 py-2 rounded-lg border border-brand-orange text-brand-orange text-xs font-semibold hover:bg-brand-orange/5 cursor-pointer"
+                className="px-4 py-2 rounded-lg border border-brand-orange text-brand-orange text-xs font-semibold hover:bg-brand-orange/5 cursor-pointer w-full sm:w-auto text-center"
               >
                 Change plan
               </button>
@@ -588,9 +590,8 @@ export default function SubscriptionPage() {
                 </div>
               )}
 
-              {/* Amount due next billing cycle visual summary */}
               {billingBreakdown?.total > 0 && (
-                <div className="bg-brand-orange/5 border border-brand-orange/15 rounded-xl p-4 flex items-center justify-between gap-4 animate-fade-in">
+                <div className="bg-brand-orange/5 border border-brand-orange/15 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 animate-fade-in">
                   <div>
                     <p className="text-[10px] text-brand-orange font-bold uppercase tracking-wider">Amount Due Next Billing Cycle</p>
                     <p className="text-2xl font-extrabold text-gray-900 mt-0.5">
@@ -600,7 +601,7 @@ export default function SubscriptionPage() {
                   <button
                     type="button"
                     onClick={() => setActiveTab('breakdown')}
-                    className="text-xs font-semibold text-brand-orange hover:text-brand-orange-hover border border-brand-orange/20 hover:border-brand-orange bg-white px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                    className="text-xs font-semibold text-brand-orange hover:text-brand-orange-hover border border-brand-orange/20 hover:border-brand-orange bg-white px-3 py-1.5 rounded-lg transition-colors cursor-pointer w-full sm:w-auto text-center"
                   >
                     View breakdown
                   </button>
