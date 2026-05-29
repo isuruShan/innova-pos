@@ -2,7 +2,7 @@ name: Deploy production (Docker Compose)
 
 on:
   push:
-    branches: [prod]
+    branches: [prod-new]
   workflow_dispatch:
 
 concurrency:
