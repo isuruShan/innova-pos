@@ -11,7 +11,7 @@ export default function CashierDraftTabs({
 }) {
   return (
     <div className="shrink-0 border-b border-slate-700/50 bg-[var(--pos-panel)]/80 px-2 py-2">
-      <div className="flex items-center gap-1.5 overflow-x-auto overscroll-x-contain scrollbar-thin">
+      <div className="flex items-center gap-1.5 overflow-x-auto overscroll-x-contain no-scrollbar">
         {drafts.map((draft) => {
           const active = draft.id === activeDraftId;
           const count = draftItemCount(draft);

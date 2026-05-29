@@ -1137,7 +1137,7 @@ export default function NewOrder() {
       <OfflineBanner />
       <div className="shrink-0 border-b border-slate-700/50 bg-[var(--pos-panel)]/90 px-3 py-2 flex items-center gap-2">
         <span className="text-[10px] font-bold uppercase tracking-wider text-green-400 shrink-0">Ready</span>
-        <div className="flex-1 min-w-0 overflow-x-auto flex items-center gap-2">
+        <div className="flex-1 min-w-0 overflow-x-auto flex items-center gap-2 no-scrollbar">
           {!isStoreReady ? (
             <span className="text-xs text-slate-500">Select a store…</span>
           ) : readyOrders.length === 0 ? (
@@ -1176,7 +1176,7 @@ export default function NewOrder() {
         <div className={`flex flex-col overflow-hidden border-slate-700/50 transition-all ${mobileCartOpen ? 'hidden' : 'flex-1 border-r'}`}>
           {/* Category tabs + search */}
           <div className="border-b border-slate-700/50 bg-[var(--pos-panel)]/50">
-            <div className="flex gap-2 px-4 py-3 overflow-x-auto">
+            <div className="flex gap-2 px-4 py-3 overflow-x-auto no-scrollbar">
               {categories.map(cat => (
                 <button
                   key={cat}
