@@ -13,6 +13,7 @@ import { SupplierCardsSkeleton } from '../../components/StoreSkeletons';
 import { useListSort } from '../../hooks/useListSort';
 import { useBranding } from '../../context/BrandingContext';
 import PosPhoneField, { validatePosPhoneField, phoneDisplayFromParts, parseStoredPhone } from '../../components/PosPhoneField';
+import PageHeader from '../../components/PageHeader';
 
 const SUPPLIER_SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -299,50 +300,39 @@ export default function SupplierManagement() {
       <Navbar groups={MANAGER_NAV_GROUPS} />
 
       <div className="max-w-6xl mx-auto p-4 sm:p-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-[var(--pos-text-primary)] flex items-center gap-2">
-              <Truck size={22} className="text-purple-400" />
-              Suppliers
-            </h1>
-            <p className="text-slate-500 text-sm mt-1">{suppliers.length} supplier{suppliers.length !== 1 ? 's' : ''} registered</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-2">
-              <label htmlFor="supplier-sort" className="text-xs text-slate-500">Sort by</label>
-              <select
-                id="supplier-sort"
-                value={sort}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  if (next === sort) toggleSort(next);
-                  else {
-                    setSort(next);
-                    setOrder('asc');
-                  }
-                }}
-                className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-1.5"
-              >
-                {SUPPLIER_SORT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-                className="p-2 rounded-xl bg-[var(--pos-panel)] border border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]"
-                title={order === 'asc' ? 'Ascending' : 'Descending'}
-              >
-                {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-              </button>
-            </div>
-            <button onClick={openAdd}
-              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/20 text-sm">
-              <Plus size={16} />
-              Add Supplier
-            </button>
-          </div>
+        <PageHeader
+          title={<span className="flex items-center gap-2"><Truck size={20} className="text-purple-400" />Suppliers</span>}
+          subtitle={`${suppliers.length} supplier${suppliers.length !== 1 ? 's' : ''} registered`}
+          actions={[
+            { label: 'Add Supplier', icon: Plus, onClick: openAdd, primary: true },
+          ]}
+        />
+
+        {/* Sort controls — inline, wraps naturally */}
+        <div className="flex items-center gap-2 mb-6 -mt-2">
+          <label htmlFor="supplier-sort" className="text-xs text-slate-500 shrink-0">Sort by</label>
+          <select
+            id="supplier-sort"
+            value={sort}
+            onChange={(e) => {
+              const next = e.target.value;
+              if (next === sort) toggleSort(next);
+              else { setSort(next); setOrder('asc'); }
+            }}
+            className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-1.5"
+          >
+            {SUPPLIER_SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
+            className="p-2 rounded-xl bg-[var(--pos-panel)] border border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]"
+            title={order === 'asc' ? 'Ascending' : 'Descending'}
+          >
+            {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+          </button>
         </div>
 
         {!isStoreReady || isPending ? (

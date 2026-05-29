@@ -17,6 +17,7 @@ import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import InventoryAdjustments from '../../components/inventory/InventoryAdjustments';
 import InventoryMovements from '../../components/inventory/InventoryMovements';
 import ConsumptionReport from '../../components/inventory/ConsumptionReport';
+import PageHeader from '../../components/PageHeader';
 
 const EMPTY_FORM = { itemName: '', unit: 'pcs', quantity: '', minThreshold: '', suppliers: [] };
 
@@ -236,35 +237,30 @@ export default function InventoryManagement() {
       <Navbar groups={MANAGER_NAV_GROUPS} />
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-[var(--pos-text-primary)] flex items-center gap-2">
+        <PageHeader
+          title={
+            <span className="flex items-center gap-2">
               Inventory
               {activeTab === 'stock' && lowCount > 0 && (
                 <span className="flex items-center gap-1 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 text-xs font-semibold px-2.5 py-1 rounded-full">
                   <AlertTriangle size={12} /> {lowCount} need attention
                 </span>
               )}
-            </h1>
-            <p className="text-slate-500 text-sm mt-1">
-              {activeTab === 'stock' && `${items.length} items tracked`}
-              {activeTab === 'adjustments' && 'Make manual stock adjustments'}
-              {activeTab === 'consumption' && 'View theoretical vs actual usage'}
-              {activeTab === 'movements' && 'View stock movement history'}
-            </p>
-          </div>
-          {activeTab === 'stock' && (
-            <button onClick={openAdd}
-              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/20 text-sm">
-              <Plus size={16} />
-              Add Item
-            </button>
-          )}
-        </div>
+            </span>
+          }
+          subtitle={
+            activeTab === 'stock' ? `${items.length} items tracked` :
+            activeTab === 'adjustments' ? 'Make manual stock adjustments' :
+            activeTab === 'consumption' ? 'View theoretical vs actual usage' :
+            'View stock movement history'
+          }
+          actions={activeTab === 'stock' ? [
+            { label: 'Add Item', icon: Plus, onClick: openAdd, primary: true },
+          ] : []}
+        />
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-slate-700/50 pb-0">
+        <div className="flex gap-1 mb-6 border-b border-slate-700/50 overflow-x-auto no-scrollbar">
           {[
             { key: 'stock', label: 'Stock Levels' },
             { key: 'adjustments', label: 'Adjustments' },
@@ -274,7 +270,7 @@ export default function InventoryManagement() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2.5 text-sm font-medium transition border-b-2 ${
+              className={`px-3 sm:px-4 py-2.5 text-sm font-medium transition border-b-2 whitespace-nowrap shrink-0 ${
                 activeTab === tab.key
                   ? 'border-amber-500 text-amber-400'
                   : 'border-transparent text-slate-400 hover:text-slate-300'

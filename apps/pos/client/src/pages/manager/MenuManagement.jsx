@@ -27,6 +27,7 @@ import {
   validateMenuItemRow 
 } from '../../utils/csvExportImport';
 import { MenuGridSkeleton } from '../../components/StoreSkeletons';
+import PageHeader from '../../components/PageHeader';
 
 const EMPTY_FORM = {
   name: '', category: '', price: '', description: '', images: [],
@@ -497,34 +498,16 @@ export default function MenuManagement() {
       <Navbar groups={MANAGER_NAV_GROUPS} />
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-[var(--pos-text-primary)]">Menu Items</h1>
-            <p className="text-slate-500 text-sm mt-1">{items.length} items · {items.filter((i) => i.isCombo).length} combos</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={handleExportMenuItems}
-              className="flex items-center gap-2 border border-slate-600 hover:border-green-500 text-slate-300 hover:text-green-400 font-medium px-4 py-2.5 rounded-xl transition text-sm">
-              <Download size={15} />
-              Export
-            </button>
-            <button type="button" onClick={() => setImportModalOpen(true)}
-              className="flex items-center gap-2 border border-slate-600 hover:border-blue-500 text-slate-300 hover:text-blue-400 font-medium px-4 py-2.5 rounded-xl transition text-sm">
-              <Upload size={15} />
-              Import
-            </button>
-            <button type="button" onClick={() => setCatModalOpen(true)}
-              className="flex items-center gap-2 border border-slate-600 hover:border-amber-500 text-slate-300 hover:text-amber-400 font-medium px-4 py-2.5 rounded-xl transition text-sm">
-              <Tag size={15} />
-              Categories
-            </button>
-            <button type="button" onClick={openAdd}
-              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/20 text-sm">
-              <Plus size={16} />
-              Add Item
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title="Menu Items"
+          subtitle={`${items.length} items · ${items.filter((i) => i.isCombo).length} combos`}
+          actions={[
+            { label: 'Export', icon: Download, onClick: handleExportMenuItems },
+            { label: 'Import', icon: Upload, onClick: () => setImportModalOpen(true) },
+            { label: 'Categories', icon: Tag, onClick: () => setCatModalOpen(true) },
+            { label: 'Add Item', icon: Plus, onClick: openAdd, primary: true },
+          ]}
+        />
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
           <div className="relative flex-1">
