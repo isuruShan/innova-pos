@@ -304,85 +304,86 @@ export default function InventoryManagement() {
               ))}
             </div>
 
-        {pageLoading ? (
-          <InventoryTableSkeleton />
-        ) : (
-          <ResponsiveTable
-            rows={filtered}
-            rowKey={(item) => item._id}
-            loading={false}
-            emptyState={
-              <span className="flex flex-col items-center gap-2">
-                <Package size={36} className="opacity-30" />
-                No inventory items found
-              </span>
-            }
-            columns={[
-              {
-                key: 'name', header: 'Item Name',
-                mobilePrimary: true,
-                render: (item) => <span className="font-medium text-[var(--pos-text-primary)]">{item.itemName}</span>,
-              },
-              {
-                key: 'status', header: 'Status',
-                mobileSecondary: true,
-                render: (item) => {
-                  const status = getStockStatus(item.quantity, item.minThreshold);
-                  return <Badge label={status.label} variant={status.variant} />;
-                },
-              },
-              {
-                key: 'qty', header: 'Qty',
-                mobileRight: true,
-                className: 'text-right',
-                headerClassName: 'text-right',
-                render: (item) => (
-                  <InlineEdit
-                    value={item.quantity}
-                    onSave={(qty) => updateMutation.mutate({ id: item._id, data: { quantity: qty } })}
-                  />
-                ),
-              },
-              {
-                key: 'unit', header: 'Unit',
-                render: (item) => <span className="text-slate-400">{item.unit}</span>,
-              },
-              {
-                key: 'threshold', header: 'Min',
-                mobileLabel: 'Min Threshold',
-                render: (item) => <span className="text-slate-400">{item.minThreshold}</span>,
-              },
-              {
-                key: 'suppliers', header: 'Suppliers',
-                render: (item) => <SupplierPills suppliers={item.suppliers} />,
-              },
-              {
-                key: 'updated', header: 'Updated',
-                render: (item) => (
-                  <span className="text-slate-500 text-xs">
-                    {new Date(item.lastUpdated || item.updatedAt).toLocaleDateString()}
+            {pageLoading ? (
+              <InventoryTableSkeleton />
+            ) : (
+              <ResponsiveTable
+                rows={filtered}
+                rowKey={(item) => item._id}
+                loading={false}
+                emptyState={
+                  <span className="flex flex-col items-center gap-2">
+                    <Package size={36} className="opacity-30" />
+                    No inventory items found
                   </span>
-                ),
-              },
-              {
-                key: 'actions', header: '', mobileHide: true,
-                render: (item) => (
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => openEdit(item)}
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition">
-                      <Edit2 size={13} />
-                    </button>
-                    <button onClick={() => { if (confirm('Delete this item?')) deleteMutation.mutate(item._id); }}
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition">
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ),
-              },
-            ]}
-          />
+                }
+                columns={[
+                  {
+                    key: 'name', header: 'Item Name',
+                    mobilePrimary: true,
+                    render: (item) => <span className="font-medium text-[var(--pos-text-primary)]">{item.itemName}</span>,
+                  },
+                  {
+                    key: 'status', header: 'Status',
+                    mobileSecondary: true,
+                    render: (item) => {
+                      const status = getStockStatus(item.quantity, item.minThreshold);
+                      return <Badge label={status.label} variant={status.variant} />;
+                    },
+                  },
+                  {
+                    key: 'qty', header: 'Qty',
+                    mobileRight: true,
+                    className: 'text-right',
+                    headerClassName: 'text-right',
+                    render: (item) => (
+                      <InlineEdit
+                        value={item.quantity}
+                        onSave={(qty) => updateMutation.mutate({ id: item._id, data: { quantity: qty } })}
+                      />
+                    ),
+                  },
+                  {
+                    key: 'unit', header: 'Unit',
+                    render: (item) => <span className="text-slate-400">{item.unit}</span>,
+                  },
+                  {
+                    key: 'threshold', header: 'Min',
+                    mobileLabel: 'Min Threshold',
+                    render: (item) => <span className="text-slate-400">{item.minThreshold}</span>,
+                  },
+                  {
+                    key: 'suppliers', header: 'Suppliers',
+                    render: (item) => <SupplierPills suppliers={item.suppliers} />,
+                  },
+                  {
+                    key: 'updated', header: 'Updated',
+                    render: (item) => (
+                      <span className="text-slate-500 text-xs">
+                        {new Date(item.lastUpdated || item.updatedAt).toLocaleDateString()}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'actions', header: '', mobileHide: true,
+                    render: (item) => (
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => openEdit(item)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition">
+                          <Edit2 size={13} />
+                        </button>
+                        <button onClick={() => { if (confirm('Delete this item?')) deleteMutation.mutate(item._id); }}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ),
+                  },
+                ]}
+              />
+            )}
+          </>
         )}
-
 
         {activeTab === 'adjustments' && <InventoryAdjustments />}
         {activeTab === 'consumption' && <ConsumptionReport />}
