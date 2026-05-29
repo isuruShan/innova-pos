@@ -181,7 +181,7 @@ export default function Dashboard() {
 
         <FilterPanel summary={rangeInvalid ? 'Invalid date range' : rangeLabel} className="mb-4">
         <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
-          <div className="bg-[var(--pos-panel)] rounded-xl border border-slate-700/50 p-3 flex flex-col">
+          <div className="hidden md:flex bg-[var(--pos-panel)] rounded-xl border border-slate-700/50 p-3 flex-col">
             <div className="flex items-center gap-1.5 text-slate-300 text-xs font-semibold mb-2">
               <Store size={15} className="text-amber-400 flex-shrink-0" />
               Selected store
