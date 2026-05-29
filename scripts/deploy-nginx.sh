@@ -29,11 +29,6 @@ for conf in pos admin-portal public-web qr-order; do
     # Update root/alias absolute paths to current ROOT
     sudo sed -i -E "s|root  [^;]+/apps/|root  $ROOT/apps/|g" "$dest"
     sudo sed -i -E "s|alias [^;]+/apps/|alias $ROOT/apps/|g" "$dest"
-
-    # Ensure public-web proxy strips the /api/ prefix (trailing slash on proxy_pass)
-    if [[ "$conf" == "public-web" ]]; then
-      sudo sed -i -E "s|proxy_pass\s+http://public_backend;|proxy_pass         http://public_backend/;|g" "$dest"
-    fi
   else
     echo "Creating $conf config (first deploy)..."
     sed "s|__APP_ROOT__|$ROOT|g" "$ROOT/nginx/${conf}.conf" | sudo tee "$dest" > /dev/null
