@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { fieldAttrs } from '../utils/formFields';
+import PwaInstallPrompt from '../components/PwaInstallPrompt';
 
 export default function Login() {
   const { login, logout, user } = useAuth();
@@ -106,6 +107,7 @@ export default function Login() {
           </form>
         </div>
       </div>
+      <PwaInstallPrompt />
     </div>
   );
 }

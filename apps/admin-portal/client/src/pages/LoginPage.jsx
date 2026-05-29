@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Loader } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { fieldAttrs } from '../utils/formFields';
+import PwaInstallPrompt from '../components/PwaInstallPrompt';
+
 export default function LoginPage() {
   const { login, logout, user } = useAuth();
   const navigate = useNavigate();
@@ -158,6 +160,7 @@ export default function LoginPage() {
           This portal is restricted to authorized administrators only.
         </p>
       </div>
+      <PwaInstallPrompt />
     </div>
   );
 }
