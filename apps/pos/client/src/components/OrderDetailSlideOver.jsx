@@ -89,9 +89,9 @@ function VariantSelectorModal({ item, onClose, onConfirm }) {
           <div className="bg-[var(--pos-surface-inset)] rounded-xl p-3 border border-slate-800 flex items-center gap-3">
             <div className="w-12 h-12 bg-slate-800 rounded-lg overflow-hidden border border-slate-700 shrink-0">
               {selectedVariant.image ? (
-                <img src={selectedVariant.image} alt="" className="w-full h-full object-cover" />
+                <img src={selectedVariant.image} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80'; }} />
               ) : item.images?.[0]?.url || item.image ? (
-                <img src={item.images?.[0]?.url || item.image} alt="" className="w-full h-full object-cover" />
+                <img src={item.images?.[0]?.url || item.image} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80'; }} />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-xl">🍔</div>
               )}

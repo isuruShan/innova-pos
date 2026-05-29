@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatCurrency } from '../../utils/format';
 import OrderTypeBadge from '../OrderTypeBadge';
+import { useBranding } from '../../context/BrandingContext';
 
 function formatMethodLabel(method) {
   const label = String(method || '').replace(/_/g, ' ');
@@ -36,15 +37,48 @@ export default function CollectPaymentModal({
   serviceFeeAmount = null,
   contextNote = null,
   initialPaymentType = null,
+  cashDenominations = null,
 }) {
+  const branding = useBranding();
   const [paymentType, setPaymentType] = useState(initialPaymentType || availablePaymentMethods[0] || 'cash');
   const [cashReceivedInput, setCashReceivedInput] = useState('');
+  const [addedNotes, setAddedNotes] = useState([]);
 
   useEffect(() => {
     if (!open) return;
     setPaymentType(initialPaymentType || availablePaymentMethods[0] || 'cash');
     setCashReceivedInput(Number(total || 0).toFixed(2));
+    setAddedNotes([]);
   }, [open, total, availablePaymentMethods, initialPaymentType]);
+
+  const resolvedDenominations = useMemo(() => {
+    if (cashDenominations && cashDenominations.length > 0) {
+      return cashDenominations;
+    }
+    if (branding?.countryIso === 'LK' || branding?.currency === 'LKR') {
+      return [5000, 2000, 1000, 500, 200, 100, 50, 20];
+    }
+    return [100, 50, 20, 10, 5, 1];
+  }, [cashDenominations, branding?.countryIso, branding?.currency]);
+
+  const handleAddNote = (val) => {
+    const next = [...addedNotes, val];
+    setAddedNotes(next);
+    const sum = next.reduce((a, b) => a + b, 0);
+    setCashReceivedInput(sum.toFixed(2));
+  };
+
+  const handleRemoveNote = (idx) => {
+    const next = addedNotes.filter((_, i) => i !== idx);
+    setAddedNotes(next);
+    const sum = next.reduce((a, b) => a + b, 0);
+    setCashReceivedInput(next.length > 0 ? sum.toFixed(2) : '');
+  };
+
+  const handleInputChange = (e) => {
+    setCashReceivedInput(e.target.value);
+    setAddedNotes([]);
+  };
 
   const parsedReceiving = parseFloat(String(cashReceivedInput).replace(/,/g, ''));
   const receivingAmount = Number.isFinite(parsedReceiving) ? parsedReceiving : Number(total || 0);
@@ -185,11 +219,61 @@ export default function CollectPaymentModal({
                 type="text"
                 inputMode="decimal"
                 value={cashReceivedInput}
-                onChange={(e) => setCashReceivedInput(e.target.value)}
+                onChange={handleInputChange}
                 className="w-full min-h-[56px] rounded-2xl border-2 border-slate-600 bg-slate-900/80 text-[var(--pos-text-primary)] text-2xl font-bold text-center tracking-wide px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 tabular-nums"
                 placeholder={Number(total || 0).toFixed(2)}
                 autoComplete="off"
               />
+
+              {/* Added Notes list (removable) */}
+              {addedNotes.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 py-1">
+                  {addedNotes.map((note, idx) => (
+                    <span
+                      key={`${note}-${idx}`}
+                      className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 bg-amber-500/15 border border-amber-500/30 rounded-lg text-amber-400"
+                    >
+                      {branding?.currencySymbol || 'Rs.'} {note}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveNote(idx)}
+                        className="hover:text-red-400 font-bold ml-0.5 focus:outline-none"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddedNotes([]);
+                      setCashReceivedInput('');
+                    }}
+                    className="text-xs text-slate-500 hover:text-slate-350 font-semibold px-2 py-1 focus:outline-none ml-auto"
+                  >
+                    Clear all
+                  </button>
+                </div>
+              )}
+
+              {/* Banks Notes touch grid */}
+              <div className="space-y-1.5 pt-1.5">
+                <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Quick notes</span>
+                <div className="grid grid-cols-4 gap-2">
+                  {resolvedDenominations.map((note) => (
+                    <button
+                      key={note}
+                      type="button"
+                      onClick={() => handleAddNote(note)}
+                      className="min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700/80 active:scale-95 border border-slate-700/60 hover:border-amber-500/50 text-slate-300 hover:text-white text-sm font-bold transition flex items-center justify-center gap-0.5 shadow-sm focus:outline-none"
+                    >
+                      <span className="text-[10px] text-slate-500 font-normal">{branding?.currencySymbol || 'Rs.'}</span>
+                      <span>{note}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {cashChange != null && (
                 <div className="flex justify-between items-center text-lg bg-green-500/10 border border-green-500/25 rounded-xl px-4 py-3">
                   <span className="text-green-300 font-medium">Change due</span>

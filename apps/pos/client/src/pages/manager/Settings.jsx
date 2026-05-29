@@ -493,14 +493,21 @@ function PosViewTab() {
   const { selectedStoreId, isStoreReady, stores } = useStoreContext();
   const store = stores.find((s) => String(s._id) === String(selectedStoreId));
   const [layout, setLayout] = useState(store?.posMenuLayout || 'default');
+  const [notes, setNotes] = useState([]);
+  const [newNote, setNewNote] = useState('');
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     setLayout(store?.posMenuLayout || 'default');
-  }, [store?._id, store?.posMenuLayout]);
+    setNotes(store?.cashDenominations || []);
+  }, [store?._id, store?.posMenuLayout, store?.cashDenominations]);
 
   const saveMutation = useMutation({
-    mutationFn: (val) => api.put(`/stores/${selectedStoreId}`, { posMenuLayout: val }),
+    mutationFn: ({ layoutVal, notesVal }) =>
+      api.put(`/stores/${selectedStoreId}`, {
+        posMenuLayout: layoutVal,
+        cashDenominations: notesVal && notesVal.length > 0 ? notesVal : null,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['pos-stores'] });
       setSaved(true);
@@ -508,43 +515,122 @@ function PosViewTab() {
     },
   });
 
+  const handleAddNote = () => {
+    const val = parseFloat(newNote);
+    if (!isNaN(val) && val > 0 && !notes.includes(val)) {
+      const next = [...notes, val].sort((a, b) => b - a);
+      setNotes(next);
+      setNewNote('');
+    }
+  };
+
+  const handleRemoveNote = (val) => {
+    setNotes(notes.filter((n) => n !== val));
+  };
+
+  const handleResetToDefault = () => {
+    setNotes([]);
+  };
+
   if (!isStoreReady) {
     return <p className="text-sm text-amber-300">Select a store in the header first.</p>;
   }
 
   return (
     <div className="space-y-5 max-w-lg">
-      <p className="text-sm text-slate-400">Choose how the POS cashier screen displays menu items.</p>
-      <div className="grid grid-cols-2 gap-3">
-        {LAYOUT_OPTIONS.map((opt) => (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => setLayout(opt.id)}
-            className={`text-left rounded-2xl border-2 p-3 transition ${
-              layout === opt.id
-                ? 'border-amber-500 bg-amber-500/10'
-                : 'border-slate-700 bg-[var(--pos-panel)] hover:border-slate-500'
-            }`}
-          >
-            {opt.preview}
-            <p className={`mt-2 text-sm font-semibold ${
-              layout === opt.id ? 'text-amber-400' : 'text-[var(--pos-text-primary)]'
-            }`}>{opt.label}</p>
-            <p className="text-xs text-slate-500 mt-0.5">{opt.description}</p>
-          </button>
-        ))}
+      <div>
+        <p className="text-sm text-slate-400 mb-3">Choose how the POS cashier screen displays menu items.</p>
+        <div className="grid grid-cols-2 gap-3">
+          {LAYOUT_OPTIONS.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setLayout(opt.id)}
+              className={`text-left rounded-2xl border-2 p-3 transition ${
+                layout === opt.id
+                  ? 'border-amber-500 bg-amber-500/10'
+                  : 'border-slate-700 bg-[var(--pos-panel)] hover:border-slate-500'
+              }`}
+            >
+              {opt.preview}
+              <p className={`mt-2 text-sm font-semibold ${
+                layout === opt.id ? 'text-amber-400' : 'text-[var(--pos-text-primary)]'
+              }`}>{opt.label}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{opt.description}</p>
+            </button>
+          ))}
+        </div>
       </div>
+
+      <div className="border-t border-slate-700/50 pt-5 mt-5">
+        <h3 className="text-sm font-semibold text-[var(--pos-text-primary)] mb-1">
+          Touch Cash Notes
+        </h3>
+        <p className="text-xs text-slate-400 mb-3">
+          Configure custom cash notes for the payment screen. Sri Lankan merchants default to LKR notes (5000, 2000, 1000, 500, 200, 100, 50, 20) if left empty/default.
+        </p>
+
+        <div className="flex flex-wrap gap-2 mb-3">
+          {notes.length === 0 ? (
+            <span className="text-xs text-slate-500 italic py-1.5">Using default notes for store currency/region</span>
+          ) : (
+            notes.map((val) => (
+              <span
+                key={val}
+                className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-300"
+              >
+                {val}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveNote(val)}
+                  className="text-slate-500 hover:text-red-400 font-bold transition ml-0.5 focus:outline-none"
+                >
+                  ✕
+                </button>
+              </span>
+            ))
+          )}
+        </div>
+
+        <div className="flex gap-2 items-center">
+          <input
+            type="number"
+            min="0.01"
+            step="0.01"
+            placeholder="e.g. 50"
+            value={newNote}
+            onChange={(e) => setNewNote(e.target.value)}
+            className="flex-1 max-w-[150px] bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-600"
+          />
+          <button
+            type="button"
+            onClick={handleAddNote}
+            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold transition"
+          >
+            Add Note
+          </button>
+          {notes.length > 0 && (
+            <button
+              type="button"
+              onClick={handleResetToDefault}
+              className="px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-semibold transition ml-auto"
+            >
+              Reset to default
+            </button>
+          )}
+        </div>
+      </div>
+
       <button
         type="button"
-        onClick={() => saveMutation.mutate(layout)}
+        onClick={() => saveMutation.mutate({ layoutVal: layout, notesVal: notes })}
         disabled={saveMutation.isPending}
-        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition ${
+        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition mt-5 ${
           saved ? 'bg-green-500 text-white' : 'bg-amber-500 hover:bg-amber-400 text-white disabled:opacity-60'
         }`}
       >
         <Save size={14} />
-        {saveMutation.isPending ? 'Saving…' : saved ? 'Saved ✓' : 'Save Layout'}
+        {saveMutation.isPending ? 'Saving…' : saved ? 'Saved ✓' : 'Save Layout & Cash Notes'}
       </button>
     </div>
   );

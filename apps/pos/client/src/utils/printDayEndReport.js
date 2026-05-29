@@ -71,11 +71,17 @@ export function printDayEndReport(data, storeName, date, currencySymbol = 'Rs.')
   .badge.pending { background: #fef9c3; color: #854d0e; }
   .badge.cancelled { background: #fee2e2; color: #991b1b; }
   h2 { font-size: 13px; font-weight: 700; margin-bottom: 8px; border-bottom: 1px solid #e5e5e5; padding-bottom: 5px; }
+  .brand-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #e94560; padding-bottom: 8px; margin-bottom: 20px; }
+  .brand-logo { font-size: 20px; font-weight: 800; color: #e94560; letter-spacing: -0.02em; }
   .footer { margin-top: 16px; color: #999; font-size: 9px; text-align: center; border-top: 1px solid #eee; padding-top: 8px; }
   @media print { body { padding: 12px 16px; } }
 </style>
 </head>
 <body>
+  <div class="brand-header">
+    <div class="brand-logo">Cafinity</div>
+    <div style="text-align: right; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">Day-End Report</div>
+  </div>
   <h1>Day-End Report</h1>
   <p class="sub">${escHtml(storeName || '')}${storeName ? ' · ' : ''}${displayDate} · Generated ${new Date().toLocaleTimeString()}</p>
 
@@ -105,7 +111,7 @@ export function printDayEndReport(data, storeName, date, currencySymbol = 'Rs.')
     <tbody>${orderRows}</tbody>
   </table>` : '<p style="color:#999; margin-bottom:16px">No orders for this date.</p>'}
 
-  <div class="footer">SplitSecond POS · Day-End Report · ${displayDate}</div>
+  <div class="footer">Cafinity POS · Day-End Report · ${displayDate}</div>
 </body>
 </html>`;
 
@@ -201,11 +207,17 @@ export function printSessionReport(session, storeName, currencySymbol = 'Rs.') {
   .stat { border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; }
   .stat-label { color: #666; font-size: 9px; text-transform: uppercase; letter-spacing: .05em; }
   .stat-val { font-size: 15px; font-weight: 700; margin-top: 2px; }
+  .brand-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #e94560; padding-bottom: 8px; margin-bottom: 20px; }
+  .brand-logo { font-size: 20px; font-weight: 800; color: #e94560; letter-spacing: -0.02em; }
   .footer { margin-top: 16px; color: #999; font-size: 9px; text-align: center; border-top: 1px solid #eee; padding-top: 8px; }
   @media print { body { padding: 12px 16px; } }
 </style>
 </head>
 <body>
+  <div class="brand-header">
+    <div class="brand-logo">Cafinity</div>
+    <div style="text-align: right; font-size: 9px; color: #666; font-weight: 600; text-transform: uppercase;">Session Report</div>
+  </div>
   <h1>Cashier Session Report</h1>
   <p class="sub">${escHtml(storeName || '')}${storeName ? ' · ' : ''}Closed: ${closedAt} · Generated ${new Date().toLocaleTimeString()}</p>
 
@@ -252,7 +264,7 @@ export function printSessionReport(session, storeName, currencySymbol = 'Rs.') {
 
   ${session?.varianceNotes ? `<h2>Notes</h2><p style="color:#444;padding:6px 0">${escHtml(session.varianceNotes)}</p>` : ''}
 
-  <div class="footer">SplitSecond POS · Session Report · ${closedAt}</div>
+  <div class="footer">Cafinity POS · Session Report · ${closedAt}</div>
 </body>
 </html>`;
 

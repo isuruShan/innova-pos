@@ -333,7 +333,7 @@ function MenuCard({ item, onAdd, compact = false }) {
     >
       <div className={`relative bg-slate-800 overflow-hidden ${compact ? 'h-20' : 'h-28'}`}>
         {imageUrl ? (
-          <img src={imageUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+          <img src={imageUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80'; }} />
         ) : (
           <div className={`w-full h-full flex items-center justify-center ${compact ? 'text-2xl' : 'text-4xl'}`}>
             {item.isCombo ? '🍱' : '🍔'}
@@ -383,7 +383,7 @@ function CartItem({ item, onChangeQty, showImage = false }) {
         {showImage && (
           <div className="w-10 h-10 rounded-lg bg-slate-800 overflow-hidden flex-shrink-0 border border-slate-700">
             {imageUrl ? (
-              <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" />
+              <img src={imageUrl} alt={item.name} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80'; }} />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-base">
                 {item.isCombo ? '🍱' : '🍔'}
@@ -509,9 +509,9 @@ function VariantSelectorModal({ item, onClose, onConfirm }) {
           <div className="bg-[var(--pos-surface-inset)] rounded-xl p-3 border border-slate-800 flex items-center gap-3">
             <div className="w-12 h-12 bg-slate-800 rounded-lg overflow-hidden border border-slate-700 shrink-0">
               {selectedVariant.image ? (
-                <img src={selectedVariant.image} alt="" className="w-full h-full object-cover" />
+                <img src={selectedVariant.image} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80'; }} />
               ) : item.images?.[0]?.url || item.image ? (
-                <img src={item.images?.[0]?.url || item.image} alt="" className="w-full h-full object-cover" />
+                <img src={item.images?.[0]?.url || item.image} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80'; }} />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-xl">🍔</div>
               )}
@@ -1698,6 +1698,7 @@ export default function NewOrder() {
         discountTotal={discountTotal}
         taxAmount={taxAmount}
         serviceFeeAmount={serviceFeeAmount}
+        cashDenominations={selectedStore?.cashDenominations}
       />
       {/* Variant Selection Modal */}
       <VariantSelectorModal
