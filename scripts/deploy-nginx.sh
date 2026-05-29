@@ -25,6 +25,24 @@ done
 echo "Testing nginx configuration..."
 sudo nginx -t
 
+# Re-apply existing Let's Encrypt SSL certificates BEFORE reloading nginx.
+# Certbot modifies the conf files to add SSL; we do this first so the reload
+# below starts nginx with a complete HTTP + HTTPS config in one shot.
+if command -v certbot >/dev/null 2>&1 && [ -d /etc/letsencrypt/live ]; then
+    echo "Re-applying SSL certificates..."
+    for cert_dir in /etc/letsencrypt/live/*/; do
+        cert_name=$(basename "$cert_dir")
+        [[ "$cert_name" == "README" ]] && continue
+        echo "  Installing cert: $cert_name"
+        sudo certbot install --nginx --cert-name "$cert_name" --non-interactive 2>&1 \
+            | grep -v "^$" | sed 's/^/    /' || \
+            echo "  ⚠ Could not auto-install $cert_name — run: sudo certbot install --nginx --cert-name $cert_name"
+    done
+    # Re-test after certbot modifies the configs
+    echo "Re-testing nginx configuration after SSL..."
+    sudo nginx -t
+fi
+
 # Start or reload nginx
 if sudo systemctl is-active --quiet nginx; then
     echo "Reloading nginx..."
@@ -32,29 +50,6 @@ if sudo systemctl is-active --quiet nginx; then
 else
     echo "Starting nginx..."
     sudo systemctl start nginx
-fi
-
-# Re-apply existing Let's Encrypt SSL certificates.
-# Certbot modifies the nginx conf files to add SSL blocks; since we just
-# overwrote those files from the repo, we need to re-install each cert.
-if command -v certbot >/dev/null 2>&1 && [ -d /etc/letsencrypt/live ]; then
-    echo "Re-applying SSL certificates..."
-    CERT_APPLIED=false
-    for cert_dir in /etc/letsencrypt/live/*/; do
-        cert_name=$(basename "$cert_dir")
-        [[ "$cert_name" == "README" ]] && continue
-        echo "  Installing cert: $cert_name"
-        sudo certbot install --nginx --cert-name "$cert_name" --non-interactive 2>/dev/null && CERT_APPLIED=true || \
-            echo "  ⚠ Could not auto-install $cert_name — run: sudo certbot install --nginx --cert-name $cert_name"
-    done
-    if $CERT_APPLIED; then
-        echo "SSL certificates re-applied. Reloading nginx..."
-        sudo systemctl reload nginx
-    fi
-else
-    echo ""
-    echo "Next step — add HTTPS (first deploy only):"
-    echo "  sudo certbot --nginx -d pos.cafinity.io -d admin.cafinity.io -d www.cafinity.io -d cafinity.io -d shop.cafinity.io"
 fi
 
 echo ""
