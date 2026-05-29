@@ -327,10 +327,10 @@ export default function CashierSessionGate({ children, requireSession = false })
     });
   };
 
-  const handleGenerateReport = async (sessionForReport) => {
+  const handleGenerateReport = async (sessionForReport, forceDayEnd = false) => {
     setReportLoading(true);
     try {
-      const src = sessionForReport || closedSession;
+      const src = forceDayEnd ? null : (sessionForReport || closedSession);
       if (src && !src._closed) {
         // Use session close data for richer report
         printSessionReport(
@@ -583,6 +583,15 @@ export default function CashierSessionGate({ children, requireSession = false })
                 </button>
                 <button
                   type="button"
+                  onClick={() => handleGenerateReport(null, true)}
+                  disabled={reportLoading}
+                  className="w-full py-2.5 rounded-xl border border-slate-600/70 text-slate-300 hover:text-white hover:border-slate-500 text-sm font-medium flex items-center justify-center gap-2 transition disabled:opacity-50"
+                >
+                  <FileText size={14} />
+                  {reportLoading ? 'Preparing report…' : 'Generate day-end report (PDF)'}
+                </button>
+                <button
+                  type="button"
                   onClick={handleDoneAfterClose}
                   className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition"
                 >
@@ -742,16 +751,7 @@ export default function CashierSessionGate({ children, requireSession = false })
                       </p>
                     )}
 
-                    {/* Day-end report */}
-                    <button
-                      type="button"
-                      onClick={handleGenerateReport}
-                      disabled={reportLoading}
-                      className="w-full py-2.5 rounded-xl border border-slate-600/70 text-slate-400 hover:text-slate-200 hover:border-slate-500 text-sm font-medium flex items-center justify-center gap-2 transition disabled:opacity-50"
-                    >
-                      <FileText size={14} />
-                      {reportLoading ? 'Loading report…' : 'Generate day-end report (PDF)'}
-                    </button>
+
 
                     {/* Submit */}
                     <button

@@ -243,6 +243,7 @@ export function MenuItemPickerModal({
                         src={item.images?.[0]?.url || item.image}
                         alt=""
                         className="w-full h-full object-cover"
+                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80'; }}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-lg">🍽️</div>

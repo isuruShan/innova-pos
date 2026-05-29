@@ -627,7 +627,7 @@ export default function MenuManagement() {
                       </div>
                     )}
                     {(item.images?.[0]?.url || item.image) ? (
-                      <img src={item.images?.[0]?.url || item.image} alt={item.name} className="w-full h-full object-cover" />
+                      <img src={item.images?.[0]?.url || item.image} alt={item.name} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80'; }} />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-3xl">
                         {item.isCombo ? '🍱' : '🍔'}
