@@ -46,7 +46,11 @@ export default function PlansPage() {
   const [form, setForm] = useState(INITIAL_FORM);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
-  const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_plans') || 'table');
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_plans');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
   const [planDrawerOpen, setPlanDrawerOpen] = useState(false);
   const toast = useToast();
   const [listStatus, setListStatus] = useState(() => localStorage.getItem('plans_list_status') || 'active');

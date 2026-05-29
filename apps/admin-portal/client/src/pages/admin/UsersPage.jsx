@@ -101,7 +101,11 @@ export default function UsersPage() {
   const [form, setForm] = useState({ name: '', email: '', role: 'cashier', storeIds: [], defaultStoreId: '' });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
-  const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_admin_users') || 'table');
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_admin_users');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [roleFilters, setRoleFilters] = useState([]);

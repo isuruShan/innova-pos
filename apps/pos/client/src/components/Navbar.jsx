@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getAdminUrl } from '@innovapos/app-urls';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, UserCircle, Settings, Store, ChevronDown, Check, Sun, Moon } from 'lucide-react';
+import { LogOut, UserCircle, Settings, Store, ChevronDown, Check, Sun, Moon, Menu, X, ChevronRight } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import ProfileSlideOver, { AvatarDisplay } from './ProfileSlideOver';
 import { useStoreContext, normalizeStoreId } from '../context/StoreContext';
@@ -327,6 +327,12 @@ export default function Navbar({ links = [], groups: groupsProp }) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
   const accentResolved = branding.accentColor || '#e94560';
   const sidebarResolved = branding.sidebarColor || '#16213e';
 
@@ -365,8 +371,21 @@ export default function Navbar({ links = [], groups: groupsProp }) {
           </span>
         </div>
 
+        {/* Hamburger Menu Button for Mobile */}
         {navGroups.length > 0 && (
-          <div className="flex items-center gap-0.5 sm:gap-1 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(prev => !prev)}
+            className="flex lg:hidden items-center justify-center p-2 rounded-lg text-slate-400 hover:bg-slate-700/50 hover:text-[var(--pos-text-primary)] transition"
+            aria-label="Toggle menu"
+            aria-expanded={mobileMenuOpen}
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        )}
+
+        {navGroups.length > 0 && (
+          <div className="hidden lg:flex items-center gap-0.5 sm:gap-1 flex-wrap">
             {navGroups.map((group) => {
               const filteredItems = filterLinksForRole(group.items, user?.role);
               if (!filteredItems.length) return null;
@@ -435,6 +454,68 @@ export default function Navbar({ links = [], groups: groupsProp }) {
         )}
         {user && <AvatarMenu user={user} onLogout={() => { logout(); navigate('/login'); }} />}
       </div>
+
+      {/* Mobile Navigation Dropdown Overlay */}
+      {mobileMenuOpen && navGroups.length > 0 && (
+        <div
+          className="absolute left-0 right-0 top-full bg-[var(--pos-panel)] border-b border-slate-700/60 shadow-2xl z-40 overflow-y-auto max-h-[calc(100vh-64px)] block lg:hidden"
+          style={{
+            borderColor: 'color-mix(in srgb, var(--color-header-text, var(--color-text)) 14%, transparent)',
+          }}
+        >
+          <div className="p-4 space-y-4">
+            {navGroups.map((group) => {
+              const filteredItems = filterLinksForRole(group.items, user?.role);
+              if (!filteredItems.length) return null;
+
+              return (
+                <div key={group.title} className="space-y-1.5">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500/80 px-2">
+                    {group.title}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {filteredItems.map((link) => {
+                      const active = linkMatchesPath(location.pathname, link.to);
+                      return (
+                        <Link
+                          key={link.to}
+                          to={link.to}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition"
+                          style={
+                            active
+                              ? {
+                                  backgroundColor: 'color-mix(in srgb, var(--color-selection) 72%, transparent)',
+                                  color: navTabActiveFg,
+                                }
+                              : {
+                                  color: 'color-mix(in srgb, var(--pos-text-primary) 85%, transparent)',
+                                }
+                          }
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {link.icon && (
+                              <link.icon
+                                size={16}
+                                className={`shrink-0 ${active ? 'opacity-100' : 'opacity-60'}`}
+                              />
+                            )}
+                            <span className="truncate">{link.label}</span>
+                          </div>
+                          <ChevronRight
+                            size={14}
+                            className={`shrink-0 ${active ? 'opacity-100' : 'opacity-40'}`}
+                          />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </nav>
     <TrialBanners />
     </>

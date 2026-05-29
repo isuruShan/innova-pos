@@ -249,7 +249,11 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
   const { isInternational } = useMerchantBillingRegion();
   const { currencySymbol: merchantSymbol } = useTenantCurrency();
   const [error, setError] = useState('');
-  const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_admin_stores') || 'table');
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_admin_stores');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
   const [storePage, setStorePage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState(['active', 'inactive']);

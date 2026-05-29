@@ -25,7 +25,11 @@ export default function ApplicationsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_applications') || 'table');
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_applications');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
   const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
 
   useEffect(() => { setPage(1); }, [sort, order]);

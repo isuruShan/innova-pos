@@ -22,7 +22,11 @@ export default function MerchantWorkspacePage() {
     phone: '',
     paymentMethods: ['cash'],
   });
-  const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_workspace_admins') || 'table');
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_workspace_admins');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
   const [activeTab, setActiveTab] = useState('current');
 
   const { data: breakdowns, isLoading: breakdownsLoading } = useQuery({
