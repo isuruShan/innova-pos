@@ -21,19 +21,19 @@ export default function CenteredModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-x-0 bottom-0 z-50 flex items-end justify-center bg-black/50 p-4"
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel || title}
       onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
     >
       <div
-        className={`bg-[var(--pos-panel)] rounded-xl border border-slate-700 shadow-xl w-full ${maxWidth} max-h-[90vh] flex flex-col`}
+        className={`bg-[var(--pos-panel)] rounded-t-xl border border-slate-700 shadow-xl w-full ${maxWidth} max-h-[80vh] flex flex-col`}
         onClick={(e) => e.stopPropagation()}
         {...bind}
         style={style}
       >
-        <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mt-3 md:hidden shrink-0" />
+        <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden shrink-0" />
         {(title || onClose) && (
           <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-700 shrink-0">
             {title ? (

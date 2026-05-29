@@ -563,13 +563,6 @@ export default function Navbar({ links = [], groups: groupsProp }) {
         </div>
       )}
     </nav>
-    {/* Mobile fixed bottom bar for session summary */}
-    {user?.tenantId && (user?.role === 'cashier' || user?.role === 'manager') ? (
-      <div className="md:hidden fixed bottom-0 inset-x-0 bg-[var(--pos-panel)] border-t border-[color-mix(in_srgb,var(--pos-text-primary)_12%,transparent)] backdrop-blur-md px-4 py-2.5 z-[110] flex items-center justify-between shadow-lg shadow-black/40">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Session Summary</span>
-        <CashierSessionNavButton />
-      </div>
-    ) : null}
     <TrialBanners />
     </>
   );
