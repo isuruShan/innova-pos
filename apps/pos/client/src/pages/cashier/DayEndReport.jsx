@@ -11,6 +11,7 @@ import { formatCurrency, formatTime } from '../../utils/format';
 import { useStoreContext } from '../../context/StoreContext';
 import { DayEndReportSkeleton } from '../../components/StoreSkeletons';
 import PosDateField from '../../components/PosDateField';
+import ResponsiveTable from '../../components/ResponsiveTable';
 
 const formatPrice = formatCurrency;
 const todayStr = () => {
@@ -118,50 +119,69 @@ export default function DayEndReport() {
                 <h2 className="font-semibold text-[var(--pos-text-primary)]">Order Breakdown</h2>
               </div>
 
-              {data.orders.length === 0 ? (
-                <div className="text-center text-slate-500 py-16">
-                  <ShoppingBag size={36} className="mx-auto mb-3 opacity-30" />
-                  <p>No orders found for this date</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-700/50">
-                        <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-5 py-3">Order #</th>
-                        <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Table</th>
-                        <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Items</th>
-                        <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Total</th>
-                        <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Status</th>
-                        <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Time</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-700/30">
-                      {data.orders.map((order) => (
-                        <tr key={order._id} className="hover:bg-slate-700/20 transition">
-                          <td className="px-5 py-3 font-mono font-semibold text-amber-400">
-                            #{String(order.orderNumber).padStart(3, '0')}
-                          </td>
-                          <td className="px-4 py-3 text-slate-300">Table {order.tableNumber}</td>
-                          <td className="px-4 py-3">
-                            <div className="text-slate-300">
-                              {order.items.map(i => `${i.name} x${i.qty}`).join(', ')}
-                            </div>
-                            <div className="text-xs text-slate-500 mt-0.5">
-                              {order.items.reduce((s, i) => s + i.qty, 0)} items
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-[var(--pos-text-primary)]">{formatPrice(order.totalAmount)}</td>
-                          <td className="px-4 py-3">
-                            <Badge label={order.status} variant={order.status} />
-                          </td>
-                          <td className="px-4 py-3 text-slate-400">{formatTime(order.createdAt)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              <div className="p-4">
+                <ResponsiveTable
+                  rows={data.orders}
+                  rowKey={(o) => o._id}
+                  emptyState={
+                    <div className="text-center text-slate-500 py-8">
+                      <ShoppingBag size={36} className="mx-auto mb-3 opacity-30" />
+                      <p>No orders found for this date</p>
+                    </div>
+                  }
+                  columns={[
+                    {
+                      key: 'orderNumber',
+                      header: 'Order #',
+                      mobilePrimary: true,
+                      render: (o) => (
+                        <span className="font-mono font-semibold text-amber-400">
+                          #{String(o.orderNumber).padStart(3, '0')}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: 'status',
+                      header: 'Status',
+                      mobileSecondary: true,
+                      render: (o) => <Badge label={o.status} variant={o.status} />,
+                    },
+                    {
+                      key: 'total',
+                      header: 'Total',
+                      mobileRight: true,
+                      render: (o) => (
+                        <span className="font-semibold">{formatPrice(o.totalAmount)}</span>
+                      ),
+                    },
+                    {
+                      key: 'table',
+                      header: 'Table',
+                      mobileLabel: 'Table',
+                      render: (o) => `Table ${o.tableNumber}`,
+                    },
+                    {
+                      key: 'items',
+                      header: 'Items',
+                      render: (o) => (
+                        <div>
+                          <div className="text-slate-300">
+                            {o.items.map((i) => `${i.name} x${i.qty}`).join(', ')}
+                          </div>
+                          <div className="text-xs text-slate-500 mt-0.5">
+                            {o.items.reduce((s, i) => s + i.qty, 0)} items
+                          </div>
+                        </div>
+                      ),
+                    },
+                    {
+                      key: 'time',
+                      header: 'Time',
+                      render: (o) => formatTime(o.createdAt),
+                    },
+                  ]}
+                />
+              </div>
             </div>
           </>
         )}

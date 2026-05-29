@@ -5,6 +5,7 @@ import api from '../../../api/axios';
 import { formatCurrency, formatDateTime } from '../../../utils/format';
 import { useStoreContext } from '../../../context/StoreContext';
 import { exportToCsv } from '../../../utils/exportCsv';
+import ResponsiveTable from '../../ResponsiveTable';
 
 function SortHeader({ label, field, currentSort, currentOrder, onSort }) {
   const active = currentSort === field;
@@ -247,124 +248,64 @@ export default function CashSessionsView({ dateFrom, dateTo, registerExport }) {
       </div>
 
       {/* Table */}
-      <div className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-950/40 text-slate-500 border-b border-slate-800">
-                <th className="px-4 py-3">
-                  <SortHeader
-                    label="Cashier Name"
-                    field="cashier"
-                    currentSort={sortField}
-                    currentOrder={sortOrder}
-                    onSort={handleSort}
-                  />
-                </th>
-                <th className="px-4 py-3">Opened At</th>
-                <th className="px-4 py-3">
-                  <SortHeader
-                    label="Closed At"
-                    field="closedAt"
-                    currentSort={sortField}
-                    currentOrder={sortOrder}
-                    onSort={handleSort}
-                  />
-                </th>
-                <th className="px-4 py-3 text-right">
-                  <SortHeader
-                    label="Expected Cash"
-                    field="expectedCashInDrawer"
-                    currentSort={sortField}
-                    currentOrder={sortOrder}
-                    onSort={handleSort}
-                  />
-                </th>
-                <th className="px-4 py-3 text-right">
-                  <SortHeader
-                    label="Counted Cash"
-                    field="closingCountedCash"
-                    currentSort={sortField}
-                    currentOrder={sortOrder}
-                    onSort={handleSort}
-                  />
-                </th>
-                <th className="px-4 py-3 text-right">
-                  <SortHeader
-                    label="Variance"
-                    field="varianceAmount"
-                    currentSort={sortField}
-                    currentOrder={sortOrder}
-                    onSort={handleSort}
-                  />
-                </th>
-                <th className="px-4 py-3 max-w-[200px]">Discrepancy Notes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/40 text-slate-350">
-              {isPending ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td className="px-4 py-3.5"><div className="h-3.5 bg-slate-800 rounded w-16" /></td>
-                    <td className="px-4 py-3.5"><div className="h-3.5 bg-slate-800 rounded w-20" /></td>
-                    <td className="px-4 py-3.5"><div className="h-3.5 bg-slate-800 rounded w-20" /></td>
-                    <td className="px-4 py-3.5 text-right"><div className="h-3.5 bg-slate-800 rounded w-12 ml-auto" /></td>
-                    <td className="px-4 py-3.5 text-right"><div className="h-3.5 bg-slate-800 rounded w-12 ml-auto" /></td>
-                    <td className="px-4 py-3.5 text-right"><div className="h-3.5 bg-slate-800 rounded w-10 ml-auto" /></td>
-                    <td className="px-4 py-3.5"><div className="h-3.5 bg-slate-800 rounded w-28" /></td>
-                  </tr>
-                ))
-              ) : sortedData.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-10 text-slate-500 font-medium">
-                    No closed cashier sessions found.
-                  </td>
-                </tr>
-              ) : (
-                sortedData.map((d) => {
-                  const varVal = d.varianceAmount || 0;
-                  return (
-                    <tr key={d._id} className="hover:bg-slate-800/10">
-                      <td className="px-4 py-3.5 font-medium text-slate-200">
-                        {d.cashierId?.name || 'Unknown'}
-                        <span className="text-[10px] text-slate-500 block leading-tight">
-                          {d.cashierId?.email || ''}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 font-mono text-slate-400">
-                        {formatDateTime(d.openedAt)}
-                      </td>
-                      <td className="px-4 py-3.5 font-mono text-slate-400">
-                        {formatDateTime(d.closedAt)}
-                      </td>
-                      <td className="px-4 py-3.5 text-right font-mono">
-                        {formatCurrency(d.expectedCashInDrawer || 0)}
-                      </td>
-                      <td className="px-4 py-3.5 text-right font-mono text-slate-200">
-                        {formatCurrency(d.closingCountedCash || 0)}
-                      </td>
-                      <td
-                        className={`px-4 py-3.5 text-right font-bold font-mono ${
-                          varVal === 0
-                            ? 'text-slate-400'
-                            : varVal < 0
-                            ? 'text-red-400 font-semibold'
-                            : 'text-emerald-400 font-semibold'
-                        }`}
-                      >
-                        {varVal > 0 ? '+' : ''}
-                        {formatCurrency(varVal)}
-                      </td>
-                      <td className="px-4 py-3.5 max-w-[200px] truncate font-medium text-slate-450" title={d.varianceNotes}>
-                        {d.varianceNotes || <span className="text-slate-600 italic">No notes</span>}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+      <div className="rounded-2xl overflow-hidden border border-slate-800">
+        <ResponsiveTable
+          rows={sortedData}
+          rowKey={(d) => d._id}
+          loading={isPending}
+          skeletonRows={4}
+          emptyState="No closed cashier sessions found."
+          columns={[
+            {
+              key: 'cashier', header: 'Cashier',
+              mobilePrimary: true,
+              render: (d) => (
+                <div>
+                  <span className="font-medium text-slate-200">{d.cashierId?.name || 'Unknown'}</span>
+                  <span className="text-[10px] text-slate-500 block leading-tight">{d.cashierId?.email || ''}</span>
+                </div>
+              ),
+            },
+            {
+              key: 'variance', header: 'Variance',
+              mobileRight: true,
+              className: 'text-right',
+              headerClassName: 'text-right',
+              render: (d) => {
+                const varVal = d.varianceAmount || 0;
+                return (
+                  <span className={`font-bold font-mono ${varVal === 0 ? 'text-slate-400' : varVal < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                    {varVal > 0 ? '+' : ''}{formatCurrency(varVal)}
+                  </span>
+                );
+              },
+            },
+            {
+              key: 'openedAt', header: 'Opened At',
+              render: (d) => <span className="font-mono text-slate-400 text-xs">{formatDateTime(d.openedAt)}</span>,
+            },
+            {
+              key: 'closedAt', header: 'Closed At',
+              render: (d) => <span className="font-mono text-slate-400 text-xs">{formatDateTime(d.closedAt)}</span>,
+            },
+            {
+              key: 'expected', header: 'Expected',
+              className: 'text-right', headerClassName: 'text-right',
+              render: (d) => <span className="font-mono text-xs">{formatCurrency(d.expectedCashInDrawer || 0)}</span>,
+            },
+            {
+              key: 'counted', header: 'Counted',
+              className: 'text-right', headerClassName: 'text-right',
+              render: (d) => <span className="font-mono text-xs text-slate-200">{formatCurrency(d.closingCountedCash || 0)}</span>,
+            },
+            {
+              key: 'notes', header: 'Notes',
+              render: (d) => d.varianceNotes
+                ? <span className="text-xs truncate max-w-[180px] block" title={d.varianceNotes}>{d.varianceNotes}</span>
+                : <span className="text-slate-600 italic text-xs">No notes</span>,
+            },
+          ]}
+        />
         <div className="bg-slate-950/40 px-4 py-3 border-t border-slate-800 flex justify-between items-center text-xs font-semibold text-slate-500">
           <span>Row count: {filteredData.length} sessions</span>
           <span>Net Discrepancy: <span className={summary.netVariance < 0 ? 'text-red-400' : 'text-emerald-400'}>{formatCurrency(summary.netVariance)}</span></span>

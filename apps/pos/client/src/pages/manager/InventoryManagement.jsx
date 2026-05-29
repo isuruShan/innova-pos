@@ -18,6 +18,7 @@ import InventoryAdjustments from '../../components/inventory/InventoryAdjustment
 import InventoryMovements from '../../components/inventory/InventoryMovements';
 import ConsumptionReport from '../../components/inventory/ConsumptionReport';
 import PageHeader from '../../components/PageHeader';
+import ResponsiveTable from '../../components/ResponsiveTable';
 
 const EMPTY_FORM = { itemName: '', unit: 'pcs', quantity: '', minThreshold: '', suppliers: [] };
 
@@ -306,75 +307,82 @@ export default function InventoryManagement() {
         {pageLoading ? (
           <InventoryTableSkeleton />
         ) : (
-          <div className="bg-[var(--pos-panel)] rounded-2xl border border-slate-700/50 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-700/50">
-                    <SortableTh label="Item Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} className="px-5 py-3" />
-                    <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Unit</th>
-                    <SortableTh label="Qty (click to edit)" field="quantity" currentSort={sort} currentOrder={order} onSort={toggleSort} className="px-4 py-3" />
-                    <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Min Threshold</th>
-                    <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Status</th>
-                    <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Suppliers</th>
-                    <th className="text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3">Last Updated</th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-700/30">
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="text-center text-slate-500 py-16">
-                        <Package size={36} className="mx-auto mb-3 opacity-30" />
-                        <p>No inventory items found</p>
-                      </td>
-                    </tr>
-                  ) : (
-                    filtered.map(item => {
-                      const status = getStockStatus(item.quantity, item.minThreshold);
-                      const rowBg = status.variant === 'critical' ? 'bg-red-500/5'
-                        : status.variant === 'low' ? 'bg-yellow-500/5' : '';
-                      return (
-                        <tr key={item._id} className={`hover:bg-slate-700/20 transition ${rowBg}`}>
-                          <td className="px-5 py-3 font-medium text-[var(--pos-text-primary)]">{item.itemName}</td>
-                          <td className="px-4 py-3 text-slate-400">{item.unit}</td>
-                          <td className="px-4 py-3">
-                            <InlineEdit value={item.quantity}
-                              onSave={(qty) => updateMutation.mutate({ id: item._id, data: { quantity: qty } })} />
-                          </td>
-                          <td className="px-4 py-3 text-slate-400">{item.minThreshold}</td>
-                          <td className="px-4 py-3">
-                            <Badge label={status.label} variant={status.variant} />
-                          </td>
-                          <td className="px-4 py-3 max-w-[200px]">
-                            <SupplierPills suppliers={item.suppliers} />
-                          </td>
-                          <td className="px-4 py-3 text-slate-500 text-xs">
-                            {new Date(item.lastUpdated || item.updatedAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1">
-                              <button onClick={() => openEdit(item)}
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition">
-                                <Edit2 size={13} />
-                              </button>
-                              <button onClick={() => { if (confirm('Delete this item?')) deleteMutation.mutate(item._id); }}
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition">
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <ResponsiveTable
+            rows={filtered}
+            rowKey={(item) => item._id}
+            loading={false}
+            emptyState={
+              <span className="flex flex-col items-center gap-2">
+                <Package size={36} className="opacity-30" />
+                No inventory items found
+              </span>
+            }
+            columns={[
+              {
+                key: 'name', header: 'Item Name',
+                mobilePrimary: true,
+                render: (item) => <span className="font-medium text-[var(--pos-text-primary)]">{item.itemName}</span>,
+              },
+              {
+                key: 'status', header: 'Status',
+                mobileSecondary: true,
+                render: (item) => {
+                  const status = getStockStatus(item.quantity, item.minThreshold);
+                  return <Badge label={status.label} variant={status.variant} />;
+                },
+              },
+              {
+                key: 'qty', header: 'Qty',
+                mobileRight: true,
+                className: 'text-right',
+                headerClassName: 'text-right',
+                render: (item) => (
+                  <InlineEdit
+                    value={item.quantity}
+                    onSave={(qty) => updateMutation.mutate({ id: item._id, data: { quantity: qty } })}
+                  />
+                ),
+              },
+              {
+                key: 'unit', header: 'Unit',
+                render: (item) => <span className="text-slate-400">{item.unit}</span>,
+              },
+              {
+                key: 'threshold', header: 'Min',
+                mobileLabel: 'Min Threshold',
+                render: (item) => <span className="text-slate-400">{item.minThreshold}</span>,
+              },
+              {
+                key: 'suppliers', header: 'Suppliers',
+                render: (item) => <SupplierPills suppliers={item.suppliers} />,
+              },
+              {
+                key: 'updated', header: 'Updated',
+                render: (item) => (
+                  <span className="text-slate-500 text-xs">
+                    {new Date(item.lastUpdated || item.updatedAt).toLocaleDateString()}
+                  </span>
+                ),
+              },
+              {
+                key: 'actions', header: '', mobileHide: true,
+                render: (item) => (
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => openEdit(item)}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition">
+                      <Edit2 size={13} />
+                    </button>
+                    <button onClick={() => { if (confirm('Delete this item?')) deleteMutation.mutate(item._id); }}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ),
+              },
+            ]}
+          />
         )}
-          </>
-        )}
+
 
         {activeTab === 'adjustments' && <InventoryAdjustments />}
         {activeTab === 'consumption' && <ConsumptionReport />}
