@@ -4,7 +4,10 @@
 
 set -e
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 echo "🔧 Deploying nginx configs for cafinity.io..."
+echo "   App root: $ROOT"
 
 # Remove any old/corrupted configs
 echo "Cleaning old configs..."
@@ -12,12 +15,11 @@ sudo rm -f /etc/nginx/conf.d/*.conf
 sudo rm -f /etc/nginx/conf.d/*.conf.backup
 sudo rm -f /etc/nginx/sites-enabled/default
 
-# Copy fresh configs from repo
+# Copy configs from repo, substituting __APP_ROOT__ with the actual repo path
 echo "Copying new configs..."
-sudo cp nginx/pos.conf /etc/nginx/conf.d/pos.conf
-sudo cp nginx/admin-portal.conf /etc/nginx/conf.d/admin-portal.conf
-sudo cp nginx/public-web.conf /etc/nginx/conf.d/public-web.conf
-sudo cp nginx/qr-order.conf /etc/nginx/conf.d/qr-order.conf
+for conf in pos admin-portal public-web qr-order; do
+  sed "s|__APP_ROOT__|$ROOT|g" "$ROOT/nginx/${conf}.conf" | sudo tee "/etc/nginx/conf.d/${conf}.conf" > /dev/null
+done
 
 # Test nginx configuration
 echo "Testing nginx configuration..."
