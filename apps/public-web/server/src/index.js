@@ -52,12 +52,12 @@ app.use(
 
 app.use(express.json({ limit: '2mb' }));
 
-app.use('/applications', require('./routes/applications'));
-app.use('/plans', require('./routes/plans'));
-app.use('/newsletter', require('./routes/newsletter'));
-app.use('/contact', require('./routes/contact'));
+app.use('/api/applications', require('./routes/applications'));
+app.use('/api/plans', require('./routes/plans'));
+app.use('/api/newsletter', require('./routes/newsletter'));
+app.use('/api/contact', require('./routes/contact'));
 
-app.get('/health', (_req, res) =>
+app.get('/api/health', (_req, res) =>
   res.json({ status: 'ok', service: 'public-web-server', ts: new Date().toISOString() })
 );
 
