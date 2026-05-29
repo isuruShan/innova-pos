@@ -94,46 +94,50 @@ function MultiSelectDropdown({ label, options, selected, onChange, icon: Icon })
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 sm:left-0 z-25 mt-2 w-56 rounded-xl bg-white border border-gray-150 shadow-lg py-1.5 focus:outline-none animate-fade-in">
-          <div className="px-3 py-1.5 border-b border-gray-100 flex items-center justify-between">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">{label} Options</span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => onChange(options.map(o => o.value))}
-                className="text-[10px] font-semibold text-brand-orange hover:underline"
-              >
-                Select All
-              </button>
-              <button
-                type="button"
-                onClick={() => onChange([])}
-                className="text-[10px] font-semibold text-gray-400 hover:underline"
-              >
-                Clear
-              </button>
+        <>
+          <div className="fixed inset-0 z-20 sm:hidden bg-transparent" onClick={() => setIsOpen(false)} />
+          <div className="fixed inset-x-0 bottom-0 z-25 w-full rounded-t-3xl border-t border-gray-200 bg-white shadow-xl py-4 px-4 animate-slide-up sm:absolute sm:inset-auto sm:right-0 sm:left-0 sm:mt-2 sm:w-56 sm:rounded-xl sm:border sm:border-gray-150 sm:shadow-lg sm:py-1.5 sm:px-0 sm:animate-none">
+            <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-3 sm:hidden" />
+            <div className="px-3 py-1.5 border-b border-gray-100 flex items-center justify-between">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">{label} Options</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => onChange(options.map(o => o.value))}
+                  className="text-[10px] font-semibold text-brand-orange hover:underline"
+                >
+                  Select All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChange([])}
+                  className="text-[10px] font-semibold text-gray-400 hover:underline"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+            <div className="max-h-60 overflow-y-auto px-1 py-1 space-y-0.5">
+              {options.map((option) => {
+                const isChecked = selected.includes(option.value);
+                return (
+                  <label
+                    key={option.value}
+                    className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-sm text-gray-750 hover:bg-gray-50 cursor-pointer select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => handleToggle(option.value)}
+                      className="rounded border-gray-300 text-brand-orange focus:ring-brand-orange h-4 w-4"
+                    />
+                    <span className="truncate">{option.label}</span>
+                  </label>
+                );
+              })}
             </div>
           </div>
-          <div className="max-h-60 overflow-y-auto px-1 py-1 space-y-0.5">
-            {options.map((option) => {
-              const isChecked = selected.includes(option.value);
-              return (
-                <label
-                  key={option.value}
-                  className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-sm text-gray-750 hover:bg-gray-50 cursor-pointer select-none"
-                >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => handleToggle(option.value)}
-                    className="rounded border-gray-300 text-brand-orange focus:ring-brand-orange h-4 w-4"
-                  />
-                  <span className="truncate">{option.label}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
+        </>
       )}
     </div>
   );
@@ -171,34 +175,38 @@ function SortDropdown({ sort, order, onSortChange, options }) {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 z-25 mt-2 w-56 rounded-xl bg-white border border-gray-150 shadow-lg py-1 focus:outline-none animate-fade-in">
-          <div className="px-3 py-1.5 border-b border-gray-100">
-            <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">Sort By</span>
+        <>
+          <div className="fixed inset-0 z-20 sm:hidden bg-transparent" onClick={() => setIsOpen(false)} />
+          <div className="fixed inset-x-0 bottom-0 z-25 w-full rounded-t-3xl border-t border-gray-200 bg-white shadow-xl py-4 px-4 animate-slide-up sm:absolute sm:inset-auto sm:right-0 sm:mt-2 sm:w-56 sm:rounded-xl sm:border sm:border-gray-150 sm:shadow-lg sm:py-1 sm:px-0 sm:animate-none">
+            <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-3 sm:hidden" />
+            <div className="px-3 py-1.5 border-b border-gray-100">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400">Sort By</span>
+            </div>
+            <div className="py-1 px-1 space-y-0.5 max-h-60 overflow-y-auto">
+              {options.map((option, idx) => {
+                const isActive = option.sort === sort && option.order === order;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      onSortChange(option.sort, option.order);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between ${
+                      isActive
+                        ? 'bg-brand-orange/5 text-brand-orange font-semibold'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span>{option.label}</span>
+                    {isActive && <Check size={14} />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="py-1 px-1 space-y-0.5">
-            {options.map((option, idx) => {
-              const isActive = option.sort === sort && option.order === order;
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => {
-                    onSortChange(option.sort, option.order);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full text-left px-2.5 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between ${
-                    isActive
-                      ? 'bg-brand-orange/5 text-brand-orange font-semibold'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  <span>{option.label}</span>
-                  {isActive && <Check size={14} />}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        </>
       )}
     </div>
   );

@@ -50,62 +50,67 @@ export function AvatarMenu({ user, onLogout }) {
         </button>
 
         {open && (
-          <div className="absolute right-0 top-11 w-60 bg-[var(--pos-panel)] border border-slate-700/60 rounded-2xl shadow-2xl shadow-black/50 z-[200] overflow-hidden">
-            {/* User info header */}
-            <div className="px-4 py-3 border-b border-slate-700/50 flex items-center gap-3">
-              <AvatarDisplay user={user} size="md" />
-              <div className="min-w-0">
-                <p className="text-[var(--pos-text-primary)] font-semibold text-sm truncate">{user.name}</p>
-                <p className="text-slate-500 text-xs truncate">{user.email}</p>
-                <span className={`inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full border capitalize ${ROLE_BADGE[user.role]}`}>
-                  {user.role}
-                </span>
+          <>
+            {/* Backdrop on mobile */}
+            <div className="fixed inset-0 z-[199] md:hidden bg-transparent" onClick={() => setOpen(false)} />
+            <div className="fixed inset-x-0 bottom-0 z-[200] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/50 overflow-y-auto max-h-[80vh] py-4 animate-slide-up md:absolute md:inset-auto md:right-0 md:top-11 md:w-60 md:rounded-2xl md:border md:border-slate-700/60 md:shadow-2xl md:max-h-none md:overflow-hidden md:py-0 md:animate-none">
+              <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden" />
+              {/* User info header */}
+              <div className="px-4 py-3 border-b border-slate-700/50 flex items-center gap-3">
+                <AvatarDisplay user={user} size="md" />
+                <div className="min-w-0">
+                  <p className="text-[var(--pos-text-primary)] font-semibold text-sm truncate">{user.name}</p>
+                  <p className="text-slate-500 text-xs truncate">{user.email}</p>
+                  <span className={`inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full border capitalize ${ROLE_BADGE[user.role]}`}>
+                    {user.role}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            {/* Actions */}
-            <div className="p-2 space-y-0.5">
-              <button
-                onClick={openProfile}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition"
-              >
-                <UserCircle size={15} className="text-slate-500" />
-                My Profile
-              </button>
-
-              {user.role === 'manager' && (
-                <Link
-                  to="/manager/settings"
-                  onClick={() => setOpen(false)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition"
-                >
-                  <Settings size={15} className="text-slate-500" />
-                  Settings
-                </Link>
-              )}
-              {user.role === 'merchant_admin' && (
-                <a
-                  href={getAdminUrl()}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition"
-                >
-                  <Settings size={15} className="text-slate-500" />
-                  Admin Portal
-                </a>
-              )}
-
-              <div className="border-t border-slate-700/40 pt-1 mt-1">
+              {/* Actions */}
+              <div className="p-2 space-y-0.5">
                 <button
-                  onClick={() => { setOpen(false); onLogout(); }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:text-red-200 hover:bg-red-600/25 rounded-lg transition"
+                  onClick={openProfile}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition"
                 >
-                  <LogOut size={15} />
-                  Sign Out
+                  <UserCircle size={15} className="text-slate-500" />
+                  My Profile
                 </button>
+
+                {user.role === 'manager' && (
+                  <Link
+                    to="/manager/settings"
+                    onClick={() => setOpen(false)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition"
+                  >
+                    <Settings size={15} className="text-slate-500" />
+                    Settings
+                  </Link>
+                )}
+                {user.role === 'merchant_admin' && (
+                  <a
+                    href={getAdminUrl()}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition"
+                  >
+                    <Settings size={15} className="text-slate-500" />
+                    Admin Portal
+                  </a>
+                )}
+
+                <div className="border-t border-slate-700/40 pt-1 mt-1">
+                  <button
+                    onClick={() => { setOpen(false); onLogout(); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:text-red-200 hover:bg-red-600/25 rounded-lg transition"
+                  >
+                    <LogOut size={15} />
+                    Sign Out
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          </>
         )}
       </div>
 
@@ -158,47 +163,52 @@ function StoreSwitcher({ stores, selectedStoreId, selectStore }) {
       </button>
 
       {open && (
-        <div
-          className="absolute right-0 top-full mt-1.5 z-[120] w-[min(calc(100vw-1.5rem),18rem)] rounded-xl border border-slate-600/80 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-hidden py-1"
-          role="listbox"
-        >
-          <div className="px-3 py-2 border-b border-slate-700/60">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Switch location</p>
-          </div>
-          <ul className="max-h-[min(60vh,16rem)] overflow-y-auto py-1">
-            {stores.map((store) => {
-              const active = normalizeStoreId(store._id) === normalizeStoreId(selectedStoreId);
-              return (
-                <li key={store._id}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={active}
-                    onClick={() => {
-                      selectStore(store._id);
-                      setOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-3 text-left text-sm transition min-h-[48px] ${
-                      active
-                        ? 'bg-[color-mix(in_srgb,var(--color-selection)_22%,transparent)] text-[var(--pos-text-primary)]'
-                        : 'text-[var(--pos-text-primary)] hover:bg-[color-mix(in_srgb,var(--pos-text-primary)_8%,transparent)]'
-                    }`}
-                  >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-800 border border-slate-600/50">
-                      <Store size={18} className={active ? 'text-amber-400' : 'text-slate-400'} />
-                    </span>
-                    <span className="flex-1 min-w-0 font-medium truncate">{store.name}</span>
-                    {active && (
-                      <span className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-amber-500 text-white">
-                        <Check size={14} strokeWidth={3} />
+        <>
+          {/* Backdrop on mobile */}
+          <div className="fixed inset-0 z-[119] md:hidden bg-transparent" onClick={() => setOpen(false)} />
+          <div
+            className="fixed inset-x-0 bottom-0 z-[120] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-y-auto max-h-[80vh] py-4 animate-slide-up md:absolute md:inset-auto md:right-0 md:top-full md:mt-1.5 md:w-[18rem] md:rounded-xl md:border md:border-slate-600/80 md:py-1 md:shadow-2xl md:max-h-none md:overflow-hidden md:animate-none"
+            role="listbox"
+          >
+            <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden" />
+            <div className="px-3 py-2 border-b border-slate-700/60">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Switch location</p>
+            </div>
+            <ul className="max-h-[50vh] md:max-h-[16rem] overflow-y-auto py-1">
+              {stores.map((store) => {
+                const active = normalizeStoreId(store._id) === normalizeStoreId(selectedStoreId);
+                return (
+                  <li key={store._id}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={active}
+                      onClick={() => {
+                        selectStore(store._id);
+                        setOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-3 py-3 text-left text-sm transition min-h-[48px] ${
+                        active
+                          ? 'bg-[color-mix(in_srgb,var(--color-selection)_22%,transparent)] text-[var(--pos-text-primary)]'
+                          : 'text-[var(--pos-text-primary)] hover:bg-[color-mix(in_srgb,var(--pos-text-primary)_8%,transparent)]'
+                      }`}
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-800 border border-slate-600/50">
+                        <Store size={18} className={active ? 'text-amber-400' : 'text-slate-400'} />
                       </span>
-                    )}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+                      <span className="flex-1 min-w-0 font-medium truncate">{store.name}</span>
+                      {active && (
+                        <span className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-amber-500 text-white">
+                          <Check size={14} strokeWidth={3} />
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </>
       )}
     </div>
   );
@@ -292,30 +302,35 @@ function NavDropdown({
       </button>
 
       {open && (
-        <div
-          className="absolute left-0 top-full mt-1.5 min-w-[12rem] max-w-[min(calc(100vw-2rem),18rem)] rounded-xl border border-slate-600/80 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 z-[120] py-1 overflow-hidden"
-          role="menu"
-        >
-          {filtered.map((link) => {
-            const itemActive = linkMatchesPath(location.pathname, link.to);
-            return (
-              <Link
-                key={link.to}
-                to={link.to}
-                role="menuitem"
-                onClick={() => setOpen(false)}
-                className={`flex items-center gap-2.5 px-3 py-2.5 text-sm transition ${
-                  itemActive
-                    ? 'bg-[color-mix(in_srgb,var(--color-accent)_18%,transparent)] text-[var(--pos-text-primary)]'
-                    : 'text-slate-300 hover:bg-slate-700/60 hover:text-[var(--pos-text-primary)]'
-                }`}
-              >
-                {link.icon && <link.icon size={15} className="shrink-0 opacity-80" />}
-                <span className="truncate">{link.label}</span>
-              </Link>
-            );
-          })}
-        </div>
+        <>
+          {/* Backdrop on mobile */}
+          <div className="fixed inset-0 z-[119] md:hidden bg-transparent" onClick={() => setOpen(false)} />
+          <div
+            className="fixed inset-x-0 bottom-0 z-[120] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-y-auto max-h-[80vh] py-4 animate-slide-up md:absolute md:inset-auto md:left-0 md:top-full md:mt-1.5 md:min-w-[12rem] md:max-w-[18rem] md:rounded-xl md:border md:border-slate-600/80 md:shadow-2xl md:max-h-none md:overflow-hidden md:py-1 md:animate-none"
+            role="menu"
+          >
+            <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden" />
+            {filtered.map((link) => {
+              const itemActive = linkMatchesPath(location.pathname, link.to);
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  role="menuitem"
+                  onClick={() => setOpen(false)}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 text-sm transition ${
+                    itemActive
+                      ? 'bg-[color-mix(in_srgb,var(--color-accent)_18%,transparent)] text-[var(--pos-text-primary)]'
+                      : 'text-slate-300 hover:bg-slate-700/60 hover:text-[var(--pos-text-primary)]'
+                  }`}
+                >
+                  {link.icon && <link.icon size={15} className="shrink-0 opacity-80" />}
+                  <span className="truncate">{link.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

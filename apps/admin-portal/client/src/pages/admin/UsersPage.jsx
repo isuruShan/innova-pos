@@ -62,28 +62,34 @@ function MultiSelectDropdown({ label, options, selected, onChange }) {
         <ChevronDown size={14} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-lg min-w-[170px] py-1">
-          {options.map((opt) => (
-            <label key={opt.value} className="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={selected.includes(opt.value)}
-                onChange={(e) =>
-                  onChange(e.target.checked ? [...selected, opt.value] : selected.filter((v) => v !== opt.value))
-                }
-                className="rounded accent-brand-orange"
-              />
-              {opt.label}
-            </label>
-          ))}
-          {selected.length > 0 && (
-            <div className="border-t border-gray-100 mt-1 pt-1 px-3 pb-1">
-              <button type="button" onClick={() => onChange([])} className="text-xs text-red-500 hover:underline">
-                Clear
-              </button>
+        <>
+          <div className="fixed inset-0 z-40 sm:hidden bg-transparent" onClick={() => setOpen(false)} />
+          <div className="fixed inset-x-0 bottom-0 z-50 w-full rounded-t-3xl border-t border-gray-200 bg-white shadow-xl py-4 px-4 animate-slide-up sm:absolute sm:inset-auto sm:top-full sm:left-0 sm:mt-1 sm:w-auto sm:min-w-[170px] sm:rounded-xl sm:border sm:border-gray-200 sm:shadow-lg sm:py-1 sm:px-0 sm:animate-none">
+            <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-3 sm:hidden" />
+            <div className="max-h-60 overflow-y-auto space-y-0.5">
+              {options.map((opt) => (
+                <label key={opt.value} className="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(opt.value)}
+                    onChange={(e) =>
+                      onChange(e.target.checked ? [...selected, opt.value] : selected.filter((v) => v !== opt.value))
+                    }
+                    className="rounded accent-brand-orange"
+                  />
+                  {opt.label}
+                </label>
+              ))}
             </div>
-          )}
-        </div>
+            {selected.length > 0 && (
+              <div className="border-t border-gray-100 mt-1 pt-1 px-3 pb-1">
+                <button type="button" onClick={() => onChange([])} className="text-xs text-red-500 hover:underline">
+                  Clear
+                </button>
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
