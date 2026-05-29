@@ -10,6 +10,7 @@ import { useStoreContext } from '../../context/StoreContext';
 import PosDateField from '../../components/PosDateField';
 import SortableTh from '../../components/SortableTh';
 import { useListSort } from '../../hooks/useListSort';
+import FilterPanel from '../../components/FilterPanel';
 
 function todayStr() {
   const x = new Date();
@@ -96,6 +97,9 @@ export default function CashierSessionsPage() {
 
   const showSkeleton = !isStoreReady || isPending;
 
+  const filterSummary = `${DATE_PRESETS.find((p) => p.key === datePreset)?.label ?? datePreset}${nameSearch.trim() ? ` · "${nameSearch.trim()}"` : ''}${statusFilter.length < 2 ? ` · ${statusFilter.join('/')} only` : ''}`;
+  const filterBadge = (datePreset !== '7days' ? 1 : 0) + (nameSearch.trim() ? 1 : 0) + (statusFilter.length < 2 ? 1 : 0);
+
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
       <Navbar groups={MANAGER_NAV_GROUPS} />
@@ -122,6 +126,7 @@ export default function CashierSessionsPage() {
           </button>
         </div>
 
+        <FilterPanel summary={filterSummary} badge={filterBadge}>
         <div className="flex flex-wrap items-end gap-4 mb-5 p-4 rounded-2xl bg-[var(--pos-panel)] border border-slate-700/50">
           {/* Search by name */}
           <div className="flex-1 min-w-[200px]">
@@ -202,6 +207,7 @@ export default function CashierSessionsPage() {
             </div>
           </div>
         </div>
+        </FilterPanel>
 
         {showSkeleton ? (
           <div className="rounded-2xl border border-slate-700/50 bg-[var(--pos-panel)] p-8 text-center text-slate-500">

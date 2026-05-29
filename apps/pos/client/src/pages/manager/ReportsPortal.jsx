@@ -5,6 +5,7 @@ import Navbar from '../../components/Navbar';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { useStoreContext } from '../../context/StoreContext';
 import PosDateField from '../../components/PosDateField';
+import FilterPanel from '../../components/FilterPanel';
 
 // Report views
 import MenuMixView from '../../components/manager/reports/MenuMixView';
@@ -107,6 +108,9 @@ export default function ReportsPortal() {
         </div>
 
         {/* Global Filter Bar */}
+        <FilterPanel
+          summary={rangeInvalid ? 'Invalid date range' : `${dateFrom} → ${dateTo}`}
+        >
         <div className="bg-[var(--pos-panel)] rounded-2xl border border-slate-700/50 p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
           {/* Store Info */}
           <div className="md:col-span-4 space-y-1">
@@ -170,6 +174,7 @@ export default function ReportsPortal() {
             )}
           </div>
         </div>
+        </FilterPanel>
 
         {/* View render block */}
         {!isStoreReady || rangeInvalid ? (

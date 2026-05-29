@@ -8,6 +8,7 @@ import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
 import Navbar from '../../components/Navbar';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
+import FilterPanel from '../../components/FilterPanel';
 
 function KPICard({ icon: Icon, label, value, unit, trend, trendLabel, color = 'amber' }) {
   const colorClasses = {
@@ -292,15 +293,15 @@ export default function TableAnalyticsPage() {
 
       <div className="flex-1 flex flex-col p-4 gap-4 overflow-y-auto">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <BarChart3 size={24} className="text-amber-400" />
-            <h1 className="text-xl font-bold text-[var(--pos-text-primary)]">Table Analytics</h1>
-          </div>
+        <div className="flex items-center gap-3">
+          <BarChart3 size={24} className="text-amber-400" />
+          <h1 className="text-xl font-bold text-[var(--pos-text-primary)]">Table Analytics</h1>
+        </div>
 
-          {/* Date Range Picker */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-1">
+        {/* Date Range Filter */}
+        <FilterPanel summary={`${dateRange.start} → ${dateRange.end}`}>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-1 overflow-x-auto no-scrollbar">
               {[
                 { key: 'today', label: 'Today' },
                 { key: 'week', label: '7 Days' },
@@ -310,7 +311,7 @@ export default function TableAnalyticsPage() {
                 <button
                   key={preset.key}
                   onClick={() => setPreset(preset.key)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:bg-slate-700/50 transition-colors"
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap text-slate-400 hover:bg-slate-700/50 transition-colors"
                 >
                   {preset.label}
                 </button>
@@ -334,7 +335,7 @@ export default function TableAnalyticsPage() {
               />
             </div>
           </div>
-        </div>
+        </FilterPanel>
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

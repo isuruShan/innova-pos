@@ -18,6 +18,7 @@ import { useBranding } from '../../context/BrandingContext';
 import { useStoreContext } from '../../context/StoreContext';
 import { DashboardSkeleton } from '../../components/StoreSkeletons';
 import PosDateField from '../../components/PosDateField';
+import FilterPanel from '../../components/FilterPanel';
 
 const formatPrice = formatCurrency;
 
@@ -178,6 +179,7 @@ export default function Dashboard() {
           </p>
         </div>
 
+        <FilterPanel summary={rangeInvalid ? 'Invalid date range' : rangeLabel} className="mb-4">
         <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
           <div className="bg-[var(--pos-panel)] rounded-xl border border-slate-700/50 p-3 flex flex-col">
             <div className="flex items-center gap-1.5 text-slate-300 text-xs font-semibold mb-2">
@@ -270,6 +272,7 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+        </FilterPanel>
 
         {rangeInvalid ? (
           <div className="bg-red-500/10 border border-red-500/30 text-red-300 rounded-2xl px-4 py-8 text-center text-sm">
