@@ -6,7 +6,7 @@ import axios from 'axios';
  */
 const baseURL =
   import.meta.env.VITE_PUBLIC_WEB_API_URL ||
-  (import.meta.env.DEV ? 'http://localhost:5002' : '');
+  (import.meta.env.DEV ? 'http://localhost:5002' : '/api');
 
 const api = axios.create({ baseURL });
 export default api;
