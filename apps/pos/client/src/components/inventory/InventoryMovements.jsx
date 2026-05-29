@@ -46,7 +46,7 @@ export default function InventoryMovements() {
   return (
     <div className="space-y-4">
       {/* Filter Tabs */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
         {[
           { key: 'all', label: 'All' },
           { key: 'adjustment', label: 'Adjustments' },
@@ -57,7 +57,7 @@ export default function InventoryMovements() {
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
+            className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
               filter === f.key
                 ? 'bg-amber-500 text-[var(--pos-selection-text)]'
                 : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700'

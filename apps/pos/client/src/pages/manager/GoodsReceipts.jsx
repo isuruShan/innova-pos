@@ -201,7 +201,7 @@ export default function GoodsReceipts() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-slate-700/50 pb-0">
+        <div className="flex gap-2 mb-6 border-b border-slate-700/50 overflow-x-auto no-scrollbar">
           {[
             { key: 'receipts', label: 'Receipts', count: stats.receipts.total },
             { key: 'returns', label: 'Returns', count: stats.returns.total },
@@ -209,7 +209,7 @@ export default function GoodsReceipts() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2.5 text-sm font-medium transition border-b-2 ${
+              className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap transition border-b-2 ${
                 activeTab === tab.key
                   ? 'border-amber-500 text-amber-400'
                   : 'border-transparent text-slate-400 hover:text-slate-300'

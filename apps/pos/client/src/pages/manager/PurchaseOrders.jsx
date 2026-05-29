@@ -185,7 +185,7 @@ export default function PurchaseOrders() {
         </div>
 
         {/* Status Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-1 mb-6">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-6">
           {statusTabs.map((tab) => (
             <button
               key={tab.key}

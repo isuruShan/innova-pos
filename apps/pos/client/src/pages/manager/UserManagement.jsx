@@ -189,14 +189,14 @@ export default function UserManagement() {
 
         {/* Filter tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
-          <div className="flex gap-2">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             {[
               { key: 'all', label: 'All' },
               { key: 'cashier', label: 'Cashiers' },
               { key: 'kitchen', label: 'Kitchen' },
             ].map(f => (
               <button key={f.key} onClick={() => setFilterRole(f.key)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
+                className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
                   filterRole === f.key
                     ? 'bg-amber-500 text-[var(--pos-selection-text)]'
                     : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700'

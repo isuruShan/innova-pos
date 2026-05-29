@@ -34,6 +34,14 @@
  * Thin themed scrollbar for the admin sidebar nav (WebKit + Firefox).
  */
 @layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
   .admin-sidebar-scroll {
     scrollbar-width: thin;
     scrollbar-color: rgb(255 255 255 / 0.22) transparent;

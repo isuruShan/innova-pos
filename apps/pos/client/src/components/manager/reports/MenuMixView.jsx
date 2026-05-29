@@ -6,6 +6,7 @@ import api from '../../../api/axios';
 import { formatCurrency } from '../../../utils/format';
 import { useStoreContext } from '../../../context/StoreContext';
 import { exportToCsv } from '../../../utils/exportCsv';
+import ResponsiveTable from '../../ResponsiveTable';
 
 function SortHeader({ label, field, currentSort, currentOrder, onSort }) {
   const active = currentSort === field;
@@ -177,83 +178,37 @@ export default function MenuMixView({ dateFrom, dateTo, registerExport }) {
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         {/* Table representation */}
         <div className="xl:col-span-3 bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-950/40 border-b border-slate-800 text-slate-500 font-medium">
-                  <th className="px-4 py-3.5">
-                    <SortHeader
-                      label="Item Name"
-                      field="name"
-                      currentSort={sortField}
-                      currentOrder={sortOrder}
-                      onSort={handleSort}
-                    />
-                  </th>
-                  <th className="px-4 py-3.5">
-                    <SortHeader
-                      label="Category"
-                      field="category"
-                      currentSort={sortField}
-                      currentOrder={sortOrder}
-                      onSort={handleSort}
-                    />
-                  </th>
-                  <th className="px-4 py-3.5 text-right">
-                    <SortHeader
-                      label="Qty Sold"
-                      field="qty"
-                      currentSort={sortField}
-                      currentOrder={sortOrder}
-                      onSort={handleSort}
-                    />
-                  </th>
-                  <th className="px-4 py-3.5 text-right">
-                    <SortHeader
-                      label="Revenue"
-                      field="revenue"
-                      currentSort={sortField}
-                      currentOrder={sortOrder}
-                      onSort={handleSort}
-                    />
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/40">
-                {isPending ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i} className="animate-pulse border-b border-slate-800/20">
-                      <td className="px-4 py-4"><div className="h-4 bg-slate-800 rounded w-32" /></td>
-                      <td className="px-4 py-4"><div className="h-4 bg-slate-800 rounded w-20" /></td>
-                      <td className="px-4 py-4 text-right"><div className="h-4 bg-slate-800 rounded w-12 ml-auto" /></td>
-                      <td className="px-4 py-4 text-right"><div className="h-4 bg-slate-800 rounded w-16 ml-auto" /></td>
-                    </tr>
-                  ))
-                ) : sortedData.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="text-center py-12 text-slate-500 text-sm">
-                      No items matched your filters.
-                    </td>
-                  </tr>
-                ) : (
-                  sortedData.map((item) => (
-                    <tr key={item._id || item.name} className="hover:bg-slate-800/10 text-slate-300 text-sm">
-                      <td className="px-4 py-3.5 font-medium text-slate-200">{item.name}</td>
-                      <td className="px-4 py-3.5">
-                        <span className="bg-slate-800/60 text-slate-400 px-2 py-0.5 rounded-md text-xs">
-                          {item.category}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 text-right tabular-nums">{item.qty}</td>
-                      <td className="px-4 py-3.5 text-right font-semibold text-slate-200 tabular-nums">
-                        {formatCurrency(item.revenue)}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <ResponsiveTable
+            rows={sortedData}
+            rowKey={(item) => item._id || item.name}
+            loading={isPending}
+            skeletonRows={5}
+            emptyState="No items matched your filters."
+            columns={[
+              {
+                key: 'name', header: 'Item Name',
+                mobilePrimary: true,
+                render: (item) => <span className="font-medium text-slate-200">{item.name}</span>,
+              },
+              {
+                key: 'revenue', header: 'Revenue',
+                mobileRight: true,
+                className: 'text-right', headerClassName: 'text-right',
+                render: (item) => <span className="font-semibold text-slate-200 tabular-nums">{formatCurrency(item.revenue)}</span>,
+              },
+              {
+                key: 'category', header: 'Category',
+                render: (item) => (
+                  <span className="bg-slate-800/60 text-slate-400 px-2 py-0.5 rounded-md text-xs">{item.category}</span>
+                ),
+              },
+              {
+                key: 'qty', header: 'Qty Sold',
+                className: 'text-right', headerClassName: 'text-right',
+                render: (item) => <span className="tabular-nums">{item.qty}</span>,
+              },
+            ]}
+          />
           {/* Summary Row */}
           <div className="bg-slate-950/40 px-4 py-3 border-t border-slate-800 flex justify-between items-center text-xs font-semibold text-slate-400">
             <span>Total Filtered: {filteredData.length} items</span>

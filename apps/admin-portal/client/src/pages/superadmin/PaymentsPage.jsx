@@ -178,7 +178,7 @@ export default function PaymentsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200">
+      <div className="flex gap-1 border-b border-gray-200 overflow-x-auto no-scrollbar">
         {[
           { id: 'receipts',  label: 'Receipts',  icon: Receipt },
           { id: 'analytics', label: 'Analytics', icon: BarChart2 },
@@ -187,7 +187,7 @@ export default function PaymentsPage() {
             key={id}
             type="button"
             onClick={() => setActiveTab(id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
               activeTab === id
                 ? 'border-brand-orange text-brand-orange'
                 : 'border-transparent text-gray-500 hover:text-gray-800'

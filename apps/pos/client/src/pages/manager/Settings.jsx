@@ -297,10 +297,10 @@ function UsersTab() {
       </div>
 
       {/* Filter */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar pb-1">
         {[{ key: 'all', label: 'All' }, { key: 'cashier', label: 'Cashiers' }, { key: 'kitchen', label: 'Kitchen' }].map(f => (
           <button key={f.key} onClick={() => setFilterRole(f.key)}
-            className={`px-3 py-1 rounded-full text-sm font-medium transition ${
+            className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition ${
               filterRole === f.key ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700'
             }`}>{f.label}</button>
         ))}
@@ -659,14 +659,14 @@ export default function SettingsPage() {
         <h1 className="text-xl font-bold text-[var(--pos-text-primary)] mb-5">Settings</h1>
 
         {/* Tab bar */}
-        <div className="flex gap-1 bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-1 mb-6 w-fit">
+        <div className="flex gap-1 bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-1 mb-6 overflow-x-auto no-scrollbar">
           {visibleTabs.map(t => {
             const Icon = t.icon;
             return (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
                   tab === t.id
                     ? 'bg-amber-500 text-[var(--pos-selection-text)] shadow'
                     : 'text-slate-400 hover:text-[var(--pos-text-primary)]'

@@ -549,7 +549,7 @@ export default function MenuManagement() {
         </div>
 
         <div className="flex flex-col gap-2 mb-5">
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             {filterTabs.map((cat) => (
               <button key={cat} type="button" onClick={() => setActiveCategory(cat)}
                 className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
