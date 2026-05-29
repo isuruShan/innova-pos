@@ -140,19 +140,21 @@ function StoreSwitcher({ stores, selectedStoreId, selectStore }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 pl-3 pr-2.5 py-2 min-h-[42px] rounded-xl border text-left transition shadow-sm max-w-[220px] sm:max-w-[280px] bg-[var(--pos-surface-inset)] border-[color-mix(in_srgb,var(--pos-text-primary)_22%,transparent)] hover:bg-[var(--pos-panel)] hover:border-[color-mix(in_srgb,var(--color-accent)_55%,transparent)]"
+        className="flex items-center gap-1 sm:gap-2 pl-2 pr-1.5 py-1.5 sm:pl-3 sm:pr-2.5 sm:py-2 min-h-[34px] sm:min-h-[42px] rounded-lg sm:rounded-xl border text-left transition shadow-sm max-w-[110px] xs:max-w-[150px] sm:max-w-[280px] bg-[var(--pos-surface-inset)] border-[color-mix(in_srgb,var(--pos-text-primary)_22%,transparent)] hover:bg-[var(--pos-panel)] hover:border-[color-mix(in_srgb,var(--color-accent)_55%,transparent)]"
         style={{ color: 'var(--color-text)' }}
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/25">
-          <Store size={18} strokeWidth={2} />
+        <span className="flex h-6 w-6 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded bg-amber-500/15 text-amber-400 border-none sm:border sm:border-amber-500/25 sm:rounded-lg">
+          <Store size={14} className="sm:hidden" strokeWidth={2} />
+          <Store size={18} className="hidden sm:block" strokeWidth={2} />
         </span>
         <span className="flex-1 min-w-0">
-          <span className="block text-[10px] uppercase tracking-wider opacity-50 font-semibold">Store</span>
-          <span className="block text-sm font-semibold truncate leading-tight">{selected?.name || 'Select'}</span>
+          <span className="hidden sm:block text-[10px] uppercase tracking-wider opacity-50 font-semibold">Store</span>
+          <span className="block text-xs sm:text-sm font-semibold truncate leading-tight">{selected?.name || 'Select'}</span>
         </span>
-        <ChevronDown size={18} className={`shrink-0 opacity-60 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={14} className={`shrink-0 opacity-60 transition-transform sm:hidden ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={18} className={`shrink-0 opacity-60 transition-transform hidden sm:block ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
@@ -361,16 +363,6 @@ export default function Navbar({ links = [], groups: groupsProp }) {
       }}
     >
       <div className="flex items-center gap-1">
-        <div className="flex items-center gap-2 mr-3">
-          <NavLogo branding={branding} />
-          <span
-            className="font-bold text-sm hidden sm:block tracking-wide"
-            style={{ color: 'var(--color-header-text, var(--color-text))' }}
-          >
-            {branding.businessName || 'POS'}
-          </span>
-        </div>
-
         {/* Hamburger Menu Button for Mobile */}
         {navGroups.length > 0 && (
           <button
@@ -383,6 +375,16 @@ export default function Navbar({ links = [], groups: groupsProp }) {
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         )}
+
+        <div className="hidden lg:flex items-center gap-2 mr-3">
+          <NavLogo branding={branding} />
+          <span
+            className="font-bold text-sm tracking-wide"
+            style={{ color: 'var(--color-header-text, var(--color-text))' }}
+          >
+            {branding.businessName || 'POS'}
+          </span>
+        </div>
 
         {navGroups.length > 0 && (
           <div className="hidden lg:flex items-center gap-0.5 sm:gap-1 flex-wrap">
@@ -464,6 +466,17 @@ export default function Navbar({ links = [], groups: groupsProp }) {
           }}
         >
           <div className="p-4 space-y-4">
+            {/* Mobile Header with Logo & Business Name inside Hamburger Menu */}
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-700/40">
+              <NavLogo branding={branding} />
+              <span
+                className="font-bold text-sm tracking-wide"
+                style={{ color: 'var(--pos-text-primary)' }}
+              >
+                {branding.businessName || 'POS'}
+              </span>
+            </div>
+
             {navGroups.map((group) => {
               const filteredItems = filterLinksForRole(group.items, user?.role);
               if (!filteredItems.length) return null;

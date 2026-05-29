@@ -32,14 +32,15 @@ export default function CashierSessionNavButton() {
   if (ctx.showSessionLoading) {
     return (
       <div
-        className="flex items-center gap-2 pl-3 pr-2.5 py-2 min-h-[42px] rounded-xl border border-slate-700/40 bg-slate-800/25 text-left max-w-[200px]"
+        className="flex items-center gap-1 sm:gap-2 pl-2 pr-1.5 py-1.5 sm:pl-3 sm:pr-2.5 sm:py-2 min-h-[34px] sm:min-h-[42px] rounded-lg sm:rounded-xl border border-slate-700/40 bg-slate-800/25 text-left max-w-[100px] xs:max-w-[140px] sm:max-w-[200px]"
         style={{ color: 'var(--color-text)' }}
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/25">
-          <Wallet size={18} strokeWidth={2} />
+        <span className="flex h-6 w-6 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded bg-amber-500/15 text-amber-400 border-none sm:border sm:border-amber-500/25 sm:rounded-lg">
+          <Wallet size={14} className="sm:hidden" strokeWidth={2} />
+          <Wallet size={18} className="hidden sm:block" strokeWidth={2} />
         </span>
         <span className="flex-1 min-w-0">
-          <span className="block text-[10px] uppercase tracking-wider opacity-50 font-semibold">Session</span>
+          <span className="hidden sm:block text-[10px] uppercase tracking-wider opacity-50 font-semibold">Session</span>
           <span className="block text-xs text-slate-400 truncate">Checking…</span>
         </span>
       </div>
@@ -51,9 +52,9 @@ export default function CashierSessionNavButton() {
       <button
         type="button"
         onClick={() => ctx.refetch()}
-        className="flex items-center gap-2 pl-3 pr-2.5 py-2 min-h-[42px] rounded-xl border border-red-500/30 bg-red-500/10 text-left max-w-[200px] text-red-200 text-xs font-medium"
+        className="flex items-center justify-center gap-1.5 px-2 py-1.5 min-h-[34px] sm:min-h-[42px] rounded-lg sm:rounded-xl border border-red-500/30 bg-red-500/10 text-left max-w-[110px] sm:max-w-[200px] text-red-200 text-xs font-medium"
       >
-        Session error — tap to retry
+        <span className="truncate">Error - retry</span>
       </button>
     );
   }
@@ -61,16 +62,17 @@ export default function CashierSessionNavButton() {
   if (!ctx.session) {
     return (
       <div
-        className="flex items-center gap-2 pl-3 pr-2.5 py-2 min-h-[42px] rounded-xl border border-slate-700/40 bg-slate-800/25 text-left max-w-[200px] opacity-80"
+        className="flex items-center gap-1 sm:gap-2 pl-2 pr-1.5 py-1.5 sm:pl-3 sm:pr-2.5 sm:py-2 min-h-[34px] sm:min-h-[42px] rounded-lg sm:rounded-xl border border-slate-700/40 bg-slate-800/25 text-left max-w-[100px] xs:max-w-[140px] sm:max-w-[200px] opacity-80"
         style={{ color: 'var(--color-text)' }}
         title="Open or resume your drawer session from the prompt"
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-600/40 text-slate-300 border border-slate-700/40">
-          <Wallet size={18} strokeWidth={2} />
+        <span className="flex h-6 w-6 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded bg-slate-600/40 text-slate-300 border-none sm:border sm:border-slate-700/40 sm:rounded-lg">
+          <Wallet size={14} className="sm:hidden" strokeWidth={2} />
+          <Wallet size={18} className="hidden sm:block" strokeWidth={2} />
         </span>
         <span className="flex-1 min-w-0">
-          <span className="block text-[10px] uppercase tracking-wider opacity-50 font-semibold">Drawer</span>
-          <span className="block text-xs truncate text-slate-400">No session</span>
+          <span className="hidden sm:block text-[10px] uppercase tracking-wider opacity-50 font-semibold">Drawer</span>
+          <span className="block text-xs truncate text-slate-400">None</span>
         </span>
       </div>
     );
@@ -81,21 +83,23 @@ export default function CashierSessionNavButton() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 pl-3 pr-2.5 py-2 min-h-[42px] rounded-xl border border-slate-700/40 bg-slate-800/30 hover:bg-slate-800/55 hover:border-amber-500/35 text-left transition shadow-sm max-w-[220px] sm:max-w-[260px]"
+        className="flex items-center gap-1 sm:gap-2 pl-2 pr-1.5 py-1.5 sm:pl-3 sm:pr-2.5 sm:py-2 min-h-[34px] sm:min-h-[42px] rounded-lg sm:rounded-xl border border-slate-700/40 bg-slate-800/30 hover:bg-slate-800/55 hover:border-amber-500/35 text-left transition shadow-sm max-w-[110px] xs:max-w-[150px] sm:max-w-[260px]"
         style={{ color: 'var(--color-text)' }}
         aria-expanded={open}
         aria-haspopup="dialog"
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
-          <Wallet size={18} strokeWidth={2} />
+        <span className="flex h-6 w-6 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded bg-emerald-500/15 text-emerald-400 border-none sm:border sm:border-emerald-500/25 sm:rounded-lg">
+          <Wallet size={14} className="sm:hidden" strokeWidth={2} />
+          <Wallet size={18} className="hidden sm:block" strokeWidth={2} />
         </span>
         <span className="flex-1 min-w-0">
-          <span className="block text-[10px] uppercase tracking-wider opacity-50 font-semibold">Session</span>
-          <span className="block text-sm font-semibold truncate leading-tight tabular-nums">
+          <span className="hidden sm:block text-[10px] uppercase tracking-wider opacity-50 font-semibold">Session</span>
+          <span className="block text-xs sm:text-sm font-semibold truncate leading-tight tabular-nums">
             {summary?.line2}
           </span>
         </span>
-        <ChevronDown size={18} className={`shrink-0 opacity-60 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={14} className={`shrink-0 opacity-60 transition-transform sm:hidden ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={18} className={`shrink-0 opacity-60 transition-transform hidden sm:block ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
