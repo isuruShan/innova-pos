@@ -80,52 +80,57 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 w-80 max-h-[min(70vh,24rem)] bg-[var(--pos-panel)] border border-slate-700/60 rounded-2xl shadow-2xl z-[200] flex flex-col overflow-hidden">
-          <div className="px-3 py-2 border-b border-slate-700/50 flex items-center justify-between">
-            <span className="text-sm font-semibold text-[var(--pos-text-primary)]">Notifications</span>
-            {unread > 0 && (
-              <button
-                type="button"
-                onClick={() => readAll.mutate()}
-                className="text-xs text-amber-400 hover:text-amber-300"
+        <>
+          {/* Backdrop on mobile */}
+          <div className="fixed inset-0 z-[199] md:hidden bg-transparent" onClick={() => setOpen(false)} />
+          <div className="fixed inset-x-0 bottom-0 z-[200] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl max-h-[80vh] py-4 animate-slide-up flex flex-col md:absolute md:inset-auto md:right-0 md:top-11 md:w-80 md:rounded-2xl md:border md:border-slate-700/60 md:py-0 md:shadow-2xl md:max-h-[min(70vh,24rem)] md:overflow-hidden md:animate-none">
+            <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden shrink-0" />
+            <div className="px-3 py-2 border-b border-slate-700/50 flex items-center justify-between">
+              <span className="text-sm font-semibold text-[var(--pos-text-primary)]">Notifications</span>
+              {unread > 0 && (
+                <button
+                  type="button"
+                  onClick={() => readAll.mutate()}
+                  className="text-xs text-amber-400 hover:text-amber-300"
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
+            <ul className="overflow-y-auto flex-1 py-1 min-h-0">
+              {items.length === 0 ? (
+                <li className="px-4 py-8 text-center text-sm text-slate-500">No notifications</li>
+              ) : (
+                items.map((n) => (
+                  <li key={n._id}>
+                    <button
+                      type="button"
+                      onClick={() => handleItemClick(n)}
+                      className={`w-full text-left px-3 py-2.5 border-b border-slate-800/50 hover:bg-slate-800/40 ${
+                        !n.readAt ? 'bg-amber-500/5' : ''
+                      }`}
+                    >
+                      <p className="text-sm font-medium text-[var(--pos-text-primary)]">{n.title}</p>
+                      {n.body && <p className="text-xs text-slate-500 mt-0.5 line-clamp-3">{n.body}</p>}
+                      <p className="text-[10px] text-slate-600 mt-1">
+                        {new Date(n.createdAt).toLocaleString()}
+                      </p>
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>
+            <div className="px-3 py-2 border-t border-slate-700/50 shrink-0">
+              <Link
+                to="/manager/notifications"
+                onClick={() => setOpen(false)}
+                className="block text-center text-xs font-medium text-amber-400 hover:text-amber-300 py-1"
               >
-                Mark all read
-              </button>
-            )}
+                View all notifications
+              </Link>
+            </div>
           </div>
-          <ul className="overflow-y-auto flex-1 py-1 min-h-0">
-            {items.length === 0 ? (
-              <li className="px-4 py-8 text-center text-sm text-slate-500">No notifications</li>
-            ) : (
-              items.map((n) => (
-                <li key={n._id}>
-                  <button
-                    type="button"
-                    onClick={() => handleItemClick(n)}
-                    className={`w-full text-left px-3 py-2.5 border-b border-slate-800/50 hover:bg-slate-800/40 ${
-                      !n.readAt ? 'bg-amber-500/5' : ''
-                    }`}
-                  >
-                    <p className="text-sm font-medium text-[var(--pos-text-primary)]">{n.title}</p>
-                    {n.body && <p className="text-xs text-slate-500 mt-0.5 line-clamp-3">{n.body}</p>}
-                    <p className="text-[10px] text-slate-600 mt-1">
-                      {new Date(n.createdAt).toLocaleString()}
-                    </p>
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
-          <div className="px-3 py-2 border-t border-slate-700/50 shrink-0">
-            <Link
-              to="/manager/notifications"
-              onClick={() => setOpen(false)}
-              className="block text-center text-xs font-medium text-amber-400 hover:text-amber-300 py-1"
-            >
-              View all notifications
-            </Link>
-          </div>
-        </div>
+        </>
       )}
     </div>
   );

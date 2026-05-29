@@ -106,9 +106,9 @@ body {
     padding: 0 !important;
   }
 
-  /* Target their direct child content containers (cards) */
-  div[class*="fixed"][class*="inset-0"][class*="flex"][class*="items-center"][class*="justify-center"] > div:not([class*="bg-black"]):not([class*="backdrop"]),
-  div[class*="fixed"][class*="inset-0"][class*="flex"][class*="items-end"][class*="justify-center"] > div:not([class*="bg-black"]):not([class*="backdrop"]) {
+  /* Target their direct child content containers (cards, forms, etc.) */
+  div[class*="fixed"][class*="inset-0"][class*="flex"][class*="items-center"][class*="justify-center"] > *:not(button):not([class*="backdrop"]):not([class*="bg-black"]):not([class*="bg-slate"]),
+  div[class*="fixed"][class*="inset-0"][class*="flex"][class*="items-end"][class*="justify-center"] > *:not(button):not([class*="backdrop"]):not([class*="bg-black"]):not([class*="bg-slate"]) {
     width: 100% !important;
     max-width: 100% !important;
     max-height: 80vh !important;

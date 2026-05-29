@@ -77,52 +77,57 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 w-80 max-h-[min(70vh,24rem)] bg-white border border-gray-200 rounded-xl shadow-xl z-[200] flex flex-col overflow-hidden">
-          <div className="px-3 py-2 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-            <span className="text-sm font-semibold text-gray-900">Notifications</span>
-            {unread > 0 && (
-              <button
-                type="button"
-                onClick={() => readAll.mutate()}
-                className="text-xs text-amber-700 hover:text-amber-900 font-medium"
+        <>
+          {/* Backdrop on mobile */}
+          <div className="fixed inset-0 z-[199] sm:hidden bg-transparent" onClick={() => setOpen(false)} />
+          <div className="fixed inset-x-0 bottom-0 z-[200] w-full rounded-t-3xl border-t border-gray-200 bg-white shadow-2xl max-h-[80vh] py-4 animate-slide-up flex flex-col sm:absolute sm:inset-auto sm:right-0 sm:top-11 sm:w-80 sm:rounded-xl sm:border sm:border-gray-200 sm:shadow-xl sm:max-h-[min(70vh,24rem)] sm:overflow-hidden sm:py-0 sm:animate-none">
+            <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-3 sm:hidden shrink-0" />
+            <div className="px-3 py-2 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+              <span className="text-sm font-semibold text-gray-900">Notifications</span>
+              {unread > 0 && (
+                <button
+                  type="button"
+                  onClick={() => readAll.mutate()}
+                  className="text-xs text-amber-700 hover:text-amber-900 font-medium"
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
+            <ul className="overflow-y-auto flex-1 py-1 min-h-0">
+              {items.length === 0 ? (
+                <li className="px-4 py-8 text-center text-sm text-gray-500">No notifications</li>
+              ) : (
+                items.map((n) => (
+                  <li key={n._id}>
+                    <button
+                      type="button"
+                      onClick={() => handleItemClick(n)}
+                      className={`w-full text-left px-3 py-2.5 border-b border-gray-100 hover:bg-gray-50 ${
+                        !n.readAt ? 'bg-amber-5/80' : ''
+                      }`}
+                    >
+                      <p className="text-sm font-medium text-gray-900">{n.title}</p>
+                      {n.body && <p className="text-xs text-gray-600 mt-0.5 line-clamp-3">{n.body}</p>}
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        {new Date(n.createdAt).toLocaleString()}
+                      </p>
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>
+            <div className="px-3 py-2 border-t border-gray-200 shrink-0 bg-gray-50">
+              <Link
+                to="/notifications"
+                onClick={() => setOpen(false)}
+                className="block text-center text-xs font-medium text-amber-800 hover:text-amber-950 py-1"
               >
-                Mark all read
-              </button>
-            )}
+                View all notifications
+              </Link>
+            </div>
           </div>
-          <ul className="overflow-y-auto flex-1 py-1 min-h-0">
-            {items.length === 0 ? (
-              <li className="px-4 py-8 text-center text-sm text-gray-500">No notifications</li>
-            ) : (
-              items.map((n) => (
-                <li key={n._id}>
-                  <button
-                    type="button"
-                    onClick={() => handleItemClick(n)}
-                    className={`w-full text-left px-3 py-2.5 border-b border-gray-100 hover:bg-gray-50 ${
-                      !n.readAt ? 'bg-amber-50/80' : ''
-                    }`}
-                  >
-                    <p className="text-sm font-medium text-gray-900">{n.title}</p>
-                    {n.body && <p className="text-xs text-gray-600 mt-0.5 line-clamp-3">{n.body}</p>}
-                    <p className="text-[10px] text-gray-400 mt-1">
-                      {new Date(n.createdAt).toLocaleString()}
-                    </p>
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
-          <div className="px-3 py-2 border-t border-gray-200 shrink-0 bg-gray-50">
-            <Link
-              to="/notifications"
-              onClick={() => setOpen(false)}
-              className="block text-center text-xs font-medium text-amber-800 hover:text-amber-950 py-1"
-            >
-              View all notifications
-            </Link>
-          </div>
-        </div>
+        </>
       )}
     </div>
   );
