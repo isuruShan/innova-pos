@@ -31,6 +31,7 @@ import { validateMobile, validateEmail } from '../../utils/customerValidation';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import { useAuth } from '../../context/AuthContext';
 import useSwipeDismiss from '../../hooks/useSwipeDismiss';
+import MobileBottomBar from '../../components/cashier/MobileBottomBar';
 
 const formatPrice = formatCurrency;
 
@@ -563,7 +564,7 @@ export default function NewOrder() {
   const [menuSearch, setMenuSearch] = useState('');
   const [variantSelectionItem, setVariantSelectionItem] = useState(null);
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
-  const { style: cartStyle, bind: cartBind } = useSwipeDismiss({
+  const { bind: cartBind } = useSwipeDismiss({
     onClose: () => setMobileCartOpen(false),
     open: mobileCartOpen,
   });
@@ -1140,7 +1141,7 @@ export default function NewOrder() {
 
   return (
     <CashierSessionGate requireSession={fohr.requireCashierSession}>
-    <div className={`h-[100dvh] ${hasBottomBar ? 'pb-[54px]' : ''} md:pb-0 flex flex-col bg-[var(--pos-surface-inset)]`}>
+    <div className={`h-[100dvh] pb-[68px] md:pb-0 flex flex-col bg-[var(--pos-surface-inset)]`}>
       <Navbar groups={fohr.navGroups} />
       <OfflineBanner />
       <div className="shrink-0 border-b border-slate-700/50 bg-[var(--pos-panel)]/90 px-3 py-2 flex items-center gap-2">
@@ -1246,21 +1247,6 @@ export default function NewOrder() {
           </div>
         </div>
 
-        {/* Mobile floating cart button (hidden on md+) */}
-        {!mobileCartOpen && (
-          <button
-            type="button"
-            onClick={() => setMobileCartOpen(true)}
-            className={`md:hidden fixed ${hasBottomBar ? 'bottom-[72px]' : 'bottom-4'} right-4 z-30 flex items-center gap-2 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-white rounded-2xl px-4 py-3 shadow-xl shadow-amber-500/30 transition`}
-          >
-            <ShoppingCart size={18} />
-            <span className="font-semibold text-sm">
-              {cart.reduce((s, i) => s + i.qty, 0)} items
-            </span>
-            <span className="font-bold text-sm">{formatPrice(total)}</span>
-          </button>
-        )}
-
         {/* Mobile cart backdrop */}
         {mobileCartOpen && (
           <div
@@ -1273,13 +1259,12 @@ export default function NewOrder() {
         <div
           className={
             mobileCartOpen
-              ? `fixed inset-x-0 bottom-0 z-[120] flex flex-col max-h-[90vh] rounded-t-2xl border-t border-slate-700/50 shadow-2xl bg-[var(--pos-panel)] overflow-hidden md:static md:max-h-none md:h-full md:min-h-0 md:rounded-none md:border-t-0 md:shadow-none ${isCompact ? 'md:w-[33.333%]' : 'md:w-96 xl:w-[28rem]'}`
+              ? `fixed inset-x-0 bottom-0 z-[120] flex flex-col max-h-[90vh] rounded-t-2xl border-t border-slate-700/50 shadow-2xl bg-[var(--pos-panel)] overflow-hidden touch-none md:static md:max-h-none md:h-full md:min-h-0 md:rounded-none md:border-t-0 md:shadow-none md:touch-auto ${isCompact ? 'md:w-[33.333%]' : 'md:w-96 xl:w-[28rem]'}`
               : `hidden md:flex md:h-full md:min-h-0 md:flex-col bg-[var(--pos-panel)]/30 ${isCompact ? 'md:w-[33.333%]' : 'md:w-96 xl:w-[28rem]'}`
           }
           {...cartBind}
-          style={cartStyle}
         >
-          <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mt-3 md:hidden shrink-0" />
+          <div className="w-12 h-1.5 bg-slate-600 rounded-full mx-auto mt-3 mb-1 md:hidden shrink-0 cursor-grab active:cursor-grabbing" />
           <div className="shrink-0 p-4 border-b border-slate-700/50 flex items-center gap-2">
             {/* Mobile close button */}
             <button
@@ -1695,6 +1680,14 @@ export default function NewOrder() {
         onClose={() => setReadySlideOrder(null)}
         canCancel
       />
+      {/* Mobile bottom bar — session summary + cart toggle (hidden on md+) */}
+      {!mobileCartOpen && (
+        <MobileBottomBar
+          onOpenCart={() => setMobileCartOpen(true)}
+          cartCount={cart.reduce((s, i) => s + i.qty, 0)}
+          cartTotal={formatPrice(total)}
+        />
+      )}
       <CollectPaymentModal
         open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}

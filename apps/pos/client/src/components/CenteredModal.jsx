@@ -1,9 +1,8 @@
 import { X } from 'lucide-react';
 import useSwipeDismiss from '../hooks/useSwipeDismiss';
 
-
 /**
- * Centered modal — solid overlay (no blur), matches merchant admin dialog pattern.
+ * Bottom-sheet modal — slides up from the bottom, swipe-down to dismiss.
  */
 export default function CenteredModal({
   open,
@@ -14,28 +13,27 @@ export default function CenteredModal({
   maxWidth = 'max-w-lg',
   ariaLabel,
 }) {
-  const { style, bind } = useSwipeDismiss({ onClose, open });
+  const { bind } = useSwipeDismiss({ onClose, open });
 
   if (!open) return null;
 
-
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-50 flex items-end justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60"
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel || title}
       onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
     >
       <div
-        className={`bg-[var(--pos-panel)] rounded-t-xl border border-slate-700 shadow-xl w-full ${maxWidth} max-h-[80vh] flex flex-col`}
+        className={`bg-[var(--pos-panel)] rounded-t-2xl border border-slate-700/60 shadow-2xl w-full ${maxWidth} max-h-[85vh] flex flex-col touch-none`}
         onClick={(e) => e.stopPropagation()}
         {...bind}
-        style={style}
       >
-        <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden shrink-0" />
+        {/* Drag handle */}
+        <div className="w-12 h-1.5 bg-slate-600 rounded-full mx-auto mt-3 mb-1 shrink-0 cursor-grab active:cursor-grabbing" />
         {(title || onClose) && (
-          <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-700 shrink-0">
+          <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-700/60 shrink-0">
             {title ? (
               <h2 className="text-lg font-bold text-[var(--pos-text-primary)]">{title}</h2>
             ) : (
@@ -55,7 +53,7 @@ export default function CenteredModal({
         )}
         <div className="px-6 py-4 overflow-y-auto flex-1">{children}</div>
         {footer && (
-          <div className="px-6 py-4 border-t border-slate-700 shrink-0">{footer}</div>
+          <div className="px-6 py-4 border-t border-slate-700/60 shrink-0">{footer}</div>
         )}
       </div>
     </div>
