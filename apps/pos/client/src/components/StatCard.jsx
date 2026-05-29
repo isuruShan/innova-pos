@@ -8,16 +8,17 @@ export default function StatCard({ label, value, icon: Icon, color = 'amber', su
   };
 
   return (
-    <div className="bg-[var(--pos-panel)] rounded-2xl p-5 border border-slate-700/50 flex items-start gap-4">
+    <div className="bg-[var(--pos-panel)] rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-slate-700/50 flex items-start gap-2.5 sm:gap-4">
       {Icon && (
-        <div className={`w-11 h-11 rounded-xl flex items-center justify-center border flex-shrink-0 ${colors[color]}`}>
-          <Icon size={20} />
+        <div className={`w-8 h-8 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center border flex-shrink-0 ${colors[color]}`}>
+          <Icon size={15} className="sm:hidden" />
+          <Icon size={20} className="hidden sm:block" />
         </div>
       )}
-      <div className="min-w-0">
-        <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">{label}</p>
-        <p className="text-2xl font-bold text-[var(--pos-text-primary)] mt-0.5 truncate">{value}</p>
-        {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] sm:text-xs text-slate-500 font-medium uppercase tracking-wider leading-tight">{label}</p>
+        <p className="text-base sm:text-2xl font-bold text-[var(--pos-text-primary)] mt-0.5 truncate leading-tight">{value}</p>
+        {sub && <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 truncate">{sub}</p>}
       </div>
     </div>
   );

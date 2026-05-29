@@ -280,7 +280,7 @@ export default function Dashboard() {
         ) : (
           <>
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-3 sm:mb-4">
               <StatCard label="Period revenue" value={formatPrice(data?.totalRevenue || 0)} icon={DollarSign} color="amber" />
               <StatCard label="Orders (period)" value={periodOrders} icon={ShoppingBag} color="blue" />
               <StatCard
@@ -293,7 +293,7 @@ export default function Dashboard() {
               <StatCard label="Avg Order Value" value={formatPrice(data?.avgOrderValue || 0)} icon={TrendingUp} color="green" />
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
               <StatCard
                 label="Today (so far)"
                 value={formatPrice(data?.todayRevenue ?? 0)}
