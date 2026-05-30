@@ -102,12 +102,12 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
       active: { $ne: false },
     })
       .sort({ sortOrder: 1, name: 1 })
-      .select('name sortOrder active')
+      .select('name sortOrder active imageUrl imageKey')
       .lean();
 
     const brandingDoc = await TenantSettings.findOne({ tenantId: ctx.ids.tenantId })
       .select(
-        'businessName tagline logoUrl faviconUrl primaryColor accentColor sidebarColor textColor selectionTextColor currency currencySymbol',
+        'businessName tagline logoUrl faviconUrl primaryColor accentColor sidebarColor textColor selectionTextColor currency currencySymbol qrOrdering',
       )
       .lean();
 
@@ -124,6 +124,7 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
           selectionTextColor: brandingDoc.selectionTextColor || '#ffffff',
           currency: brandingDoc.currency || 'LKR',
           currencySymbol: brandingDoc.currencySymbol || 'Rs.',
+          qrOrdering: brandingDoc.qrOrdering || { categoryImageFirst: true, accentColor: '' },
         }
       : null;
 
@@ -153,6 +154,7 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
       categories: categoryRows.map((c) => ({
         name: c.name,
         sortOrder: c.sortOrder ?? 0,
+        imageUrl: c.imageUrl || null,
       })),
       menuItems,
       menuTotal,

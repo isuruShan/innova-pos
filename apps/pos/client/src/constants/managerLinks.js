@@ -54,7 +54,7 @@ export const MANAGER_NAV_GROUPS = [
     title: 'Customers & loyalty',
     items: [
       { to: '/manager/customers', label: 'Customers', icon: Users },
-      { to: '/manager/loyalty/rewards', label: 'Loyalty rewards', icon: Gift },
+      { to: '/manager/loyalty/rewards', label: 'Loyalty rewards', icon: Gift, addon: 'loyalty' },
       { to: '/manager/promotions', label: 'Promotions', icon: Tag },
     ],
   },

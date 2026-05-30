@@ -249,9 +249,10 @@ export default function TableOrderApp() {
         '--qr-muted': '#94a3b8',
       };
     }
+    const customAccent = branding?.qrOrdering?.accentColor || branding?.accentColor || '#f59e0b';
     return {
       '--qr-primary': branding.primaryColor || '#151f2e',
-      '--qr-accent': branding.accentColor || '#f59e0b',
+      '--qr-accent': customAccent,
       '--qr-text': branding.textColor || '#f8fafc',
       '--qr-on-accent': branding.selectionTextColor || '#ffffff',
       '--qr-page-bg': '#0b1220',
@@ -574,12 +575,38 @@ export default function TableOrderApp() {
 
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-3 py-3">
               <div className="max-w-lg mx-auto w-full space-y-3 pb-[calc(8rem+env(safe-area-inset-bottom))]">
-                {filteredMenu.length === 0 && (
+                {activeCat === 'All' && branding?.qrOrdering?.categoryImageFirst && categoryRows.filter(c => c.name !== 'Uncategorized').length > 0 && !menuSearch.trim() ? (
+                  <div className="grid grid-cols-2 gap-3.5 pt-1">
+                    {categoryRows
+                      .filter((c) => c.name !== 'Uncategorized')
+                      .map((c) => (
+                        <button
+                          key={c.name}
+                          type="button"
+                          onClick={() => setActiveCat(c.name)}
+                          className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-slate-700/60 bg-[var(--qr-panel)] shadow-md group active:scale-95 transition-transform text-left"
+                        >
+                          {c.imageUrl ? (
+                            <img src={c.imageUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-slate-800 flex items-center justify-center text-4xl">
+                              🍽️
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/5 flex flex-col justify-end p-3.5">
+                            <p className="font-bold text-sm sm:text-base text-white tracking-wide leading-tight group-hover:underline">
+                              {c.name}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                  </div>
+                ) : filteredMenu.length === 0 ? (
                   <p className="text-center text-slate-500 text-sm py-12">
                     {menuSearch.trim() ? 'No items match your search' : 'No items in this category'}
                   </p>
-                )}
-                {filteredMenu.map((item) => {
+                ) : (
+                  filteredMenu.map((item) => {
                   const photos = itemPhotoUrls(item);
                   const thumb = photos[0];
                   return (
@@ -628,7 +655,7 @@ export default function TableOrderApp() {
                       </div>
                     </div>
                   );
-                })}
+                }))}
                 {filteredMenu.length > 0 && menuItems.length < menuTotal && (
                   <div className="flex justify-center pt-2">
                     <button

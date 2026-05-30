@@ -1,8 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Tag, Check, X,
-  Search, GripVertical, AlertTriangle, Download, Upload,
+  Search, GripVertical, AlertTriangle, Download, Upload, ImageIcon, Loader2,
 } from 'lucide-react';
 import api from '../api/axios';
 import CenteredModal from './CenteredModal';
@@ -92,8 +92,8 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
   }, [qc]);
 
   const createMutation = useMutation({
-    mutationFn: (name) => api.post('/categories', { name }).then((r) => r.data),
-    onMutate: async (name) => {
+    mutationFn: ({ name, imageUrl, imageKey }) => api.post('/categories', { name, imageUrl, imageKey }).then((r) => r.data),
+    onMutate: async ({ name, imageUrl, imageKey }) => {
       await qc.cancelQueries({ queryKey: catKey });
       const previous = qc.getQueryData(catKey) || [];
       const minSort = previous.reduce((min, c) => Math.min(min, c.sortOrder ?? 0), 0);
@@ -102,13 +102,15 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
         name,
         active: true,
         sortOrder: minSort - 1,
+        imageUrl: imageUrl || null,
+        imageKey: imageKey || null,
       };
       qc.setQueryData(catKey, [optimistic, ...previous]);
       setNewName('');
       setValidationError('');
       return { previous };
     },
-    onError: (err, _name, ctx) => {
+    onError: (err, _vars, ctx) => {
       if (ctx?.previous) qc.setQueryData(catKey, ctx.previous);
       showToast(getApiErrorMessage(err, 'Failed to add category'));
     },
@@ -246,9 +248,51 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
 
   const { bindHandle, bindDropTarget, isOver } = useDragReorder(persistReorder);
 
+  const [newImageUrl, setNewImageUrl] = useState('');
+  const [newImageKey, setNewImageKey] = useState('');
+  const [editImageUrl, setEditImageUrl] = useState('');
+  const [editImageKey, setEditImageKey] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef(null);
+  const editFileInputRef = useRef(null);
+
+  const handleUploadImage = async (e, mode) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Invalid file type. Please select an image.');
+      e.target.value = '';
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const { optimizeImage } = await import('../utils/imageUpload');
+      const optimized = await optimizeImage(file, 'menu');
+      const fd = new FormData();
+      fd.append('image', optimized);
+      fd.append('type', 'menu');
+      const { postUpload } = await import('../api/uploadRequest');
+      const { data } = await postUpload(fd);
+      
+      if (mode === 'create') {
+        setNewImageUrl(data.url);
+        setNewImageKey(data.key);
+      } else {
+        setEditImageUrl(data.url);
+        setEditImageKey(data.key);
+      }
+    } catch (err) {
+      alert(err.message || 'Upload failed');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const startEdit = (cat) => {
     setEditingId(cat._id);
     setEditName(cat.name);
+    setEditImageUrl(cat.imageUrl || '');
+    setEditImageKey(cat.imageKey || '');
     setValidationError('');
   };
 
@@ -259,7 +303,14 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
       setValidationError(`Category name must be ${CATEGORY_NAME_MAX} characters or fewer`);
       return;
     }
-    updateMutation.mutate({ id: editingId, data: { name: trimmed } });
+    updateMutation.mutate({
+      id: editingId,
+      data: {
+        name: trimmed,
+        imageUrl: editImageUrl || null,
+        imageKey: editImageKey || null,
+      }
+    });
   };
 
   const handleCreate = () => {
@@ -269,7 +320,13 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
       setValidationError(`Category name must be ${CATEGORY_NAME_MAX} characters or fewer`);
       return;
     }
-    createMutation.mutate(trimmed);
+    createMutation.mutate({
+      name: trimmed,
+      imageUrl: newImageUrl || null,
+      imageKey: newImageKey || null,
+    });
+    setNewImageUrl('');
+    setNewImageKey('');
   };
 
   const handleClose = () => {
@@ -277,6 +334,10 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
     setEditingId(null);
     setValidationError('');
     setDeleteTarget(null);
+    setNewImageUrl('');
+    setNewImageKey('');
+    setEditImageUrl('');
+    setEditImageKey('');
     clearToast();
     onClose();
   };
@@ -361,20 +422,62 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">New Category</label>
             <div className="flex gap-2">
-              <input
-                type="text"
-                value={newName}
-                maxLength={CATEGORY_NAME_MAX}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-                placeholder="e.g. Wraps"
-                className="flex-1 bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500"
-              />
+              <div className="flex-1 flex flex-col gap-2">
+                <input
+                  type="text"
+                  value={newName}
+                  maxLength={CATEGORY_NAME_MAX}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+                  placeholder="e.g. Wraps"
+                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500"
+                />
+                
+                <div className="flex items-center gap-2 bg-slate-800/40 p-2 border border-slate-700 rounded-lg">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={(e) => handleUploadImage(e, 'create')}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingImage}
+                    className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-slate-300 px-3 py-1.5 rounded-md text-xs font-semibold transition"
+                  >
+                    {uploadingImage ? (
+                      <Loader2 className="animate-spin text-amber-500" size={13} />
+                    ) : newImageUrl ? (
+                      <Check size={13} className="text-green-400" />
+                    ) : (
+                      <Upload size={13} />
+                    )}
+                    {uploadingImage ? 'Uploading...' : newImageUrl ? 'Change Image' : 'Upload Image'}
+                  </button>
+                  
+                  {newImageUrl ? (
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      <img src={newImageUrl} alt="" className="w-8 h-8 rounded object-cover border border-slate-600" />
+                      <button
+                        type="button"
+                        onClick={() => { setNewImageUrl(''); setNewImageKey(''); }}
+                        className="text-[10px] text-red-400 hover:text-red-300"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-slate-500 italic ml-2">No image selected (used in QR Ordering)</span>
+                  )}
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={handleCreate}
-                disabled={!newName.trim()}
-                className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+                disabled={!newName.trim() || uploadingImage}
+                className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition self-start"
               >
                 <Plus size={15} />
                 Add
@@ -445,29 +548,73 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                           </td>
                           <td className="px-4 py-3">
                             {isEditing ? (
-                              <div className="flex items-center gap-2">
-                                <input
-                                  autoFocus
-                                  type="text"
-                                  value={editName}
-                                  maxLength={CATEGORY_NAME_MAX}
-                                  onChange={(e) => setEditName(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveEdit();
-                                    if (e.key === 'Escape') setEditingId(null);
-                                  }}
-                                  className="flex-1 min-w-0 bg-[var(--pos-surface-inset)] border border-amber-500/50 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-sm focus:outline-none"
-                                />
-                                <button type="button" onClick={saveEdit} className="text-green-400 hover:text-green-300">
-                                  <Check size={14} />
-                                </button>
-                                <button type="button" onClick={() => setEditingId(null)} className="text-slate-500 hover:text-slate-300">
-                                  <X size={14} />
-                                </button>
+                              <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    autoFocus
+                                    type="text"
+                                    value={editName}
+                                    maxLength={CATEGORY_NAME_MAX}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') saveEdit();
+                                      if (e.key === 'Escape') setEditingId(null);
+                                    }}
+                                    className="flex-1 min-w-0 bg-[var(--pos-surface-inset)] border border-amber-500/50 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-sm focus:outline-none"
+                                  />
+                                  <button type="button" onClick={saveEdit} className="text-green-400 hover:text-green-300">
+                                    <Check size={14} />
+                                  </button>
+                                  <button type="button" onClick={() => setEditingId(null)} className="text-slate-500 hover:text-slate-300">
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                                <div className="flex items-center gap-2 bg-slate-800/40 p-1.5 border border-slate-700 rounded-lg">
+                                  <input
+                                    type="file"
+                                    ref={editFileInputRef}
+                                    onChange={(e) => handleUploadImage(e, 'edit')}
+                                    accept="image/*"
+                                    className="hidden"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => editFileInputRef.current?.click()}
+                                    disabled={uploadingImage}
+                                    className="flex items-center gap-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-slate-300 px-2 py-1 rounded text-[10px] font-semibold transition"
+                                  >
+                                    {uploadingImage ? (
+                                      <Loader2 className="animate-spin text-amber-500" size={10} />
+                                    ) : editImageUrl ? (
+                                      <Check size={10} className="text-green-400" />
+                                    ) : (
+                                      <Upload size={10} />
+                                    )}
+                                    Upload
+                                  </button>
+                                  {editImageUrl ? (
+                                    <div className="flex items-center gap-1 ml-auto">
+                                      <img src={editImageUrl} alt="" className="w-6 h-6 rounded object-cover border border-slate-600" />
+                                      <button
+                                        type="button"
+                                        onClick={() => { setEditImageUrl(''); setEditImageKey(''); }}
+                                        className="text-[9px] text-red-400 hover:text-red-300"
+                                      >
+                                        Remove
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[9px] text-slate-500 italic ml-1">No image</span>
+                                  )}
+                                </div>
                               </div>
                             ) : (
                               <div className="flex items-center gap-2 min-w-0">
-                                <Tag size={13} className={cat.active ? 'text-amber-400 shrink-0' : 'text-slate-600 shrink-0'} />
+                                {cat.imageUrl ? (
+                                  <img src={cat.imageUrl} alt="" className="w-6 h-6 rounded object-cover shrink-0 border border-slate-600" />
+                                ) : (
+                                  <Tag size={13} className={cat.active ? 'text-amber-400 shrink-0' : 'text-slate-600 shrink-0'} />
+                                )}
                                 <span className="font-medium text-[var(--pos-text-primary)] truncate" title={cat.name}>
                                   {cat.name}
                                 </span>

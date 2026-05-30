@@ -17,6 +17,7 @@ import {
   RECEIPT_PRINT_AT_OPTIONS,
   mergeReceiptPrintAtByOrderType,
 } from '../../utils/receiptPrintSettings';
+import QrOrderingSettings from '../../components/branding/QrOrderingSettings';
 
 async function optimizeToWebP(file) {
   const compressed = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 512, useWebWorker: true });
@@ -57,6 +58,13 @@ export default function BrandingPage() {
     queryKey: ['tenant-settings'],
     queryFn: async () => { const { data } = await api.get('/tenant-settings'); return data; },
   });
+
+  const { data: subData } = useQuery({
+    queryKey: ['my-subscription'],
+    queryFn: async () => { const { data } = await api.get('/subscriptions/my'); return data; },
+  });
+  const tenant = subData?.tenant;
+  const qrOrderingActive = tenant?.paidAddons?.qrOrdering?.active;
 
   useEffect(() => {
     if (settings && !form) {
@@ -228,6 +236,7 @@ export default function BrandingPage() {
       receiptPrintAtByOrderType: form.receiptPrintAtByOrderType || mergeReceiptPrintAtByOrderType(form),
       returnsEnabled: Boolean(form.returnsEnabled),
       returnsRequireManagerApproval: form.returnsRequireManagerApproval !== false,
+      qrOrdering: form.qrOrdering || { categoryImageFirst: true, accentColor: '' },
     });
   };
 
@@ -670,6 +679,13 @@ export default function BrandingPage() {
           Managers can set a 4–8 digit approval passcode in their POS profile (otherwise their login password is used).
         </p>
       </div>
+
+      {qrOrderingActive && (
+        <QrOrderingSettings
+          value={form.qrOrdering}
+          onChange={(val) => setForm(f => ({ ...f, qrOrdering: val }))}
+        />
+      )}
       </div>
 
       {/* Floating Save Button */}

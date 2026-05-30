@@ -186,7 +186,7 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
         countryIso: deriveCountryIsoFromApplication(application),
         status: 'active',
         subscriptionStatus: 'trial',
-        trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         adminCount: 1,
         createdBy: req.user.id,
       });

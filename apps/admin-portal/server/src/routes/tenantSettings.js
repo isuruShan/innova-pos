@@ -144,7 +144,7 @@ router.put('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
       'address', 'phone', 'email', 'website', 'description', 'category',
       'paymentMethods', 'currency', 'currencySymbol', 'timezone',
       'receiptHeader', 'receiptFooter', 'printReceiptByDefault', 'receiptPrintAtStatus', 'receiptPrintAtByOrderType',
-      'returnsEnabled', 'returnsRequireManagerApproval',
+      'returnsEnabled', 'returnsRequireManagerApproval', 'qrOrdering',
     ];
 
     allowed.forEach(k => { if (req.body[k] !== undefined) s[k] = req.body[k]; });

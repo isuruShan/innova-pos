@@ -16,6 +16,7 @@ import QrOrderUpdateBar from './QrOrderUpdateBar';
 import UberOrdersBar from './uber/UberOrdersBar';
 import TrialBanners from './TrialBanners';
 import useSwipeDismiss from '../hooks/useSwipeDismiss';
+import { useTenantPaidAddons } from '../hooks/useTenantPaidAddons';
 
 
 const ROLE_BADGE = {
@@ -252,8 +253,9 @@ export function NavLogo({ branding }) {
   );
 }
 
-function filterLinksForRole(links, role) {
+function filterLinksForRole(links, role, paidAddons = {}) {
   return links.filter((l) => {
+    if (l.addon && !paidAddons[l.addon]?.active) return false;
     if (!l.roles?.length) return true;
     return l.roles.includes(role);
   });
@@ -269,11 +271,12 @@ function NavDropdown({
   userRole,
   location,
   navTabActiveFg,
+  paidAddons,
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const { style, bind } = useSwipeDismiss({ onClose: () => setOpen(false), open });
-  const filtered = filterLinksForRole(items, userRole);
+  const filtered = filterLinksForRole(items, userRole, paidAddons);
 
 
   useEffect(() => {
@@ -374,11 +377,22 @@ export default function Navbar({ links = [], groups: groupsProp }) {
     [accentResolved, sidebarResolved],
   );
 
+  const { data: paidAddons } = useTenantPaidAddons();
+  const activePaidAddons = paidAddons || {};
+
   const navGroups = useMemo(() => {
-    if (groupsProp?.length) return groupsProp;
-    if (links.length) return [{ title: 'Menu', items: links }];
-    return [];
-  }, [groupsProp, links]);
+    let baseGroups = [];
+    if (groupsProp?.length) {
+      baseGroups = groupsProp;
+    } else if (links.length) {
+      baseGroups = [{ title: 'Menu', items: links }];
+    }
+    // Filter out groups where group.addon is unsubscribed
+    return baseGroups.filter(group => {
+      if (group.addon && !activePaidAddons[group.addon]?.active) return false;
+      return true;
+    });
+  }, [groupsProp, links, activePaidAddons]);
 
   return (
     <>
@@ -420,7 +434,7 @@ export default function Navbar({ links = [], groups: groupsProp }) {
         {navGroups.length > 0 && (
           <div className="hidden lg:flex items-center gap-0.5 sm:gap-1 flex-wrap">
             {navGroups.map((group) => {
-              const filteredItems = filterLinksForRole(group.items, user?.role);
+              const filteredItems = filterLinksForRole(group.items, user?.role, activePaidAddons);
               if (!filteredItems.length) return null;
 
               if (filteredItems.length === 1) {
@@ -456,6 +470,7 @@ export default function Navbar({ links = [], groups: groupsProp }) {
                   userRole={user?.role}
                   location={location}
                   navTabActiveFg={navTabActiveFg}
+                  paidAddons={activePaidAddons}
                 />
               );
             })}
@@ -511,7 +526,7 @@ export default function Navbar({ links = [], groups: groupsProp }) {
             </div>
 
             {navGroups.map((group) => {
-              const filteredItems = filterLinksForRole(group.items, user?.role);
+              const filteredItems = filterLinksForRole(group.items, user?.role, activePaidAddons);
               if (!filteredItems.length) return null;
 
               return (

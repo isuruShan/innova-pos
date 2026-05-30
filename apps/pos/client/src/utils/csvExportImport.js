@@ -403,8 +403,11 @@ export function validateMenuItemRow(row, mapping, rowIndex) {
   item.sortOrder = sortOrderStr ? parseInt(sortOrderStr, 10) : 0;
   
   const imageUrl = row[mapping.imageUrl]?.trim();
-  if (imageUrl) {
+  const isValidUrl = imageUrl && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://'));
+  if (isValidUrl) {
     item.images = [{ url: imageUrl, key: '' }];
+  } else {
+    item.images = [];
   }
 
   return { item: errors.length === 0 ? item : null, errors };

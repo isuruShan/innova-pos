@@ -105,6 +105,18 @@ async function activateSubscriptionForTenant(tenantId, plan, options = {}) {
     tenant.subscriptionDeactivationNotifiedForEndDate = null;
     tenant.suspensionReason = '';
     tenant.updatedBy = activatedBy;
+
+    // Fulfill/activate deferred trial addons post-trial
+    if (tenant.paidAddons) {
+      const { computeAddonPeriodEnd } = require('./addonPeriod');
+      Object.keys(tenant.paidAddons).forEach((key) => {
+        if (tenant.paidAddons[key] && tenant.paidAddons[key].active && !tenant.paidAddons[key].activatedAt) {
+          tenant.paidAddons[key].activatedAt = now;
+          tenant.paidAddons[key].periodEndsAt = computeAddonPeriodEnd(now, plan.billingCycle || 'monthly');
+        }
+      });
+    }
+
     await tenant.save();
     await invalidateTenantSubscriptionCache(tenant._id);
 

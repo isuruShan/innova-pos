@@ -15,6 +15,8 @@ const categorySchema = new mongoose.Schema(
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    imageUrl: { type: String, default: null },
+    imageKey: { type: String, default: null },
   },
   { timestamps: true }
 );

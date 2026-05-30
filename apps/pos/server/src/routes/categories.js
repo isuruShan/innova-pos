@@ -62,7 +62,7 @@ router.patch('/reorder', protect, authorize('manager', 'merchant_admin', 'supera
 
 router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const { name, sortOrder: requestedSortOrder } = req.body;
+    const { name, sortOrder: requestedSortOrder, imageUrl, imageKey } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: 'Category name is required' });
     if (isSystemCategoryName(name)) {
       return res.status(400).json({ message: 'That category name is reserved by the system' });
@@ -81,6 +81,8 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
       tenantId: req.tenantId,
       storeId,
       createdBy: req.user.id,
+      imageUrl: imageUrl || null,
+      imageKey: imageKey || null,
     });
     res.status(201).json(category);
   } catch (err) {
@@ -91,7 +93,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
 
 router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const { name, active, sortOrder } = req.body;
+    const { name, active, sortOrder, imageUrl, imageKey } = req.body;
     const filter = { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) };
     const existing = await Category.findOne(filter);
     if (!existing) return res.status(404).json({ message: 'Category not found' });
@@ -110,6 +112,8 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
     if (name !== undefined) update.name = name.trim();
     if (active !== undefined) update.active = active;
     if (sortOrder !== undefined) update.sortOrder = sortOrder;
+    if (imageUrl !== undefined) update.imageUrl = imageUrl;
+    if (imageKey !== undefined) update.imageKey = imageKey;
 
     const category = await Category.findOneAndUpdate(filter, update, { new: true, runValidators: true });
     if (name !== undefined && update.name !== oldName) {

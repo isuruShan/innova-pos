@@ -464,14 +464,25 @@ export default function MerchantAddonsPage() {
                     <div className="h-16 bg-gray-100 rounded-xl border border-gray-200" />
                   </div>
                 ) : (
-                  <BillingQuotePanel
-                    recurringRates={selectedAddon.recurringRates}
-                    proration={selectedAddon.proration}
-                    amountDue={selectedAddon.priced?.amount}
-                    currency={selectedAddon.priced?.currency}
-                    fullCycle={selectedAddon.fullCycle}
-                    merchantSymbol={merchantSymbol}
-                  />
+                  <>
+                    <BillingQuotePanel
+                      recurringRates={selectedAddon.recurringRates}
+                      proration={selectedAddon.proration}
+                      amountDue={selectedAddon.priced?.amount}
+                      currency={selectedAddon.priced?.currency}
+                      fullCycle={selectedAddon.fullCycle}
+                      merchantSymbol={merchantSymbol}
+                    />
+                    {tenant?.subscriptionStatus === 'trial' && (
+                      <div className="flex items-start gap-2 text-violet-800 text-xs bg-violet-50 border border-violet-200 rounded-lg p-3 mt-3">
+                        <Sparkles size={16} className="shrink-0 mt-0.5 text-violet-600 animate-pulse" />
+                        <span>
+                          <strong>Free during trial:</strong> This add-on is available free during your active trial.
+                          Charges and billing will only begin once your trial ends and your subscription activates.
+                        </span>
+                      </div>
+                    )}
+                  </>
                 )}
                 {viewOnly ? (
                   <button

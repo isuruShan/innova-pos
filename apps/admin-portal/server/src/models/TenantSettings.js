@@ -75,6 +75,11 @@ const tenantSettingsSchema = new mongoose.Schema(
     returnsEnabled: { type: Boolean, default: false },
     returnsRequireManagerApproval: { type: Boolean, default: true },
 
+    qrOrdering: {
+      categoryImageFirst: { type: Boolean, default: true },
+      accentColor: { type: String, default: '' },
+    },
+
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },

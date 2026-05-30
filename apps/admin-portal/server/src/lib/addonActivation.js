@@ -18,12 +18,14 @@ async function activatePaidAddonForTenant(tenantId, addonCode, opts) {
   const entitlementKey = entitlementKeyForCode(code);
   if (!entitlementKey) throw new Error(`Unknown add-on code: ${code}`);
 
-  await endTenantTrialOnPaidPurchase(tenantId, { activatedBy: opts.createdBy || null });
-
   const tenant = await Tenant.findById(tenantId)
     .populate('assignedPlanId')
     .populate('pendingPlanId');
   if (!tenant) throw new Error('Tenant not found');
+
+  if (tenant.subscriptionStatus !== 'trial') {
+    await endTenantTrialOnPaidPurchase(tenantId, { activatedBy: opts.createdBy || null });
+  }
 
   const plan = await resolveNextBillingPlan(tenant);
   const addon = await getAddonByCode(code);
@@ -34,8 +36,9 @@ async function activatePaidAddonForTenant(tenantId, addonCode, opts) {
   const amountPerCycle =
     opts.amountPerCycle != null ? Number(opts.amountPerCycle) : Number(fullPriced.amount) || 0;
 
-  const activatedAt = new Date();
-  const periodEndsAt = computeAddonPeriodEnd(activatedAt, plan?.billingCycle || 'monthly');
+  const isTrial = tenant.subscriptionStatus === 'trial';
+  const activatedAt = isTrial ? null : new Date();
+  const periodEndsAt = isTrial ? null : computeAddonPeriodEnd(activatedAt, plan?.billingCycle || 'monthly');
 
   tenant.paidAddons = tenant.paidAddons || {};
   tenant.paidAddons[entitlementKey] = {

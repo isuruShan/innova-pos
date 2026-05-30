@@ -22,9 +22,10 @@ export function buildCategoryTabs(categories, menuItems) {
   const fromApi = (categories || [])
     .slice()
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name))
-    .map((c) => c.name);
+    .map((c) => c.name)
+    .filter((name) => name !== 'Uncategorized');
   const extras = [...new Set((menuItems || []).map((m) => m.category))]
-    .filter((c) => c && !fromApi.includes(c))
+    .filter((c) => c && c !== 'Uncategorized' && !fromApi.includes(c))
     .sort();
   return ['All', ...fromApi, ...extras];
 }
