@@ -41,6 +41,12 @@ const ingredientLinkSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    /** Optional wastage percentage for processing loss (e.g., 5 for 5% waste during preparation) */
+    wastagePercentage: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     /** Unit override (if different from inventory item's unit). Usually inherited. */
     unit: {
       type: String,

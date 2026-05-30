@@ -34,7 +34,7 @@ const stockMovementSchema = new mongoose.Schema(
     /** Type of movement */
     type: {
       type: String,
-      enum: ['adjustment', 'grn', 'goods_return', 'waste', 'opening'],
+      enum: ['adjustment', 'grn', 'goods_return', 'waste', 'opening', 'sale', 'consumption'],
       required: true,
       index: true,
     },
@@ -67,6 +67,9 @@ const stockMovementSchema = new mongoose.Schema(
         'received',
         'returned',
         'opening_balance',
+        'sale',
+        'consumption',
+        'processing_loss',
         'other',
       ],
       required: true,
@@ -88,6 +91,13 @@ const stockMovementSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'GoodsReceipt',
       default: null,
+    },
+    /** Reference to Order if type is 'sale' or 'consumption' */
+    orderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Order',
+      default: null,
+      index: true,
     },
     /** User who made this change */
     createdBy: {

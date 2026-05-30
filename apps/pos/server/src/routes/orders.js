@@ -24,6 +24,8 @@ const {
 } = require('../utils/orderHelpers');
 const { applyOrderReturn } = require('../lib/orderReturns');
 const { parseSortQuery } = require('../lib/listPagination');
+const { consumeInventoryForOrder, reverseInventoryForOrder } = require('../lib/inventoryConsumption');
+
 
 const router = express.Router();
 
@@ -403,6 +405,10 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       ...(loyaltyRedemptionPayload ? { loyaltyRedemption: loyaltyRedemptionPayload } : {}),
     };
 
+    if (req.body.status && VALID_STATUSES.includes(req.body.status)) {
+      orderPayload.status = req.body.status;
+    }
+
     if (customerId) {
       const validCustomer = await Customer.exists({
         _id: customerId,
@@ -412,6 +418,14 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
     }
 
     const order = await Order.create(orderPayload);
+
+    if (order.status === 'completed') {
+      try {
+        await consumeInventoryForOrder(order._id, req.user.id);
+      } catch (err) {
+        console.error(`[Inventory Consumption Create-Error] order ${order._id} failed:`, err.message);
+      }
+    }
 
     if (loyaltyRedemptionPayload && order.customerId && (loyaltyRedemptionPayload.pointsCost || 0) > 0) {
       const ptsCost = loyaltyRedemptionPayload.pointsCost;
@@ -660,6 +674,12 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
 
     // Sync order to accounting if enabled
     if (order.status === 'completed' && prevStatus !== 'completed') {
+      try {
+        await consumeInventoryForOrder(order._id, req.user.id);
+      } catch (err) {
+        console.error(`[Inventory Consumption Auto-Error] order ${order._id} failed:`, err.message);
+      }
+
       try {
         const { syncOrder } = require('../services/accountingSyncService');
         await syncOrder(order._id);

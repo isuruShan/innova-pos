@@ -89,6 +89,8 @@ app.use('/api/stock-movements', require('./routes/stockMovements'));
 app.use('/api/suppliers',  require('./routes/suppliers'));
 app.use('/api/purchase-orders', require('./routes/purchaseOrders'));
 app.use('/api/goods-receipts', require('./routes/goodsReceipts'));
+app.use('/api/wastage', require('./routes/wastage'));
+app.use('/api/inventory/reconciliation', require('./routes/reconciliation'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/variant-criteria', require('./routes/variantCriteria'));
 app.use('/api/reports',    require('./routes/reports'));

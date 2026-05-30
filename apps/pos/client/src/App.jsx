@@ -41,6 +41,9 @@ import TableAnalyticsPage from './pages/manager/TableAnalyticsPage';
 import ReportsPortal from './pages/manager/ReportsPortal';
 import SubscriptionBlocked from './pages/SubscriptionBlocked';
 import SubscriptionExpiredPage from './pages/SubscriptionExpiredPage';
+import WastageManagement from './pages/manager/WastageManagement';
+import StockReconciliation from './pages/manager/StockReconciliation';
+
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 10_000 } },
@@ -206,6 +209,16 @@ export default function App() {
                 <Route path="/manager/suppliers" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
                     <SupplierManagement />
+                  </RoleRoute>
+                } />
+                <Route path="/manager/wastage" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <WastageManagement />
+                  </RoleRoute>
+                } />
+                <Route path="/manager/reconciliation" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <StockReconciliation />
                   </RoleRoute>
                 } />
 
