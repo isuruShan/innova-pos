@@ -279,14 +279,6 @@ export default function CashierSessionGate({ children, requireSession = false })
     ],
   );
 
-  if (!sessionRequired || !isStoreReady) {
-    return children;
-  }
-
-  if (!online) {
-    return children;
-  }
-
   const [openingCashInput, setOpeningCashInput] = useState('');
   const [openingNotesInput, setOpeningNotesInput] = useState('');
   const [openingNoteError, setOpeningNoteError] = useState('');
@@ -301,6 +293,14 @@ export default function CashierSessionGate({ children, requireSession = false })
   const suggestedVal = suggestedOpeningData?.suggestedOpening ?? 0;
   const openingVal = parseFloat(openingCashInput) || 0;
   const isOpeningDiff = suggestedOpeningData?.hasLastSession && Math.abs(openingVal - suggestedVal) > VARIANCE_EPSILON;
+
+  if (!sessionRequired || !isStoreReady) {
+    return children;
+  }
+
+  if (!online) {
+    return children;
+  }
 
   const openSubmit = (e) => {
     e.preventDefault();
