@@ -253,7 +253,7 @@ router.post('/:id/confirm', protect, tenantScope, resolveSelectedStore, async (r
         quantity: quantityChange,
         previousQty: previousQty,
         newQty: invItem.quantity,
-        reason: receipt.type === 'receipt' ? 'Goods receipt' : 'Goods return',
+        reason: receipt.type === 'receipt' ? 'received' : 'returned',
         notes: receipt.notes || (receipt.type === 'return' ? receipt.returnReason : ''),
         purchaseOrderId: receipt.purchaseOrderId || null,
         goodsReceiptId: receipt._id,
