@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, FileCheck, Package, Edit2, Trash2, Calendar,
   CheckCircle, FileText, AlertCircle, TrendingUp, TrendingDown,
+  Search, SlidersHorizontal, ChevronDown, X, ArrowDown, ArrowUp
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -13,6 +14,7 @@ import { useStoreContext } from '../../context/StoreContext';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { formatCurrency } from '../../utils/format';
+import PosDateField from '../../components/PosDateField';
 
 const TYPE_COLORS = {
   receipt: 'text-green-400 bg-green-500/10',
@@ -24,6 +26,13 @@ const STATUS_COLORS = {
   confirmed: 'text-green-400 bg-green-500/10',
 };
 
+const GRN_SORT_OPTIONS = [
+  { value: 'receiptDate', label: 'Date' },
+  { value: 'receiptNumber', label: 'Number' },
+  { value: 'totalAmount', label: 'Total Amount' },
+  { value: 'status', label: 'Status' },
+];
+
 export default function GoodsReceipts() {
   const { selectedStoreId, isStoreReady } = useStoreContext();
   const [activeTab, setActiveTab] = useState('receipts');
@@ -32,6 +41,14 @@ export default function GoodsReceipts() {
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [createFromPO, setCreateFromPO] = useState(null);
+  const [search, setSearch] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [statusFilter, setStatusFilter] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [sort, setSort] = useState('receiptDate');
+  const [order, setOrder] = useState('desc');
+
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
 
@@ -112,10 +129,57 @@ export default function GoodsReceipts() {
     },
   });
 
-  const filtered = useMemo(() => {
+  const sortedAndFiltered = useMemo(() => {
     const type = activeTab === 'receipts' ? 'receipt' : 'return';
-    return receipts.filter((r) => r.type === type);
-  }, [receipts, activeTab]);
+    let result = receipts.filter((r) => r.type === type);
+
+    // 1. Status Filter
+    if (statusFilter.length > 0) {
+      result = result.filter((r) => statusFilter.includes(r.status));
+    }
+
+    // 2. Search Filter
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((r) =>
+        r.receiptNumber?.toLowerCase().includes(q) ||
+        r.supplierId?.name?.toLowerCase().includes(q) ||
+        r.notes?.toLowerCase().includes(q) ||
+        r.purchaseOrderId?.orderNumber?.toLowerCase().includes(q)
+      );
+    }
+
+    // 3. Date Range Filter
+    if (fromDate) {
+      const from = new Date(`${fromDate}T00:00:00`);
+      result = result.filter((r) => new Date(r.receiptDate) >= from);
+    }
+    if (toDate) {
+      const to = new Date(`${toDate}T23:59:59`);
+      result = result.filter((r) => new Date(r.receiptDate) <= to);
+    }
+
+    // 4. Sorting
+    result.sort((a, b) => {
+      let aVal = a[sort];
+      let bVal = b[sort];
+
+      if (aVal === undefined || aVal === null) return 1;
+      if (bVal === undefined || bVal === null) return -1;
+
+      if (typeof aVal === 'string') {
+        return order === 'asc'
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal);
+      } else {
+        return order === 'asc'
+          ? aVal - bVal
+          : bVal - aVal;
+      }
+    });
+
+    return result;
+  }, [receipts, activeTab, search, fromDate, toDate, statusFilter, sort, order]);
 
   const stats = useMemo(() => {
     const receiptsList = receipts.filter((r) => r.type === 'receipt');
@@ -133,6 +197,7 @@ export default function GoodsReceipts() {
       },
     };
   }, [receipts]);
+
 
   const openAdd = () => {
     setEditing(null);
@@ -220,6 +285,159 @@ export default function GoodsReceipts() {
           ))}
         </div>
 
+        {/* Search + Filter button + Sort */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="flex-1 flex items-center gap-2 bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl px-3 py-2">
+            <Search size={15} className="text-slate-500 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder={`Search by number, supplier, notes, PO...`}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
+            />
+            {search && (
+              <button onClick={() => setSearch('')}><X size={13} className="text-slate-500 hover:text-white" /></button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <button
+              onClick={() => setShowFilters(f => !f)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium transition ${
+                showFilters || fromDate || toDate || statusFilter.length > 0
+                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
+                  : 'bg-[var(--pos-panel)] border-slate-700/50 text-slate-400 hover:text-[var(--pos-text-primary)]'
+              }`}
+            >
+              <SlidersHorizontal size={14} />
+              Filters
+              {(fromDate || toDate || statusFilter.length > 0) && (
+                <span className="bg-amber-500 text-white text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  {(fromDate || toDate ? 1 : 0) + (statusFilter.length > 0 ? 1 : 0)}
+                </span>
+              )}
+              <ChevronDown size={13} className={`transition ${showFilters ? 'rotate-180' : ''}`} />
+            </button>
+
+            <label htmlFor="grn-sort" className="text-xs text-slate-500 shrink-0 ml-2">Sort</label>
+            <select
+              id="grn-sort"
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+            >
+              {GRN_SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
+              className="p-2 rounded-xl bg-[var(--pos-panel)] border border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)] transition"
+              title={order === 'asc' ? 'Ascending' : 'Descending'}
+            >
+              {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+            </button>
+          </div>
+        </div>
+
+        {/* Collapsible Filter Panel */}
+        {showFilters && (
+          <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-2xl p-4 mb-6 space-y-4">
+            {/* Status Filter */}
+            <div>
+              <p className="text-xs font-medium text-slate-400 mb-2">Status</p>
+              <div className="flex flex-wrap gap-2">
+                {['draft', 'confirmed'].map((status) => {
+                  const active = statusFilter.includes(status);
+                  return (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => setStatusFilter(prev => 
+                        active ? prev.filter(s => s !== status) : [...prev, status]
+                      )}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border capitalize transition ${
+                        active
+                          ? 'bg-amber-500 border-amber-500 text-white'
+                          : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Date Range */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-slate-400">Date Range</p>
+                {(fromDate || toDate) && (
+                  <button
+                    onClick={() => { setFromDate(''); setToDate(''); }}
+                    className="text-xs text-amber-500 hover:text-amber-400"
+                  >
+                    Clear Range
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setQuickDateRange(1)}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:text-[var(--pos-text-primary)] transition"
+                >
+                  Last 24 Hours
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickDateRange(3)}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:text-[var(--pos-text-primary)] transition"
+                >
+                  Last 3 Days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickDateRange(7)}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:text-[var(--pos-text-primary)] transition"
+                >
+                  Last 7 Days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickDateRange(30)}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:text-[var(--pos-text-primary)] transition"
+                >
+                  Last 30 Days
+                </button>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <label className="text-xs text-slate-500 block mb-1">From</label>
+                  <PosDateField
+                    value={fromDate}
+                    onChange={setFromDate}
+                    max={toDate}
+                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-slate-500 block mb-1">To</label>
+                  <PosDateField
+                    value={toDate}
+                    onChange={setToDate}
+                    min={fromDate}
+                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Pending POs Quick Create */}
         {activeTab === 'receipts' && pendingPOs.length > 0 && (
           <div className="bg-sky-500/10 border border-sky-500/30 rounded-xl p-4 mb-6">
@@ -258,7 +476,7 @@ export default function GoodsReceipts() {
         {/* Receipts/Returns List */}
         {receiptsPending ? (
           <div className="text-center py-16 text-slate-500">Loading...</div>
-        ) : filtered.length === 0 ? (
+        ) : receipts.filter((r) => r.type === (activeTab === 'receipts' ? 'receipt' : 'return')).length === 0 ? (
           <div className="text-center py-16">
             <Package size={48} className="mx-auto mb-4 text-slate-600" />
             <p className="text-slate-500 text-lg mb-2">
@@ -278,9 +496,16 @@ export default function GoodsReceipts() {
               Create {activeTab === 'receipts' ? 'Receipt' : 'Return'}
             </button>
           </div>
+        ) : sortedAndFiltered.length === 0 ? (
+          <div className="text-center py-16">
+            <Search size={48} className="mx-auto mb-4 text-slate-600" />
+            <p className="text-slate-500 text-lg mb-2">No results match your filters</p>
+            <p className="text-slate-600 text-sm mb-6">Try adjusting your search query, status, or date range</p>
+          </div>
         ) : (
           <div className="space-y-3">
-            {filtered.map((receipt) => {
+            {sortedAndFiltered.map((receipt) => {
+
               const totalItems = receipt.items.length;
               const totalQty = receipt.items.reduce((sum, i) => {
                 return sum + (receipt.type === 'receipt' ? i.acceptedQty : i.receivedQty);

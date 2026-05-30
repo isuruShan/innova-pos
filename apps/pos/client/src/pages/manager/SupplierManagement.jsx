@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Plus, Edit2, Trash2, Truck, Package,
+  Plus, Edit2, Trash2, Truck, Package, Search, X,
   Phone, Mail, MapPin, User, FileText, ChevronDown, ChevronRight, ArrowDown, ArrowUp,
 } from 'lucide-react';
 import api from '../../api/axios';
@@ -190,6 +190,7 @@ export default function SupplierManagement() {
   const [formError, setFormError] = useState('');
   const [expandedId, setExpandedId] = useState(null);
   const [expandedItems, setExpandedItems] = useState({});
+  const [search, setSearch] = useState('');
   const qc = useQueryClient();
   const { sort, order, toggleSort, sortParams, setSort, setOrder } = useListSort('name', 'asc');
 
@@ -198,6 +199,18 @@ export default function SupplierManagement() {
     queryFn: () => api.get('/suppliers', { params: { sort, order } }).then(r => r.data),
     enabled: isStoreReady,
   });
+
+  const filteredSuppliers = useMemo(() => {
+    if (!search.trim()) return suppliers;
+    const query = search.toLowerCase();
+    return suppliers.filter(s =>
+      s.name?.toLowerCase().includes(query) ||
+      s.contactPerson?.toLowerCase().includes(query) ||
+      s.email?.toLowerCase().includes(query) ||
+      s.phone?.toLowerCase().includes(query) ||
+      s.notes?.toLowerCase().includes(query)
+    );
+  }, [suppliers, search]);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['suppliers'] });
 
@@ -290,7 +303,7 @@ export default function SupplierManagement() {
     }
   };
 
-  const suppliersWithItems = suppliers.map(s => ({
+  const suppliersWithItems = filteredSuppliers.map(s => ({
     ...s,
     items: expandedItems[s._id],
   }));
@@ -302,37 +315,56 @@ export default function SupplierManagement() {
       <div className="max-w-6xl mx-auto p-4 sm:p-6">
         <PageHeader
           title={<span className="flex items-center gap-2"><Truck size={20} className="text-purple-400" />Suppliers</span>}
-          subtitle={`${suppliers.length} supplier${suppliers.length !== 1 ? 's' : ''} registered`}
+          subtitle={search.trim() 
+            ? `${filteredSuppliers.length} found (${suppliers.length} total)`
+            : `${suppliers.length} supplier${suppliers.length !== 1 ? 's' : ''} registered`
+          }
           actions={[
             { label: 'Add Supplier', icon: Plus, onClick: openAdd, primary: true },
           ]}
         />
 
-        {/* Sort controls — inline, wraps naturally */}
-        <div className="flex items-center gap-2 mb-6 -mt-2">
-          <label htmlFor="supplier-sort" className="text-xs text-slate-500 shrink-0">Sort by</label>
-          <select
-            id="supplier-sort"
-            value={sort}
-            onChange={(e) => {
-              const next = e.target.value;
-              if (next === sort) toggleSort(next);
-              else { setSort(next); setOrder('asc'); }
-            }}
-            className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-1.5"
-          >
-            {SUPPLIER_SORT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-            className="p-2 rounded-xl bg-[var(--pos-panel)] border border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]"
-            title={order === 'asc' ? 'Ascending' : 'Descending'}
-          >
-            {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-          </button>
+        {/* Search + Sort row */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="flex-1 flex items-center gap-2 bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl px-3 py-2">
+            <Search size={15} className="text-slate-500 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="Search suppliers by name, contact, phone, email, notes..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
+            />
+            {search && (
+              <button onClick={() => setSearch('')}><X size={13} className="text-slate-500 hover:text-white" /></button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <label htmlFor="supplier-sort" className="text-xs text-slate-500 shrink-0">Sort by</label>
+            <select
+              id="supplier-sort"
+              value={sort}
+              onChange={(e) => {
+                const next = e.target.value;
+                if (next === sort) toggleSort(next);
+                else { setSort(next); setOrder('asc'); }
+              }}
+              className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+            >
+              {SUPPLIER_SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
+              className="p-2 rounded-xl bg-[var(--pos-panel)] border border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)] transition"
+              title={order === 'asc' ? 'Ascending' : 'Descending'}
+            >
+              {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+            </button>
+          </div>
         </div>
 
         {!isStoreReady || isPending ? (
@@ -342,6 +374,12 @@ export default function SupplierManagement() {
             <Truck size={52} className="mx-auto mb-4 opacity-20" />
             <p className="text-xl font-semibold">No suppliers yet</p>
             <p className="text-sm mt-1 opacity-60">Add your first supplier to get started</p>
+          </div>
+        ) : filteredSuppliers.length === 0 ? (
+          <div className="text-center py-20 text-slate-600">
+            <Search size={52} className="mx-auto mb-4 opacity-20" />
+            <p className="text-xl font-semibold">No matching suppliers</p>
+            <p className="text-sm mt-1 opacity-60">Try adjusting your search query</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -358,6 +396,7 @@ export default function SupplierManagement() {
           </div>
         )}
       </div>
+
 
       <SlideOver open={slideOpen} onClose={closeSlide} title={editing ? 'Edit Supplier' : 'Add Supplier'}>
         <SupplierForm

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, FileText, Send, Edit2, Trash2, Calendar, Package,
   DollarSign, AlertCircle, CheckCircle, XCircle, Clock,
+  Search, SlidersHorizontal, ChevronDown, X, ArrowDown, ArrowUp
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -13,6 +14,7 @@ import { useStoreContext } from '../../context/StoreContext';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { formatCurrency } from '../../utils/format';
+import PosDateField from '../../components/PosDateField';
 
 const STATUS_COLORS = {
   draft: 'text-slate-400 bg-slate-500/10',
@@ -30,6 +32,14 @@ const STATUS_ICONS = {
   cancelled: XCircle,
 };
 
+const PO_SORT_OPTIONS = [
+  { value: 'createdAt', label: 'Date Created' },
+  { value: 'orderNumber', label: 'PO Number' },
+  { value: 'expectedDate', label: 'Expected Date' },
+  { value: 'totalAmount', label: 'Total Amount' },
+  { value: 'supplierName', label: 'Supplier' },
+];
+
 export default function PurchaseOrders() {
   const { selectedStoreId, isStoreReady } = useStoreContext();
   const [activeStatus, setActiveStatus] = useState('all');
@@ -37,6 +47,13 @@ export default function PurchaseOrders() {
   const [editing, setEditing] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [sendTarget, setSendTarget] = useState(null);
+  const [search, setSearch] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [sort, setSort] = useState('createdAt');
+  const [order, setOrder] = useState('desc');
+
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
 
@@ -107,10 +124,60 @@ export default function PurchaseOrders() {
     },
   });
 
-  const filtered = useMemo(() => {
-    if (activeStatus === 'all') return orders;
-    return orders.filter((o) => o.status === activeStatus);
-  }, [orders, activeStatus]);
+  const sortedAndFiltered = useMemo(() => {
+    let result = [...orders];
+
+    // 1. Status Filter
+    if (activeStatus !== 'all') {
+      result = result.filter((o) => o.status === activeStatus);
+    }
+
+    // 2. Search Filter
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((o) =>
+        o.orderNumber?.toLowerCase().includes(q) ||
+        o.supplierId?.name?.toLowerCase().includes(q) ||
+        o.notes?.toLowerCase().includes(q)
+      );
+    }
+
+    // 3. Date Range Filter
+    if (fromDate) {
+      const from = new Date(`${fromDate}T00:00:00`);
+      result = result.filter((o) => new Date(o.createdAt) >= from);
+    }
+    if (toDate) {
+      const to = new Date(`${toDate}T23:59:59`);
+      result = result.filter((o) => new Date(o.createdAt) <= to);
+    }
+
+    // 4. Sorting
+    result.sort((a, b) => {
+      let aVal = a[sort];
+      let bVal = b[sort];
+
+      if (sort === 'supplierName') {
+        aVal = a.supplierId?.name || '';
+        bVal = b.supplierId?.name || '';
+      }
+
+      if (aVal === undefined || aVal === null) return 1;
+      if (bVal === undefined || bVal === null) return -1;
+
+      if (typeof aVal === 'string') {
+        return order === 'asc'
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal);
+      } else {
+        return order === 'asc'
+          ? aVal - bVal
+          : bVal - aVal;
+      }
+    });
+
+    return result;
+  }, [orders, activeStatus, search, fromDate, toDate, sort, order]);
 
   const stats = useMemo(() => {
     return {
@@ -153,6 +220,17 @@ export default function PurchaseOrders() {
     });
   };
 
+  const setQuickDateRange = (days) => {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    setToDate(todayStr);
+
+    const start = new Date();
+    start.setDate(start.getDate() - days);
+    const startStr = start.toISOString().split('T')[0];
+    setFromDate(startStr);
+  };
+
   const statusTabs = [
     { key: 'all', label: 'All', count: stats.total },
     { key: 'draft', label: 'Draft', count: stats.draft },
@@ -160,6 +238,7 @@ export default function PurchaseOrders() {
     { key: 'partial', label: 'Partial', count: stats.partial },
     { key: 'completed', label: 'Completed', count: stats.completed },
   ];
+
 
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
@@ -202,10 +281,136 @@ export default function PurchaseOrders() {
           ))}
         </div>
 
+        {/* Search + Filter button + Sort */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="flex-1 flex items-center gap-2 bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl px-3 py-2">
+            <Search size={15} className="text-slate-500 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="Search by PO number, supplier, notes..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
+            />
+            {search && (
+              <button onClick={() => setSearch('')}><X size={13} className="text-slate-500 hover:text-white" /></button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <button
+              onClick={() => setShowFilters(f => !f)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium transition ${
+                showFilters || fromDate || toDate
+                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
+                  : 'bg-[var(--pos-panel)] border-slate-700/50 text-slate-400 hover:text-[var(--pos-text-primary)]'
+              }`}
+            >
+              <SlidersHorizontal size={14} />
+              Filters
+              {(fromDate || toDate) && (
+                <span className="bg-amber-500 text-white text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  1
+                </span>
+              )}
+              <ChevronDown size={13} className={`transition ${showFilters ? 'rotate-180' : ''}`} />
+            </button>
+
+            <label htmlFor="po-sort" className="text-xs text-slate-500 shrink-0 ml-2">Sort</label>
+            <select
+              id="po-sort"
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+            >
+              {PO_SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
+              className="p-2 rounded-xl bg-[var(--pos-panel)] border border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)] transition"
+              title={order === 'asc' ? 'Ascending' : 'Descending'}
+            >
+              {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+            </button>
+          </div>
+        </div>
+
+        {/* Collapsible Filter Panel */}
+        {showFilters && (
+          <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-2xl p-4 mb-6 space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-slate-400">Date Created Range</p>
+                {(fromDate || toDate) && (
+                  <button
+                    onClick={() => { setFromDate(''); setToDate(''); }}
+                    className="text-xs text-amber-500 hover:text-amber-400"
+                  >
+                    Clear Range
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setQuickDateRange(1)}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:text-[var(--pos-text-primary)] transition"
+                >
+                  Last 24 Hours
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickDateRange(3)}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:text-[var(--pos-text-primary)] transition"
+                >
+                  Last 3 Days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickDateRange(7)}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:text-[var(--pos-text-primary)] transition"
+                >
+                  Last 7 Days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickDateRange(30)}
+                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:text-[var(--pos-text-primary)] transition"
+                >
+                  Last 30 Days
+                </button>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <label className="text-xs text-slate-500 block mb-1">From</label>
+                  <PosDateField
+                    value={fromDate}
+                    onChange={setFromDate}
+                    max={toDate}
+                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-slate-500 block mb-1">To</label>
+                  <PosDateField
+                    value={toDate}
+                    onChange={setToDate}
+                    min={fromDate}
+                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Orders List */}
         {ordersPending ? (
           <div className="text-center py-16 text-slate-500">Loading orders...</div>
-        ) : filtered.length === 0 ? (
+        ) : orders.length === 0 ? (
           <div className="text-center py-16">
             <Package size={48} className="mx-auto mb-4 text-slate-600" />
             <p className="text-slate-500 text-lg mb-2">No purchase orders found</p>
@@ -219,9 +424,16 @@ export default function PurchaseOrders() {
               Create Purchase Order
             </button>
           </div>
+        ) : sortedAndFiltered.length === 0 ? (
+          <div className="text-center py-16">
+            <Search size={48} className="mx-auto mb-4 text-slate-600" />
+            <p className="text-slate-500 text-lg mb-2">No purchase orders match your filters</p>
+            <p className="text-slate-600 text-sm mb-6">Try adjusting your search terms or date range</p>
+          </div>
         ) : (
           <div className="space-y-3">
-            {filtered.map((order) => {
+            {sortedAndFiltered.map((order) => {
+
               const StatusIcon = STATUS_ICONS[order.status];
               const receivedCount = order.items.reduce((sum, i) => sum + i.receivedQty, 0);
               const orderedCount = order.items.reduce((sum, i) => sum + i.orderedQty, 0);
