@@ -59,7 +59,7 @@ export function AvatarMenu({ user, onLogout }) {
             {/* Backdrop on mobile */}
             <div className="fixed inset-0 z-[199] md:hidden bg-transparent" onClick={() => setOpen(false)} />
             <div
-              className="fixed inset-x-0 bottom-0 z-[200] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/50 overflow-y-auto max-h-[80vh] py-4 animate-slide-up md:absolute md:inset-auto md:right-0 md:top-11 md:w-60 md:rounded-2xl md:border md:border-slate-700/60 md:shadow-2xl md:max-h-none md:overflow-hidden md:py-0 md:animate-none"
+              className="fixed inset-x-0 bottom-0 z-[200] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/50 overflow-y-auto max-h-[80vh] py-4 animate-slide-up md:absolute md:inset-auto md:right-0 md:top-11 md:w-60 md:rounded-2xl md:border md:border-slate-700/60 md:shadow-2xl md:max-h-none md:overflow-hidden md:py-0 md:animate-slide-down"
               {...bind}
               style={style}
             >
@@ -178,7 +178,7 @@ function StoreSwitcher({ stores, selectedStoreId, selectStore }) {
           {/* Backdrop on mobile */}
           <div className="fixed inset-0 z-[119] md:hidden bg-transparent" onClick={() => setOpen(false)} />
           <div
-            className="fixed inset-x-0 bottom-0 z-[120] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-y-auto max-h-[80vh] py-4 animate-slide-up md:absolute md:inset-auto md:right-0 md:top-full md:mt-1.5 md:w-[18rem] md:rounded-xl md:border md:border-slate-600/80 md:py-1 md:shadow-2xl md:max-h-none md:overflow-hidden md:animate-none"
+            className="fixed inset-x-0 bottom-0 z-[120] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-y-auto max-h-[80vh] py-4 animate-slide-up md:absolute md:inset-auto md:right-0 md:top-full md:mt-1.5 md:w-[18rem] md:rounded-xl md:border md:border-slate-600/80 md:py-1 md:shadow-2xl md:max-h-none md:overflow-hidden md:animate-slide-down"
             role="listbox"
             {...bind}
             style={style}
@@ -323,7 +323,7 @@ function NavDropdown({
           {/* Backdrop on mobile */}
           <div className="fixed inset-0 z-[119] md:hidden bg-transparent" onClick={() => setOpen(false)} />
           <div
-            className="fixed inset-x-0 bottom-0 z-[120] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-y-auto max-h-[80vh] py-4 animate-slide-up md:absolute md:inset-auto md:left-0 md:top-full md:mt-1.5 md:min-w-[12rem] md:max-w-[18rem] md:rounded-xl md:border md:border-slate-600/80 md:shadow-2xl md:max-h-none md:overflow-hidden md:py-1 md:animate-none"
+            className="fixed inset-x-0 bottom-0 z-[120] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-y-auto max-h-[80vh] py-4 animate-slide-up md:absolute md:inset-auto md:left-0 md:top-full md:mt-1.5 md:min-w-[12rem] md:max-w-[18rem] md:rounded-xl md:border md:border-slate-600/80 md:shadow-2xl md:max-h-none md:overflow-hidden md:py-1 md:animate-slide-down"
             role="menu"
             {...bind}
             style={style}

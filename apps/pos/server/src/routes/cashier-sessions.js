@@ -27,13 +27,16 @@ function toOid(id) {
 }
 
 function buildSessionOrderMatch(tenantId, storeId, cashierId, openedAt, endDate) {
+  const cashierOid = toOid(cashierId);
   return {
     tenantId: toOid(tenantId),
     storeId: toOid(storeId),
     status: 'completed',
     updatedAt: { $gte: openedAt, $lte: endDate },
-    /** POS orders: created by this cashier. QR / table orders: attribute to who completed payment. */
-    $or: [{ createdBy: toOid(cashierId) }, { orderSource: 'qr', updatedBy: toOid(cashierId) }],
+    $or: [
+      { updatedBy: cashierOid },
+      { createdBy: cashierOid, updatedBy: { $in: [null, undefined] } }
+    ],
   };
 }
 

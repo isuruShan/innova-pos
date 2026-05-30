@@ -223,9 +223,9 @@ export default function OrdersView() {
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
           <h1 className="text-xl font-bold text-[var(--pos-text-primary)]">Orders</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleExportOrders}
               className="px-3 py-2 rounded-xl border border-slate-600 text-sm text-green-400 hover:bg-green-500/10 transition flex items-center gap-2"
@@ -343,7 +343,7 @@ export default function OrdersView() {
                   Last 7 Days
                 </button>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <div className="flex-1">
                   <label className="text-xs text-slate-500 block mb-1">From</label>
                   <PosDateField

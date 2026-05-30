@@ -85,7 +85,7 @@ export default function MenuManagement() {
   const [formError, setFormError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [menuSearch, setMenuSearch] = useState('');
-  const [viewMode, setViewMode] = useState('table');
+  const [viewMode, setViewMode] = useState(() => window.innerWidth < 768 ? 'grid' : 'table');
   const [importModalOpen, setImportModalOpen] = useState(false);
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();

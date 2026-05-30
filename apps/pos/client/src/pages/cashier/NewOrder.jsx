@@ -1652,6 +1652,7 @@ export default function NewOrder() {
                     return;
                   }
                   setPaymentModalOpen(true);
+                  setMobileCartOpen(false);
                 }}
                 disabled={!canPlace || mutation.isPending}
                 className="w-full bg-green-500 hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-green-500/20 text-sm"
