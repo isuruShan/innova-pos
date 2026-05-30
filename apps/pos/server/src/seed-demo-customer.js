@@ -165,8 +165,17 @@ const runSeeder = async () => {
   try {
     await connectDB();
 
-    // 1. Get or pick tenant
-    let tenantIdStr = process.argv.find(arg => arg.startsWith('--tenantId='))?.split('=')[1];
+    // 1. Get or pick tenant (support both --tenantId=VALUE and --tenantId VALUE)
+    let tenantIdStr;
+    const tenantIdIndex = process.argv.findIndex(arg => arg.startsWith('--tenantId'));
+    if (tenantIdIndex !== -1) {
+      const arg = process.argv[tenantIdIndex];
+      if (arg.includes('=')) {
+        tenantIdStr = arg.split('=')[1];
+      } else if (tenantIdIndex + 1 < process.argv.length) {
+        tenantIdStr = process.argv[tenantIdIndex + 1];
+      }
+    }
     let tenant;
 
     if (tenantIdStr) {
