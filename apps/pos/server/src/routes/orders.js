@@ -398,6 +398,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       totalAmount,
       orderSource: 'pos',
       createdBy: req.user.id,
+      updatedBy: req.user.id,
       ...(clientRequestId ? { clientRequestId } : {}),
       ...(loyaltyRedemptionPayload ? { loyaltyRedemption: loyaltyRedemptionPayload } : {}),
     };

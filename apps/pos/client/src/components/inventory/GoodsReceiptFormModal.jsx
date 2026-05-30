@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Calendar, Package, FileText, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
+import InventorySearchSelect from './InventorySearchSelect';
+import AddInventoryItemDrawer from './AddInventoryItemDrawer';
 
 export default function GoodsReceiptFormModal({
   open,
@@ -21,6 +23,17 @@ export default function GoodsReceiptFormModal({
   const [notes, setNotes] = useState('');
   const [returnReason, setReturnReason] = useState('');
   const [error, setError] = useState('');
+  const [activeAddDrawerIndex, setActiveAddDrawerIndex] = useState(null);
+
+  const handleAddNewItemSuccess = (newItem) => {
+    if (activeAddDrawerIndex !== null && newItem) {
+      const updated = [...items];
+      updated[activeAddDrawerIndex].inventoryItemId = String(newItem._id);
+      updated[activeAddDrawerIndex].itemName = newItem.itemName;
+      updated[activeAddDrawerIndex].unit = newItem.unit;
+      setItems(updated);
+    }
+  };
 
   useEffect(() => {
     if (open && editing) {
@@ -347,19 +360,13 @@ export default function GoodsReceiptFormModal({
                       {/* Inventory Item */}
                       <div className="col-span-12 md:col-span-4">
                         <label className="block text-xs text-slate-500 mb-1">Item</label>
-                        <select
+                        <InventorySearchSelect
                           value={item.inventoryItemId}
-                          onChange={(e) => handleItemChange(index, 'inventoryItemId', e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          inventory={inventory}
+                          onChange={(val) => handleItemChange(index, 'inventoryItemId', val)}
+                          onAddNewClick={() => setActiveAddDrawerIndex(index)}
                           disabled={isPending || !!purchaseOrderId}
-                        >
-                          <option value="">Select item</option>
-                          {inventory.map((invItem) => (
-                            <option key={invItem._id} value={invItem._id}>
-                              {invItem.itemName} ({invItem.quantity} {invItem.unit})
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </div>
 
                       {/* Quantities based on type */}
@@ -547,6 +554,12 @@ export default function GoodsReceiptFormModal({
           </div>
         </form>
       </div>
+      <AddInventoryItemDrawer
+        open={activeAddDrawerIndex !== null}
+        onClose={() => setActiveAddDrawerIndex(null)}
+        onSuccess={handleAddNewItemSuccess}
+        suppliers={suppliers}
+      />
     </div>
   );
 }
