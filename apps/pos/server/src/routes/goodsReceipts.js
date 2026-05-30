@@ -120,17 +120,25 @@ router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) =>
 
       const validatedItem = {
         inventoryItemId: invItem._id,
-        itemName: invItem.name,
+        itemName: invItem.itemName,
         unit: invItem.unit,
         orderedQty: Number(item.orderedQty) || 0,
         receivedQty: Number(item.receivedQty) || 0,
-        acceptedQty: Number(item.acceptedQty) || 0,
-        rejectedQty: Number(item.rejectedQty) || 0,
+        acceptedQty: type === 'receipt' ? Number(item.acceptedQty) || 0 : 0,
+        rejectedQty: type === 'receipt' ? Number(item.rejectedQty) || 0 : 0,
         unitPrice: Number(item.unitPrice) || 0,
         rejectionReason: item.rejectionReason || '',
       };
 
       validatedItems.push(validatedItem);
+    }
+
+    if (receiptDate) {
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      if (new Date(receiptDate) > today) {
+        return res.status(400).json({ error: 'Receipt/Return Date cannot be in the future' });
+      }
     }
 
     // Calculate total amount (based on accepted qty for receipts, received qty for returns)
@@ -346,7 +354,7 @@ router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
 
         validatedItems.push({
           inventoryItemId: invItem._id,
-          itemName: invItem.name,
+          itemName: invItem.itemName,
           unit: invItem.unit,
           orderedQty: Number(item.orderedQty) || 0,
           receivedQty: Number(item.receivedQty) || 0,
@@ -365,7 +373,16 @@ router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
       }, 0);
     }
 
-    if (receiptDate !== undefined) receipt.receiptDate = new Date(receiptDate);
+    if (receiptDate !== undefined) {
+      if (receiptDate) {
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        if (new Date(receiptDate) > today) {
+          return res.status(400).json({ error: 'Receipt/Return Date cannot be in the future' });
+        }
+      }
+      receipt.receiptDate = new Date(receiptDate);
+    }
     if (notes !== undefined) receipt.notes = notes;
     if (returnReason !== undefined && receipt.type === 'return') receipt.returnReason = returnReason;
 

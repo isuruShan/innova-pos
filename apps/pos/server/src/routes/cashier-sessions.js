@@ -31,7 +31,7 @@ function buildSessionOrderMatch(tenantId, storeId, cashierId, openedAt, endDate)
     tenantId: toOid(tenantId),
     storeId: toOid(storeId),
     status: 'completed',
-    createdAt: { $gte: openedAt, $lte: endDate },
+    updatedAt: { $gte: openedAt, $lte: endDate },
     /** POS orders: created by this cashier. QR / table orders: attribute to who completed payment. */
     $or: [{ createdBy: toOid(cashierId) }, { orderSource: 'qr', updatedBy: toOid(cashierId) }],
   };
@@ -246,11 +246,14 @@ router.post(
         });
       }
 
+      const openingNotes = typeof req.body.openingNotes === 'string' ? req.body.openingNotes.trim() : '';
+
       const session = await CashierSession.create({
         tenantId: req.tenantId,
         storeId: req.storeId,
         cashierId: req.user.id,
         openingCashBalance: opening,
+        openingNotes,
       });
 
       const now = new Date();

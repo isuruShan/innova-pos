@@ -96,12 +96,20 @@ router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) =>
       }
       validatedItems.push({
         inventoryItemId: invItem._id,
-        itemName: invItem.name,
+        itemName: invItem.itemName,
         unit: invItem.unit,
         orderedQty: Number(item.orderedQty) || 0,
         receivedQty: 0,
         unitPrice: Number(item.unitPrice) || 0,
       });
+    }
+
+    if (expectedDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (new Date(expectedDate) < today) {
+        return res.status(400).json({ error: 'Expected Delivery Date cannot be in the past' });
+      }
     }
 
     // Calculate total amount
@@ -190,7 +198,7 @@ router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
         }
         validatedItems.push({
           inventoryItemId: invItem._id,
-          itemName: invItem.name,
+          itemName: invItem.itemName,
           unit: invItem.unit,
           orderedQty: Number(item.orderedQty) || 0,
           receivedQty: Number(item.receivedQty) || 0,
@@ -204,7 +212,16 @@ router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
       );
     }
 
-    if (expectedDate !== undefined) order.expectedDate = expectedDate ? new Date(expectedDate) : null;
+    if (expectedDate !== undefined) {
+      if (expectedDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (new Date(expectedDate) < today) {
+          return res.status(400).json({ error: 'Expected Delivery Date cannot be in the past' });
+        }
+      }
+      order.expectedDate = expectedDate ? new Date(expectedDate) : null;
+    }
     if (notes !== undefined) order.notes = notes;
     if (status && ['draft', 'cancelled'].includes(status)) order.status = status;
 
@@ -292,7 +309,7 @@ router.delete('/:id', protect, tenantScope, resolveSelectedStore, async (req, re
  * GET /purchase-orders/suggestions/low-stock
  * Get suggested items for purchase (below minimum threshold)
  */
-router.get('/suggestions/low-stock', protect, tenantScope, async (req, res) => {
+router.get('/suggestions/low-stock', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
 
@@ -304,7 +321,7 @@ router.get('/suggestions/low-stock', protect, tenantScope, async (req, res) => {
 
     const suggestions = lowStockItems.map((item) => ({
       inventoryItemId: item._id,
-      itemName: item.name,
+      itemName: item.itemName,
       unit: item.unit,
       currentQty: item.quantity,
       minThreshold: item.minThreshold,

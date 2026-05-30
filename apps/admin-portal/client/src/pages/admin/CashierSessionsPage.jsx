@@ -284,8 +284,10 @@ export default function CashierSessionsPage() {
                         '—'
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-600 max-w-[220px] truncate" title={row.varianceNotes || ''}>
-                      {row.varianceNotes || '—'}
+                    <td className="px-4 py-3 text-gray-600 max-w-[220px] text-xs" title={`Opening Notes: ${row.openingNotes || '—'}\nVariance Notes: ${row.varianceNotes || '—'}`}>
+                      {row.openingNotes && <div className="text-[11px] text-amber-600 font-medium">Start: {row.openingNotes}</div>}
+                      {row.varianceNotes && <div className="text-[11px] text-gray-500">Close: {row.varianceNotes}</div>}
+                      {!row.openingNotes && !row.varianceNotes && '—'}
                     </td>
                     <td className="px-4 py-3">
                       <span

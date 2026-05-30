@@ -186,8 +186,8 @@ export default function CashierSessionGate({ children, requireSession = false })
   });
 
   const openMutation = useMutation({
-    mutationFn: (openingCashBalance) =>
-      api.post('/cashier-sessions/open', { openingCashBalance }),
+    mutationFn: ({ openingCashBalance, openingNotes }) =>
+      api.post('/cashier-sessions/open', { openingCashBalance, openingNotes }),
     onSuccess: () => qc.invalidateQueries({ queryKey: [CASHIER_SESSION_QUERY_KEY] }),
   });
 
@@ -287,12 +287,34 @@ export default function CashierSessionGate({ children, requireSession = false })
     return children;
   }
 
+  const [openingCashInput, setOpeningCashInput] = useState('');
+  const [openingNotesInput, setOpeningNotesInput] = useState('');
+  const [openingNoteError, setOpeningNoteError] = useState('');
+
+  // Update inputs when suggested balance loaded
+  useEffect(() => {
+    if (suggestedOpeningData && suggestedOpeningData.suggestedOpening != null) {
+      setOpeningCashInput(String(suggestedOpeningData.suggestedOpening));
+    }
+  }, [suggestedOpeningData]);
+
+  const suggestedVal = suggestedOpeningData?.suggestedOpening ?? 0;
+  const openingVal = parseFloat(openingCashInput) || 0;
+  const isOpeningDiff = suggestedOpeningData?.hasLastSession && Math.abs(openingVal - suggestedVal) > VARIANCE_EPSILON;
+
   const openSubmit = (e) => {
     e.preventDefault();
-    const raw = e.target.elements.opening?.value;
-    const v = parseFloat(raw, 10);
+    const v = parseFloat(openingCashInput);
     if (!Number.isFinite(v) || v < 0) return;
-    openMutation.mutate(Math.round(v * 100) / 100);
+    if (isOpeningDiff && !openingNotesInput.trim()) {
+      setOpeningNoteError('Variance notes are required when opening cash differs from suggested float.');
+      return;
+    }
+    setOpeningNoteError('');
+    openMutation.mutate({
+      openingCashBalance: Math.round(v * 100) / 100,
+      openingNotes: isOpeningDiff ? openingNotesInput.trim() : '',
+    });
   };
 
   const submitClose = (e) => {
@@ -430,10 +452,37 @@ export default function CashierSessionGate({ children, requireSession = false })
                 min="0"
                 required
                 autoFocus
-                defaultValue={suggestedOpeningData?.suggestedOpening || ''}
+                value={openingCashInput}
+                onChange={(e) => {
+                  setOpeningCashInput(e.target.value);
+                  setOpeningNoteError('');
+                }}
                 placeholder="0.00"
                 className="w-full px-4 py-3 rounded-xl bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] text-lg font-semibold tabular-nums"
               />
+              {isOpeningDiff && (
+                <div className="mt-4">
+                  <label htmlFor="opening-notes" className="block text-sm text-slate-300 mb-2">
+                    Opening variance reason <span className="text-red-400">*</span>
+                  </label>
+                  <textarea
+                    id="opening-notes"
+                    name="openingNotes"
+                    required
+                    value={openingNotesInput}
+                    onChange={(e) => {
+                      setOpeningNotesInput(e.target.value);
+                      setOpeningNoteError('');
+                    }}
+                    placeholder="Provide a reason for starting with a different cash balance..."
+                    rows={3}
+                    className="w-full px-4 py-3 rounded-xl bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-500/40 placeholder-slate-600"
+                  />
+                </div>
+              )}
+              {openingNoteError && (
+                <p className="text-red-400 text-sm mt-2">{openingNoteError}</p>
+              )}
               {openMutation.isError && (
                 <p className="text-red-400 text-sm mt-2">
                   {openMutation.error?.response?.data?.message || 'Could not start session'}

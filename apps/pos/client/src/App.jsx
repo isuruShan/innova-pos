@@ -6,6 +6,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { BrandingProvider } from './context/BrandingContext';
 import { StoreProvider } from './context/StoreContext';
 import { CashierDraftOrdersProvider } from './context/CashierDraftOrdersContext';
+import { AlertProvider } from './context/AlertContext';
 import PosNotificationStream from './components/PosNotificationStream';
 import ForcePasswordResetGate from './components/auth/ForcePasswordResetGate';
 
@@ -87,7 +88,8 @@ export default function App() {
         <ThemeProvider>
           <BrandingProvider>
             <StoreProvider>
-              <CashierDraftOrdersProvider>
+              <AlertProvider>
+                <CashierDraftOrdersProvider>
               <PosNotificationStream />
               <BrowserRouter>
               <Routes>
@@ -253,6 +255,7 @@ export default function App() {
               </Routes>
             </BrowserRouter>
               </CashierDraftOrdersProvider>
+            </AlertProvider>
           </StoreProvider>
         </BrandingProvider>
       </ThemeProvider>

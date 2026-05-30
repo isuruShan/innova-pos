@@ -67,7 +67,7 @@ export default function PurchaseOrderFormModal({
     if (field === 'inventoryItemId') {
       const invItem = inventory.find((i) => String(i._id) === value);
       if (invItem) {
-        updated[index].itemName = invItem.name;
+        updated[index].itemName = invItem.itemName;
         updated[index].unit = invItem.unit;
       }
     }
@@ -115,6 +115,15 @@ export default function PurchaseOrderFormModal({
       }
       if (item.unitPrice < 0) {
         return setError(`Item ${i + 1}: Unit price cannot be negative`);
+      }
+    }
+
+    if (expectedDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const expDate = new Date(expectedDate);
+      if (expDate < today) {
+        return setError('Expected Delivery Date cannot be in the past');
       }
     }
 
@@ -250,7 +259,7 @@ export default function PurchaseOrderFormModal({
                           <option value="">Select item</option>
                           {inventory.map((invItem) => (
                             <option key={invItem._id} value={invItem._id}>
-                              {invItem.name} ({invItem.quantity} {invItem.unit})
+                              {invItem.itemName} ({invItem.quantity} {invItem.unit})
                             </option>
                           ))}
                         </select>

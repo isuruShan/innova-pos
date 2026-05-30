@@ -104,7 +104,7 @@ export default function GoodsReceiptFormModal({
     if (field === 'inventoryItemId') {
       const invItem = inventory.find((i) => String(i._id) === value);
       if (invItem) {
-        updated[index].itemName = invItem.name;
+        updated[index].itemName = invItem.itemName;
         updated[index].unit = invItem.unit;
       }
     }
@@ -156,6 +156,15 @@ export default function GoodsReceiptFormModal({
     }
     if (items.length === 0) {
       return setError('Please add at least one item');
+    }
+
+    if (receiptDate) {
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      const recDate = new Date(receiptDate);
+      if (recDate > today) {
+        return setError(`${type === 'receipt' ? 'Receipt' : 'Return'} Date cannot be in the future`);
+      }
     }
 
     // Validate items
@@ -347,7 +356,7 @@ export default function GoodsReceiptFormModal({
                           <option value="">Select item</option>
                           {inventory.map((invItem) => (
                             <option key={invItem._id} value={invItem._id}>
-                              {invItem.name} ({invItem.quantity} {invItem.unit})
+                              {invItem.itemName} ({invItem.quantity} {invItem.unit})
                             </option>
                           ))}
                         </select>

@@ -24,6 +24,7 @@ import { KanbanSkeleton } from '../../components/StoreSkeletons';
 import { printReceipt, printKitchenTicket } from '../../utils/receiptPrint';
 import { shouldPrintReceiptForUpdatedOrder } from '../../utils/receiptPolicy';
 import PosDateField from '../../components/PosDateField';
+import { useAlert } from '../../context/AlertContext';
 
 function todayStr() {
   const x = new Date();
@@ -94,6 +95,8 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
   const meta = STATUS_META[order.status];
   const isBusy = busyId === order._id;
 
+  const { showAlert } = useAlert();
+
   const handlePrintReceipt = (e) => {
     e.stopPropagation();
     try {
@@ -104,7 +107,7 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
       });
     } catch (err) {
       console.error('[Print Receipt] Error:', err);
-      alert('Failed to print receipt');
+      showAlert('Failed to print receipt', 'Printing Error', 'error');
     }
   };
 
@@ -117,7 +120,7 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
       });
     } catch (err) {
       console.error('[Print Kitchen Ticket] Error:', err);
-      alert('Failed to print kitchen ticket');
+      showAlert('Failed to print kitchen ticket', 'Printing Error', 'error');
     }
   };
 
@@ -290,6 +293,7 @@ function Column({ status, orders, onAdvanceStatus, onViewEdit, busyId, branding,
 }
 
 export default function OrderBoard() {
+  const { showAlert } = useAlert();
   const fohr = useFohrMode();
   const qc = useQueryClient();
   const branding = useBranding();
@@ -415,7 +419,7 @@ export default function OrderBoard() {
         }
       }
     },
-    onError: (e) => alert(e.response?.data?.message || 'Failed to update status'),
+    onError: (e) => showAlert(e.response?.data?.message || 'Failed to update status', 'Error', 'error'),
     onSettled: () => setBusyId(null),
   });
 
@@ -423,7 +427,7 @@ export default function OrderBoard() {
     if (nextStatus === 'completed' && order.paymentCollected === false) {
       const canPay = ['cashier', 'manager', 'merchant_admin'].includes(normalizeRole(user?.role));
       if (!canPay) {
-        window.alert('Payment must be collected at the register before completing this order.');
+        showAlert('Payment must be collected at the register before completing this order.', 'Payment Required', 'info');
         return;
       }
       setCompletePaymentOrder(order);

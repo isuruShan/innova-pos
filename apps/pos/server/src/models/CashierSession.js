@@ -21,6 +21,7 @@ const cashierSessionSchema = new mongoose.Schema(
       index: true,
     },
     openingCashBalance: { type: Number, required: true, min: 0 },
+    openingNotes: { type: String, default: '', trim: true },
     openedAt: { type: Date, default: Date.now },
     status: {
       type: String,
