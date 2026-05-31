@@ -81,6 +81,16 @@ router.get('/', protect, async (req, res) => {
         return res.json({ navigation: matchedNavigation, tenants: [], applications: [], promotions: [], rewards: [], orders: [], stores: [] });
       }
 
+      const orderFilter = { tenantId };
+      if (!isNaN(Number(query))) {
+        orderFilter.orderNumber = Number(query);
+      } else {
+        orderFilter.$or = [
+          { 'customer.name': regex },
+          { 'customer.phone': regex }
+        ];
+      }
+
       const [promotions, rewards, orders, stores] = await Promise.all([
         Promotion.find({ tenantId, name: regex })
           .select('name type active approvalStatus')
@@ -90,14 +100,7 @@ router.get('/', protect, async (req, res) => {
           .select('name rewardType active pointsCost')
           .limit(10)
           .lean(),
-        Order.find({
-          tenantId,
-          $or: [
-            { orderNumber: regex },
-            { 'customer.name': regex },
-            { 'customer.phone': regex }
-          ]
-        })
+        Order.find(orderFilter)
           .select('orderNumber customer totalAmount status createdAt')
           .limit(10)
           .lean(),
