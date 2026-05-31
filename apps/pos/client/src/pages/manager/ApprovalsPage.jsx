@@ -192,7 +192,7 @@ export default function ApprovalsPage() {
   const { data: rewards = [], isPending: p2 } = useQuery({
     queryKey: ['loyalty-rewards-pending'],
     queryFn: () => api.get('/loyalty/rewards', { params: { pending: true } }).then((r) => r.data),
-    enabled: loyaltyAddonActive,
+    enabled: paidAddons?.loyalty === true,
   });
 
   const approvePromo = useMutation({
