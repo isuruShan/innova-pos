@@ -19,14 +19,14 @@ export default function CenteredModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel || title}
       onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
     >
       <div
-        className={`bg-[var(--pos-panel)] rounded-t-2xl border border-slate-700/60 shadow-2xl w-full ${maxWidth} max-h-[85vh] flex flex-col touch-none`}
+        className={`bg-[var(--pos-panel)] rounded-t-2xl sm:rounded-2xl border border-slate-700/60 shadow-2xl w-full ${maxWidth} max-h-[85vh] sm:max-h-[90vh] flex flex-col sm:touch-auto touch-none`}
         onClick={(e) => e.stopPropagation()}
         {...bind}
       >
