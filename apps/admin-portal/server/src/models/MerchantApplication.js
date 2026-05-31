@@ -6,6 +6,7 @@ const merchantApplicationSchema = new mongoose.Schema(
       firstName: { type: String, required: true, trim: true },
       lastName: { type: String, required: true, trim: true },
       email: { type: String, required: true, lowercase: true, trim: true },
+      emailVerified: { type: Boolean, default: false },
       countryDialCode: { type: String, default: '', trim: true },
       countryIso: { type: String, default: '', trim: true, uppercase: true },
       mobileNational: { type: String, default: '', trim: true },

@@ -21,7 +21,6 @@ const customerSessionCheckinSchema = new mongoose.Schema(
     },
     mobile: {
       type: String,
-      required: true,
       trim: true,
     },
     name: {
@@ -41,8 +40,8 @@ const customerSessionCheckinSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending_otp', 'completed', 'placed'],
-      default: 'completed',
+      enum: ['pending_otp', 'completed', 'placed', 'pending'],
+      default: 'pending',
     },
     otp: {
       type: String,

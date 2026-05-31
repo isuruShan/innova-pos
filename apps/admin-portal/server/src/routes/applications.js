@@ -100,6 +100,128 @@ router.get('/:id/br-preview', authenticateJWT, authorize('superadmin'), async (r
   }
 });
 
+// GET /applications/verify-email — verify applicant email via token (public)
+router.get('/verify-email', async (req, res) => {
+  try {
+    const { token } = req.query;
+    if (!token) {
+      return res.status(400).send('<h1>Invalid Link</h1><p>Verification token is missing.</p>');
+    }
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'jwt_secret_key');
+    const application = await MerchantApplication.findById(decoded.applicationId);
+    if (!application) {
+      return res.status(404).send('<h1>Not Found</h1><p>Application not found.</p>');
+    }
+    if (application.status === 'approved' || application.status === 'rejected') {
+      return res.status(400).send('<h1>Link Expired</h1><p>This application has already been processed.</p>');
+    }
+
+    application.personal.emailVerified = true;
+    await application.save();
+
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Email Verified</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #0b1220; color: #e2e8f0; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+          .card { background-color: #151f2e; border: 1px solid #1e293b; padding: 40px; border-radius: 16px; text-align: center; max-w: 400px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); }
+          h1 { color: #10b981; font-size: 24px; margin-top: 0; }
+          p { color: #94a3b8; font-size: 15px; line-height: 1.6; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <h1>Email Verified Successfully! 🎉</h1>
+          <p>Thank you for verifying your email address. Our team will review your application and process it shortly.</p>
+          <p style="font-size:13px;color:#64748b;margin-top:20px;">You can safely close this browser window now.</p>
+        </div>
+      </body>
+      </html>
+    `);
+  } catch (err) {
+    res.status(400).send('<h1>Verification Failed</h1><p>The verification link is invalid or has expired.</p>');
+  }
+});
+
+// POST /applications/:id/send-verification — Send verification email to applicant (superadmin only)
+router.post('/:id/send-verification', authenticateJWT, authorize('superadmin'), async (req, res) => {
+  try {
+    const application = await MerchantApplication.findById(req.params.id);
+    if (!application) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+    if (application.status === 'approved' || application.status === 'rejected') {
+      return res.status(400).json({ message: 'Cannot verify email for a completed application' });
+    }
+
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign(
+      { applicationId: application._id },
+      process.env.JWT_SECRET || 'jwt_secret_key',
+      { expiresIn: '24h' }
+    );
+
+    const adminUrl = process.env.ADMIN_URL || 'http://localhost:5174';
+    const verificationUrl = `${adminUrl}/api/applications/verify-email?token=${token}`;
+
+    const { sendEmailVerificationEmail } = require('../utils/mailer');
+    await sendEmailVerificationEmail({
+      to: application.personal.email,
+      name: `${application.personal.firstName} ${application.personal.lastName}`,
+      verificationUrl,
+    });
+
+    res.json({ success: true, message: 'Verification email sent' });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
+// PUT /applications/:id/email — update applicant's email address (superadmin only, request stage only)
+router.put('/:id/email', authenticateJWT, authorize('superadmin'), async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: 'A valid email address is required' });
+    }
+
+    const application = await MerchantApplication.findById(req.params.id);
+    if (!application) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    // Check if the application is in request stage (pending or under_review)
+    if (application.status === 'approved' || application.status === 'rejected') {
+      return res.status(400).json({ message: 'Cannot update email for a completed application' });
+    }
+
+    const oldEmail = application.personal.email;
+    application.personal.email = email.trim().toLowerCase();
+    
+    // Reset verification status if the email is changed
+    if (oldEmail !== application.personal.email) {
+      application.personal.emailVerified = false;
+    }
+
+    await application.save();
+
+    await emitAudit({
+      req,
+      action: 'APPLICATION_EMAIL_UPDATED',
+      resource: 'MerchantApplication',
+      resourceId: application._id,
+      changes: { before: { email: oldEmail }, after: { email: application.personal.email } },
+    });
+
+    res.json({ success: true, message: 'Email address updated successfully', email: application.personal.email });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 // GET /applications/:id — single application detail
 router.get('/:id', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {

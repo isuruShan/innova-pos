@@ -142,11 +142,27 @@ const sendAdminResetPasswordEmail = async ({ to, name, tempPassword, loginUrl, a
   });
 };
 
+const sendEmailVerificationEmail = async ({ to, name, verificationUrl }) => {
+  await sendEmail({
+    to,
+    subject: '✉️ Verify Your Cafinity Email Address',
+    html: `
+      ${emailHeading('Email Verification ✉️', 'Confirm your email address')}
+      ${emailParagraph(`Hi <strong>${esc(name)}</strong>,`)}
+      ${emailParagraph('Thank you for applying for a Cafinity merchant account. Please click the button below to verify your email address.')}
+      ${emailAlert('🕒 <strong>Verification Required:</strong> This verification link must be completed before your account application can be approved.', 'warning')}
+      ${emailButton(verificationUrl, '✉️ Verify My Email')}
+      ${emailParagraph('<span style="color:#94a3b8;font-size:14px">If you did not submit this application, you can safely ignore this email.</span>')}
+    `,
+  });
+};
+
 module.exports = {
   sendEmail,
   sendWelcomeEmail,
   sendRejectionEmail,
   sendPasswordResetEmail,
   sendAdminResetPasswordEmail,
+  sendEmailVerificationEmail,
   getMailConfigurationIssue,
 };
