@@ -106,6 +106,22 @@ export default function CustomerTerminal() {
 
   const channelRef = useRef(null);
 
+  function resetForm() {
+    setMobile('');
+    setSelectedCountry(COUNTRY_CODES[0]);
+    setName('');
+    setEmail('');
+    setBirthYear('');
+    setBirthMonth('');
+    setBirthDay('');
+    setOtp('');
+    setOtpRequired(false);
+    setShowInputScreen(false);
+    setErrorMessage('');
+    setSuccessMessage('');
+    setActiveField('mobile');
+  }
+
   useEffect(() => {
     // Connect to the dual monitor BroadcastChannel
     const channel = new BroadcastChannel('pos-dual-monitor');
@@ -145,22 +161,6 @@ export default function CustomerTerminal() {
       channel.close();
     };
   }, [orderState.customerSessionId]);
-
-  function resetForm() {
-    setMobile('');
-    setSelectedCountry(COUNTRY_CODES[0]);
-    setName('');
-    setEmail('');
-    setBirthYear('');
-    setBirthMonth('');
-    setBirthDay('');
-    setOtp('');
-    setOtpRequired(false);
-    setShowInputScreen(false);
-    setErrorMessage('');
-    setSuccessMessage('');
-    setActiveField('mobile');
-  }
 
   // Keyboard/Numpad inputs handler
   const handleKeyPress = (key) => {
