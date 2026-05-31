@@ -756,62 +756,6 @@ export default function NewOrder() {
     };
   }, [qc]);
 
-  useEffect(() => {
-    const channel = new BroadcastChannel('pos-dual-monitor');
-    channel.postMessage({
-      type: 'ORDER_UPDATE',
-      payload: {
-        items: cart,
-        subtotal,
-        taxAmount,
-        totalAmount: total,
-        discountTotal,
-        serviceFeeAmount,
-        customerSessionId: activeDraft.customerSessionId,
-        selectedCustomer,
-      }
-    });
-
-    let eventSource = null;
-    if (activeDraft.customerSessionId) {
-      const publicWebUrl = getPublicWebUrl() || 'http://localhost:5000';
-      eventSource = new EventSource(`${publicWebUrl}/api/customers/session-checkin-sse/${activeDraft.customerSessionId}`);
-      
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'CHECKIN_COMPLETE' && data.customer) {
-            setSelectedCustomer(data.customer);
-            setCustomerSearch(data.customer.name || data.customer.mobile || '');
-            qc.invalidateQueries({ queryKey: ['customers-search'] });
-            qc.invalidateQueries({ queryKey: ['customer-loyalty'] });
-            showToast(`User ${data.customer.name} added to the order!`);
-            
-            // Forward connection notification to the customer screen so it updates greeting
-            channel.postMessage({
-              type: 'CUSTOMER_CONNECTED',
-              payload: data.customer
-            });
-          }
-        } catch (err) {
-          console.error('Failed to parse SSE checkin event:', err);
-        }
-      };
-    }
-
-    const onChannelMessage = (e) => {
-      if (e.data.type === 'CUSTOMER_CHECKED_IN_DIRECT') {
-        // Handled via SSE automatically
-      }
-    };
-    channel.addEventListener('message', onChannelMessage);
-
-    return () => {
-      if (eventSource) eventSource.close();
-      channel.removeEventListener('message', onChannelMessage);
-      channel.close();
-    };
-  }, [cart, subtotal, taxAmount, total, discountTotal, serviceFeeAmount, activeDraft.customerSessionId, selectedCustomer, qc, setSelectedCustomer, setCustomerSearch, showToast]);
 
   const { data: paidAddons } = useQuery({
     queryKey: ['tenant-paid-addons'],
@@ -1243,6 +1187,64 @@ export default function NewOrder() {
     }
     return map;
   }, [drafts, cafeTables]);
+
+  useEffect(() => {
+    const channel = new BroadcastChannel('pos-dual-monitor');
+    channel.postMessage({
+      type: 'ORDER_UPDATE',
+      payload: {
+        items: cart,
+        subtotal,
+        taxAmount,
+        totalAmount: total,
+        discountTotal,
+        serviceFeeAmount,
+        customerSessionId: activeDraft.customerSessionId,
+        selectedCustomer,
+      }
+    });
+
+    let eventSource = null;
+    if (activeDraft.customerSessionId) {
+      const publicWebUrl = getPublicWebUrl() || 'http://localhost:5000';
+      eventSource = new EventSource(`${publicWebUrl}/api/customers/session-checkin-sse/${activeDraft.customerSessionId}`);
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'CHECKIN_COMPLETE' && data.customer) {
+            setSelectedCustomer(data.customer);
+            setCustomerSearch(data.customer.name || data.customer.mobile || '');
+            qc.invalidateQueries({ queryKey: ['customers-search'] });
+            qc.invalidateQueries({ queryKey: ['customer-loyalty'] });
+            showToast(`User ${data.customer.name} added to the order!`);
+            
+            // Forward connection notification to the customer screen so it updates greeting
+            channel.postMessage({
+              type: 'CUSTOMER_CONNECTED',
+              payload: data.customer
+            });
+          }
+        } catch (err) {
+          console.error('Failed to parse SSE checkin event:', err);
+        }
+      };
+    }
+
+    const onChannelMessage = (e) => {
+      if (e.data.type === 'CUSTOMER_CHECKED_IN_DIRECT') {
+        // Handled via SSE automatically
+      }
+    };
+    channel.addEventListener('message', onChannelMessage);
+
+    return () => {
+      if (eventSource) eventSource.close();
+      channel.removeEventListener('message', onChannelMessage);
+      channel.close();
+    };
+  }, [cart, subtotal, taxAmount, total, discountTotal, serviceFeeAmount, activeDraft.customerSessionId, selectedCustomer, qc, setSelectedCustomer, setCustomerSearch, showToast]);
+
 
   useEffect(() => {
     setPaymentModalOpen(false);
