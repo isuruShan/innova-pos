@@ -120,7 +120,7 @@ async function getSubscriptionActiveFromDb(tenantId) {
  * Allows only subscription self-service routes (+ auth profile is handled separately).
  */
 function isSubscriptionServiceRoute(req) {
-  const path = String(req.path || req.originalUrl || '').split('?')[0];
+  const path = String(req.originalUrl || req.path || '').split('?')[0];
   if (path.startsWith('/api/auth/login') || path.startsWith('/api/auth/forgot') || path.startsWith('/api/auth/reset')) {
     return true;
   }
