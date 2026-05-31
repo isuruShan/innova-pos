@@ -1,4 +1,6 @@
 import { useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import api from '../../api/axios';
 import {
   Link2, X, ChevronDown, ChevronUp, ToggleLeft, ToggleRight,
   Upload, ImageIcon, Loader2, Package,
@@ -358,7 +360,7 @@ function VariantImagePicker({ images, onChange }) {
   );
 }
 
-function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, priceLabel }) {
+function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, priceLabel, activePartners }) {
   const [newValueInput, setNewValueInput] = useState({});
   const [customVariantType, setCustomVariantType] = useState('');
   const [showCustomTypeInput, setShowCustomTypeInput] = useState(false);
@@ -621,6 +623,32 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                                   disabled={!available}
                                   className={`w-full bg-slate-950 border text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none disabled:opacity-40 ${isDefault ? 'border-amber-500/50' : 'border-slate-800'}`}
                                 />
+                                {available && activePartners?.map((partner) => (
+                                  <div key={partner._id} className="flex items-center gap-1 mt-1">
+                                    <span className="text-[9px] text-slate-500 w-8 truncate" title={partner.name}>
+                                      {partner.name.slice(0, 3)}:
+                                    </span>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      value={v.channelPrices?.[partner._id] || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        const newChannelPrices = {
+                                          ...(v.channelPrices || {}),
+                                          [partner._id]: val === '' ? undefined : Number(val),
+                                        };
+                                        const vIdx = findVariantIndex(form.variants, size, flavor);
+                                        if (vIdx >= 0) {
+                                          patchVariant(vIdx, { channelPrices: newChannelPrices });
+                                        }
+                                      }}
+                                      placeholder="base"
+                                      className="w-full bg-slate-950 border border-slate-900 text-[var(--pos-text-primary)] rounded px-1 py-0.5 text-[10px] focus:outline-none"
+                                    />
+                                  </div>
+                                ))}
                                 <div className="flex items-center justify-between gap-1">
                                   <button
                                     type="button"
@@ -691,32 +719,59 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                     </div>
                   </div>
                   <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
-                    <div className="flex gap-2">
-                      <div className="w-24">
-                        <label className="text-[9px] text-slate-500 block mb-0.5">{priceLabel} *</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={v.price}
-                          onChange={(e) => patchVariant(idx, { price: e.target.value })}
-                          placeholder="0.00"
-                          required={v.available !== false}
-                          disabled={v.available === false}
-                          className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none disabled:opacity-40"
-                        />
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <div className="w-24">
+                          <label className="text-[9px] text-slate-500 block mb-0.5">{priceLabel} *</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={v.price}
+                            onChange={(e) => patchVariant(idx, { price: e.target.value })}
+                            placeholder="0.00"
+                            required={v.available !== false}
+                            disabled={v.available === false}
+                            className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none disabled:opacity-40"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-[9px] text-slate-500 block mb-0.5">Desc override</label>
+                          <input
+                            type="text"
+                            value={v.description || ''}
+                            onChange={(e) => patchVariant(idx, { description: e.target.value })}
+                            placeholder="Falls back to product"
+                            disabled={v.available === false}
+                            className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none disabled:opacity-40"
+                          />
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <label className="text-[9px] text-slate-500 block mb-0.5">Desc override</label>
-                        <input
-                          type="text"
-                          value={v.description || ''}
-                          onChange={(e) => patchVariant(idx, { description: e.target.value })}
-                          placeholder="Falls back to product"
-                          disabled={v.available === false}
-                          className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none disabled:opacity-40"
-                        />
-                      </div>
+                      {v.available !== false && activePartners?.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pt-1.5 border-t border-slate-800/60">
+                          {activePartners.map((partner) => (
+                            <div key={partner._id} className="w-24">
+                              <label className="text-[9px] text-slate-500 block mb-0.5">{partner.name} Price</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={v.channelPrices?.[partner._id] || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const newChannelPrices = {
+                                    ...(v.channelPrices || {}),
+                                    [partner._id]: val === '' ? undefined : Number(val),
+                                  };
+                                  patchVariant(idx, { channelPrices: newChannelPrices });
+                                }}
+                                placeholder="Use base"
+                                className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none placeholder-slate-600"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-col items-center">
                       <label className="text-[9px] text-slate-500 block mb-0.5 self-start">Photo</label>
@@ -758,6 +813,13 @@ export default function MenuItemFormModal({
   const { currencySymbol } = useBranding();
   const { selectedStoreId } = useStoreContext();
   const priceLabel = `Price (${currencySymbol})`;
+
+  const { data: partners = [] } = useQuery({
+    queryKey: ['foodmarket-partners'],
+    queryFn: () => api.get('/foodmarket-partners').then((r) => r.data),
+    enabled: open,
+  });
+  const activePartners = partners.filter((p) => p.isActive);
 
   const footer = (
     <div className="flex gap-3">
@@ -853,6 +915,37 @@ export default function MenuItemFormModal({
           </div>
         )}
 
+        {!form.hasVariants && activePartners.length > 0 && (
+          <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-slate-800/60 space-y-3">
+            <p className="text-xs font-semibold text-slate-400">Foodmarket Partner Price Overrides</p>
+            <div className="grid grid-cols-2 gap-3">
+              {activePartners.map((partner) => (
+                <div key={partner._id}>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">{partner.name} Price</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.channelPrices?.[partner._id] || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setForm((f) => ({
+                        ...f,
+                        channelPrices: {
+                          ...f.channelPrices,
+                          [partner._id]: val === '' ? undefined : Number(val),
+                        },
+                      }));
+                    }}
+                    placeholder="Use base price"
+                    className="w-full bg-slate-900 border border-slate-800 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-600"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-1.5">Description</label>
           <textarea
@@ -901,6 +994,7 @@ export default function MenuItemFormModal({
                 savedCriteria={savedCriteria}
                 saveCriteriaMutation={saveCriteriaMutation}
                 priceLabel={priceLabel}
+                activePartners={activePartners}
               />
             )}
           </>
@@ -917,19 +1011,24 @@ export default function MenuItemFormModal({
           </button>
         </div>
 
-        {/* Ingredients section - only show when editing existing item */}
-        {editing?._id && !form.isCombo && (
+        {/* Ingredients section */}
+        {!form.isCombo && (
           <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-purple-500/20">
             <p className="text-sm font-semibold text-purple-400 mb-3 flex items-center gap-1.5">
               <Package size={14} /> Ingredients
             </p>
-            <IngredientsBuilder
-              menuItemId={editing._id}
-              storeId={selectedStoreId}
-            />
+            {editing?._id ? (
+              <IngredientsBuilder
+                menuItemId={editing._id}
+                storeId={selectedStoreId}
+              />
+            ) : (
+              <p className="text-xs text-slate-500 bg-slate-900/40 border border-slate-800 rounded-lg p-3">
+                To link ingredients to this new product, please save the item first. Once saved, reopen the product settings to customize the ingredient recipe list.
+              </p>
+            )}
           </div>
         )}
-
         {formError && (
           <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm">{formError}</div>
         )}

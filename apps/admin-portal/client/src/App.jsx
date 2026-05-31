@@ -43,6 +43,8 @@ import AccountingPage from './pages/admin/AccountingPage';
 import CustomersAdminPage from './pages/admin/CustomersAdminPage';
 import PromotionsAdminPage from './pages/admin/PromotionsAdminPage';
 import NotificationsPage from './pages/admin/NotificationsPage';
+import FoodmarketPartnersPage from './pages/admin/FoodmarketPartnersPage';
+import FoodmarketCommissionsPage from './pages/admin/FoodmarketCommissionsPage';
 import SessionReviewPage from './pages/admin/SessionReviewPage';
 import ReportsPortal from './pages/admin/ReportsPortal';
 const PrivateRoute = ({ children, roles }) => {
@@ -229,6 +231,16 @@ export default function App() {
           <Route path="/promotions" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><PromotionsAdminPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/foodmarket-partners" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><FoodmarketPartnersPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/foodmarket-commissions" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><FoodmarketCommissionsPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/notifications" element={

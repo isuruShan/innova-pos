@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { publishNotificationRefresh } = require('./notificationBus');
+const { sendPushNotification } = require('./pushNotifier');
 
 function castTenantId(tenantId) {
   if (tenantId == null) return tenantId;
@@ -22,6 +23,8 @@ async function createNotification(tenantId, userId, payload) {
     meta: payload.meta || {},
   });
   publishNotificationRefresh(tenantId, [userId]);
+  // Dispatch dynamic push notification
+  sendPushNotification(userId, payload).catch(() => {});
   return doc;
 }
 
@@ -52,7 +55,10 @@ async function notifyMerchantAdmins(tenantId, payload, options = {}) {
   }));
 
   const inserted = await Notification.insertMany(docs);
-  publishNotificationRefresh(tid, admins.map((a) => a._id));
+  const targetIds = admins.map((a) => a._id);
+  publishNotificationRefresh(tid, targetIds);
+  // Dispatch push notifications to merchant admins
+  sendPushNotification(targetIds, payload).catch(() => {});
   return inserted;
 }
 
@@ -105,7 +111,10 @@ async function notifyPosStaffOrderStatusChange({
   }));
 
   const inserted = await Notification.insertMany(docs);
-  publishNotificationRefresh(tid, targets.map((u) => u._id));
+  const targetIds = targets.map((u) => u._id);
+  publishNotificationRefresh(tid, targetIds);
+  // Dispatch push notification to relevant staff
+  sendPushNotification(targetIds, { type: 'order_status_changed', title, body, meta: docs[0].meta }).catch(() => {});
   return inserted;
 }
 
@@ -161,7 +170,10 @@ async function notifyCashiersTableWaiterCall({
   }));
 
   const inserted = await Notification.insertMany(docs);
-  publishNotificationRefresh(tid, targets.map((u) => u._id));
+  const targetIds = targets.map((u) => u._id);
+  publishNotificationRefresh(tid, targetIds);
+  // Dispatch push notification to relevant cashier/manager staff
+  sendPushNotification(targetIds, { type: 'table_waiter_call', title, body, meta: docs[0].meta }).catch(() => {});
   return inserted;
 }
 
@@ -216,7 +228,10 @@ async function notifyCashiersQrOrderChange({ tenantId, storeId, tableLabel, orde
   }));
 
   const inserted = await Notification.insertMany(docs);
-  publishNotificationRefresh(tid, targets.map((u) => u._id));
+  const targetIds = targets.map((u) => u._id);
+  publishNotificationRefresh(tid, targetIds);
+  // Dispatch push notifications to targets
+  sendPushNotification(targetIds, { type: 'qr_order_updated', title, body, meta: docs[0].meta }).catch(() => {});
   return inserted;
 }
 
@@ -259,7 +274,10 @@ async function notifyCashiersUberEatsOrder({ tenantId, storeId, order }) {
   }));
 
   const inserted = await Notification.insertMany(docs);
-  publishNotificationRefresh(tid, targets.map((u) => u._id));
+  const targetIds = targets.map((u) => u._id);
+  publishNotificationRefresh(tid, targetIds);
+  // Dispatch push notifications
+  sendPushNotification(targetIds, { type: 'uber_order_new', title, body, meta: docs[0].meta }).catch(() => {});
   return inserted;
 }
 

@@ -29,6 +29,8 @@ const emptyForm = {
   applicableCategories: [],
   maxDiscountAmount: '',
   active: true,
+  foodmarketPartnerId: '',
+  pointsEarning: '',
 };
 
 export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) {
@@ -74,6 +76,8 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
         applicableCategories: row.applicableCategories || [],
         maxDiscountAmount: row.maxDiscountAmount != null ? String(row.maxDiscountAmount) : '',
         active: row.active !== false,
+        foodmarketPartnerId: row.foodmarketPartnerId ? String(row.foodmarketPartnerId) : '',
+        pointsEarning: row.pointsEarning != null ? String(row.pointsEarning) : '',
       });
     }).catch(() => {});
   }, [initialRewardId]);
@@ -128,6 +132,12 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
     queryFn: () => api.get('/menu').then((r) => r.data),
     enabled: isStoreReady,
   });
+
+  const { data: partners = [] } = useQuery({
+    queryKey: ['admin-foodmarket-partners'],
+    queryFn: () => api.get('/foodmarket-partners').then((r) => r.data),
+  });
+  const activePartners = partners.filter((p) => p.isActive);
 
   const save = useMutation({
     mutationFn: ({ id, payload }) =>
@@ -189,6 +199,8 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
       maxDiscountAmount:
         r.maxDiscountAmount != null && r.maxDiscountAmount !== '' ? String(r.maxDiscountAmount) : '',
       active: r.active !== false,
+      foodmarketPartnerId: r.foodmarketPartnerId ? String(r.foodmarketPartnerId) : '',
+      pointsEarning: r.pointsEarning != null ? String(r.pointsEarning) : '',
     });
   };
 
@@ -211,6 +223,8 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
           ? null
           : Math.max(0, Number(form.maxDiscountAmount) || 0),
       active: Boolean(form.active),
+      foodmarketPartnerId: form.foodmarketPartnerId || null,
+      pointsEarning: Number(form.pointsEarning) || 0,
     };
     if (form.rewardScope === 'tenant') {
       payload.scope = 'tenant';
@@ -317,6 +331,7 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
             <option value="order_discount_amount">Fixed amount off order</option>
             <option value="order_discount_percent">Percent off order</option>
             <option value="free_item">Free item</option>
+            <option value="points_earning">Points Earning</option>
           </select>
         </div>
         <div className="relative flex-1 max-w-md">
@@ -524,6 +539,7 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
                   <option value="order_discount_amount">Fixed amount off order</option>
                   <option value="order_discount_percent">Percent off order</option>
                   <option value="free_item">Free item</option>
+                  <option value="points_earning">Points Earning (Loyalty Perk)</option>
                 </select>
               </label>
               {form.rewardType === 'order_discount_amount' ? (
@@ -548,6 +564,19 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
                     max={100}
                     value={form.discountPercent}
                     onChange={(e) => setForm((f) => ({ ...f, discountPercent: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </label>
+              ) : null}
+              {form.rewardType === 'points_earning' ? (
+                <label className="block text-xs text-gray-600">
+                  Points earned
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={form.pointsEarning}
+                    onChange={(e) => setForm((f) => ({ ...f, pointsEarning: e.target.value }))}
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                   />
                 </label>
@@ -587,6 +616,25 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
                   onPatch={(patch) => setForm((f) => ({ ...f, ...patch }))}
                 />
               </div>
+
+              {activePartners.length > 0 && (
+                <label className="block text-xs text-gray-600">
+                  Foodmarket Partner (Optional)
+                  <select
+                    value={form.foodmarketPartnerId || ''}
+                    onChange={(e) => setForm((f) => ({ ...f, foodmarketPartnerId: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">All Channels / In-Store</option>
+                    {activePartners.map((p) => (
+                      <option key={p._id} value={p._id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
               <label className="flex items-center gap-2 text-sm text-gray-800">
                 <input
                   type="checkbox"

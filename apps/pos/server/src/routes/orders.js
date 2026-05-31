@@ -179,6 +179,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       paymentAmount,
       customerId,
       loyaltyRewardId,
+      foodmarketPartnerId,
     } = req.body;
     if (!items || items.length === 0)
       return res.status(400).json({ message: 'Items are required' });
@@ -228,7 +229,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
     if (menuDocsCount !== uniqueMenuIds.length) {
       return res.status(400).json({ message: 'One or more items are not available in the selected store' });
     }
-    const enrichedItems = await enrichItems(items, req.tenantId, storeId);
+    const enrichedItems = await enrichItems(items, req.tenantId, storeId, foodmarketPartnerId);
     const subtotal = enrichedItems.reduce((sum, i) => sum + i.price * i.qty, 0);
 
     // Fetch per-tenant settings
@@ -274,6 +275,9 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       $and: [
         { $or: [{ storeId }, { storeId: null }] },
         { $or: [{ approvalStatus: 'approved' }, { approvalStatus: { $exists: false } }] },
+        foodmarketPartnerId
+          ? { $or: [{ foodmarketPartnerId }, { foodmarketPartnerId: null }] }
+          : { foodmarketPartnerId: null }
       ],
     });
     const activePromos = activePromosRaw.filter((p) => {
@@ -300,6 +304,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
         approvalStatus: 'approved',
         redemptionType: 'automatic',
         $or: [{ storeId }, { storeId: null }],
+        foodmarketPartnerId: foodmarketPartnerId ? { $in: [foodmarketPartnerId, null] } : null
       })
         .sort({ createdAt: 1 })
         .lean();
@@ -308,6 +313,14 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       for (const reward of autoRewards) {
         const eff = getEffectiveTier(customerLean, tiers);
         if (eff.level < (reward.minTierLevel || 1)) continue;
+        if (reward.rewardType === 'points_earning') {
+          appliedAutomaticLoyalty.push({
+            reward: reward._id,
+            name: reward.name,
+            discountAmount: 0,
+          });
+          continue;
+        }
         const d = computeLoyaltyRewardDiscount(reward, enrichedItems, remaining);
         if (d <= 0) continue;
         remaining -= d;
@@ -328,6 +341,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
         $or: [{ storeId }, { storeId: null }],
         approvalStatus: 'approved',
         active: true,
+        foodmarketPartnerId: foodmarketPartnerId ? { $in: [foodmarketPartnerId, null] } : null
       }).lean();
       if (!reward) {
         return res.status(400).json({ message: 'Loyalty reward is not available' });
@@ -343,16 +357,26 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       if (Number(customerLeanForOrder.lifetimePoints || 0) < Number(reward.pointsCost || 0)) {
         return res.status(400).json({ message: 'Insufficient loyalty points' });
       }
-      loyaltyDiscountPoints = computeLoyaltyRewardDiscount(reward, enrichedItems, remainingAfterPromos);
-      if (loyaltyDiscountPoints <= 0) {
-        return res.status(400).json({ message: 'This reward does not apply to the current cart' });
+      if (reward.rewardType === 'points_earning') {
+        loyaltyDiscountPoints = 0;
+        loyaltyRedemptionPayload = {
+          reward: reward._id,
+          name: reward.name,
+          pointsCost: reward.pointsCost,
+          discountAmount: 0,
+        };
+      } else {
+        loyaltyDiscountPoints = computeLoyaltyRewardDiscount(reward, enrichedItems, remainingAfterPromos);
+        if (loyaltyDiscountPoints <= 0) {
+          return res.status(400).json({ message: 'This reward does not apply to the current cart' });
+        }
+        loyaltyRedemptionPayload = {
+          reward: reward._id,
+          name: reward.name,
+          pointsCost: reward.pointsCost,
+          discountAmount: Math.round(loyaltyDiscountPoints * 100) / 100,
+        };
       }
-      loyaltyRedemptionPayload = {
-        reward: reward._id,
-        name: reward.name,
-        pointsCost: reward.pointsCost,
-        discountAmount: Math.round(loyaltyDiscountPoints * 100) / 100,
-      };
     }
 
     const discountTotal = Math.round((promoDiscountTotal + automaticLoyaltyDiscount + loyaltyDiscountPoints) * 100) / 100;
@@ -375,6 +399,22 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       ? Math.round(serviceFeeFixed * 100) / 100
       : Math.round(discountedSubtotal * (serviceFeeRate / 100) * 100) / 100;
     const totalAmount = Math.round((discountedSubtotal + taxAmount + serviceFeeAmount) * 100) / 100;
+
+    let commissionAmount = 0;
+    if (foodmarketPartnerId) {
+      const FoodmarketPartner = require('../models/FoodmarketPartner');
+      const partner = await FoodmarketPartner.findOne({ _id: foodmarketPartnerId, tenantId: req.tenantId });
+      if (partner && partner.isActive) {
+        const type = partner.commissionType;
+        if (type === 'flat' || type === 'both') {
+          commissionAmount += partner.commissionFlat || 0;
+        }
+        if (type === 'percentage' || type === 'both') {
+          commissionAmount += (subtotal * (partner.commissionPercentage || 0)) / 100;
+        }
+        commissionAmount = Math.round(commissionAmount * 100) / 100;
+      }
+    }
 
     const orderPayload = {
       tenantId: req.tenantId,
@@ -403,6 +443,8 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       updatedBy: req.user.id,
       ...(clientRequestId ? { clientRequestId } : {}),
       ...(loyaltyRedemptionPayload ? { loyaltyRedemption: loyaltyRedemptionPayload } : {}),
+      foodmarketPartnerId: foodmarketPartnerId || null,
+      commissionAmount,
     };
 
     if (req.body.status && VALID_STATUSES.includes(req.body.status)) {
@@ -424,6 +466,49 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
         await consumeInventoryForOrder(order._id, req.user.id);
       } catch (err) {
         console.error(`[Inventory Consumption Create-Error] order ${order._id} failed:`, err.message);
+      }
+      
+      if (order.customerId && (await isLoyaltyAddonActiveForTenant(req.tenantId))) {
+        const cfg = await LoyaltyProgramConfig.findOne({ tenantId: req.tenantId }).lean();
+        let earned = 0;
+        if (!cfg || cfg.isEnabled !== false) {
+          const spend = Math.max(1, cfg?.spendPerEarnBlock || 100);
+          const blk = Math.max(0, cfg?.pointsPerEarnBlock ?? 1);
+          earned = Math.floor(Number(order.totalAmount || 0) / spend) * blk;
+        }
+        if (order.appliedAutomaticLoyalty && order.appliedAutomaticLoyalty.length > 0) {
+          for (const auto of order.appliedAutomaticLoyalty) {
+            const rwd = await LoyaltyReward.findById(auto.reward).lean();
+            if (rwd && rwd.rewardType === 'points_earning' && rwd.pointsEarning > 0) {
+              earned += rwd.pointsEarning;
+            }
+          }
+        }
+        if (order.loyaltyRedemption && order.loyaltyRedemption.reward) {
+          const rwd = await LoyaltyReward.findById(order.loyaltyRedemption.reward).lean();
+          if (rwd && rwd.rewardType === 'points_earning' && rwd.pointsEarning > 0) {
+            earned += rwd.pointsEarning;
+          }
+        }
+        if (earned > 0) {
+          await Customer.updateOne(
+            { _id: order.customerId, tenantId: req.tenantId },
+            {
+              $inc: { lifetimePoints: earned },
+              $set: {
+                lastLoyaltyActivityAt: new Date(),
+                retentionStatus: 'ok',
+              },
+            },
+          );
+          order.loyaltyPointsEarned = (order.loyaltyPointsEarned || 0) + earned;
+          await order.save();
+        } else {
+          await Customer.updateOne(
+            { _id: order.customerId, tenantId: req.tenantId },
+            { $set: { lastLoyaltyActivityAt: new Date(), retentionStatus: 'ok' } },
+          );
+        }
       }
     }
 
@@ -710,6 +795,20 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
         const spend = Math.max(1, cfg?.spendPerEarnBlock || 100);
         const blk = Math.max(0, cfg?.pointsPerEarnBlock ?? 1);
         earned = Math.floor(Number(order.totalAmount || 0) / spend) * blk;
+      }
+      if (order.appliedAutomaticLoyalty && order.appliedAutomaticLoyalty.length > 0) {
+        for (const auto of order.appliedAutomaticLoyalty) {
+          const rwd = await LoyaltyReward.findById(auto.reward).lean();
+          if (rwd && rwd.rewardType === 'points_earning' && rwd.pointsEarning > 0) {
+            earned += rwd.pointsEarning;
+          }
+        }
+      }
+      if (order.loyaltyRedemption && order.loyaltyRedemption.reward) {
+        const rwd = await LoyaltyReward.findById(order.loyaltyRedemption.reward).lean();
+        if (rwd && rwd.rewardType === 'points_earning' && rwd.pointsEarning > 0) {
+          earned += rwd.pointsEarning;
+        }
       }
       if (earned > 0) {
         await Customer.updateOne(

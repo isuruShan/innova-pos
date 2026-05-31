@@ -8,7 +8,7 @@ function roundMoney2(n) {
   return Math.round(x * 100) / 100;
 }
 
-async function enrichItems(items, tenantId, storeId) {
+async function enrichItems(items, tenantId, storeId, foodmarketPartnerId = null) {
   const menuIds = items.map((i) => i.menuItem);
   const menuDocs = await MenuItem.find({ _id: { $in: menuIds }, tenantId, storeId }).lean();
   const menuMap = Object.fromEntries(menuDocs.map((m) => [m._id.toString(), m]));
@@ -25,8 +25,21 @@ async function enrichItems(items, tenantId, storeId) {
       const variant = doc.variants?.find(v => String(v._id) === String(variantId));
       if (variant) {
         price = variant.price;
+        if (foodmarketPartnerId && variant.channelPrices) {
+          const partnerPrice = variant.channelPrices instanceof Map ? variant.channelPrices.get(String(foodmarketPartnerId)) : variant.channelPrices[String(foodmarketPartnerId)];
+          if (partnerPrice !== undefined && partnerPrice !== null) {
+            price = partnerPrice;
+          }
+        }
         variantName = variant.name;
         variantAttributes = variant.attributes || [];
+      }
+    } else if (doc) {
+      if (foodmarketPartnerId && doc.channelPrices) {
+        const partnerPrice = doc.channelPrices instanceof Map ? doc.channelPrices.get(String(foodmarketPartnerId)) : doc.channelPrices[String(foodmarketPartnerId)];
+        if (partnerPrice !== undefined && partnerPrice !== null) {
+          price = partnerPrice;
+        }
       }
     }
 
@@ -55,7 +68,7 @@ async function enrichItems(items, tenantId, storeId) {
   });
 }
 
-async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId, orderStatus) {
+async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId, orderStatus, foodmarketPartnerId = null) {
   const prevById = new Map((prevItems || []).filter((i) => i._id).map((i) => [String(i._id), i]));
   const menuIds = [...new Set(incoming.map((i) => i.menuItem).filter(Boolean))];
   const menuDocs = await MenuItem.find({ _id: { $in: menuIds }, tenantId, storeId }).lean();
@@ -102,8 +115,21 @@ async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId, order
       const variant = doc.variants?.find(v => String(v._id) === String(variantId));
       if (variant) {
         price = variant.price;
+        if (foodmarketPartnerId && variant.channelPrices) {
+          const partnerPrice = variant.channelPrices instanceof Map ? variant.channelPrices.get(String(foodmarketPartnerId)) : variant.channelPrices[String(foodmarketPartnerId)];
+          if (partnerPrice !== undefined && partnerPrice !== null) {
+            price = partnerPrice;
+          }
+        }
         variantName = variant.name;
         variantAttributes = variant.attributes || [];
+      }
+    } else if (doc) {
+      if (foodmarketPartnerId && doc.channelPrices) {
+        const partnerPrice = doc.channelPrices instanceof Map ? doc.channelPrices.get(String(foodmarketPartnerId)) : doc.channelPrices[String(foodmarketPartnerId)];
+        if (partnerPrice !== undefined && partnerPrice !== null) {
+          price = partnerPrice;
+        }
       }
     }
 
@@ -169,6 +195,26 @@ async function recalculateOrderMoney(order) {
   order.serviceFeeFixed = serviceFeeFixed;
   order.serviceFeeAmount = serviceFeeAmount;
   order.totalAmount = Math.round((discountedSubtotal + order.taxAmount + order.serviceFeeAmount) * 100) / 100;
+
+  if (order.foodmarketPartnerId) {
+    const FoodmarketPartner = require('../models/FoodmarketPartner');
+    const partner = await FoodmarketPartner.findOne({ _id: order.foodmarketPartnerId, tenantId: order.tenantId });
+    if (partner && partner.isActive) {
+      let commission = 0;
+      const type = partner.commissionType;
+      if (type === 'flat' || type === 'both') {
+        commission += partner.commissionFlat || 0;
+      }
+      if (type === 'percentage' || type === 'both') {
+        commission += (order.subtotal * (partner.commissionPercentage || 0)) / 100;
+      }
+      order.commissionAmount = Math.round(commission * 100) / 100;
+    } else {
+      order.commissionAmount = 0;
+    }
+  } else {
+    order.commissionAmount = 0;
+  }
 }
 
 /**

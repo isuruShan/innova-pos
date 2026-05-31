@@ -21,7 +21,7 @@ export default function SignupCompletePage() {
             {[
               { icon: Clock, title: 'Review in progress', desc: 'Our team will verify your business details within 1–2 business days.' },
               { icon: Mail, title: 'Email notification', desc: 'You\'ll receive an email with your login credentials once approved.' },
-              { icon: Zap, title: 'Start your trial', desc: 'Log in and enjoy your 30-day free trial immediately after approval.' },
+              { icon: Zap, title: 'Start your trial', desc: 'Log in and enjoy your 14-day free trial immediately after approval.' },
             ].map(step => (
               <div key={step.title} className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-brand-brown-deep/5">

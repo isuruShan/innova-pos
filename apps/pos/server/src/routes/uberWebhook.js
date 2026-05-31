@@ -106,6 +106,31 @@ async function processWebhookEvent(tenant, uberStoreId, eventType, resourceId) {
     const subtotal = (uberOrder.payment?.subtotal || 0) / 100;
     const totalAmount = (uberOrder.payment?.total || 0) / 100;
 
+    const FoodmarketPartner = require('../models/FoodmarketPartner');
+    let partner = await FoodmarketPartner.findOne({ tenantId: tenant._id, name: { $regex: /uber/i } });
+    if (!partner) {
+      partner = await FoodmarketPartner.create({
+        tenantId: tenant._id,
+        name: 'Uber Eats',
+        commissionType: 'percentage',
+        commissionPercentage: 30,
+        commissionFlat: 0,
+        isActive: true,
+      });
+    }
+
+    let commissionAmount = 0;
+    if (partner && partner.isActive) {
+      const type = partner.commissionType;
+      if (type === 'flat' || type === 'both') {
+        commissionAmount += partner.commissionFlat || 0;
+      }
+      if (type === 'percentage' || type === 'both') {
+        commissionAmount += (subtotal * (partner.commissionPercentage || 0)) / 100;
+      }
+      commissionAmount = Math.round(commissionAmount * 100) / 100;
+    }
+
     // Create order document
     const orderDoc = new Order({
       tenantId: tenant._id,
@@ -118,6 +143,8 @@ async function processWebhookEvent(tenant, uberStoreId, eventType, resourceId) {
       paymentCollected: true,
       paymentType: 'online',
       reference: `#${uberOrder.display_id || resourceId.slice(0, 5)}`,
+      foodmarketPartnerId: partner._id,
+      commissionAmount: commissionAmount,
       uberDetails: {
         uberOrderId: resourceId,
         uberDisplayId: uberOrder.display_id || resourceId.slice(0, 5),

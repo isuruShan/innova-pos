@@ -245,4 +245,92 @@ router.get('/sales', protect, authorize('manager', 'merchant_admin', 'superadmin
   }
 });
 
+router.get('/foodmarket', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+  try {
+    const fromQ = req.query.from;
+    const toQ = req.query.to;
+    const partnerId = req.query.foodmarketPartnerId;
+    let startDate;
+    let endDate;
+
+    if (fromQ && toQ) {
+      const fromParsed = parseLocalDateOnly(String(fromQ));
+      const toParsed = parseLocalDateOnly(String(toQ));
+      if (!fromParsed || !toParsed) {
+        return res.status(400).json({ message: 'Invalid from or to date (use YYYY-MM-DD)' });
+      }
+      startDate = startOfLocalDay(fromParsed);
+      endDate = endOfLocalDay(toParsed);
+    } else {
+      const days = Math.min(366, Math.max(1, parseInt(req.query.days, 10) || 30));
+      endDate = endOfLocalDay(new Date());
+      const sd = new Date();
+      sd.setDate(sd.getDate() - (days - 1));
+      startDate = startOfLocalDay(sd);
+    }
+
+    const { getOrderArchiveModel } = require('../lib/archiveDb');
+    const OrderArchive = getOrderArchiveModel();
+
+    const queryParams = {
+      tenantId: req.tenantId,
+      ...buildStoreFilter(req),
+      status: 'completed',
+      createdAt: { $gte: startDate, $lte: endDate },
+      foodmarketPartnerId: partnerId ? partnerId : { $ne: null },
+    };
+
+    const [hotOrders, coldOrders] = await Promise.all([
+      Order.find(queryParams).populate({ path: 'foodmarketPartnerId', model: 'FoodmarketPartner', select: 'name commissionType commissionFlat commissionPercentage' }).lean(),
+      OrderArchive.find(queryParams).populate({ path: 'foodmarketPartnerId', model: 'FoodmarketPartner', select: 'name commissionType commissionFlat commissionPercentage' }).lean(),
+    ]);
+
+    const orders = [...hotOrders, ...coldOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    let totalRevenue = 0;
+    let totalCommissions = 0;
+    let ordersCount = orders.length;
+
+    const partnerSummary = {};
+
+    orders.forEach((o) => {
+      totalRevenue += o.totalAmount;
+      totalCommissions += o.commissionAmount || 0;
+
+      const pId = o.foodmarketPartnerId ? String(o.foodmarketPartnerId._id || o.foodmarketPartnerId) : 'unknown';
+      const pName = o.foodmarketPartnerId ? o.foodmarketPartnerId.name : 'Unknown Partner';
+
+      if (!partnerSummary[pId]) {
+        partnerSummary[pId] = {
+          id: pId,
+          name: pName,
+          ordersCount: 0,
+          revenue: 0,
+          commission: 0,
+        };
+      }
+      partnerSummary[pId].ordersCount += 1;
+      partnerSummary[pId].revenue += o.totalAmount;
+      partnerSummary[pId].commission += o.commissionAmount || 0;
+    });
+
+    res.json({
+      totalRevenue: Math.round(totalRevenue * 100) / 100,
+      totalCommissions: Math.round(totalCommissions * 100) / 100,
+      ordersCount,
+      partnerSummary: Object.values(partnerSummary),
+      orders: orders.map(o => ({
+        _id: o._id,
+        orderNumber: o.orderNumber,
+        createdAt: o.createdAt,
+        totalAmount: o.totalAmount,
+        commissionAmount: o.commissionAmount || 0,
+        partnerName: o.foodmarketPartnerId ? o.foodmarketPartnerId.name : 'Unknown Partner',
+      })),
+    });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 module.exports = router;

@@ -38,6 +38,10 @@ async function syncMenuToUber(tenantId, storeId) {
     throw new Error('No available menu items found to sync.');
   }
 
+  const FoodmarketPartner = require('../models/FoodmarketPartner');
+  const partner = await FoodmarketPartner.findOne({ tenantId, name: { $regex: /uber/i }, isActive: true });
+  const partnerIdStr = partner ? partner._id.toString() : null;
+
   // 3. Group items by category to build the Uber Eats schema
   const categoriesMap = {};
   const uberItems = [];
@@ -56,6 +60,14 @@ async function syncMenuToUber(tenantId, storeId) {
 
     const imageUrl = item.image || (item.images?.length > 0 ? item.images[0].url : '');
 
+    let price = item.price;
+    if (partnerIdStr && item.channelPrices) {
+      const partnerPrice = item.channelPrices.get ? item.channelPrices.get(partnerIdStr) : item.channelPrices[partnerIdStr];
+      if (partnerPrice !== undefined && partnerPrice !== null) {
+        price = partnerPrice;
+      }
+    }
+
     uberItems.push({
       id: itemId,
       title: {
@@ -69,7 +81,7 @@ async function syncMenuToUber(tenantId, storeId) {
         },
       },
       price_info: {
-        price: Math.round(item.price * 100), // convert to minor units (e.g. cents)
+        price: Math.round(price * 100), // convert to minor units (e.g. cents)
         currency_code: currency,
       },
       ...(imageUrl ? { image_url: imageUrl } : {}),

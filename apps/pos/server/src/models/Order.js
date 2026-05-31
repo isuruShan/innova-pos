@@ -112,6 +112,16 @@ const orderSchema = new mongoose.Schema(
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     /** Idempotency for offline POS sync — duplicate POST returns existing order */
     clientRequestId: { type: String, default: null },
+    foodmarketPartnerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'FoodmarketPartner',
+      default: null,
+      index: true,
+    },
+    commissionAmount: {
+      type: Number,
+      default: 0,
+    },
     uberDetails: {
       uberOrderId: { type: String, default: null, index: true },
       uberDisplayId: { type: String, default: null },

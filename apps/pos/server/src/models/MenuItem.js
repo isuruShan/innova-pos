@@ -28,6 +28,7 @@ const menuItemSchema = new mongoose.Schema(
     /** Manual display order within category (lower = higher in list). */
     sortOrder: { type: Number, default: 0 },
     price: { type: Number, required: true, min: 0 },
+    channelPrices: { type: Map, of: Number, default: () => new Map() },
     description: { type: String, default: '' },
     /** Ordered gallery (first is primary). Legacy `image` / `imageKey` kept for older clients. */
     images: { type: [menuItemImageSchema], default: [] },
@@ -50,6 +51,7 @@ const menuItemSchema = new mongoose.Schema(
       type: [{
         name: { type: String, required: true },
         price: { type: Number, required: true, min: 0 },
+        channelPrices: { type: Map, of: Number, default: () => new Map() },
         description: { type: String, default: '' },
         images: { type: [menuItemImageSchema], default: [] },
         image: { type: String, default: '' },

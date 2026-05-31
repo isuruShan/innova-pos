@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "tenantId": "69fe41e17f4fedba632136a8",
+    "storeId": "6a1ab2602fb63853e86f208b",
+    "date": "2026-05-30",
+    "archivedAt": "2026-05-30T20:45:03.742Z",
+    "totalMovements": 1
+  },
+  "movements": [
+    {
+      "_id": "6a1b4c4fe06de729905dec34",
+      "tenantId": "69fe41e17f4fedba632136a8",
+      "storeId": "6a1ab2602fb63853e86f208b",
+      "inventoryItemId": "6a1b4c4fe06de729905dec32",
+      "sessionId": null,
+      "type": "sale",
+      "quantity": -5,
+      "previousQty": 10,
+      "newQty": 5,
+      "reason": "sale",
+      "notes": "",
+      "purchaseOrderId": null,
+      "goodsReceiptId": null,
+      "orderId": null,
+      "createdBy": "6a1b4c4fe06de729905dec33",
+      "createdAt": "2026-05-30T10:15:03.000Z",
+      "updatedAt": "2026-05-30T10:15:03.000Z",
+      "__v": 0
+    }
+  ]
+}

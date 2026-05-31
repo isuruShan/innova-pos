@@ -43,8 +43,8 @@ const sendWelcomeEmail = async ({ to, name, tempPassword, loginUrl, role = 'merc
 
   const trialPanel = isMerchantAdmin
     ? emailPanel(`
-        <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#10b981">🎁 30-Day Free Trial</p>
-        <p style="margin:0;font-size:14px;color:#64748b;line-height:1.7">You have full access to all features for 30 days. No credit card required!</p>
+        <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#10b981">🎁 14-Day Free Trial</p>
+        <p style="margin:0;font-size:14px;color:#64748b;line-height:1.7">You have full access to all features for 14 days. No credit card required!</p>
       `)
     : '';
 

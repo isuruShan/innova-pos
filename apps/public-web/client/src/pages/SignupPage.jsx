@@ -159,7 +159,7 @@ export default function SignupPage() {
 
           <div className="bg-white rounded-2xl border border-gray-200 p-8">
             <h1 className="text-2xl font-bold text-gray-900 mb-1">Create your account</h1>
-            <p className="text-gray-500 text-sm mb-7">Start your 30-day free trial. No credit card required.</p>
+            <p className="text-gray-500 text-sm mb-7">Start your 14-day free trial. No credit card required.</p>
 
             <form onSubmit={handleNext} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">

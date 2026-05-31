@@ -339,7 +339,7 @@ export default function LandingPage() {
         <div className="relative z-10 max-w-5xl mx-auto text-center text-white">
           <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-sm mb-8 backdrop-blur-sm">
             <Star size={14} className="text-[#fa7237]" fill="#fa7237" />
-            <span>30-day free trial — no credit card required</span>
+            <span>14-day free trial — no credit card required</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight mb-6">
@@ -437,8 +437,8 @@ export default function LandingPage() {
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">Simple, transparent pricing</h2>
             <p className="text-gray-600 text-lg max-w-2xl mx-auto">
               {catalogAudience === 'local'
-                ? 'Pricing in LKR for venues in Sri Lanka. Start with a 30-day free trial — no credit card required.'
-                : 'International pricing (USD). Start with a 30-day free trial — no credit card required.'}
+                ? 'Pricing in LKR for venues in Sri Lanka. Start with a 14-day free trial — no credit card required.'
+                : 'International pricing (USD). Start with a 14-day free trial — no credit card required.'}
             </p>
             {!plansLoading && plans.length === 0 && (
               <p className="text-gray-600 text-sm mt-4 max-w-xl mx-auto">
@@ -582,7 +582,7 @@ export default function LandingPage() {
                       to="/signup"
                       className={`mt-auto block text-center py-3 rounded-xl text-sm font-semibold transition-all ${primaryCta}`}
                     >
-                      Start 30-day trial
+                      Start 14-day trial
                     </Link>
                   </div>
                 );
@@ -644,7 +644,7 @@ export default function LandingPage() {
         <div className="relative z-10 max-w-3xl mx-auto text-center text-white">
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Ready for calmer café shifts?</h2>
           <p className="text-white/90 text-lg mb-8">
-            Teams use Cafinity to tame busy counters and keep the pass moving. Start your free 30-day trial today.
+            Teams use Cafinity to tame busy counters and keep the pass moving. Start your free 14-day trial today.
           </p>
           <Link
             to="/signup"

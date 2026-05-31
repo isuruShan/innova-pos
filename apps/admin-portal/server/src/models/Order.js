@@ -92,6 +92,16 @@ const orderSchema = new mongoose.Schema(
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     clientRequestId: { type: String, default: null },
+    foodmarketPartnerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'FoodmarketPartner',
+      default: null,
+      index: true,
+    },
+    commissionAmount: {
+      type: Number,
+      default: 0,
+    },
     uberDetails: {
       uberOrderId: { type: String, default: null, index: true },
       uberDisplayId: { type: String, default: null },

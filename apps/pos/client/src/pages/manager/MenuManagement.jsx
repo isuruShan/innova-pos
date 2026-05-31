@@ -33,6 +33,7 @@ const EMPTY_FORM = {
   name: '', category: '', price: '', description: '', images: [],
   available: true, isCombo: false, comboItems: [],
   hasVariants: false, variantOptions: [], variants: [], defaultVariantId: null,
+  channelPrices: {},
 };
 
 function menuQueryKey(storeId) {
@@ -276,6 +277,7 @@ export default function MenuManagement() {
       variantOptions: item.variantOptions || [],
       variants: item.variants || [],
       defaultVariantId: item.defaultVariantId || null,
+      channelPrices: item.channelPrices || {},
     });
     setFormError('');
     setFormOpen(true);
@@ -326,6 +328,7 @@ export default function MenuManagement() {
       variantOptions: form.hasVariants ? form.variantOptions : [],
       variants: form.hasVariants ? form.variants : [],
       defaultVariantId: form.hasVariants ? form.defaultVariantId : null,
+      channelPrices: form.channelPrices || {},
     };
     if (editing) updateMutation.mutate({ id: editing._id, data: payload });
     else createMutation.mutate(payload);

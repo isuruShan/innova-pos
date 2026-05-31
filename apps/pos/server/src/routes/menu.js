@@ -115,6 +115,35 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
       storeId,
       createdBy: req.user.id,
     });
+
+    // Create ingredient links if passed during creation
+    if (req.body.ingredients && Array.isArray(req.body.ingredients)) {
+      const IngredientLink = require('../models/IngredientLink');
+      const Inventory = require('../models/Inventory');
+      for (const ing of req.body.ingredients) {
+        const { inventoryItemId, quantity, unit, variantId } = ing;
+        if (inventoryItemId && typeof quantity === 'number') {
+          const invItem = await Inventory.findOne({
+            _id: inventoryItemId,
+            tenantId: req.tenantId,
+            storeId,
+          });
+          if (invItem) {
+            await IngredientLink.create({
+              tenantId: req.tenantId,
+              storeId,
+              menuItemId: item._id,
+              variantId: variantId || null,
+              inventoryItemId,
+              quantity,
+              unit: unit || invItem.unit,
+              createdBy: req.user.id,
+            });
+          }
+        }
+      }
+    }
+
     await emitAudit({ req, action: 'MENU_ITEM_CREATED', resource: 'MenuItem', resourceId: item._id });
     res.status(201).json(item);
   } catch (err) {

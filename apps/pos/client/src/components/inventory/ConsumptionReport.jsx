@@ -21,11 +21,13 @@ export default function ConsumptionReport() {
   const [toDate, setToDate] = useState(getDefaultToDate());
   const [hasRun, setHasRun] = useState(false);
 
-  const { data: report, isPending, refetch } = useQuery({
+  const { data: report, isFetching, refetch } = useQuery({
     queryKey: ['consumption-report', selectedStoreId, fromDate, toDate],
     queryFn: () => api.get('/inventory/consumption-report', { params: { from: fromDate, to: toDate } }).then(r => r.data),
     enabled: false, // Don't auto-run, wait for user to click Generate
   });
+
+  const isPending = isFetching;
 
   const handleGenerate = () => {
     setHasRun(true);
@@ -92,10 +94,10 @@ export default function ConsumptionReport() {
           </div>
           <button
             onClick={handleGenerate}
-            disabled={isPending || !fromDate || !toDate}
+            disabled={isFetching || !fromDate || !toDate}
             className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-white font-semibold px-4 py-2 rounded-lg transition text-sm"
           >
-            {isPending ? (
+            {isFetching ? (
               <>
                 <Loader2 size={14} className="animate-spin" />
                 Generating...
@@ -104,6 +106,7 @@ export default function ConsumptionReport() {
               <>Generate Report</>
             )}
           </button>
+
           {report?.items?.length > 0 && (
             <button
               onClick={handleExportCSV}
@@ -156,7 +159,7 @@ export default function ConsumptionReport() {
       )}
 
       {/* Results Table */}
-      {isPending && hasRun && (
+      {isFetching && hasRun && (
         <div className="flex items-center justify-center py-12 bg-[var(--pos-panel)] rounded-xl border border-slate-700/50">
           <Loader2 size={24} className="animate-spin text-amber-400" />
         </div>

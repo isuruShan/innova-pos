@@ -45,6 +45,7 @@ const EMPTY = {
   getFreeVariantId: '',
   flatPrice: '',
   applicableVariantIds: [],
+  foodmarketPartnerId: '',
 };
 
 export default function PromotionsAdminPage() {
@@ -125,6 +126,12 @@ export default function PromotionsAdminPage() {
     queryFn: () => api.get('/menu').then((r) => r.data),
     enabled: isStoreReady,
   });
+
+  const { data: partners = [] } = useQuery({
+    queryKey: ['admin-foodmarket-partners'],
+    queryFn: () => api.get('/foodmarket-partners').then((r) => r.data),
+  });
+  const activePartners = partners.filter((p) => p.isActive);
 
 
   useEffect(() => {
@@ -235,6 +242,7 @@ export default function PromotionsAdminPage() {
       getFreeQty: String(p.getFreeQty ?? 1),
       getFreeVariantId: p.getFreeVariantId ? String(p.getFreeVariantId) : '',
       flatPrice: String(p.flatPrice ?? ''),
+      foodmarketPartnerId: p.foodmarketPartnerId ? String(p.foodmarketPartnerId) : '',
     });
     setFormError('');
   };
@@ -293,6 +301,7 @@ export default function PromotionsAdminPage() {
         form.minTierLevel === '' || form.minTierLevel == null
           ? null
           : Math.max(1, Number(form.minTierLevel) || 1),
+      foodmarketPartnerId: form.foodmarketPartnerId || null,
     };
 
     if (form.type === 'percentageDiscount' && (form.discountPercent === '' || Number.isNaN(+form.discountPercent))) {
@@ -673,6 +682,24 @@ export default function PromotionsAdminPage() {
                     placeholder="All tiers"
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                   />
+                </label>
+              )}
+
+              {activePartners.length > 0 && (
+                <label className="block text-xs text-gray-600">
+                  Foodmarket Partner (Optional)
+                  <select
+                    value={form.foodmarketPartnerId || ''}
+                    onChange={(e) => setForm((f) => ({ ...f, foodmarketPartnerId: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">All Channels / In-Store</option>
+                    {activePartners.map((p) => (
+                      <option key={p._id} value={p._id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               )}
 

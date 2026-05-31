@@ -45,6 +45,9 @@ import WastageManagement from './pages/manager/WastageManagement';
 import StockReconciliation from './pages/manager/StockReconciliation';
 
 
+import StockAudit from './pages/manager/StockAudit';
+
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 10_000 } },
 });
@@ -219,6 +222,11 @@ export default function App() {
                 <Route path="/manager/reconciliation" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
                     <StockReconciliation />
+                  </RoleRoute>
+                } />
+                <Route path="/manager/stock-audit" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <StockAudit />
                   </RoleRoute>
                 } />
 

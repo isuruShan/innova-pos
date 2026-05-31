@@ -32,9 +32,10 @@ const loyaltyRewardSchema = new mongoose.Schema(
     pointsCost: { type: Number, default: 0, min: 0 },
     rewardType: {
       type: String,
-      enum: ['order_discount_amount', 'order_discount_percent', 'free_item'],
+      enum: ['order_discount_amount', 'order_discount_percent', 'free_item', 'points_earning'],
       default: 'order_discount_amount',
     },
+    pointsEarning: { type: Number, default: 0, min: 0 },
     /** Fixed discount amount in currency */
     discountAmount: { type: Number, default: 0, min: 0 },
     /** Percent off scoped lines */
@@ -47,6 +48,12 @@ const loyaltyRewardSchema = new mongoose.Schema(
     maxDiscountAmount: { type: Number, default: null, min: 0 },
     /** Optional: only members at or above this tier level may redeem */
     minTierLevel: { type: Number, default: 1, min: 1 },
+    foodmarketPartnerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'FoodmarketPartner',
+      default: null,
+      index: true,
+    },
     active: { type: Boolean, default: false },
     approvalStatus: {
       type: String,

@@ -34,6 +34,7 @@ export const MANAGER_NAV_GROUPS = [
       { to: '/manager/suppliers', label: 'Suppliers', icon: Truck },
       { to: '/manager/wastage', label: 'Wastage', icon: ClipboardList },
       { to: '/manager/reconciliation', label: 'Reconciliation', icon: BarChart3 },
+      { to: '/manager/stock-audit', label: 'Stock Audit', icon: ClipboardList },
     ],
   },
   {

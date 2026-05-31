@@ -111,6 +111,7 @@ app.use('/api/loyalty', require('./routes/loyalty'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/promotions', require('./routes/promotions'));
 app.use('/api/menu', require('./routes/menu'));
+app.use('/api/foodmarket-partners', require('./routes/foodmarketPartners'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/reports/extended', require('./routes/reportsExtended'));

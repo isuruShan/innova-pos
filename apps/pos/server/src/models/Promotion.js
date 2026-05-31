@@ -72,7 +72,12 @@ const promotionSchema = new mongoose.Schema(
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-    
+    foodmarketPartnerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'FoodmarketPartner',
+      default: null,
+      index: true,
+    },
     /** Change history for approval tracking */
     changeHistory: [changeHistoryEntrySchema],
   },
