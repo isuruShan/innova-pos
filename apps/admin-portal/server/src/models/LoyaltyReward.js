@@ -1,5 +1,14 @@
 const mongoose = require('mongoose');
 
+const changeHistoryEntrySchema = new mongoose.Schema({
+  changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  changedAt: { type: Date, default: Date.now },
+  action: { type: String, enum: ['created', 'updated', 'approved', 'rejected'], required: true },
+  previousValues: { type: mongoose.Schema.Types.Mixed },
+  newValues: { type: mongoose.Schema.Types.Mixed },
+  reason: { type: String, default: '' },
+}, { _id: true });
+
 const loyaltyRewardSchema = new mongoose.Schema(
   {
     tenantId: {
@@ -48,6 +57,7 @@ const loyaltyRewardSchema = new mongoose.Schema(
     approvedAt: { type: Date, default: null },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    changeHistory: [changeHistoryEntrySchema],
   },
   { timestamps: true }
 );

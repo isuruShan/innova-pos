@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Compass, Shield, User, FileText, Store, Tag, Gift, Loader2, ArrowRight } from 'lucide-react';
+import { Search, Compass, Shield, User, FileText, Store, Tag, Gift, Loader2, ArrowRight, ShoppingBag, Package, CreditCard, ContactRound } from 'lucide-react';
 import api from '../../api/axios';
 
 export default function GlobalSearchModal({ open, onClose }) {
@@ -19,6 +19,11 @@ export default function GlobalSearchModal({ open, onClose }) {
     rewards: [],
     orders: [],
     stores: [],
+    users: [],
+    customers: [],
+    foodmarketPartners: [],
+    subscriptions: [],
+    inventory: [],
   });
 
   const [activeIndex, setActiveIndex] = useState(0);
@@ -43,6 +48,11 @@ export default function GlobalSearchModal({ open, onClose }) {
         rewards: [],
         orders: [],
         stores: [],
+        users: [],
+        customers: [],
+        foodmarketPartners: [],
+        subscriptions: [],
+        inventory: [],
       });
       setLoading(false);
       return;
@@ -78,26 +88,41 @@ export default function GlobalSearchModal({ open, onClose }) {
   // Flattened results for keyboard navigation
   const flatItems = [];
   
-  results.navigation.forEach((item) => {
+  results.navigation?.forEach((item) => {
     flatItems.push({ type: 'nav', label: item.name, sub: item.description, url: item.path, icon: Compass });
   });
-  results.tenants.forEach((item) => {
+  results.tenants?.forEach((item) => {
     flatItems.push({ type: 'tenant', label: item.businessName, sub: `Slug: ${item.slug} (${item.subscriptionStatus || 'trial'})`, url: `/admin/tenants?search=${item.slug}`, icon: Store });
   });
-  results.applications.forEach((item) => {
+  results.applications?.forEach((item) => {
     flatItems.push({ type: 'app', label: item.business?.name, sub: `Applicant: ${item.personal?.name} (${item.status})`, url: `/admin/applications?search=${item.business?.name}`, icon: FileText });
   });
-  results.promotions.forEach((item) => {
+  results.promotions?.forEach((item) => {
     flatItems.push({ type: 'promo', label: item.name, sub: `Type: ${item.type} (${item.approvalStatus})`, url: `/admin/promotions?edit=${item._id}`, icon: Tag });
   });
-  results.rewards.forEach((item) => {
+  results.rewards?.forEach((item) => {
     flatItems.push({ type: 'reward', label: item.name, sub: `Cost: ${item.pointsCost} pts (${item.rewardType})`, url: `/admin/loyalty?edit=${item._id}`, icon: Gift });
   });
-  results.orders.forEach((item) => {
-    flatItems.push({ type: 'order', label: `Order #${item.orderNumber}`, sub: `Customer: ${item.customer?.name || 'Guest'} (${item.status})`, url: `/admin/commissions`, icon: FileText }); // Quick jump to commissions/orders
+  results.orders?.forEach((item) => {
+    flatItems.push({ type: 'order', label: `Order #${item.orderNumber}`, sub: `Customer: ${item.customer?.name || 'Guest'} (${item.status})`, url: `/admin/commissions`, icon: FileText });
   });
-  results.stores.forEach((item) => {
+  results.stores?.forEach((item) => {
     flatItems.push({ type: 'store', label: item.name, sub: `Code: ${item.code} (${item.isActive ? 'Active' : 'Inactive'})`, url: `/admin/stores`, icon: Store });
+  });
+  results.users?.forEach((item) => {
+    flatItems.push({ type: 'user', label: item.name, sub: `Email: ${item.email} (${item.role})`, url: `/admin/users/active`, icon: User });
+  });
+  results.customers?.forEach((item) => {
+    flatItems.push({ type: 'customer', label: item.name, sub: `Mobile: ${item.mobile || 'N/A'} | Email: ${item.email || 'N/A'}`, url: `/admin/customers`, icon: ContactRound });
+  });
+  results.foodmarketPartners?.forEach((item) => {
+    flatItems.push({ type: 'partner', label: item.name, sub: `Commission: ${item.commissionType} (${item.commissionPercentage}%)`, url: `/admin/foodmarket-partners`, icon: ShoppingBag });
+  });
+  results.inventory?.forEach((item) => {
+    flatItems.push({ type: 'inventory', label: item.itemName, sub: `Stock: ${item.quantity} ${item.unit} | Cost: ${item.costPerUnit}`, url: `/admin/inventory-sessions`, icon: Package });
+  });
+  results.subscriptions?.forEach((item) => {
+    flatItems.push({ type: 'subscription', label: `Plan: ${item.planCode || item.plan}`, sub: `End Date: ${new Date(item.endDate).toLocaleDateString()} | Amount: ${item.amount}`, url: `/admin/subscription/overview`, icon: CreditCard });
   });
 
   const handleSelect = (item) => {
@@ -150,7 +175,7 @@ export default function GlobalSearchModal({ open, onClose }) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search functionalities, merchants, promotions, orders..."
+            placeholder="Search functionalities, merchants, promotions, orders, users..."
             className="w-full border-none focus:outline-none focus:ring-0 text-gray-800 placeholder-gray-400 py-4 px-3 text-base bg-transparent"
           />
           {loading ? (

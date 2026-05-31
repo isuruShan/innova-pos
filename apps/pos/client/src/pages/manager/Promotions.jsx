@@ -1053,7 +1053,6 @@ export default function Promotions() {
               <PosDateField
                 value={form.startDate ? String(form.startDate).slice(0, 10) : ''}
                 onChange={(v) => setForm((f) => ({ ...f, startDate: v }))}
-                max={form.endDate ? String(form.endDate).slice(0, 10) : undefined}
                 className={inputCls}
               />
             </div>

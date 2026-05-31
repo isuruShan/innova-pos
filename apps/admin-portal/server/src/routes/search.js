@@ -7,6 +7,11 @@ const Promotion = require('../models/Promotion');
 const LoyaltyReward = require('../models/LoyaltyReward');
 const Order = require('../models/Order');
 const Store = require('../models/Store');
+const User = require('../models/User');
+const Customer = require('../models/Customer');
+const FoodmarketPartner = require('../models/FoodmarketPartner');
+const Subscription = require('../models/Subscription');
+const Inventory = require('../models/Inventory');
 
 const router = express.Router();
 
@@ -14,7 +19,20 @@ router.get('/', protect, async (req, res) => {
   try {
     const query = String(req.query.q || '').trim();
     if (!query) {
-      return res.json({ navigation: [], tenants: [], applications: [], promotions: [], rewards: [], orders: [], stores: [] });
+      return res.json({
+        navigation: [],
+        tenants: [],
+        applications: [],
+        promotions: [],
+        rewards: [],
+        orders: [],
+        stores: [],
+        users: [],
+        customers: [],
+        foodmarketPartners: [],
+        subscriptions: [],
+        inventory: [],
+      });
     }
 
     const regex = new RegExp(query, 'i');
@@ -44,7 +62,7 @@ router.get('/', protect, async (req, res) => {
     );
 
     if (isSuperAdmin) {
-      const [tenants, applications] = await Promise.all([
+      const [tenants, applications, users, subscriptions] = await Promise.all([
         Tenant.find({
           $or: [
             { businessName: regex },
@@ -64,21 +82,57 @@ router.get('/', protect, async (req, res) => {
           .select('business.name personal.name personal.email status')
           .limit(10)
           .lean(),
+        User.find({
+          $or: [
+            { name: regex },
+            { email: regex }
+          ]
+        })
+          .select('name email role isActive')
+          .limit(10)
+          .lean(),
+        Subscription.find({
+          $or: [
+            { planCode: regex },
+            { plan: regex }
+          ]
+        })
+          .populate('tenantId', 'businessName')
+          .limit(10)
+          .lean(),
       ]);
 
       return res.json({
         navigation: matchedNavigation,
         tenants,
         applications,
+        users,
+        subscriptions,
         promotions: [],
         rewards: [],
         orders: [],
-        stores: []
+        stores: [],
+        customers: [],
+        foodmarketPartners: [],
+        inventory: [],
       });
     } else {
       const tenantId = req.user.tenantId || req.headers['x-tenant-id'] || req.tenantId;
       if (!tenantId) {
-        return res.json({ navigation: matchedNavigation, tenants: [], applications: [], promotions: [], rewards: [], orders: [], stores: [] });
+        return res.json({
+          navigation: matchedNavigation,
+          tenants: [],
+          applications: [],
+          promotions: [],
+          rewards: [],
+          orders: [],
+          stores: [],
+          users: [],
+          customers: [],
+          foodmarketPartners: [],
+          subscriptions: [],
+          inventory: [],
+        });
       }
 
       const orderFilter = { tenantId };
@@ -91,7 +145,7 @@ router.get('/', protect, async (req, res) => {
         ];
       }
 
-      const [promotions, rewards, orders, stores] = await Promise.all([
+      const [promotions, rewards, orders, stores, users, customers, foodmarketPartners, subscriptions, inventory] = await Promise.all([
         Promotion.find({ tenantId, name: regex })
           .select('name type active approvalStatus')
           .limit(10)
@@ -108,6 +162,26 @@ router.get('/', protect, async (req, res) => {
           .select('name code phone isActive')
           .limit(10)
           .lean(),
+        User.find({ tenantId, $or: [{ name: regex }, { email: regex }] })
+          .select('name email role isActive')
+          .limit(10)
+          .lean(),
+        Customer.find({ tenantId, $or: [{ name: regex }, { email: regex }, { mobile: regex }] })
+          .select('name email mobile')
+          .limit(10)
+          .lean(),
+        FoodmarketPartner.find({ tenantId, name: regex })
+          .select('name commissionType commissionPercentage commissionFlat isActive')
+          .limit(10)
+          .lean(),
+        Subscription.find({ tenantId, $or: [{ planCode: regex }, { plan: regex }] })
+          .select('plan planCode amount currency endDate')
+          .limit(10)
+          .lean(),
+        Inventory.find({ tenantId, itemName: regex })
+          .select('itemName quantity unit costPerUnit minThreshold')
+          .limit(10)
+          .lean(),
       ]);
 
       return res.json({
@@ -117,7 +191,12 @@ router.get('/', protect, async (req, res) => {
         promotions,
         rewards,
         orders,
-        stores
+        stores,
+        users,
+        customers,
+        foodmarketPartners,
+        subscriptions,
+        inventory,
       });
     }
   } catch (err) {

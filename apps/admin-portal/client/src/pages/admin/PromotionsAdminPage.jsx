@@ -632,7 +632,6 @@ export default function PromotionsAdminPage() {
                   <AdminDateField
                     required
                     value={form.startDate}
-                    max={form.endDate || undefined}
                     onChange={(v) => setForm((f) => ({ ...f, startDate: v }))}
                   />
                 </label>
