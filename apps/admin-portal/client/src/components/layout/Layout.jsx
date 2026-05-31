@@ -173,7 +173,19 @@ export default function Layout({ children }) {
   // Filter nav items based on addon subscriptions
   const filteredAdminNavGroups = useMemo(() => {
     if (subscriptionLocked) {
-      return [{ title: 'Billing', items: [{ label: 'Subscription', icon: CreditCard, to: '/subscription' }] }];
+      return [{
+        title: 'Billing',
+        items: [{
+          label: 'Subscription',
+          icon: CreditCard,
+          to: '/subscription',
+          subItems: [
+            { label: 'Overview', to: '/subscription/overview' },
+            { label: 'Breakdown', to: '/subscription/breakdown' },
+            { label: 'Payment History', to: '/subscription/payments' },
+          ],
+        }],
+      }];
     }
     
     const activeAddons = addonStatus?.activeAddons || [];
@@ -193,7 +205,7 @@ export default function Layout({ children }) {
   const navGroups = merchantNavGroups;
   const navItems = isSuperAdmin
     ? SUPERADMIN_NAV_FLAT
-    : (subscriptionLocked ? [{ label: 'Subscription', to: '/subscription' }] : filteredAdminNavGroups.flatMap((g) => g.items));
+    : filteredAdminNavGroups.flatMap((g) => g.items);
 
   const handleLogout = () => {
     logout();

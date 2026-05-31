@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { fieldAttrs } from '../utils/formFields';
 import PwaInstallPrompt from '../components/PwaInstallPrompt';
@@ -12,6 +12,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [suspended, setSuspended] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -26,6 +27,7 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuspended(false);
     setLoading(true);
     try {
       const u = await login(email.trim().toLowerCase(), password.trim());
@@ -35,7 +37,11 @@ export default function Login() {
       else if (r === 'manager' || r === 'merchant_admin') navigate('/manager/dashboard');
       else logout();
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      if (err.response?.data?.code === 'account_suspended') {
+        setSuspended(true);
+      } else {
+        setError(err.response?.data?.message || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -52,6 +58,16 @@ export default function Login() {
             <h1 className="text-2xl font-bold text-[var(--pos-text-primary)] tracking-tight">Cafinity POS</h1>
             <p className="text-slate-400 mt-1 text-sm">Cafe point of sale — sign in to open your shift</p>
           </div>
+
+          {suspended && (
+            <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              <ShieldAlert size={18} className="shrink-0 mt-0.5 text-red-400" />
+              <div>
+                <p className="font-semibold text-red-200">Merchant account suspended</p>
+                <p className="text-xs mt-0.5 text-red-400">Contact your admin to restore access.</p>
+              </div>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1.5">Email address</label>

@@ -46,13 +46,20 @@ router.post('/login', async (req, res) => {
     if (!user.isActive)
       return res.status(403).json({ message: 'Account is deactivated. Contact your administrator.' });
 
-    // Check subscription if tenant-scoped
+    // Check subscription / tenant suspension for all non-superadmin roles
     let subscriptionActive = true;
-    if (user.tenantId && !['superadmin', 'merchant_admin'].includes(user.role)) {
+    if (user.tenantId && user.role !== 'superadmin') {
       const mongoose = require('mongoose');
       const Tenant = mongoose.models.Tenant || require('../models/Tenant');
       const tenant = await Tenant.findById(user.tenantId).select('subscriptionStatus trialEndsAt status temporaryActivationUntil');
       if (tenant) {
+        // Hard block: tenant suspended by admin — no POS access regardless of role
+        if (tenant.status === 'suspended' && !(tenant.temporaryActivationUntil && new Date() <= tenant.temporaryActivationUntil)) {
+          return res.status(403).json({
+            message: 'Merchant account suspended. Contact your admin.',
+            code: 'account_suspended',
+          });
+        }
         if (tenant.temporaryActivationUntil && new Date() <= tenant.temporaryActivationUntil) {
           subscriptionActive = true;
         } else if (tenant.status !== 'active') {

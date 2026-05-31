@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Info, X } from 'lucide-react';
-import axios from 'axios';
+import api from '../api/axios';
 
 export default function TrialBanners() {
   const [banners, setBanners] = useState([]);
 
   useEffect(() => {
-    axios.get('/api/scheduled-banners/active?platform=admin_portal')
+    api.get('/api/scheduled-banners/active?platform=admin_portal')
       .then((res) => {
         if (Array.isArray(res.data)) {
           setBanners(res.data);

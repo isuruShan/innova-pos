@@ -13,6 +13,7 @@ import { unwrapPagedList } from '../../utils/unwrapPagedList';
 import { useToast } from '../../context/ToastContext';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
 import { formatMoney, BillingQuotePanel, LicenseQuoteBreakdown } from '../../components/billing/ProrationBreakdown';
+import { useAuth } from '../../context/AuthContext';
 
 const METHOD_LABELS = {
   bank_transfer: 'Bank transfer',
@@ -45,6 +46,8 @@ export default function SubscriptionPage() {
   const toast = useToast();
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isSuspended = user?.subscriptionActive === false;
   
   // Route-based tab navigation
   const getActiveTab = () => {
@@ -388,7 +391,11 @@ export default function SubscriptionPage() {
 
       <p className="text-sm text-gray-600">
         Optional paid features (QR Ordering, loyalty, and more) are on the{' '}
-        <Link to="/addons" className="text-brand-orange font-semibold hover:underline">Add-ons</Link> page.
+        {isSuspended ? (
+          <span className="text-gray-400 font-semibold">Add-ons</span>
+        ) : (
+          <Link to="/addons" className="text-brand-orange font-semibold hover:underline">Add-ons</Link>
+        )}{' '}page.
       </p>
 
       {activeTab === 'overview' && (
