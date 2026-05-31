@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getPosUrl } from '@innovapos/app-urls';
 import {
   LayoutDashboard, Users, Palette, CreditCard, Building2,
-  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3, Sparkles, Landmark, Package, ShoppingBag, Percent,
+  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3, Sparkles, Landmark, Package, ShoppingBag, Percent, Search
 } from 'lucide-react';
 import api from '../../api/axios';
 import NotificationBell from '../NotificationBell';
@@ -13,6 +13,7 @@ import SubscriptionEndedBanner from '../SubscriptionEndedBanner';
 import TrialBanners from '../TrialBanners';
 import ExpiryWarningBanner from '../ExpiryWarningBanner';
 import { useAuth } from '../../context/AuthContext';
+import GlobalSearchModal from './GlobalSearchModal';
 
 const SUPERADMIN_NAV_GROUPS = [
   {
@@ -144,7 +145,19 @@ export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const subscriptionLocked = !isSuperAdmin && user?.subscriptionActive === false;
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Fetch tenant's active addons (only for merchant admins)
   const { data: addonStatus } = useQuery({
@@ -324,6 +337,15 @@ export default function Layout({ children }) {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 text-gray-400 hover:text-gray-600 bg-gray-50/50 hover:bg-gray-50 text-xs transition-all cursor-pointer font-medium"
+              title="Search the portal (Ctrl+K)"
+            >
+              <Search size={14} className="text-gray-400" />
+              <span className="hidden sm:inline">Search...</span>
+              <kbd className="hidden sm:inline-block text-[9px] bg-white border border-gray-200 rounded px-1 shadow-sm font-sans font-semibold">Ctrl + K</kbd>
+            </button>
             {user && <NotificationBell />}
             {user?.isTemporaryPassword && (
               <Link to="/profile?changePassword=1"
@@ -346,6 +368,7 @@ export default function Layout({ children }) {
           {children}
         </main>
       </div>
+      <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }
