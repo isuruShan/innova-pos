@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Search, Building2, Users, CheckCircle, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import api from '../../api/axios';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
@@ -20,13 +20,20 @@ const SUB_STATUS_CONFIG = {
 };
 
 export default function MerchantsPage() {
-  const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(() => searchParams.get('search') || '');
   const [statusFilter, setStatusFilter] = useState('');
   const [subscriptionFilter, setSubscriptionFilter] = useState('');
   const [dueWithinDays, setDueWithinDays] = useState('');
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_merchants') || 'grid');
   const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
+
+  useEffect(() => {
+    const q = searchParams.get('search') || '';
+    setSearch(q);
+    setPage(1);
+  }, [searchParams]);
 
   useEffect(() => { setPage(1); }, [sort, order]);
 

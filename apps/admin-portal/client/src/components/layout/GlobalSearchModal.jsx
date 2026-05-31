@@ -92,37 +92,37 @@ export default function GlobalSearchModal({ open, onClose }) {
     flatItems.push({ type: 'nav', label: item.name, sub: item.description, url: item.path, icon: Compass });
   });
   results.tenants?.forEach((item) => {
-    flatItems.push({ type: 'tenant', label: item.businessName, sub: `Slug: ${item.slug} (${item.subscriptionStatus || 'trial'})`, url: `/admin/tenants?search=${item.slug}`, icon: Store });
+    flatItems.push({ type: 'tenant', label: item.businessName, sub: `Slug: ${item.slug} (${item.subscriptionStatus || 'trial'})`, url: `/merchants?search=${item.slug}`, icon: Store });
   });
   results.applications?.forEach((item) => {
-    flatItems.push({ type: 'app', label: item.business?.name, sub: `Applicant: ${item.personal?.name} (${item.status})`, url: `/admin/applications?search=${item.business?.name}`, icon: FileText });
+    flatItems.push({ type: 'app', label: item.business?.name, sub: `Applicant: ${item.personal?.name} (${item.status})`, url: `/applications?search=${item.business?.name}`, icon: FileText });
   });
   results.promotions?.forEach((item) => {
-    flatItems.push({ type: 'promo', label: item.name, sub: `Type: ${item.type} (${item.approvalStatus})`, url: `/admin/promotions?edit=${item._id}`, icon: Tag });
+    flatItems.push({ type: 'promo', label: item.name, sub: `Type: ${item.type} (${item.approvalStatus})`, url: `/promotions?edit=${item._id}`, icon: Tag });
   });
   results.rewards?.forEach((item) => {
-    flatItems.push({ type: 'reward', label: item.name, sub: `Cost: ${item.pointsCost} pts (${item.rewardType})`, url: `/admin/loyalty?edit=${item._id}`, icon: Gift });
+    flatItems.push({ type: 'reward', label: item.name, sub: `Cost: ${item.pointsCost} pts (${item.rewardType})`, url: `/loyalty?edit=${item._id}`, icon: Gift });
   });
   results.orders?.forEach((item) => {
-    flatItems.push({ type: 'order', label: `Order #${item.orderNumber}`, sub: `Customer: ${item.customer?.name || 'Guest'} (${item.status})`, url: `/admin/commissions`, icon: FileText });
+    flatItems.push({ type: 'order', label: `Order #${item.orderNumber}`, sub: `Customer: ${item.customer?.name || 'Guest'} (${item.status})`, url: `/foodmarket-commissions`, icon: FileText });
   });
   results.stores?.forEach((item) => {
-    flatItems.push({ type: 'store', label: item.name, sub: `Code: ${item.code} (${item.isActive ? 'Active' : 'Inactive'})`, url: `/admin/stores`, icon: Store });
+    flatItems.push({ type: 'store', label: item.name, sub: `Code: ${item.code} (${item.isActive ? 'Active' : 'Inactive'})`, url: `/stores`, icon: Store });
   });
   results.users?.forEach((item) => {
-    flatItems.push({ type: 'user', label: item.name, sub: `Email: ${item.email} (${item.role})`, url: `/admin/users/active`, icon: User });
+    flatItems.push({ type: 'user', label: item.name, sub: `Email: ${item.email} (${item.role})`, url: `/users/active`, icon: User });
   });
   results.customers?.forEach((item) => {
-    flatItems.push({ type: 'customer', label: item.name, sub: `Mobile: ${item.mobile || 'N/A'} | Email: ${item.email || 'N/A'}`, url: `/admin/customers`, icon: ContactRound });
+    flatItems.push({ type: 'customer', label: item.name, sub: `Mobile: ${item.mobile || 'N/A'} | Email: ${item.email || 'N/A'}`, url: `/customers`, icon: ContactRound });
   });
   results.foodmarketPartners?.forEach((item) => {
-    flatItems.push({ type: 'partner', label: item.name, sub: `Commission: ${item.commissionType} (${item.commissionPercentage}%)`, url: `/admin/foodmarket-partners`, icon: ShoppingBag });
+    flatItems.push({ type: 'partner', label: item.name, sub: `Commission: ${item.commissionType} (${item.commissionPercentage}%)`, url: `/foodmarket-partners`, icon: ShoppingBag });
   });
   results.inventory?.forEach((item) => {
-    flatItems.push({ type: 'inventory', label: item.itemName, sub: `Stock: ${item.quantity} ${item.unit} | Cost: ${item.costPerUnit}`, url: `/admin/inventory-sessions`, icon: Package });
+    flatItems.push({ type: 'inventory', label: item.itemName, sub: `Stock: ${item.quantity} ${item.unit} | Cost: ${item.costPerUnit}`, url: `/inventory-sessions`, icon: Package });
   });
   results.subscriptions?.forEach((item) => {
-    flatItems.push({ type: 'subscription', label: `Plan: ${item.planCode || item.plan}`, sub: `End Date: ${new Date(item.endDate).toLocaleDateString()} | Amount: ${item.amount}`, url: `/admin/subscription/overview`, icon: CreditCard });
+    flatItems.push({ type: 'subscription', label: `Plan: ${item.planCode || item.plan}`, sub: `End Date: ${new Date(item.endDate).toLocaleDateString()} | Amount: ${item.amount}`, url: `/subscription/overview`, icon: CreditCard });
   });
 
   const handleSelect = (item) => {

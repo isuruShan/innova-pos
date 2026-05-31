@@ -19,7 +19,10 @@ export default function LoyaltyProgramPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Route-based tab navigation
-  const mainTab = location.pathname.endsWith('/rewards') ? 'rewards' : 'program';
+  const mainTab =
+    location.pathname.endsWith('/rewards') || searchParams.has('edit') || searchParams.has('reward')
+      ? 'rewards'
+      : 'program';
   const setMainTab = (tab) => navigate(`/loyalty/${tab}`);
   
   const [tierModal, setTierModal] = useState(null);
@@ -78,7 +81,7 @@ export default function LoyaltyProgramPage() {
     [tiers],
   );
 
-  const rewardIdFromUrl = searchParams.get('reward');
+  const rewardIdFromUrl = searchParams.get('edit') || searchParams.get('reward');
 
   const submitTier = (e) => {
     e.preventDefault();

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Search, Filter, Eye, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import api from '../../api/axios';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
@@ -22,8 +22,9 @@ const STATUS_ICONS = {
 };
 
 export default function ApplicationsPage() {
+  const [searchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState('');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => searchParams.get('search') || '');
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState(() => {
     const saved = localStorage.getItem('view_mode_applications');
@@ -31,6 +32,12 @@ export default function ApplicationsPage() {
     return window.innerWidth < 768 ? 'grid' : 'table';
   });
   const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
+
+  useEffect(() => {
+    const q = searchParams.get('search') || '';
+    setSearch(q);
+    setPage(1);
+  }, [searchParams]);
 
   useEffect(() => { setPage(1); }, [sort, order]);
 
