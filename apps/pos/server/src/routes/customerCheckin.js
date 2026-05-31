@@ -1,8 +1,8 @@
 const express = require('express');
 const axios = require('axios');
-const Tenant = require('../../../../pos/server/src/models/Tenant');
-const TenantSettings = require('../../../../pos/server/src/models/TenantSettings');
-const Customer = require('../../../../pos/server/src/models/Customer');
+const Tenant = require('../models/Tenant');
+const TenantSettings = require('../models/TenantSettings');
+const Customer = require('../models/Customer');
 const CustomerSessionCheckin = require('../models/CustomerSessionCheckin');
 const { sendRouteError } = require('@innovapos/shared-middleware');
 
@@ -164,6 +164,31 @@ router.post('/verify', async (req, res) => {
   } catch (err) {
     console.error('[customer-checkin verify]', err.message);
     res.status(400).json({ message: err.message });
+  }
+});
+
+// POST /api/customer-checkin/register-session — Initialize check-in session from POS cashier/terminal
+router.post('/register-session', async (req, res) => {
+  try {
+    const { sessionId, tenantId, storeId } = req.body;
+    if (!sessionId || !tenantId || !storeId) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // Create or update the session check-in record as 'pending'
+    const checkin = await CustomerSessionCheckin.findOneAndUpdate(
+      { sessionId },
+      {
+        tenantId,
+        storeId,
+        status: 'pending',
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json({ success: true, checkin });
+  } catch (err) {
+    sendRouteError(res, err, { req });
   }
 });
 

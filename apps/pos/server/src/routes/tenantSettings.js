@@ -35,6 +35,7 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
     });
 
     const safe = {
+      tenantId: req.tenantId,
       businessName: data.businessName,
       logoUrl: data.logoUrl,
       paymentMethods: data.paymentMethods,

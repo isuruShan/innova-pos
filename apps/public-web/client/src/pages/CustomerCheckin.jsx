@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Smartphone, Mail, User, Calendar, CheckCircle2, ShieldAlert, ArrowLeft, Loader2 } from 'lucide-react';
-import axios from 'axios';
+import axios from '../api/index';
 
 const COUNTRY_CODES = [
   { code: '+94', name: 'LK', flag: '🇱🇰' },
@@ -91,17 +91,18 @@ export default function CustomerCheckin() {
     }
 
     axios
-      .get(`/api/customer-checkin/tenant-info`, { params: { tenantId, storeId } })
+      .get(`/api/customer-checkin/tenant-info`, { params: { tenantId, storeId, sessionId } })
       .then((res) => {
         setBranding((prev) => ({ ...prev, ...res.data }));
       })
       .catch((err) => {
         console.error('Failed to load branding', err);
+        setErrorMessage(err.response?.data?.message || 'Failed to load merchant settings');
       })
       .finally(() => {
         setLoadingBrand(false);
       });
-  }, [tenantId, storeId]);
+  }, [tenantId, storeId, sessionId]);
 
   const formatPhoneNumber = (value, countryCode) => {
     const clean = value.replace(/\D/g, '');
@@ -254,6 +255,21 @@ export default function CustomerCheckin() {
     return (
       <div className="min-h-screen bg-[#0B1220] flex items-center justify-center text-slate-300">
         <Loader2 size={32} className="animate-spin text-amber-500" />
+      </div>
+    );
+  }
+
+  if (errorMessage && !branding.logoUrl && branding.businessName === 'Cafinity') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[#0B1220] text-slate-300">
+        <div className="w-full max-w-md bg-slate-900/50 backdrop-blur-md border border-slate-800/80 rounded-2xl shadow-xl p-6 text-center space-y-4">
+          <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto border border-red-500/35">
+            <ShieldAlert size={36} className="text-red-450" />
+          </div>
+          <h2 className="text-lg font-bold text-white">Session Expired or Invalid</h2>
+          <p className="text-sm text-slate-300 px-4">{errorMessage}</p>
+          <p className="text-xs text-slate-500">Please scan the active QR code on the POS screen again.</p>
+        </div>
       </div>
     );
   }

@@ -1159,6 +1159,7 @@ export default function NewOrder() {
       ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0 && !deferPayment
         ? { loyaltyRewardId: selectedLoyaltyRewardId }
         : {}),
+      customerSessionId: activeDraft.customerSessionId,
     });
   };
 
@@ -1174,6 +1175,7 @@ export default function NewOrder() {
       ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0 && !deferPayment
         ? { loyaltyRewardId: selectedLoyaltyRewardId }
         : {}),
+      customerSessionId: activeDraft.customerSessionId,
     });
   };
 
@@ -1201,13 +1203,14 @@ export default function NewOrder() {
         serviceFeeAmount,
         customerSessionId: activeDraft.customerSessionId,
         selectedCustomer,
+        tenantId: user?.tenantId || branding.tenantId || branding._id || '',
+        storeId: selectedStoreId || '',
       }
     });
 
     let eventSource = null;
     if (activeDraft.customerSessionId) {
-      const publicWebUrl = getPublicWebUrl() || 'http://localhost:5000';
-      eventSource = new EventSource(`${publicWebUrl}/api/customers/session-checkin-sse/${activeDraft.customerSessionId}`);
+      eventSource = new EventSource(`/api/customers/session-checkin-sse/${activeDraft.customerSessionId}`);
       
       eventSource.onmessage = (event) => {
         try {
@@ -1243,8 +1246,21 @@ export default function NewOrder() {
       channel.removeEventListener('message', onChannelMessage);
       channel.close();
     };
-  }, [cart, subtotal, taxAmount, total, discountTotal, serviceFeeAmount, activeDraft.customerSessionId, selectedCustomer, qc, setSelectedCustomer, setCustomerSearch, showToast]);
+  }, [cart, subtotal, taxAmount, total, discountTotal, serviceFeeAmount, activeDraft.customerSessionId, selectedCustomer, qc, setSelectedCustomer, setCustomerSearch, showToast, user?.tenantId, branding.tenantId, branding._id, selectedStoreId]);
 
+
+  useEffect(() => {
+    if (activeDraft.customerSessionId && (user?.tenantId || branding.tenantId || branding._id) && selectedStoreId) {
+      const resolvedTenantId = user?.tenantId || branding.tenantId || branding._id;
+      api.post('/customer-checkin/register-session', {
+        sessionId: activeDraft.customerSessionId,
+        tenantId: resolvedTenantId,
+        storeId: selectedStoreId,
+      }).catch(err => {
+        console.error('Failed to register checkin session with backend:', err);
+      });
+    }
+  }, [activeDraft.customerSessionId, user?.tenantId, branding.tenantId, branding._id, selectedStoreId]);
 
   useEffect(() => {
     setPaymentModalOpen(false);

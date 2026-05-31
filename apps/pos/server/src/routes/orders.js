@@ -461,6 +461,14 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
 
     const order = await Order.create(orderPayload);
 
+    if (req.body.customerSessionId) {
+      const CustomerSessionCheckin = require('../models/CustomerSessionCheckin');
+      await CustomerSessionCheckin.updateOne(
+        { sessionId: req.body.customerSessionId },
+        { $set: { status: 'placed' } }
+      );
+    }
+
     if (order.status === 'completed') {
       try {
         await consumeInventoryForOrder(order._id, req.user.id);

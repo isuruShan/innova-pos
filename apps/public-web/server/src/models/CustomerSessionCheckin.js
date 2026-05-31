@@ -41,7 +41,7 @@ const customerSessionCheckinSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending_otp', 'completed'],
+      enum: ['pending_otp', 'completed', 'placed'],
       default: 'completed',
     },
     otp: {

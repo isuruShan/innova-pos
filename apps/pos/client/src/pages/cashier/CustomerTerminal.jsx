@@ -3,6 +3,7 @@ import { getPublicWebUrl } from '@innovapos/app-urls';
 import { useBranding } from '../../context/BrandingContext';
 import { useStoreContext } from '../../context/StoreContext';
 import { Package, Smartphone, Touchpad, CheckCircle2, User, Calendar, Mail, ArrowLeft } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 
 const COUNTRY_CODES = [
@@ -44,6 +45,7 @@ const formatPhoneNumber = (value, countryCode) => {
 
 export default function CustomerTerminal() {
   const branding = useBranding();
+  const { user } = useAuth();
   const { selectedStoreId } = useStoreContext();
   const [orderState, setOrderState] = useState({
     items: [],
@@ -52,11 +54,12 @@ export default function CustomerTerminal() {
     totalAmount: 0,
     discountTotal: 0,
     customerSessionId: '',
+    tenantId: '',
+    storeId: '',
   });
 
   const [customerName, setCustomerName] = useState('');
   const [showInputScreen, setShowInputScreen] = useState(false);
-  const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -64,56 +67,16 @@ export default function CustomerTerminal() {
   // Form States
   const [mobile, setMobile] = useState('');
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   
-  // Custom Birthday Dropdowns (Year/Month/Day)
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
-  const months = [
-    { value: 0, label: 'January' },
-    { value: 1, label: 'February' },
-    { value: 2, label: 'March' },
-    { value: 3, label: 'April' },
-    { value: 4, label: 'May' },
-    { value: 5, label: 'June' },
-    { value: 6, label: 'July' },
-    { value: 7, label: 'August' },
-    { value: 8, label: 'September' },
-    { value: 9, label: 'October' },
-    { value: 10, label: 'November' },
-    { value: 11, label: 'December' },
-  ];
-  
-  const [birthYear, setBirthYear] = useState('');
-  const [birthMonth, setBirthMonth] = useState('');
-  const [birthDay, setBirthDay] = useState('');
-  const [days, setDays] = useState([]);
-
-  useEffect(() => {
-    if (birthMonth !== '' && birthYear !== '') {
-      const daysInMonth = new Date(parseInt(birthYear), parseInt(birthMonth) + 1, 0).getDate();
-      setDays(Array.from({ length: daysInMonth }, (_, i) => i + 1));
-      if (birthDay > daysInMonth) setBirthDay('');
-    } else {
-      setDays(Array.from({ length: 31 }, (_, i) => i + 1));
-    }
-  }, [birthYear, birthMonth]);
-
   const [otp, setOtp] = useState('');
   const [otpRequired, setOtpRequired] = useState(false);
-  const [activeField, setActiveField] = useState('mobile'); // 'mobile' | 'name' | 'email' | 'otp'
+  const [activeField, setActiveField] = useState('mobile'); // 'mobile' | 'otp'
 
   const channelRef = useRef(null);
 
   function resetForm() {
     setMobile('');
     setSelectedCountry(COUNTRY_CODES[0]);
-    setName('');
-    setEmail('');
-    setBirthYear('');
-    setBirthMonth('');
-    setBirthDay('');
     setOtp('');
     setOtpRequired(false);
     setShowInputScreen(false);
@@ -179,23 +142,12 @@ export default function CustomerTerminal() {
       if (key === 'BACK') setOtp(prev => prev.slice(0, -1));
       else if (key === 'CLEAR') setOtp('');
       else if (/^[0-9]$/.test(key) && otp.length < 6) setOtp(prev => prev + key);
-    } else if (activeField === 'name') {
-      if (key === 'BACK') setName(prev => prev.slice(0, -1));
-      else if (key === 'CLEAR') setName('');
-      else if (key === 'SPACE') setName(prev => prev + ' ');
-      else if (key.length === 1) setName(prev => prev + key);
-    } else if (activeField === 'email') {
-      if (key === 'BACK') setEmail(prev => prev.slice(0, -1));
-      else if (key === 'CLEAR') setEmail('');
-      else if (key.length === 1) setEmail(prev => prev + key);
     }
   };
 
   const handleTextSubmit = async (e) => {
     if (e) e.preventDefault();
     setErrorMessage('');
-
-    const publicWebUrl = getPublicWebUrl() || 'http://localhost:5002';
 
     if (otpRequired) {
       if (otp.length < 4) {
@@ -204,7 +156,7 @@ export default function CustomerTerminal() {
       }
       setLoading(true);
       try {
-        const { data } = await axios.post(`${publicWebUrl}/api/customer-checkin/verify`, {
+        const { data } = await axios.post(`/api/customer-checkin/verify`, {
           sessionId: orderState.customerSessionId,
           otp
         });
@@ -259,36 +211,23 @@ export default function CustomerTerminal() {
       return;
     }
 
-    if (isRegisterMode) {
-      if (!name.trim()) {
-        setErrorMessage('Name is required');
-        return;
-      }
-      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        setErrorMessage('Please enter a valid email address');
-        return;
-      }
-    }
-
     const fullMobile = `${selectedCountry.code}${cleanDigits}`;
-    let bdayString = undefined;
-    if (isRegisterMode && birthYear && birthMonth !== '' && birthDay) {
-      bdayString = new Date(parseInt(birthYear), parseInt(birthMonth), parseInt(birthDay)).toISOString();
-    }
 
     setLoading(true);
     try {
+      const resolvedTenantId = orderState.tenantId || user?.tenantId || branding.tenantId || branding._id;
+      const resolvedStoreId = orderState.storeId || selectedStoreId;
       const payload = {
-        tenantId: branding.tenantId || branding._id,
-        storeId: selectedStoreId,
+        tenantId: resolvedTenantId,
+        storeId: resolvedStoreId,
         sessionId: orderState.customerSessionId,
         mobile: fullMobile,
-        name: isRegisterMode ? name : '',
-        email: isRegisterMode ? email : '',
-        birthday: bdayString
+        name: '',
+        email: '',
+        birthday: undefined
       };
 
-      const { data } = await axios.post(`${publicWebUrl}/api/customer-checkin/initiate`, payload);
+      const { data } = await axios.post(`/api/customer-checkin/initiate`, payload);
 
       if (data.otpRequired) {
         setOtpRequired(true);
@@ -312,8 +251,9 @@ export default function CustomerTerminal() {
   };
 
   // Generate QR URL
-  const tenantId = branding.tenantId || branding._id || '';
-  const qrTargetUrl = `${getPublicWebUrl() || 'http://localhost:5175'}/customer-checkin?tenantId=${tenantId}&storeId=${selectedStoreId || ''}&sessionId=${orderState.customerSessionId || ''}`;
+  const resolvedTenantId = orderState.tenantId || user?.tenantId || branding.tenantId || branding._id || '';
+  const resolvedStoreId = orderState.storeId || selectedStoreId || '';
+  const qrTargetUrl = `${getPublicWebUrl() || 'http://localhost:5175'}/customer-checkin?tenantId=${resolvedTenantId}&storeId=${resolvedStoreId}&sessionId=${orderState.customerSessionId || ''}`;
   const qrCodeImgSrc = orderState.customerSessionId
     ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrTargetUrl)}&color=ffffff&bgcolor=151f2e`
     : '';
@@ -472,99 +412,16 @@ export default function CustomerTerminal() {
                 <h3 className="text-base font-semibold text-white mb-3">
                   {otpRequired 
                     ? 'Enter Verification Code' 
-                    : isRegisterMode 
-                      ? 'New Customer Registration' 
-                      : 'Customer Sign In'}
+                    : 'Customer Check In'}
                 </h3>
 
                 {/* Form Input Blocks */}
                 <div className="space-y-3">
                   {!otpRequired && (
                     <>
-                      {/* Sign in / Register Toggle */}
-                      <div className="grid grid-cols-2 gap-2 bg-slate-800/40 p-1 rounded-lg border border-slate-800">
-                        <button
-                          onClick={() => { setIsRegisterMode(false); setActiveField('mobile'); }}
-                          className={`py-1.5 text-xs font-semibold rounded-md transition cursor-pointer ${!isRegisterMode ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'}`}
-                        >
-                          Sign In
-                        </button>
-                        <button
-                          onClick={() => { setIsRegisterMode(true); setActiveField('name'); }}
-                          className={`py-1.5 text-xs font-semibold rounded-md transition cursor-pointer ${isRegisterMode ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'}`}
-                        >
-                          Register
-                        </button>
-                      </div>
-
-                      {isRegisterMode && (
-                        <>
-                          <div 
-                            onClick={() => setActiveField('name')}
-                            className={`p-2.5 rounded-lg border flex items-center gap-2 cursor-pointer transition ${activeField === 'name' ? 'border-amber-500 bg-slate-800/40' : 'border-slate-800 bg-slate-800/10'}`}
-                          >
-                            <User size={16} className="text-slate-400" />
-                            <input
-                              type="text"
-                              placeholder="Customer Name"
-                              value={name}
-                              readOnly
-                              className="bg-transparent border-none outline-none text-sm w-full text-slate-200"
-                            />
-                          </div>
-
-                          <div 
-                            onClick={() => setActiveField('email')}
-                            className={`p-2.5 rounded-lg border flex items-center gap-2 cursor-pointer transition ${activeField === 'email' ? 'border-amber-500 bg-slate-800/40' : 'border-slate-800 bg-slate-800/10'}`}
-                          >
-                            <Mail size={16} className="text-slate-400" />
-                            <input
-                              type="email"
-                              placeholder="Email Address"
-                              value={email}
-                              readOnly
-                              className="bg-transparent border-none outline-none text-sm w-full text-slate-200"
-                            />
-                          </div>
-
-                          {/* Birthday Dropdowns */}
-                          <div className="space-y-1">
-                            <label className="block text-xs font-semibold text-slate-400">Birthday (Optional)</label>
-                            <div className="grid grid-cols-3 gap-2">
-                              <select
-                                value={birthYear}
-                                onChange={(e) => setBirthYear(e.target.value)}
-                                className="bg-slate-850 border border-slate-700/60 text-slate-200 rounded-xl px-2 py-2.5 text-xs outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
-                              >
-                                <option value="">Year</option>
-                                {years.map(y => <option key={y} value={y}>{y}</option>)}
-                              </select>
-
-                              <select
-                                value={birthMonth}
-                                onChange={(e) => setBirthMonth(e.target.value)}
-                                className="bg-slate-850 border border-slate-700/60 text-slate-200 rounded-xl px-2 py-2.5 text-xs outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
-                              >
-                                <option value="">Month</option>
-                                {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                              </select>
-
-                              <select
-                                value={birthDay}
-                                onChange={(e) => setBirthDay(e.target.value)}
-                                className="bg-slate-850 border border-slate-700/60 text-slate-200 rounded-xl px-2 py-2.5 text-xs outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
-                              >
-                                <option value="">Day</option>
-                                {days.map(d => <option key={d} value={d}>{d}</option>)}
-                              </select>
-                            </div>
-                          </div>
-                        </>
-                      )}
-
                       {/* Mobile input with Country Selector */}
                       <div className="space-y-1">
-                        <label className="block text-xs font-semibold text-slate-450">Mobile Number</label>
+                        <label className="block text-xs font-semibold text-slate-455">Mobile Number</label>
                         <div className="flex gap-2">
                           <div className="relative shrink-0">
                             <select
@@ -619,63 +476,43 @@ export default function CustomerTerminal() {
                 </div>
               </div>
 
-              {/* Dynamic keyboard/numpad display */}
+              {/* Numpad for Mobile / OTP */}
               <div className="bg-slate-800/35 border border-slate-800/80 p-3 rounded-xl">
-                {activeField === 'name' || activeField === 'email' ? (
-                  // QWERTY on-screen keyboard
-                  <div className="grid grid-cols-10 gap-1 text-xs">
-                    {['q','w','e','r','t','y','u','i','o','p'].map(k => (
-                      <button key={k} onClick={() => handleKeyPress(k)} className="py-2.5 bg-slate-800 hover:bg-slate-700 active:bg-amber-500 rounded font-semibold text-white transition cursor-pointer">{k}</button>
-                    ))}
-                    {['a','s','d','f','g','h','j','k','l','@'].map(k => (
-                      <button key={k} onClick={() => handleKeyPress(k)} className="py-2.5 bg-slate-800 hover:bg-slate-700 active:bg-amber-500 rounded font-semibold text-white transition cursor-pointer">{k}</button>
-                    ))}
-                    <button onClick={() => handleKeyPress('.com')} className="col-span-2 py-2.5 bg-slate-850 hover:bg-slate-750 rounded text-slate-300 font-semibold cursor-pointer">.com</button>
-                    {['z','x','c','v','b','n','m','.','_','-'].map(k => (
-                      <button key={k} onClick={() => handleKeyPress(k)} className="py-2.5 bg-slate-800 hover:bg-slate-700 active:bg-amber-500 rounded font-semibold text-white transition cursor-pointer">{k}</button>
-                    ))}
-                    <button onClick={() => handleKeyPress('SPACE')} className="col-span-4 py-2.5 bg-slate-800 hover:bg-slate-700 rounded font-semibold text-white transition cursor-pointer">Space</button>
-                    <button onClick={() => handleKeyPress('BACK')} className="col-span-3 py-2.5 bg-red-950/60 hover:bg-red-900/60 text-red-400 rounded font-semibold transition cursor-pointer">Backspace</button>
-                    <button onClick={() => handleKeyPress('CLEAR')} className="col-span-3 py-2.5 bg-slate-850 hover:bg-slate-750 text-slate-400 rounded font-semibold transition cursor-pointer">Clear</button>
-                  </div>
-                ) : (
-                  // Numpad for Mobile / OTP
-                  <div className="grid grid-cols-3 gap-2 max-w-[280px] mx-auto">
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                      <button
-                        key={num}
-                        onClick={() => handleKeyPress(num.toString())}
-                        className="py-3 bg-slate-800 hover:bg-slate-700 active:bg-amber-500 rounded-lg text-lg font-bold text-white transition cursor-pointer"
-                      >
-                        {num}
-                      </button>
-                    ))}
+                <div className="grid grid-cols-3 gap-2 max-w-[280px] mx-auto">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                     <button
-                      onClick={() => handleKeyPress('+')}
-                      className="py-3 bg-slate-850 hover:bg-slate-800 rounded-lg text-lg font-bold text-slate-400 transition cursor-pointer"
-                    >
-                      +
-                    </button>
-                    <button
-                      onClick={() => handleKeyPress('0')}
+                      key={num}
+                      onClick={() => handleKeyPress(num.toString())}
                       className="py-3 bg-slate-800 hover:bg-slate-700 active:bg-amber-500 rounded-lg text-lg font-bold text-white transition cursor-pointer"
                     >
-                      0
+                      {num}
                     </button>
-                    <button
-                      onClick={() => handleKeyPress('BACK')}
-                      className="py-3 bg-red-950/50 hover:bg-red-900/50 rounded-lg text-xs font-semibold text-red-400 transition cursor-pointer"
-                    >
-                      Delete
-                    </button>
-                    <button
-                      onClick={() => handleKeyPress('CLEAR')}
-                      className="col-span-3 py-2 bg-slate-850 hover:bg-slate-800 rounded-lg text-xs font-semibold text-slate-400 transition cursor-pointer"
-                    >
-                      Clear All
-                    </button>
-                  </div>
-                )}
+                  ))}
+                  <button
+                    onClick={() => handleKeyPress('+')}
+                    className="py-3 bg-slate-850 hover:bg-slate-800 rounded-lg text-lg font-bold text-slate-400 transition cursor-pointer"
+                  >
+                    +
+                  </button>
+                  <button
+                    onClick={() => handleKeyPress('0')}
+                    className="py-3 bg-slate-800 hover:bg-slate-700 active:bg-amber-500 rounded-lg text-lg font-bold text-white transition cursor-pointer"
+                  >
+                    0
+                  </button>
+                  <button
+                    onClick={() => handleKeyPress('BACK')}
+                    className="py-3 bg-red-950/50 hover:bg-red-900/50 rounded-lg text-xs font-semibold text-red-400 transition cursor-pointer"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    onClick={() => handleKeyPress('CLEAR')}
+                    className="col-span-3 py-2 bg-slate-850 hover:bg-slate-800 rounded-lg text-xs font-semibold text-slate-400 transition cursor-pointer"
+                  >
+                    Clear All
+                  </button>
+                </div>
               </div>
 
               <button
