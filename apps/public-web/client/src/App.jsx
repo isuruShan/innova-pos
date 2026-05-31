@@ -5,6 +5,7 @@ import SignupBusinessPage from './pages/SignupBusinessPage';
 import SignupCompletePage from './pages/SignupCompletePage';
 import MerchantGuideIndex from './pages/MerchantGuideIndex';
 import MerchantGuideTopicPage from './pages/MerchantGuideTopicPage';
+import CustomerCheckin from './pages/CustomerCheckin';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/signup/complete" element={<SignupCompletePage />} />
         <Route path="/merchant-guide" element={<MerchantGuideIndex />} />
         <Route path="/merchant-guide/:slug" element={<MerchantGuideTopicPage />} />
+        <Route path="/customer-checkin" element={<CustomerCheckin />} />
       </Routes>
     </BrowserRouter>
   );

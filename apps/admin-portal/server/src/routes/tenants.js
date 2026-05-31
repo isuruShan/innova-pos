@@ -328,6 +328,31 @@ router.put('/:id/plan-lock', authenticateJWT, authorize('superadmin'), async (re
   }
 });
 
+// PUT /tenants/:id/sms-gateway — toggle SMS gateway permission (superadmin only)
+router.put('/:id/sms-gateway', authenticateJWT, authorize('superadmin'), async (req, res) => {
+  try {
+    const { smsGatewayAllowed } = req.body;
+    if (smsGatewayAllowed === undefined) return res.status(400).json({ message: 'smsGatewayAllowed is required' });
+    const tenant = await Tenant.findByIdAndUpdate(
+      req.params.id,
+      { smsGatewayAllowed: Boolean(smsGatewayAllowed), updatedBy: req.user.id },
+      { new: true }
+    );
+    if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+    await emitAudit({
+      req,
+      action: 'TENANT_SMS_GATEWAY_CHANGED',
+      resource: 'Tenant',
+      resourceId: tenant._id,
+      changes: { after: { smsGatewayAllowed: tenant.smsGatewayAllowed } },
+    });
+    res.json(tenant);
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 // PUT /tenants/:id/status — suspend / activate (superadmin)
 router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {

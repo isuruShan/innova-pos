@@ -4,8 +4,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShoppingCart, Plus, Minus, Trash2, Hash, Link2, ChevronDown, ChevronUp,
   Tag, ToggleLeft, ToggleRight, X, Zap, Search, User, Gift, ChevronLeft, ChevronRight,
-  AlertTriangle,
+  AlertTriangle, Monitor,
 } from 'lucide-react';
+import { getPublicWebUrl } from '@innovapos/app-urls';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import OfflineBanner from '../../components/OfflineBanner';
@@ -755,6 +756,63 @@ export default function NewOrder() {
     };
   }, [qc]);
 
+  useEffect(() => {
+    const channel = new BroadcastChannel('pos-dual-monitor');
+    channel.postMessage({
+      type: 'ORDER_UPDATE',
+      payload: {
+        items: cart,
+        subtotal,
+        taxAmount,
+        totalAmount: total,
+        discountTotal,
+        serviceFeeAmount,
+        customerSessionId: activeDraft.customerSessionId,
+        selectedCustomer,
+      }
+    });
+
+    let eventSource = null;
+    if (activeDraft.customerSessionId) {
+      const publicWebUrl = getPublicWebUrl() || 'http://localhost:5000';
+      eventSource = new EventSource(`${publicWebUrl}/api/customers/session-checkin-sse/${activeDraft.customerSessionId}`);
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'CHECKIN_COMPLETE' && data.customer) {
+            setSelectedCustomer(data.customer);
+            setCustomerSearch(data.customer.name || data.customer.mobile || '');
+            qc.invalidateQueries({ queryKey: ['customers-search'] });
+            qc.invalidateQueries({ queryKey: ['customer-loyalty'] });
+            showToast(`User ${data.customer.name} added to the order!`);
+            
+            // Forward connection notification to the customer screen so it updates greeting
+            channel.postMessage({
+              type: 'CUSTOMER_CONNECTED',
+              payload: data.customer
+            });
+          }
+        } catch (err) {
+          console.error('Failed to parse SSE checkin event:', err);
+        }
+      };
+    }
+
+    const onChannelMessage = (e) => {
+      if (e.data.type === 'CUSTOMER_CHECKED_IN_DIRECT') {
+        // Handled via SSE automatically
+      }
+    };
+    channel.addEventListener('message', onChannelMessage);
+
+    return () => {
+      if (eventSource) eventSource.close();
+      channel.removeEventListener('message', onChannelMessage);
+      channel.close();
+    };
+  }, [cart, subtotal, taxAmount, total, discountTotal, serviceFeeAmount, activeDraft.customerSessionId, selectedCustomer, qc, setSelectedCustomer, setCustomerSearch, showToast]);
+
   const { data: paidAddons } = useQuery({
     queryKey: ['tenant-paid-addons'],
     queryFn: () => api.get('/tenant/paid-addons').then((r) => r.data),
@@ -1330,10 +1388,19 @@ export default function NewOrder() {
             <ShoppingCart size={18} className="text-amber-400" />
             <h2 className="font-semibold text-[var(--pos-text-primary)]">Current Order</h2>
             {cart.length > 0 && (
-              <span className="ml-auto bg-amber-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              <span className="bg-amber-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
                 {cart.reduce((s, i) => s + i.qty, 0)}
               </span>
             )}
+            <button
+              type="button"
+              onClick={() => window.open('/customer-terminal', 'customer_terminal', 'width=1024,height=768')}
+              className="ml-auto bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-2 py-1 rounded text-xs transition flex items-center gap-1 border border-slate-700 cursor-pointer"
+              title="Open Customer-Facing Screen"
+            >
+              <Monitor size={12} />
+              <span>Customer Screen</span>
+            </button>
           </div>
 
           <CashierDraftTabs

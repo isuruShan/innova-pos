@@ -17,6 +17,7 @@ import NewOrder from './pages/cashier/NewOrder';
 import DayEndReport from './pages/cashier/DayEndReport';
 import CashierOrderHistory from './pages/cashier/CashierOrderHistory';
 import OrderBoard from './pages/cashier/OrderBoard';
+import CustomerTerminal from './pages/cashier/CustomerTerminal';
 import KitchenDisplay from './pages/kitchen/KitchenDisplay';
 import Dashboard from './pages/manager/Dashboard';
 import MenuManagement from './pages/manager/MenuManagement';
@@ -103,6 +104,11 @@ export default function App() {
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/subscription-expired" element={<SubscriptionExpiredPage />} />
+                <Route path="/customer-terminal" element={
+                  <RoleRoute roles={['cashier', 'manager', 'merchant_admin']}>
+                    <CustomerTerminal />
+                  </RoleRoute>
+                } />
                 <Route path="/" element={<RootRedirect />} />
 
                 <Route path="/cashier/order" element={

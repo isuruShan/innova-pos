@@ -56,6 +56,7 @@ app.use('/api/applications', require('./routes/applications'));
 app.use('/api/plans', require('./routes/plans'));
 app.use('/api/newsletter', require('./routes/newsletter'));
 app.use('/api/contact', require('./routes/contact'));
+app.use('/api/customer-checkin', require('./routes/customerCheckin'));
 
 app.get('/api/health', (_req, res) =>
   res.json({ status: 'ok', service: 'public-web-server', ts: new Date().toISOString() })

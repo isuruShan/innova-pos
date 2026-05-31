@@ -56,6 +56,7 @@ const tenantSettingsSchema = new mongoose.Schema(
       categoryImageFirst: { type: Boolean, default: true },
       accentColor: { type: String, default: '' },
     },
+    customerOtpVerificationEnabled: { type: Boolean, default: false },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },

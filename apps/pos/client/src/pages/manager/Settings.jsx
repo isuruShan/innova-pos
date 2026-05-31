@@ -4,6 +4,7 @@ import {
   Save, ToggleLeft, ToggleRight, Settings as SettingsIcon,
   Percent, Hash, Users, Plus, Edit2, Trash2,
   ChefHat, ShoppingCart, Eye, EyeOff, LayoutGrid,
+  Monitor, Smartphone,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -664,9 +665,85 @@ const TABS = [
   { id: 'charges', label: 'Order Charges', icon: SettingsIcon },
   { id: 'posview', label: 'POS View',       icon: LayoutGrid },
   { id: 'guestqr', label: 'QR Ordering',   icon: ShoppingCart },
+  { id: 'checkin', label: 'Customer Screen', icon: Monitor },
   { id: 'users',   label: 'Staff Users',   icon: Users },
   { id: 'payments', label: 'Store Payments', icon: Hash },
 ];
+
+function CustomerScreenTab() {
+  const qc = useQueryClient();
+  const [otpEnabled, setOtpEnabled] = useState(false);
+  const [smsAllowed, setSmsAllowed] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const { data: tenantSettings, isPending } = useQuery({
+    queryKey: ['tenant-settings-page'],
+    queryFn: () => api.get('/tenant-settings').then(r => r.data),
+  });
+
+  useEffect(() => {
+    if (tenantSettings) {
+      setOtpEnabled(Boolean(tenantSettings.customerOtpVerificationEnabled));
+      setSmsAllowed(Boolean(tenantSettings.smsGatewayAllowed));
+    }
+  }, [tenantSettings]);
+
+  const saveMutation = useMutation({
+    mutationFn: (val) => api.put('/tenant-settings', { customerOtpVerificationEnabled: val }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tenant-settings-page'] });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    },
+  });
+
+  if (isPending) return <div className="text-sm text-slate-500">Loading settings...</div>;
+
+  return (
+    <div className="space-y-4 max-w-lg">
+      <p className="text-sm text-slate-400">
+        Configure customer terminal display and login/registration behavior.
+      </p>
+      
+      <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-2xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="text-sm font-semibold text-[var(--pos-text-primary)]">SMS OTP Verification</h4>
+            <p className="text-xs text-slate-500 mt-1">
+              Require customers checking in on screen or mobile to verify their mobile number with a one-time passcode.
+            </p>
+          </div>
+          <button 
+            type="button"
+            disabled={!smsAllowed || saveMutation.isPending}
+            onClick={() => {
+              const next = !otpEnabled;
+              setOtpEnabled(next);
+              saveMutation.mutate(next);
+            }}
+            className="cursor-pointer disabled:opacity-40"
+          >
+            {otpEnabled ? (
+              <ToggleRight size={32} className="text-amber-500" />
+            ) : (
+              <ToggleLeft size={32} className="text-slate-600" />
+            )}
+          </button>
+        </div>
+
+        {!smsAllowed && (
+          <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 p-3 rounded-xl text-xs">
+            ⚠️ SMS OTP Verification is disabled by default for your region. Contact support or super admin to enable SMS gateway access.
+          </div>
+        )}
+      </div>
+
+      {saved && (
+        <p className="text-xs text-green-400 text-center font-medium mt-2">Settings saved successfully!</p>
+      )}
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const [tab, setTab] = useState('charges');
@@ -701,7 +778,7 @@ export default function SettingsPage() {
           })}
         </div>
 
-        {tab === 'charges' ? <ChargesTab /> : tab === 'posview' ? <PosViewTab /> : tab === 'guestqr' ? <GuestQrTab /> : tab === 'users' && user?.role === 'merchant_admin' ? <UsersTab /> : tab === 'payments' ? <PaymentMethodsTab /> : <ChargesTab />}
+        {tab === 'charges' ? <ChargesTab /> : tab === 'posview' ? <PosViewTab /> : tab === 'guestqr' ? <GuestQrTab /> : tab === 'checkin' ? <CustomerScreenTab /> : tab === 'users' && user?.role === 'merchant_admin' ? <UsersTab /> : tab === 'payments' ? <PaymentMethodsTab /> : <ChargesTab />}
       </div>
     </div>
   );

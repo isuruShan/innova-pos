@@ -6,6 +6,7 @@ export const DRAFT_STORAGE_KEY = 'pos:cashier-drafts:v1';
 export function createEmptyDraft() {
   return {
     id: generateUUID(),
+    customerSessionId: generateUUID(),
     cart: [],
     orderType: 'dine-in',
     tableNumber: '',

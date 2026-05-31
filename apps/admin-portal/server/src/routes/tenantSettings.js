@@ -116,9 +116,10 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
     if (!tenantId) return res.status(400).json({ message: 'tenantId required' });
     let s = await getOrCreate(tenantId);
     s = await bootstrapFromApplication(tenantId, s);
-    const tenant = await Tenant.findById(tenantId).select('countryIso').lean();
+    const tenant = await Tenant.findById(tenantId).select('countryIso smsGatewayAllowed').lean();
     const plain = await attachFreshLogoUrl(s, req);
     plain.countryIso = (tenant?.countryIso || 'LK').toUpperCase();
+    plain.smsGatewayAllowed = Boolean(tenant?.smsGatewayAllowed);
     res.json(plain);
   } catch (err) {
     sendRouteError(res, err, { req });
@@ -135,6 +136,13 @@ router.put('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
     const s = await getOrCreate(tenantId);
     const before = s.toObject();
 
+    if (req.body.customerOtpVerificationEnabled === true) {
+      const tenant = await Tenant.findById(tenantId).lean();
+      if (!tenant || !tenant.smsGatewayAllowed) {
+        return res.status(400).json({ message: 'SMS gateway is not allowed/available for this tenant. Cannot enable OTP verification.' });
+      }
+    }
+
     const allowed = [
       'businessName', 'logoKey', 'faviconUrl',
       'themePresetId', 'themePresetName', 'themeBaseColor',
@@ -144,7 +152,7 @@ router.put('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
       'address', 'phone', 'email', 'website', 'description', 'category',
       'paymentMethods', 'currency', 'currencySymbol', 'timezone',
       'receiptHeader', 'receiptFooter', 'printReceiptByDefault', 'receiptPrintAtStatus', 'receiptPrintAtByOrderType',
-      'returnsEnabled', 'returnsRequireManagerApproval', 'qrOrdering',
+      'returnsEnabled', 'returnsRequireManagerApproval', 'qrOrdering', 'customerOtpVerificationEnabled',
     ];
 
     allowed.forEach(k => { if (req.body[k] !== undefined) s[k] = req.body[k]; });

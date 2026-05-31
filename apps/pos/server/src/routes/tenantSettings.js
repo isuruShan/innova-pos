@@ -49,6 +49,8 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
       receiptPrintAtByOrderType: data.receiptPrintAtByOrderType || null,
       returnsEnabled: Boolean(data.returnsEnabled),
       returnsRequireManagerApproval: data.returnsRequireManagerApproval !== false,
+      customerOtpVerificationEnabled: Boolean(data.customerOtpVerificationEnabled),
+      smsGatewayAllowed: Boolean(data.smsGatewayAllowed),
     };
 
     for (const key of THEME_FIELDS) {

@@ -218,6 +218,103 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin'), tenantScope,
   }
 });
 
+const CustomerSessionCheckin = require('../models/CustomerSessionCheckin');
+
+const sseClients = {};
+
+// GET /api/customers/session-checkin-sse/:sessionId — SSE stream for cashier to receive check-in notification
+router.get('/session-checkin-sse/:sessionId', async (req, res) => {
+  const { sessionId } = req.params;
+  
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no', // Disable Nginx buffering for SSE
+  });
+
+  // Keep-alive tick
+  const keepAlive = setInterval(() => {
+    res.write(': keep-alive\n\n');
+  }, 15000);
+
+  if (!sseClients[sessionId]) {
+    sseClients[sessionId] = [];
+  }
+  sseClients[sessionId].push(res);
+
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    if (sseClients[sessionId]) {
+      sseClients[sessionId] = sseClients[sessionId].filter(c => c !== res);
+      if (sseClients[sessionId].length === 0) {
+        delete sseClients[sessionId];
+      }
+    }
+  });
+});
+
+// POST /api/customers/session-checkin-trigger/:sessionId — Called when a customer successfully checks in
+router.post('/session-checkin-trigger/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const checkin = await CustomerSessionCheckin.findOne({ sessionId });
+    if (!checkin) {
+      return res.status(404).json({ message: 'Active check-in session not found' });
+    }
+
+    if (checkin.status !== 'completed') {
+      return res.status(400).json({ message: 'Check-in is not completed' });
+    }
+
+    // Match or create the customer in POS database
+    const emailNorm = normalizeEmail(checkin.email);
+    let customer = await findExistingCustomerByContact(checkin.tenantId, emailNorm, checkin.mobile);
+    
+    if (!customer) {
+      customer = await Customer.create({
+        tenantId: checkin.tenantId,
+        storeId: checkin.storeId,
+        name: checkin.name || 'Customer',
+        mobile: checkin.mobile,
+        email: emailNorm,
+        birthday: checkin.birthday || null,
+        lastLoyaltyActivityAt: new Date(),
+      });
+    } else {
+      // If customer exists, let's update their details if they inputted new values
+      let changed = false;
+      if (checkin.name && !customer.name) {
+        customer.name = checkin.name;
+        changed = true;
+      }
+      if (checkin.birthday && !customer.birthday) {
+        customer.birthday = checkin.birthday;
+        changed = true;
+      }
+      if (emailNorm && !customer.email) {
+        customer.email = emailNorm;
+        changed = true;
+      }
+      if (changed) {
+        await customer.save();
+      }
+    }
+
+    // Send SSE event to all cashier clients listening to this session
+    const clients = sseClients[sessionId];
+    if (clients && clients.length > 0) {
+      clients.forEach(client => {
+        client.write(`data: ${JSON.stringify({ type: 'CHECKIN_COMPLETE', customer })}\n\n`);
+      });
+    }
+
+    res.json({ success: true, customer });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 router.delete('/:id', protect, authorize('manager', 'merchant_admin'), tenantScope, async (req, res) => {
   try {
     const c = await Customer.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId });
