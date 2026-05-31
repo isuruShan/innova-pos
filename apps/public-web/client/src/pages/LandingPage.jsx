@@ -4,7 +4,7 @@ import {
   Zap, ShoppingCart, BarChart3, Users, Layers, Shield,
   Clock, CheckCircle, Star, ArrowRight, ChefHat, Tablet, TrendingUp, Mail,
   ChevronLeft, ChevronRight, Laptop, Smartphone, Sparkles, Cpu, Activity,
-  Smartphone as PhoneIcon, HeartHandshake, Check
+  Smartphone as PhoneIcon, HeartHandshake, Check, WifiOff, Settings2, BarChart4
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -81,6 +81,29 @@ const ENTERPRISE_DISPLAY = {
     'Custom developer APIs & database export options',
   ],
 };
+
+// High-fidelity SVG Logos for Uber Eats and PickMe
+function UberEatsLogo({ className = "h-8" }) {
+  return (
+    <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="100" height="100" rx="20" fill="#06C167"/>
+      <text x="50" y="45" fill="black" fontFamily="sans-serif" fontWeight="900" fontSize="18" textAnchor="middle">Uber</text>
+      <text x="50" y="70" fill="black" fontFamily="sans-serif" fontWeight="900" fontSize="18" textAnchor="middle">Eats</text>
+    </svg>
+  );
+}
+
+function PickMeLogo({ className = "h-8" }) {
+  return (
+    <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="100" height="100" rx="20" fill="#FFC61A"/>
+      {/* PickMe Wave hand P representation */}
+      <path d="M30 75V25H55C65 25 70 30 70 38C70 46 65 50 55 50H42V75H30Z" fill="black" stroke="black" strokeWidth="2"/>
+      <circle cx="50" cy="22" r="5" fill="black"/>
+      <text x="50" y="88" fill="black" fontFamily="sans-serif" fontWeight="900" fontSize="16" textAnchor="middle">Food</text>
+    </svg>
+  );
+}
 
 function ContactSection() {
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
@@ -323,21 +346,30 @@ export default function LandingPage() {
     };
   }, [catalogAudience]);
 
-  // Dynamic price display helper
-  const getFormattedPrice = (plan) => {
+  // Dynamic price display helper (Professional layout)
+  const getFormattedPriceInfo = (plan) => {
     const amount = Number(plan.amount);
     if (catalogAudience === 'local' || !countryCode || countryCode === 'US' || !exchangeRates) {
-      return `${plan.currency} ${amount.toLocaleString()}`;
+      return {
+        displayPrice: `${plan.currency} ${amount.toLocaleString()}`,
+        subtitle: null
+      };
     }
     const currencyInfo = COUNTRY_TO_CURRENCY[countryCode];
     if (currencyInfo) {
       const rate = exchangeRates[currencyInfo.code];
       if (rate) {
         const converted = Math.round(amount * rate);
-        return `${currencyInfo.symbol} ${converted.toLocaleString()} (${plan.currency} ${amount.toLocaleString()})`;
+        return {
+          displayPrice: `${currencyInfo.symbol} ${converted.toLocaleString()}`,
+          subtitle: `Equivalent to USD ${amount.toLocaleString()}`
+        };
       }
     }
-    return `${plan.currency} ${amount.toLocaleString()}`;
+    return {
+      displayPrice: `${plan.currency} ${amount.toLocaleString()}`,
+      subtitle: null
+    };
   };
 
   return (
@@ -359,12 +391,12 @@ export default function LandingPage() {
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight mb-6 bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">
-            Run your café without the chaos.
-            <span className="block text-slate-300 font-medium text-2xl sm:text-3xl lg:text-4xl mt-3">One screen for registers, kitchen tickets, and customer loyalty.</span>
+            Run your venue without the chaos.
+            <span className="block text-slate-300 font-medium text-2xl sm:text-3xl lg:text-4xl mt-3">Registers, kitchen routing, table maps, and delivery in sync.</span>
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            <strong className="font-semibold text-slate-200">Cafinity</strong> is the cloud-native POS system engineered specifically for specialty coffee bars and busy counter service spots. Keep the lines short, the barista station calm, and your daily payouts clear.
+          <p className="text-base sm:text-lg text-slate-400 max-w-3xl mx-auto mb-10 leading-relaxed">
+            <strong className="font-semibold text-slate-200">Cafinity</strong> is the unified Point of Sale engineered for busy cafés, premium coffee spots, and full-size fine dining restaurants. Synchronize counter billing, table floor plan service, kitchen queues, and third-party delivery orders instantly.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
@@ -386,9 +418,10 @@ export default function LandingPage() {
             <div className="flex border-b border-slate-800 bg-slate-950/40 p-2 overflow-x-auto gap-2">
               {[
                 { id: 'double_pos', label: 'Double-Sided POS', icon: ShoppingCart },
-                { id: 'kds', label: 'Barista KDS Tablet', icon: ChefHat },
-                { id: 'admin', label: 'AI Admin Dashboard', icon: Laptop },
-                { id: 'mobile', label: 'Mobile Order & Loyalty', icon: Smartphone }
+                { id: 'kds', label: 'Barista & Kitchen KDS', icon: ChefHat },
+                { id: 'admin', label: 'Admin Portal & Control', icon: Laptop },
+                { id: 'mobile', label: 'Table Ordering & Mobile (Waiter)', icon: Smartphone },
+                { id: 'ai_preview', label: 'AI Insights (Beta Preview)', icon: Sparkles }
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -417,35 +450,31 @@ export default function LandingPage() {
                     </div>
                     <div className="p-4 space-y-3">
                       <div className="grid grid-cols-3 gap-2">
-                        {['Espresso', 'Flat White', 'Piccolo', 'Iced Latte', 'Cold Brew', 'Croissant'].map((item, i) => (
+                        {['Espresso', 'Flat White', 'Steak Frites', 'Iced Latte', 'Truffle Pasta', 'Croissant'].map((item, i) => (
                           <div key={item} className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
-                            i === 1 ? 'border-brand-orange/40 bg-brand-orange/5' : 'border-slate-800 bg-slate-950 hover:border-slate-700'
+                            i === 2 ? 'border-brand-orange/40 bg-brand-orange/5' : 'border-slate-800 bg-slate-950 hover:border-slate-700'
                           }`}>
                             <p className="text-xs font-semibold text-white">{item}</p>
-                            <p className="text-[10px] text-slate-400 mt-1">{i === 5 ? 'LKR 450' : 'LKR 650'}</p>
+                            <p className="text-[10px] text-slate-400 mt-1">{i >= 2 && i <= 4 ? 'LKR 2,400' : 'LKR 650'}</p>
                           </div>
                         ))}
                       </div>
                       <div className="border-t border-slate-800/80 pt-3 space-y-2">
                         <div className="flex justify-between text-xs text-slate-300">
-                          <span>1x Flat White (Oat Milk)</span>
-                          <span>LKR 750</span>
+                          <span>1x Steak Frites (Medium Rare)</span>
+                          <span>LKR 2,400</span>
                         </div>
                         <div className="flex justify-between text-xs text-slate-300">
-                          <span>1x Croissant</span>
-                          <span>LKR 450</span>
-                        </div>
-                        <div className="flex justify-between text-xs text-brand-orange font-medium bg-brand-orange/5 p-2 rounded-lg">
-                          <span>Promotion Applied (Pastry pairing)</span>
-                          <span>- LKR 100</span>
+                          <span>1x Truffle Pasta</span>
+                          <span>LKR 2,200</span>
                         </div>
                         <div className="flex justify-between text-sm font-bold text-white pt-2 border-t border-slate-800">
-                          <span>Subtotal Due</span>
-                          <span>LKR 1,100</span>
+                          <span>Subtotal Due (Table 12)</span>
+                          <span>LKR 4,600</span>
                         </div>
                       </div>
                       <button type="button" className="w-full py-2.5 rounded-xl bg-brand-orange hover:bg-brand-orange-hover text-white text-xs font-bold transition-all">
-                        Pay & Complete order
+                        Pay & Print Receipt
                       </button>
                     </div>
                   </div>
@@ -457,7 +486,7 @@ export default function LandingPage() {
                     </div>
                     <div className="p-6 text-center space-y-4 my-auto">
                       <p className="text-xs text-slate-400 uppercase tracking-widest">Total Amount Due</p>
-                      <h3 className="text-4xl font-extrabold text-white tracking-tight">LKR 1,100</h3>
+                      <h3 className="text-4xl font-extrabold text-white tracking-tight">LKR 4,600</h3>
                       <div className="w-28 h-28 bg-white mx-auto p-2 rounded-xl flex items-center justify-center">
                         {/* Mock QR Code */}
                         <div className="grid grid-cols-5 gap-1 w-full h-full opacity-90">
@@ -480,11 +509,11 @@ export default function LandingPage() {
                   <div className="bg-slate-950 px-4 py-3 border-b border-slate-800 flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <ChefHat className="text-brand-orange" size={16} />
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">Barista Kitchen Display System</span>
+                      <span className="text-xs font-bold text-white uppercase tracking-wider">Kitchen Display System (KDS)</span>
                     </div>
                     <div className="flex gap-2">
-                      <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-[10px]">Espresso Station</span>
-                      <span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold">Avg prep: 1m 45s</span>
+                      <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-[10px]">Kitchen Line 1</span>
+                      <span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold">Avg prep: 4m 12s</span>
                     </div>
                   </div>
                   <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -492,13 +521,13 @@ export default function LandingPage() {
                     <div className="border border-brand-orange/30 bg-brand-orange/[0.02] rounded-xl p-3 flex flex-col justify-between min-h-[160px]">
                       <div>
                         <div className="flex justify-between border-b border-slate-800 pb-2 mb-2">
-                          <span className="text-xs font-bold text-white">#1249 · Takeaway</span>
-                          <span className="text-[10px] text-brand-orange font-bold animate-pulse">2m ago</span>
+                          <span className="text-xs font-bold text-white">#1249 · Dining Room</span>
+                          <span className="text-[10px] text-brand-orange font-bold animate-pulse">4m ago</span>
                         </div>
                         <ul className="text-xs text-slate-300 space-y-1 text-left">
-                          <li className="font-semibold text-white">1x Iced Latte</li>
-                          <li className="text-[10px] text-slate-400 pl-3">· Oat Milk override</li>
-                          <li className="text-[10px] text-slate-400 pl-3">· Extra shot</li>
+                          <li className="font-semibold text-white">1x Steak Frites</li>
+                          <li className="text-[10px] text-slate-400 pl-3">· Medium Rare</li>
+                          <li className="text-[10px] text-slate-400 pl-3">· Extra Garlic Butter</li>
                         </ul>
                       </div>
                       <button type="button" className="mt-3 w-full py-1.5 rounded-lg bg-brand-orange/20 text-brand-orange hover:bg-brand-orange hover:text-white text-xs font-bold transition-all">
@@ -510,13 +539,12 @@ export default function LandingPage() {
                     <div className="border border-slate-800 bg-slate-950/60 rounded-xl p-3 flex flex-col justify-between min-h-[160px]">
                       <div>
                         <div className="flex justify-between border-b border-slate-800 pb-2 mb-2">
-                          <span className="text-xs font-bold text-white">#1250 · Table 4</span>
-                          <span className="text-[10px] text-slate-400">Just now</span>
+                          <span className="text-xs font-bold text-white">#1250 · Table 12</span>
+                          <span className="text-[10px] text-slate-400">1m ago</span>
                         </div>
                         <ul className="text-xs text-slate-300 space-y-1 text-left">
-                          <li className="font-semibold text-white">1x Flat White</li>
-                          <li className="font-semibold text-white">1x Almond Croissant</li>
-                          <li className="text-[10px] text-slate-400 pl-3">· Warm up pastry</li>
+                          <li className="font-semibold text-white">1x Truffle Pasta</li>
+                          <li className="font-semibold text-white">1x Caesar Salad</li>
                         </ul>
                       </div>
                       <button type="button" className="mt-3 w-full py-1.5 rounded-lg bg-slate-850 text-slate-300 hover:bg-brand-orange hover:text-white text-xs font-bold transition-all">
@@ -528,16 +556,16 @@ export default function LandingPage() {
                     <div className="border border-slate-800 bg-slate-950/60 rounded-xl p-3 flex flex-col justify-between min-h-[160px] opacity-75">
                       <div>
                         <div className="flex justify-between border-b border-slate-800 pb-2 mb-2">
-                          <span className="text-xs font-bold text-white">#1248 · Delivery</span>
+                          <span className="text-xs font-bold text-white">#1248 · Uber Eats</span>
                           <span className="text-[10px] text-emerald-400 font-bold">Completed</span>
                         </div>
                         <ul className="text-xs text-slate-400 space-y-1 text-left">
-                          <li>1x Cold Brew</li>
-                          <li>1x Espresso Tonic</li>
+                          <li>1x Ribeye Steak</li>
+                          <li>1x Grilled Asparagus</li>
                         </ul>
                       </div>
                       <div className="mt-3 text-center text-[10px] text-slate-500 font-medium py-1.5 bg-slate-900 rounded-lg">
-                        Done in 1m 20s
+                        Done in 8m 45s
                       </div>
                     </div>
                   </div>
@@ -546,75 +574,73 @@ export default function LandingPage() {
 
               {activeDeviceTab === 'admin' && (
                 <div className="w-full max-w-4xl border border-slate-800 rounded-2xl bg-slate-900 overflow-hidden shadow-2xl flex flex-col md:flex-row animate-fade-in text-left">
-                  {/* Left panel: Admin Sidebar & Charts */}
+                  {/* Left panel: Merchant Settings & Analytics */}
                   <div className="flex-1 p-5 border-r border-slate-800/80">
                     <div className="flex justify-between items-center mb-6">
                       <div>
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Coffee Bar Analytics</h4>
-                        <p className="text-lg font-extrabold text-white mt-0.5">Live Shift Overview</p>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-450">Admin Portal</h4>
+                        <p className="text-lg font-extrabold text-white mt-0.5">Vivid Controls & Management</p>
                       </div>
-                      <span className="bg-brand-orange/10 text-brand-orange px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
-                        <Sparkles size={10} /> AI Sync Active
+                      <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-[10px] font-semibold border border-slate-700/50">
+                        HQ Control
                       </span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 mb-5">
                       <div className="p-3 bg-slate-950 border border-slate-850 rounded-xl">
-                        <p className="text-[10px] text-slate-400">Total Net Sales</p>
-                        <p className="text-lg font-bold text-white mt-0.5">LKR 124,500</p>
-                        <p className="text-[9px] text-emerald-400 flex items-center gap-0.5 mt-1 font-semibold">
-                          <TrendingUp size={10} /> +12.4% vs last Sunday
-                        </p>
+                        <div className="flex items-center gap-1.5 text-slate-400 mb-1">
+                          <Settings2 size={12} className="text-brand-orange" />
+                          <span className="text-[10px] font-bold">Menu & Catalog Manager</span>
+                        </div>
+                        <p className="text-xs text-slate-300 leading-normal">Override item layouts, tax tiers, variant rates, and delivery pricing globally.</p>
                       </div>
                       <div className="p-3 bg-slate-950 border border-slate-850 rounded-xl">
-                        <p className="text-[10px] text-slate-400">Orders Rung</p>
-                        <p className="text-lg font-bold text-white mt-0.5">186 orders</p>
-                        <p className="text-[9px] text-emerald-400 flex items-center gap-0.5 mt-1 font-semibold">
-                          <TrendingUp size={10} /> +8.2% avg speed
-                        </p>
+                        <div className="flex items-center gap-1.5 text-slate-400 mb-1">
+                          <Users size={12} className="text-brand-orange" />
+                          <span className="text-[10px] font-bold">Staff Roles & Shift Logs</span>
+                        </div>
+                        <p className="text-xs text-slate-300 leading-normal">Delegate barista, kitchen, floor, and admin roles with strict security parameters.</p>
                       </div>
                     </div>
 
-                    {/* Mini Chart Mockup */}
+                    {/* Sales & Decisions Widget */}
                     <div className="bg-slate-950 rounded-xl p-3 border border-slate-850">
-                      <p className="text-[10px] text-slate-400 mb-2 font-medium">Bestseller Mix By Hour</p>
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="text-[10px] text-slate-400 font-bold">Decision-Ready Reporting</p>
+                        <span className="text-[9px] text-emerald-400 font-bold">+14.6% vs last week</span>
+                      </div>
                       <div className="flex items-end justify-between h-20 pt-2 px-1">
-                        {[20, 45, 95, 80, 50, 65, 40, 75, 30].map((val, idx) => (
-                          <div key={idx} className="w-6 bg-slate-800 rounded-t-sm flex flex-col justify-end h-full hover:bg-brand-orange/60 transition-colors">
-                            <div className="bg-brand-orange rounded-t-sm" style={{ height: `${val}%` }} />
+                        {[40, 60, 30, 85, 95, 70, 50, 80, 110].map((val, idx) => (
+                          <div key={idx} className="w-6 bg-slate-800 rounded-t-sm flex flex-col justify-end h-full">
+                            <div className="bg-brand-orange rounded-t-sm" style={{ height: `${val / 1.2}%` }} />
                           </div>
                         ))}
-                      </div>
-                      <div className="flex justify-between text-[8px] text-slate-500 mt-2 font-semibold px-0.5">
-                        <span>7:00 AM</span>
-                        <span>12:00 PM</span>
-                        <span>6:00 PM</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Right panel: AI Assistant Chat */}
+                  {/* Right panel: Live Actions */}
                   <div className="w-full md:w-72 bg-slate-950/60 p-5 flex flex-col justify-between">
                     <div>
                       <div className="flex items-center gap-2 border-b border-slate-800 pb-3 mb-4">
-                        <Cpu className="text-brand-orange" size={16} />
-                        <span className="text-xs font-bold text-white uppercase tracking-wider">AI Copilot</span>
+                        <BarChart4 className="text-brand-orange" size={16} />
+                        <span className="text-xs font-bold text-white uppercase tracking-wider">Unified Overview</span>
                       </div>
                       <div className="space-y-3">
-                        <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-[11px] leading-relaxed text-slate-300">
-                          <strong className="text-white block mb-0.5">💡 Smart Insight:</strong>
-                          Morning rush (8:00–9:30 AM) espresso throughput is up 14%. Barista queue peaked at 4 orders.
+                        <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-[11px] text-slate-300">
+                          <span className="font-bold text-white block mb-0.5">Real-time Stock Alert</span>
+                          Oat milk inventory is running low. Average consumption predicts exhaustion by 4:00 PM.
                         </div>
-                        <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-[11px] leading-relaxed text-slate-300">
-                          <strong className="text-white block mb-0.5">🚀 Action Plan:</strong>
-                          Apply auto-bundle discount for Latte + Croissant tomorrow to accelerate counter order throughput by 7%.
+                        <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-[11px] text-slate-300">
+                          <span className="font-bold text-white block mb-0.5">Sales Mix Shift</span>
+                          Pasta and steaks comprise 64% of net profit during this Sunday dinner shift.
                         </div>
                       </div>
                     </div>
                     <div className="mt-4 pt-3 border-t border-slate-800/80">
-                      <button type="button" className="w-full py-2 bg-brand-orange hover:bg-brand-orange-hover text-white text-[11px] font-bold rounded-lg transition-all">
-                        Apply AI Promotion Setup
-                      </button>
+                      <a href="/signup" className="block text-center py-2 bg-brand-orange hover:bg-brand-orange-hover text-white text-[11px] font-bold rounded-lg transition-all">
+                        Launch HQ Workspace
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -627,51 +653,95 @@ export default function LandingPage() {
                   
                   <div className="border border-slate-900 rounded-[28px] bg-slate-900 overflow-hidden text-left flex flex-col justify-between min-h-[360px]">
                     <div className="bg-slate-950 px-4 pt-4 pb-2 border-b border-slate-850 flex justify-between items-center">
-                      <span className="text-xs font-bold text-white">Cafinity Customer Loyalty</span>
-                      <span className="text-[10px] bg-brand-orange/20 text-brand-orange px-2 py-0.5 rounded-full font-bold">120 pts</span>
+                      <span className="text-xs font-bold text-white">Table-Side Ordering</span>
+                      <span className="text-[10px] bg-brand-orange/20 text-brand-orange px-2 py-0.5 rounded-full font-bold">Table 12</span>
                     </div>
 
-                    <div className="p-4 space-y-4 flex-1 flex flex-col justify-center">
-                      <div className="text-center">
-                        <p className="text-[10px] text-slate-400 uppercase tracking-widest">Active Drink Coupon</p>
-                        <h4 className="text-lg font-bold text-white mt-1">Free Flat White Reward</h4>
-                        <p className="text-[11px] text-slate-300 mt-1">Present barcode to cashier during checkout.</p>
+                    <div className="p-4 space-y-3 flex-1 flex flex-col justify-center">
+                      <div>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-widest">Active Table Cart</p>
+                        <h4 className="text-sm font-bold text-white mt-1">Dining Room Floor B</h4>
                       </div>
 
-                      {/* Barcode Mock */}
-                      <div className="bg-white p-3 rounded-lg flex items-center justify-center max-w-[180px] mx-auto">
-                        <div className="flex gap-0.5 h-8 w-full">
-                          {[1, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3, 1, 2, 4, 1, 2].map((w, idx) => (
-                            <div key={idx} className="bg-slate-950 h-full" style={{ width: `${w * 2}px` }} />
-                          ))}
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between text-slate-300">
+                          <span>1x Ribeye (Medium)</span>
+                          <span>LKR 3,400</span>
+                        </div>
+                        <div className="flex justify-between text-slate-300">
+                          <span>1x Roasted Potato</span>
+                          <span>LKR 450</span>
                         </div>
                       </div>
 
-                      <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-850 text-center text-[10px] text-slate-400">
-                        Spend LKR 400 more to unlock your next reward.
-                      </div>
+                      <button type="button" className="w-full py-2 bg-brand-orange text-white rounded-lg text-xs font-bold text-center">
+                        Fire To Kitchen KDS
+                      </button>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {activeDeviceTab === 'ai_preview' && (
+                <div className="w-full max-w-lg border border-slate-800 rounded-2xl bg-slate-900 p-6 shadow-2xl animate-fade-in text-left space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="text-brand-orange animate-pulse" size={18} />
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-white">AI Insights & Forecasting</h4>
+                    </div>
+                    <span className="bg-slate-800 text-slate-400 border border-slate-700/50 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                      Upcoming Feature Glimpse
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Here is a glimpse of the AI-native features we are building to help you manage your business decisions automatically:
+                  </p>
+
+                  <div className="space-y-2.5">
+                    <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-850/60">
+                      <p className="text-xs font-semibold text-white">📈 Automated Volume Forecasts</p>
+                      <p className="text-[11px] text-slate-400 mt-1">Predicts next weekend's demand based on weather, holiday calendars, and historic sales, suggesting prep lists.</p>
+                    </div>
+                    <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-850/60">
+                      <p className="text-xs font-semibold text-white">📅 Smart Staff Schedule Assistant</p>
+                      <p className="text-[11px] text-slate-400 mt-1">Automatically generates shifts schedules matching predicted peak hours to reduce labor overhead.</p>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-slate-500 italic text-center pt-2">
+                    Note: Predictive modeling and smart schedule suggestions are currently in private developer testing.
+                  </p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Integration highlights - Uber Eats & PickMe */}
+          {/* Delivery partner integrations - Uber Eats & PickMe */}
           <div className="mt-20 max-w-4xl mx-auto">
-            <p className="text-xs uppercase font-bold tracking-widest text-slate-400 mb-6">Fully Integrated With Major Food Delivery Channels</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 items-center justify-center">
-              {[
-                { name: 'Uber Eats', desc: 'Sync items & menus instantly', bg: 'bg-[#000000] border-emerald-500/20 text-white' },
-                { name: 'PickMe', desc: 'Auto-import order streams', bg: 'bg-[#FF0000]/10 border-red-500/20 text-white' },
-                { name: 'GrabFood', desc: 'Auto commission split', bg: 'bg-[#00B14F]/10 border-green-500/20 text-white' },
-                { name: 'Foodpanda', desc: 'Direct webhook processing', bg: 'bg-[#D61C5C]/10 border-pink-500/20 text-white' }
-              ].map(partner => (
-                <div key={partner.name} className={`p-4 rounded-2xl border text-center transition-all ${partner.bg}`}>
-                  <p className="font-extrabold text-sm tracking-tight">{partner.name}</p>
-                  <p className="text-[10px] text-slate-400 mt-1">{partner.desc}</p>
+            <p className="text-xs uppercase font-bold tracking-widest text-slate-400 mb-8">Deep Integration With Sri Lanka's Leading Delivery Platforms</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 items-stretch justify-center max-w-2xl mx-auto text-left">
+              {/* Uber Eats */}
+              <div className="p-6 rounded-2xl border border-emerald-500/20 bg-[#000000]/40 flex gap-4 items-start">
+                <UberEatsLogo className="w-14 h-14 shrink-0 rounded-xl overflow-hidden" />
+                <div>
+                  <h4 className="font-extrabold text-white text-base">Uber Eats Fully Fledged Integration</h4>
+                  <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                    Manage your delivery orders from start to finish directly on your POS terminal. Configure specific menu pricing and modifier rules for the Uber platform, and track incoming payouts natively.
+                  </p>
                 </div>
-              ))}
+              </div>
+
+              {/* PickMe */}
+              <div className="p-6 rounded-2xl border border-yellow-500/20 bg-[#FFC61A]/5 flex gap-4 items-start">
+                <PickMeLogo className="w-14 h-14 shrink-0 rounded-xl overflow-hidden" />
+                <div>
+                  <h4 className="font-extrabold text-white text-base">PickMe Food Integration</h4>
+                  <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                    Maintain PickMe delivery orders separately. Perform automatic commission splits, track payouts, and configure custom, dedicated menu listings specifically for PickMe buyers.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -682,10 +752,10 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">
-              Engineered for speed. Built for accuracy.
+              Engineered for speed. Built for control.
             </h2>
             <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-              We replaced complex general-retail widgets with the essential workflows specialty cafes need to execute peak hours beautifully.
+              Essential kitchen KDS layouts, offline support, and deep configurations to take total control of your operations.
             </p>
           </div>
 
@@ -693,48 +763,48 @@ export default function LandingPage() {
             <div className="p-8 rounded-3xl border border-slate-800 bg-slate-900/30 hover:border-slate-700 transition-all flex flex-col justify-between">
               <div>
                 <div className="w-12 h-12 rounded-2xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange">
-                  <Activity size={24} />
+                  <WifiOff size={24} />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-3">Ultra-Fast Sync & Accuracy</h3>
+                <h3 className="text-lg font-bold text-white mb-3">Offline Register Support</h3>
                 <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                  Experience instantaneous synchronizations between terminals, KDS screens, and inventory. No order delays, no duplicate runs. Get real-time stock notifications and accurate shift summaries.
+                  Internet dropouts shouldn't stall your business. Cafinity terminals run offline seamlessly. Ring orders, apply discounts, and print kitchen receipts natively. Transactions queue locally and sync to the cloud automatically once connection is restored.
                 </p>
               </div>
               <ul className="text-xs text-slate-300 space-y-2 text-left">
-                <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Under 2 second cloud latency</li>
-                <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Real-time active cart syncing</li>
+                <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Local transaction buffer queue</li>
+                <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Seamless auto-sync on reconnect</li>
               </ul>
             </div>
 
             <div className="p-8 rounded-3xl border border-slate-800 bg-slate-900/30 hover:border-slate-700 transition-all flex flex-col justify-between">
               <div>
                 <div className="w-12 h-12 rounded-2xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange">
-                  <Sparkles size={24} />
+                  <Settings2 size={24} />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-3">AI-Native Admin Portal</h3>
+                <h3 className="text-lg font-bold text-white mb-3">Vivid Admin Portal Controls</h3>
                 <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                  Leverage our AI-powered analytics dashboard to forecast tomorrow's volume, auto-generate optimal staff schedules, detect peak-hour bottlenecks, and instantly create tailored customer promotions.
+                  Take full control of your venue. Modify menus, set taxes, configure loyalty points multipliers, track staff shift hours, and manage roles. Make data-driven decisions using comprehensive sales breakdown summaries.
                 </p>
               </div>
               <ul className="text-xs text-slate-300 space-y-2 text-left">
-                <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Automated customer segmentation</li>
-                <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Predictive supply and order analysis</li>
+                <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Robust menu & taxes control</li>
+                <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Detailed shifts and security roles</li>
               </ul>
             </div>
 
             <div className="p-8 rounded-3xl border border-slate-800 bg-slate-900/30 hover:border-slate-700 transition-all flex flex-col justify-between">
               <div>
                 <div className="w-12 h-12 rounded-2xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange">
-                  <TrendingUp size={24} />
+                  <Tablet size={24} />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-3">Seamless Partner Channels</h3>
+                <h3 className="text-lg font-bold text-white mb-3">Mobile Order & KDS Sync</h3>
                 <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                  Direct food market integrations map Uber Eats, PickMe, and others straight to your register screen. Prices are auto-overridden by partner configurations, and commission totals compute automatically.
+                  Give your waiters a fluid mobile ordering system. Send table selections and custom modifier rules directly from tablet handhelds to KDS barista screens in the kitchen. Keep the floor and the kitchen in perfect harmony.
                 </p>
               </div>
               <ul className="text-xs text-slate-300 space-y-2 text-left">
-                <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Native item and price overrides</li>
-                <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Real-time unified channel report</li>
+                <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Handheld table floorplan service</li>
+                <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Live ticket queue time metrics</li>
               </ul>
             </div>
           </div>
@@ -745,8 +815,8 @@ export default function LandingPage() {
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-900/40 border-t border-b border-slate-900">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
-            <h2 className="text-3xl font-extrabold text-white mb-3">How we transform your business</h2>
-            <p className="text-slate-400">Concrete improvements cafes notice within the first 30 days of moving to Cafinity.</p>
+            <h2 className="text-3xl font-extrabold text-white mb-3">Concrete business transformation</h2>
+            <p className="text-slate-400">Concrete improvements cafes and fine dining venues notice within the first 30 days of moving to Cafinity.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
             {[
@@ -771,7 +841,7 @@ export default function LandingPage() {
             <p className="text-slate-400 text-lg max-w-2xl mx-auto">
               {catalogAudience === 'local'
                 ? 'LKR pricing specifically for Sri Lankan venues. 14 days of full feature access on us.'
-                : 'International pricing localized automatically for your region. original USD price in brackets.'}
+                : 'International plans automatically localized for your local currency. Sri Lankan venues are billed natively in LKR.'}
             </p>
           </div>
 
@@ -827,7 +897,7 @@ export default function LandingPage() {
                   cardShell += 'border-slate-850 bg-slate-900/50 hover:border-slate-800';
                 }
 
-                const priceDisplay = getFormattedPrice(plan);
+                const priceInfo = getFormattedPriceInfo(plan);
 
                 return (
                   <div
@@ -845,14 +915,19 @@ export default function LandingPage() {
                     )}
 
                     <div className="text-sm font-semibold text-slate-300 mb-2">{plan.name}</div>
-                    <div className="text-xl sm:text-2xl font-extrabold text-white mb-1 tracking-tight">
-                      {priceDisplay}
+                    <div className="text-xl sm:text-2xl font-extrabold text-white mb-0.5 tracking-tight">
+                      {priceInfo.displayPrice}
                     </div>
+                    {priceInfo.subtitle && (
+                      <div className="text-[10px] text-slate-400 font-semibold mb-1">
+                        {priceInfo.subtitle}
+                      </div>
+                    )}
                     <div className="text-xs text-slate-500 mb-6 uppercase tracking-wider">
                       {plan.billingCycle === 'monthly'
-                        ? '/month'
+                        ? 'per month'
                         : plan.billingCycle === 'yearly'
-                          ? '/year'
+                          ? 'per year'
                           : `${plan.durationDays} day cycle`}
                     </div>
 
@@ -927,15 +1002,15 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-slate-950" aria-hidden />
         <div className="absolute -bottom-1/2 left-1/2 -translate-x-1/2 h-[400px] w-[600px] rounded-full bg-brand-orange/5 blur-[120px] pointer-events-none" />
         <div className="relative z-10 max-w-3xl mx-auto text-center text-white">
-          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Elevate your coffee operations</h2>
+          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Elevate your venue operations</h2>
           <p className="text-slate-400 text-base sm:text-lg mb-10 leading-relaxed max-w-xl mx-auto">
-            Join specialty coffee brands running on Cafinity to supercharge their registers, barista queues, and delivery streams.
+            Join specialty food venues and dining destinations running on Cafinity to supercharge registers, barista queues, and delivery streams.
           </p>
           <Link
             to="/signup"
             className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-hover text-white font-bold px-8 py-4 rounded-xl text-base shadow-lg shadow-brand-orange/20 transition-all hover:scale-[1.02]"
           >
-            Start free trial now
+            Get started for free
             <ArrowRight size={18} />
           </Link>
         </div>
