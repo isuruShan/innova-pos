@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -41,6 +41,12 @@ export default function ApplicationDetailPage() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [notes, setNotes] = useState('');
 
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [updatingEmail, setUpdatingEmail] = useState(false);
+  const [sendingVerification, setSendingVerification] = useState(false);
+  const [emailStatusMessage, setEmailStatusMessage] = useState('');
+
   const { data: app, isLoading } = useQuery({
     queryKey: ['application', id],
     queryFn: async () => {
@@ -67,6 +73,46 @@ export default function ApplicationDetailPage() {
       setAction(null);
     },
   });
+
+  useEffect(() => {
+    if (app?.personal?.email) {
+      setNewEmail(app.personal.email);
+    }
+  }, [app]);
+
+  const handleSaveEmail = async () => {
+    if (!newEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+      setEmailStatusMessage('Please enter a valid email address');
+      return;
+    }
+    setUpdatingEmail(true);
+    setEmailStatusMessage('');
+    try {
+      await api.put(`/applications/${id}/email`, { email: newEmail });
+      queryClient.invalidateQueries({ queryKey: ['application', id] });
+      setEditingEmail(false);
+      setEmailStatusMessage('Email updated successfully!');
+      setTimeout(() => setEmailStatusMessage(''), 3000);
+    } catch (err) {
+      setEmailStatusMessage(err.response?.data?.message || 'Failed to update email');
+    } finally {
+      setUpdatingEmail(false);
+    }
+  };
+
+  const handleSendVerification = async () => {
+    setSendingVerification(true);
+    setEmailStatusMessage('');
+    try {
+      await api.post(`/applications/${id}/send-verification`);
+      setEmailStatusMessage('Verification email sent successfully!');
+      setTimeout(() => setEmailStatusMessage(''), 4000);
+    } catch (err) {
+      setEmailStatusMessage(err.response?.data?.message || 'Failed to send verification email');
+    } finally {
+      setSendingVerification(false);
+    }
+  };
 
   const submitAction = () => {
     if (action === 'reject' && !rejectionReason.trim()) return;
@@ -133,7 +179,52 @@ export default function ApplicationDetailPage() {
                 label="Full name"
                 value={`${app.personal?.firstName || ''} ${app.personal?.lastName || ''}`.trim() || undefined}
               />
-              <DetailRow icon={Mail} label="Email" value={app.personal?.email} />
+              <div className="flex gap-3 py-3 border-b border-gray-100 last:border-0">
+                <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
+                  <Mail size={15} className="text-gray-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-gray-400 mb-0.5">Email</p>
+                  {editingEmail ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="email"
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        className="bg-white border border-gray-300 rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-amber-500 w-full"
+                      />
+                      <button
+                        onClick={handleSaveEmail}
+                        disabled={updatingEmail || !newEmail.trim()}
+                        className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-2 py-1 rounded text-xs transition cursor-pointer"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => { setEditingEmail(false); setNewEmail(app?.personal?.email || ''); }}
+                        className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded text-xs transition cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium text-gray-800">{app.personal?.email}</p>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${app.personal?.emailVerified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-750'}`}>
+                        {app.personal?.emailVerified ? '✓ Verified' : '⚠ Unverified'}
+                      </span>
+                      {canAct && (
+                        <button
+                          onClick={() => { setEditingEmail(true); setNewEmail(app?.personal?.email || ''); }}
+                          className="text-xs text-amber-600 hover:underline font-semibold cursor-pointer"
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
               <DetailRow icon={Phone} label="Mobile" value={app.personal?.mobile || app.personal?.mobileE164} />
             </div>
           </div>
@@ -239,20 +330,33 @@ export default function ApplicationDetailPage() {
               {mutation.error?.response?.data?.message || 'Error occurred'}
             </div>
           )}
+          {emailStatusMessage && (
+            <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 flex items-center gap-2">
+              <CheckCircle size={15} /> {emailStatusMessage}
+            </div>
+          )}
 
           {action === null ? (
             <div className="flex flex-wrap gap-3">
               <button
+                onClick={handleSendVerification}
+                disabled={sendingVerification || app.personal?.emailVerified}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-750 text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <Mail size={14} />
+                {app.personal?.emailVerified ? 'Email Verified' : 'Send Verification Email'}
+              </button>
+              <button
                 onClick={() => mutation.mutate({ action: 'under_review' })}
                 disabled={mutation.isPending}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-blue-300 text-blue-700 text-sm font-medium hover:bg-blue-50 transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-blue-300 text-blue-700 text-sm font-medium hover:bg-blue-50 transition-colors cursor-pointer"
               >
                 <RefreshCw size={14} />
                 Mark under review
               </button>
               <button
                 onClick={() => setAction('approve')}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors cursor-pointer"
               >
                 <CheckCircle size={14} />
                 Approve
