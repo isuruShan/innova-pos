@@ -1,3 +1,7 @@
+function generateTempId() {
+  return Array.from({ length: 24 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+}
+
 /** Generate all variant combinations from option groups (Size, Flavor, etc.). */
 export function generateCombinations(options) {
   if (!options || options.length === 0) return [];
@@ -8,6 +12,7 @@ export function generateCombinations(options) {
   function helper(index, currentAttributes, currentName) {
     if (index === validOptions.length) {
       results.push({
+        _id: generateTempId(),
         name: currentName,
         attributes: currentAttributes,
         price: '',

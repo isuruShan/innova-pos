@@ -17,8 +17,8 @@ export default function StatCard({ label, value, icon: Icon, color = 'amber', su
       )}
       <div className="min-w-0 flex-1">
         <p className="text-[10px] sm:text-xs text-slate-500 font-medium uppercase tracking-wider leading-tight">{label}</p>
-        <p className="text-base sm:text-2xl font-bold text-[var(--pos-text-primary)] mt-0.5 truncate leading-tight">{value}</p>
-        {sub && <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 truncate">{sub}</p>}
+        <p className="text-base sm:text-2xl font-bold text-[var(--pos-text-primary)] mt-0.5 truncate leading-tight" title={value}>{value}</p>
+        {sub && <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 truncate" title={sub}>{sub}</p>}
       </div>
     </div>
   );

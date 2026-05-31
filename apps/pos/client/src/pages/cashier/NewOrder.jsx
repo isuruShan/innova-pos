@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ShoppingCart, Plus, Minus, Trash2, Hash, Link2, ChevronDown, ChevronUp,
   Tag, ToggleLeft, ToggleRight, X, Zap, Search, User, Gift, ChevronLeft, ChevronRight,
+  AlertTriangle,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -377,7 +378,7 @@ function MenuCard({ item, onAdd, compact = false }) {
   );
 }
 
-function CartItem({ item, onChangeQty, showImage = false }) {
+function CartItem({ item, onChangeQty, showImage = false, isWarning = false }) {
   const [expanded, setExpanded] = useState(false);
   const imageUrl = item.images?.[0]?.url || item.image;
   return (
@@ -397,6 +398,11 @@ function CartItem({ item, onChangeQty, showImage = false }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <p className="text-sm font-medium text-[var(--pos-text-primary)] truncate">{item.name}</p>
+            {isWarning && (
+              <span className="text-red-400 flex-shrink-0 cursor-help" title="No channel price override set. Falling back to default price.">
+                <AlertTriangle size={14} className="animate-pulse" />
+              </span>
+            )}
             {item.isCombo && (
               <button
                 onClick={() => setExpanded(e => !e)}
@@ -800,6 +806,54 @@ export default function NewOrder() {
     enabled: isStoreReady && loyaltyAddonActive && !!selectedCustomer?._id,
   });
 
+  const { data: partners = [] } = useQuery({
+    queryKey: ['foodmarket-partners'],
+    queryFn: () => api.get('/foodmarket-partners').then((r) => r.data),
+    enabled: isStoreReady,
+  });
+
+  const getPartnerForOrderType = (type, partnerList) => {
+    if (type === 'uber-eats') {
+      return partnerList.find(p => p.isActive && p.name?.toLowerCase().includes('uber'));
+    }
+    if (type === 'pickme') {
+      return partnerList.find(p => p.isActive && (p.name?.toLowerCase().includes('pickme') || p.name?.toLowerCase().includes('pick me')));
+    }
+    return null;
+  };
+
+  const getItemPrice = (menuItem, variant, type, partnerList) => {
+    const partner = getPartnerForOrderType(type, partnerList);
+    if (partner) {
+      const channelPrices = menuItem.channelPrices || {};
+      const override = channelPrices[partner._id];
+      if (override) {
+        if (variant) {
+          const vOverride = override.variants?.[variant._id];
+          if (vOverride != null && vOverride !== '') {
+            return Math.round(Number(vOverride) * 100) / 100;
+          }
+        } else if (override.price != null && override.price !== '') {
+          return Math.round(Number(override.price) * 100) / 100;
+        }
+      }
+    }
+    return variant ? Math.round(Number(variant.price) * 100) / 100 : Math.round(Number(menuItem.price) * 100) / 100;
+  };
+
+  const isMissingPartnerPrice = (menuItem, variant, type, partnerList) => {
+    const partner = getPartnerForOrderType(type, partnerList);
+    if (!partner) return false;
+    const channelPrices = menuItem.channelPrices || {};
+    const override = channelPrices[partner._id];
+    if (!override) return true;
+    if (variant) {
+      const vOverride = override.variants?.[variant._id];
+      return vOverride == null || vOverride === '';
+    }
+    return override.price == null || override.price === '';
+  };
+
   const promoTierLevel =
     selectedCustomer?._id != null ? customerLoyalty?.loyalty?.effectiveTier?.level ?? null : null;
 
@@ -920,13 +974,11 @@ export default function NewOrder() {
 
   const addToCart = (item, selectedVariant = null) => {
     if (item.hasVariants && !selectedVariant) {
-      setVariantSelectionItem(item);
-      return;
-    }
+       setVariantSelectionItem(item);
+       return;
+     }
 
-    const price = selectedVariant
-      ? Math.round(Number(selectedVariant.price) * 100) / 100
-      : Math.round(Number(item.price) * 100) / 100;
+    const price = getItemPrice(item, selectedVariant, orderType, partners);
     const variantId = selectedVariant ? selectedVariant._id : null;
     const variantName = selectedVariant ? selectedVariant.name : '';
     const variantAttributes = selectedVariant ? selectedVariant.attributes || [] : [];
@@ -1461,9 +1513,14 @@ export default function NewOrder() {
                     <p className="text-xs mt-1">Tap menu items to add</p>
                   </div>
                 ) : (
-                  cart.map(item => (
-                    <CartItem key={`${item.menuItem}-${item.variantId || 'base'}`} item={item} onChangeQty={changeQty} showImage={isCompact} />
-                  ))
+                  cart.map(item => {
+                    const mItem = menuItems.find(m => m._id === item.menuItem);
+                    const variant = item.variantId && mItem ? mItem.variants?.find(v => v._id === item.variantId) : null;
+                    const isWarning = mItem ? isMissingPartnerPrice(mItem, variant, orderType, partners) : false;
+                    return (
+                      <CartItem key={`${item.menuItem}-${item.variantId || 'base'}`} item={item} onChangeQty={changeQty} showImage={isCompact} isWarning={isWarning} />
+                    );
+                  })
                 )}
               </div>
 
@@ -1720,17 +1777,38 @@ export default function NewOrder() {
         onClose={() => setShowOrderTypePicker(false)}
         title="Order Type"
         subtitle="Select how the customer will receive their order"
-        options={ORDER_TYPES.filter((type) => type.id !== 'uber-eats' || paidAddons?.uberEats).map((type) => ({
-          value: type.id,
-          label: type.label,
-          icon: type.icon,
-        }))}
+        options={(() => {
+          const activePartners = partners.filter((p) => p.isActive);
+          return ORDER_TYPES.filter((type) => {
+            if (type.id === 'dine-in' || type.id === 'takeaway') return true;
+            if (type.id === 'uber-eats') {
+              return activePartners.some((p) => p.name?.toLowerCase().includes('uber'));
+            }
+            if (type.id === 'pickme') {
+              return activePartners.some((p) => p.name?.toLowerCase().includes('pickme') || p.name?.toLowerCase().includes('pick me'));
+            }
+            return false;
+          }).map((type) => ({
+            value: type.id,
+            label: type.label,
+            icon: type.icon,
+          }));
+        })()}
         value={orderType}
         onChange={(v) => {
           setOrderType(v);
           setTableNumber('');
           setReference('');
           setSelectedTableId('');
+          setCart((prevCart) =>
+            prevCart.map((c) => {
+              const mItem = menuItems.find((m) => m._id === c.menuItem);
+              if (!mItem) return c;
+              const variant = c.variantId ? mItem.variants?.find((varObj) => varObj._id === c.variantId) : null;
+              const newPrice = getItemPrice(mItem, variant, v, partners);
+              return { ...c, price: newPrice };
+            })
+          );
         }}
         columns={2}
       />

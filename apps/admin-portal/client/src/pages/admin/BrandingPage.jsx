@@ -617,35 +617,52 @@ export default function BrandingPage() {
             <p className="text-sm font-semibold text-gray-900 mb-1">Auto-print timing by order type</p>
             <p className="text-xs text-gray-500 mb-4">Choose when the POS prints a bill for each channel.</p>
             <div className="grid sm:grid-cols-2 gap-3">
-              {[
-                { key: 'dine-in', label: 'Dine-in', hint: 'Table service' },
-                { key: 'takeaway', label: 'Take away', hint: 'Counter pickup' },
-                { key: 'uber-eats', label: 'Uber Eats', hint: 'Delivery partner' },
-                { key: 'pickme', label: 'PickMe', hint: 'Delivery partner' },
-              ].map(({ key, label, hint }) => (
-                <div key={key} className="rounded-xl border border-gray-200 p-3 bg-white">
-                  <p className="text-sm font-medium text-gray-900">{label}</p>
-                  <p className="text-[11px] text-gray-500 mb-2">{hint}</p>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Print when</label>
-                  <select
-                    value={form.receiptPrintAtByOrderType?.[key] || 'placement'}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        receiptPrintAtByOrderType: {
-                          ...(f.receiptPrintAtByOrderType || mergeReceiptPrintAtByOrderType(f)),
-                          [key]: e.target.value,
-                        },
-                      }))
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
-                  >
-                    {RECEIPT_PRINT_AT_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
+              {(() => {
+                const { data: partners = [] } = useQuery({
+                  queryKey: ['foodmarket-partners'],
+                  queryFn: () => api.get('/foodmarket-partners').then((r) => r.data),
+                });
+                const activePartners = partners.filter((p) => p.isActive);
+                const orderTypesToShow = [
+                  { key: 'dine-in', label: 'Dine-in', hint: 'Table service' },
+                  { key: 'takeaway', label: 'Take away', hint: 'Counter pickup' },
+                  { key: 'uber-eats', label: 'Uber Eats', hint: 'Delivery partner' },
+                  { key: 'pickme', label: 'PickMe', hint: 'Delivery partner' },
+                ].filter(ot => {
+                  if (ot.key === 'dine-in' || ot.key === 'takeaway') return true;
+                  if (ot.key === 'uber-eats') {
+                    return activePartners.some(p => p.name?.toLowerCase().includes('uber'));
+                  }
+                  if (ot.key === 'pickme') {
+                    return activePartners.some(p => p.name?.toLowerCase().includes('pickme') || p.name?.toLowerCase().includes('pick me'));
+                  }
+                  return false;
+                });
+                return orderTypesToShow.map(({ key, label, hint }) => (
+                  <div key={key} className="rounded-xl border border-gray-200 p-3 bg-white">
+                    <p className="text-sm font-medium text-gray-900">{label}</p>
+                    <p className="text-[11px] text-gray-500 mb-2">{hint}</p>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Print when</label>
+                    <select
+                      value={form.receiptPrintAtByOrderType?.[key] || 'placement'}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          receiptPrintAtByOrderType: {
+                            ...(f.receiptPrintAtByOrderType || mergeReceiptPrintAtByOrderType(f)),
+                            [key]: e.target.value,
+                          },
+                        }))
+                      }
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+                    >
+                      {RECEIPT_PRINT_AT_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                ));
+              })()}
             </div>
           </div>
         </div>

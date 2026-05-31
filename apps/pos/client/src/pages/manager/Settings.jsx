@@ -36,6 +36,27 @@ function ChargesTab() {
     enabled: isStoreReady,
   });
 
+  const { data: partners = [] } = useQuery({
+    queryKey: ['foodmarket-partners'],
+    queryFn: () => api.get('/foodmarket-partners').then((r) => r.data),
+    enabled: isStoreReady,
+  });
+
+  const activePartners = useMemo(() => partners.filter((p) => p.isActive), [partners]);
+
+  const filteredOrderTypeRows = useMemo(() => {
+    return ORDER_TYPE_ROWS.filter((row) => {
+      if (row.key === 'dine-in' || row.key === 'takeaway') return true;
+      if (row.key === 'uber-eats') {
+        return activePartners.some(p => p.name?.toLowerCase().includes('uber'));
+      }
+      if (row.key === 'pickme') {
+        return activePartners.some(p => p.name?.toLowerCase().includes('pickme') || p.name?.toLowerCase().includes('pick me'));
+      }
+      return false;
+    });
+  }, [activePartners]);
+
   useEffect(() => {
     if (!settings) return;
     const init = {};
@@ -83,14 +104,15 @@ function ChargesTab() {
           <span className="text-xs font-medium text-slate-500 uppercase tracking-wider text-center">Service Fee</span>
         </div>
 
-        {ORDER_TYPE_ROWS.map(({ key, label, icon }, i) => {
+        {filteredOrderTypeRows.map(({ key, label, icon }, i) => {
           const cfg = local[key];
+          if (!cfg) return null;
           const isFixed = cfg.serviceFeeType === 'fixed';
           return (
             <div
               key={key}
               className={`grid grid-cols-[1fr_60px_110px_160px] gap-3 items-center px-4 py-3 ${
-                i < ORDER_TYPE_ROWS.length - 1 ? 'border-b border-slate-700/30' : ''
+                i < filteredOrderTypeRows.length - 1 ? 'border-b border-slate-700/30' : ''
               } ${!cfg.enabled ? 'opacity-40' : ''}`}
             >
               <div className="flex items-center gap-2">

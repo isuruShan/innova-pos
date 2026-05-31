@@ -119,7 +119,7 @@ export default function DashboardPage() {
                 <stat.icon size={16} style={{ color: stat.color }} />
               </div>
             </div>
-            <p className={`text-lg font-bold text-gray-900 ${stat.capitalize ? 'capitalize' : ''}`}>
+            <p className={`text-lg font-bold text-gray-900 ${stat.capitalize ? 'capitalize' : ''}`} title={stat.value}>
               {stat.value}
             </p>
           </div>

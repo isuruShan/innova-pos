@@ -86,7 +86,7 @@ export function AvatarMenu({ user, onLogout }) {
                   My Profile
                 </button>
 
-                {user.role === 'manager' && (
+                {(user.role === 'manager' || user.role === 'merchant_admin') && (
                   <Link
                     to="/manager/settings"
                     onClick={() => setOpen(false)}

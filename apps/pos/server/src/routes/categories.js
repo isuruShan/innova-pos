@@ -23,7 +23,7 @@ const CATEGORY_SORT_FIELDS = {
   active: 'active',
 };
 
-const DEFAULT_CATEGORY_SORT = { sortOrder: 1, name: 1 };
+const DEFAULT_CATEGORY_SORT = { createdAt: -1 };
 
 router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
@@ -52,7 +52,7 @@ router.patch('/reorder', protect, authorize('manager', 'merchant_admin', 'supera
     const { ids } = req.body;
     const filter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
     const count = await applyReorder(Category, filter, ids, req.user.id);
-    const categories = await Category.find(filter).sort(DEFAULT_CATEGORY_SORT);
+    const categories = await Category.find(filter).sort({ sortOrder: 1, name: 1 });
     res.json({ message: 'Category order updated', count, categories });
   } catch (err) {
     const status = err.status || 400;

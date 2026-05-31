@@ -68,7 +68,7 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
   const [validationError, setValidationError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const { sort, order, toggleSort } = useListSort('sortOrder', 'asc');
+  const { sort, order, toggleSort } = useListSort('createdAt', 'desc');
 
   const catKey = categoriesQueryKey(selectedStoreId);
   const menuKey = menuQueryKey(selectedStoreId);
@@ -240,13 +240,44 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
     });
   }, [enriched, search, sort, order]);
 
-  const persistReorder = useCallback((fromId, toId) => {
-    const reordered = reorderByDrag(orderedManageable, fromId, toId);
-    if (!reordered) return;
-    reorderMutation.mutate(reordered.map((c) => c._id));
-  }, [orderedManageable, reorderMutation]);
+  const [draggedId, setDraggedId] = useState(null);
+  const [activeList, setActiveList] = useState([]);
 
-  const { bindHandle, bindDropTarget, isOver } = useDragReorder(persistReorder);
+  useEffect(() => {
+    if (draggedId === null) {
+      setActiveList(displayed);
+    }
+  }, [displayed, draggedId]);
+
+  const handleDragStart = (e, id) => {
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(id));
+  };
+
+  const handleDragOver = (e, targetId) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    if (draggedId && draggedId !== targetId) {
+      const fromIdx = activeList.findIndex((item) => String(item._id) === String(draggedId));
+      const toIdx = activeList.findIndex((item) => String(item._id) === String(targetId));
+      if (fromIdx >= 0 && toIdx >= 0 && fromIdx !== toIdx) {
+        const next = [...activeList];
+        const [moved] = next.splice(fromIdx, 1);
+        next.splice(toIdx, 0, moved);
+        setActiveList(next);
+      }
+    }
+  };
+
+  const handleDragEnd = () => {
+    if (draggedId) {
+      const finalIds = activeList.map((c) => c._id);
+      reorderMutation.mutate(finalIds);
+    }
+    setDraggedId(null);
+  };
 
   const [newImageUrl, setNewImageUrl] = useState('');
   const [newImageKey, setNewImageKey] = useState('');
@@ -514,7 +545,7 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
           <div className="rounded-lg border border-slate-700 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead>
+                <thead className="sticky top-0 bg-[var(--pos-surface-inset)] z-10">
                   <tr className="border-b border-slate-700 bg-[var(--pos-surface-inset)]">
                     <th className="px-3 py-3 w-10" aria-label="Drag to reorder" />
                     <SortableTh label="Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} className="px-4 py-3" />
@@ -524,26 +555,29 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
-                  {displayed.length === 0 ? (
+                  {activeList.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="text-center text-slate-500 py-12">
                         {search ? 'No categories match your search' : 'No categories yet'}
                       </td>
                     </tr>
                   ) : (
-                    displayed.map((cat) => {
+                    activeList.map((cat) => {
                       const isPlaceholder = cat.name === PLACEHOLDER_CATEGORY_NAME;
                       const isEditing = editingId === cat._id;
-                      const handleDrag = bindHandle(cat._id);
-                      const dropTarget = bindDropTarget(cat._id);
 
                       return (
                         <tr
                           key={cat._id}
-                          {...dropTarget}
-                          className={`hover:bg-slate-800/40 transition ${!cat.active ? 'opacity-60' : ''} ${isOver(cat._id) ? 'bg-amber-500/10 ring-1 ring-inset ring-amber-500/40' : ''}`}
+                          draggable={!isEditing}
+                          onDragStart={(e) => handleDragStart(e, cat._id)}
+                          onDragOver={(e) => handleDragOver(e, cat._id)}
+                          onDragEnd={handleDragEnd}
+                          className={`hover:bg-slate-800/40 transition ${!cat.active ? 'opacity-60' : ''} ${
+                            draggedId === cat._id ? 'bg-amber-500/20 opacity-50 border-y-2 border-dashed border-amber-500' : ''
+                          } ${!isEditing ? 'cursor-grab active:cursor-grabbing' : ''}`}
                         >
-                          <td className="px-3 py-3 text-slate-500 cursor-grab active:cursor-grabbing" {...handleDrag}>
+                          <td className="px-3 py-3 text-slate-500">
                             <GripVertical size={16} />
                           </td>
                           <td className="px-4 py-3">
@@ -609,7 +643,7 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                                 </div>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-2 min-w-0">
+                              <div className="flex items-center gap-2 min-w-0" onDragStart={(e) => e.preventDefault()}>
                                 {cat.imageUrl ? (
                                   <img src={cat.imageUrl} alt="" className="w-6 h-6 rounded object-cover shrink-0 border border-slate-600" />
                                 ) : (

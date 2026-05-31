@@ -40,7 +40,7 @@ const MENU_SORT_FIELDS = {
   createdAt: 'createdAt',
 };
 
-const DEFAULT_MENU_SORT = { category: 1, sortOrder: 1, name: 1 };
+const DEFAULT_MENU_SORT = { createdAt: -1 };
 
 async function resolveItemCategory(req, body, storeId) {
   const payload = sanitizeMenuPayload(body);
@@ -77,7 +77,7 @@ router.patch('/reorder', protect, authorize('manager', 'merchant_admin', 'supera
       filter.category = String(category).trim();
     }
     const count = await applyReorder(MenuItem, filter, ids, req.user.id);
-    const items = await MenuItem.find(filter).sort(DEFAULT_MENU_SORT).lean();
+    const items = await MenuItem.find(filter).sort({ category: 1, sortOrder: 1, name: 1 }).lean();
     const enriched = await attachFreshMenuImageUrls(items);
     res.json({ message: 'Menu order updated', count, items: enriched });
   } catch (err) {
@@ -181,6 +181,39 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
       { new: true, runValidators: true },
     );
     if (!item) return res.status(404).json({ message: 'Menu item not found' });
+
+    // Sync ingredient links if passed during update
+    if (req.body.ingredients && Array.isArray(req.body.ingredients)) {
+      const IngredientLink = require('../models/IngredientLink');
+      const Inventory = require('../models/Inventory');
+      await IngredientLink.deleteMany({
+        tenantId: req.tenantId,
+        menuItemId: item._id,
+      });
+      for (const ing of req.body.ingredients) {
+        const { inventoryItemId, quantity, unit, variantId } = ing;
+        if (inventoryItemId && typeof quantity === 'number') {
+          const invItem = await Inventory.findOne({
+            _id: inventoryItemId,
+            tenantId: req.tenantId,
+            storeId,
+          });
+          if (invItem) {
+            await IngredientLink.create({
+              tenantId: req.tenantId,
+              storeId,
+              menuItemId: item._id,
+              variantId: variantId || null,
+              inventoryItemId,
+              quantity,
+              unit: unit || invItem.unit,
+              createdBy: req.user.id,
+            });
+          }
+        }
+      }
+    }
+
     await emitAudit({ req, action: 'MENU_ITEM_UPDATED', resource: 'MenuItem', resourceId: item._id });
     res.json(item);
   } catch (err) {

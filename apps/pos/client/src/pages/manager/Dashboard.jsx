@@ -440,7 +440,7 @@ export default function Dashboard() {
                         <span className="text-xs font-bold text-slate-600 w-4">{i + 1}</span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm text-slate-300 truncate">{item.name}</span>
+                            <span className="text-sm text-slate-300 truncate" title={item.name}>{item.name}</span>
                             <span className="text-xs text-slate-500 ml-2">{item.qty} sold</span>
                           </div>
                           <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
@@ -467,7 +467,7 @@ export default function Dashboard() {
                       <span className="font-mono text-amber-400 text-xs w-12">
                         #{String(order.orderNumber).padStart(3, '0')}
                       </span>
-                      <span className="text-slate-400 text-xs w-24 truncate">
+                      <span className="text-slate-400 text-xs w-24 truncate" title={order.orderType === 'dine-in' ? `Table ${order.tableNumber || '-'}` : (order.reference || order.orderType)}>
                         {order.orderType === 'dine-in'
                           ? `Table ${order.tableNumber || '-'}`
                           : (order.reference || order.orderType)}

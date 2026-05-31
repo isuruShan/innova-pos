@@ -33,7 +33,7 @@ const EMPTY_FORM = {
   name: '', category: '', price: '', description: '', images: [],
   available: true, isCombo: false, comboItems: [],
   hasVariants: false, variantOptions: [], variants: [], defaultVariantId: null,
-  channelPrices: {},
+  channelPrices: {}, ingredients: [],
 };
 
 function menuQueryKey(storeId) {
@@ -90,7 +90,7 @@ export default function MenuManagement() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
-  const { sort, order, toggleSort } = useListSort('sortOrder', 'asc');
+  const { sort, order, toggleSort } = useListSort('createdAt', 'desc');
 
   const menuKey = menuQueryKey(selectedStoreId);
 
@@ -329,6 +329,7 @@ export default function MenuManagement() {
       variants: form.hasVariants ? form.variants : [],
       defaultVariantId: form.hasVariants ? form.defaultVariantId : null,
       channelPrices: form.channelPrices || {},
+      ingredients: form.ingredients || [],
     };
     if (editing) updateMutation.mutate({ id: editing._id, data: payload });
     else createMutation.mutate(payload);

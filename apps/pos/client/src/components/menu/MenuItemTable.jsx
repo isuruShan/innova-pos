@@ -34,7 +34,7 @@ export default function MenuItemTable({
     <div className="bg-[var(--pos-panel)] rounded-xl border border-slate-700/50 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead>
+          <thead className="sticky top-0 bg-[var(--pos-surface-inset)]/90 backdrop-blur z-10">
             <tr className="border-b border-slate-700/50 bg-[var(--pos-surface-inset)]/50">
               {canDrag && (
                 <th className="w-10 px-2 py-3" aria-label="Reorder" />

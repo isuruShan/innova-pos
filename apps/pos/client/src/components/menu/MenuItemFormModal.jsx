@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axios';
 import {
   Link2, X, ChevronDown, ChevronUp, ToggleLeft, ToggleRight,
-  Upload, ImageIcon, Loader2, Package,
+  Upload, ImageIcon, Loader2, Package, Plus, Trash2, AlertTriangle,
 } from 'lucide-react';
 import CenteredModal from '../CenteredModal';
 import ItemVariantPickerModal from '../ItemVariantPickerModal';
@@ -813,6 +813,13 @@ export default function MenuItemFormModal({
   const { currencySymbol } = useBranding();
   const { selectedStoreId } = useStoreContext();
   const priceLabel = `Price (${currencySymbol})`;
+  const [activeTab, setActiveTab] = useState('general');
+
+  // Ingredients add fields
+  const [selectedInventoryId, setSelectedInventoryId] = useState('');
+  const [ingQuantity, setIngQuantity] = useState('');
+  const [ingVariantId, setIngVariantId] = useState('');
+  const [ingError, setIngError] = useState('');
 
   const { data: partners = [] } = useQuery({
     queryKey: ['foodmarket-partners'],
@@ -820,6 +827,99 @@ export default function MenuItemFormModal({
     enabled: open,
   });
   const activePartners = partners.filter((p) => p.isActive);
+
+  // Fetch all inventory items for the ingredients tab picker
+  const { data: inventoryItems = [], isPending: inventoryLoading } = useQuery({
+    queryKey: ['inventory', selectedStoreId],
+    queryFn: () => api.get('/inventory').then(r => r.data),
+    enabled: open && activeTab === 'ingredients',
+  });
+
+  // Fetch / Sync existing ingredient links on edit open
+  useEffect(() => {
+    if (!open) {
+      setActiveTab('general');
+      return;
+    }
+    if (editing?._id) {
+      api.get('/ingredient-links', { params: { menuItemId: editing._id } })
+        .then((res) => {
+          const loaded = res.data.map(link => ({
+            inventoryItemId: link.inventoryItemId?._id || link.inventoryItemId,
+            quantity: link.quantity,
+            unit: link.unit || link.inventoryItemId?.unit || '',
+            variantId: link.variantId || null,
+            itemName: link.inventoryItemId?.itemName || 'Unknown Item'
+          }));
+          setForm(f => ({ ...f, ingredients: loaded }));
+        })
+        .catch((err) => console.error("Failed to load ingredients", err));
+    } else {
+      setForm(f => ({ ...f, ingredients: [] }));
+    }
+  }, [open, editing?._id]);
+
+  const handleAddIngredient = () => {
+    setIngError('');
+    if (!selectedInventoryId) {
+      setIngError('Select an inventory item');
+      return;
+    }
+    const qty = parseFloat(ingQuantity);
+    if (isNaN(qty) || qty <= 0) {
+      setIngError('Quantity must be greater than 0');
+      return;
+    }
+    const inv = inventoryItems.find(i => i._id === selectedInventoryId);
+    if (!inv) return;
+
+    // Check duplicate combination
+    const dup = form.ingredients?.some(
+      i => i.inventoryItemId === selectedInventoryId && i.variantId === (ingVariantId || null)
+    );
+    if (dup) {
+      setIngError('This ingredient is already added for this selection');
+      return;
+    }
+
+    const newIng = {
+      inventoryItemId: selectedInventoryId,
+      quantity: qty,
+      unit: inv.unit || '',
+      variantId: ingVariantId || null,
+      itemName: inv.itemName || 'Unknown Item'
+    };
+
+    setForm(f => ({
+      ...f,
+      ingredients: [...(f.ingredients || []), newIng]
+    }));
+    setSelectedInventoryId('');
+    setIngQuantity('');
+    setIngVariantId('');
+  };
+
+  const handleRemoveIngredient = (inventoryItemId, variantId) => {
+    setForm(f => ({
+      ...f,
+      ingredients: (f.ingredients || []).filter(
+        i => !(i.inventoryItemId === inventoryItemId && i.variantId === (variantId || null))
+      )
+    }));
+  };
+
+  const handleUpdateIngredientQty = (inventoryItemId, variantId, qtyStr) => {
+    const val = parseFloat(qtyStr);
+    if (isNaN(val) || val <= 0) return;
+    setForm(f => ({
+      ...f,
+      ingredients: (f.ingredients || []).map(i =>
+        (i.inventoryItemId === inventoryItemId && i.variantId === (variantId || null))
+          ? { ...i, quantity: val }
+          : i
+      )
+    }));
+  };
 
   const footer = (
     <div className="flex gap-3">
@@ -842,193 +942,341 @@ export default function MenuItemFormModal({
       maxWidth="max-w-2xl"
       footer={footer}
     >
+      <div className="flex gap-1.5 border-b border-slate-800 pb-3 mb-4">
+        {[
+          { id: 'general', label: 'General info' },
+          { id: 'pricing', label: 'Pricing & Options' },
+          { id: 'ingredients', label: 'Ingredients & Recipe' }
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 text-sm font-semibold rounded-xl transition ${
+              activeTab === tab.id
+                ? 'bg-amber-500 text-white'
+                : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-900/40 hover:bg-slate-800/40'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       <form id="menu-item-form" onSubmit={onSubmit} className="space-y-4">
-        <div
-          onClick={() => setForm((f) => ({
-            ...f,
-            isCombo: !f.isCombo,
-            category: !f.isCombo ? COMBO_CATEGORY_NAME : (selectableCategoryNames[0] || ''),
-            comboItems: f.isCombo ? [] : f.comboItems,
-            hasVariants: false,
-            variantOptions: [],
-            variants: [],
-          }))}
-          className={`flex items-center justify-between rounded-xl px-4 py-3 cursor-pointer border transition ${
-            form.isCombo ? 'bg-amber-500/10 border-amber-500/40' : 'bg-[var(--pos-surface-inset)] border-slate-700 hover:border-slate-600'
-          }`}>
-          <div className="flex items-center gap-2">
-            <Link2 size={16} className={form.isCombo ? 'text-amber-400' : 'text-slate-500'} />
-            <div>
-              <p className={`text-sm font-semibold ${form.isCombo ? 'text-amber-400' : 'text-slate-300'}`}>Combo Product</p>
-              <p className="text-xs text-slate-500">Bundle multiple items into one product</p>
-            </div>
-          </div>
-          <div className={`w-10 h-5 rounded-full transition relative flex-shrink-0 ${form.isCombo ? 'bg-amber-500' : 'bg-slate-700'}`}>
-            <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${form.isCombo ? 'left-5' : 'left-0.5'}`} />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">Item Name *</label>
-          <input
-            type="text"
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            placeholder={form.isCombo ? 'e.g. Burger Meal Deal' : 'e.g. Classic Burger'}
-            required
-            maxLength={MENU_ITEM_LIMITS.name}
-            className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
-          />
-        </div>
-
-        {form.isCombo ? (
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Category</label>
-            <input type="text" value={COMBO_CATEGORY_NAME} disabled
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-400 rounded-xl px-4 py-2.5 text-sm cursor-not-allowed opacity-70" />
-            <p className="text-xs text-slate-500 mt-1">Combo products are always assigned to the Combos category.</p>
-          </div>
-        ) : (
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Category *</label>
-            {selectableCategoryNames.length > 0 ? (
-              <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
-                {selectableCategoryNames.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            ) : (
-              <p className="text-xs text-slate-500 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-4 py-3">
-                No active categories. Add categories first using the Categories button.
-              </p>
-            )}
-          </div>
-        )}
-
-        {!form.hasVariants && (
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">{priceLabel} *</label>
-            <input type="number" step="0.01" min="0" value={form.price}
-              onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-              placeholder="0.00" required
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
-            {form.isCombo && <p className="text-xs text-slate-500 mt-1">Set the combo price (can differ from sum of parts)</p>}
-          </div>
-        )}
-
-        {!form.hasVariants && activePartners.length > 0 && (
-          <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-slate-800/60 space-y-3">
-            <p className="text-xs font-semibold text-slate-400">Foodmarket Partner Price Overrides</p>
-            <div className="grid grid-cols-2 gap-3">
-              {activePartners.map((partner) => (
-                <div key={partner._id}>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">{partner.name} Price</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={form.channelPrices?.[partner._id] || ''}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setForm((f) => ({
-                        ...f,
-                        channelPrices: {
-                          ...f.channelPrices,
-                          [partner._id]: val === '' ? undefined : Number(val),
-                        },
-                      }));
-                    }}
-                    placeholder="Use base price"
-                    className="w-full bg-slate-900 border border-slate-800 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-600"
-                  />
+        {activeTab === 'general' && (
+          <div className="space-y-4">
+            <div
+              onClick={() => setForm((f) => ({
+                ...f,
+                isCombo: !f.isCombo,
+                category: !f.isCombo ? COMBO_CATEGORY_NAME : (selectableCategoryNames[0] || ''),
+                comboItems: f.isCombo ? [] : f.comboItems,
+                hasVariants: false,
+                variantOptions: [],
+                variants: [],
+              }))}
+              className={`flex items-center justify-between rounded-xl px-4 py-3 cursor-pointer border transition ${
+                form.isCombo ? 'bg-amber-500/10 border-amber-500/40' : 'bg-[var(--pos-surface-inset)] border-slate-700 hover:border-slate-600'
+              }`}>
+              <div className="flex items-center gap-2">
+                <Link2 size={16} className={form.isCombo ? 'text-amber-400' : 'text-slate-500'} />
+                <div>
+                  <p className={`text-sm font-semibold ${form.isCombo ? 'text-amber-400' : 'text-slate-300'}`}>Combo Product</p>
+                  <p className="text-xs text-slate-500">Bundle multiple items into one product</p>
                 </div>
-              ))}
+              </div>
+              <div className={`w-10 h-5 rounded-full transition relative flex-shrink-0 ${form.isCombo ? 'bg-amber-500' : 'bg-slate-700'}`}>
+                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${form.isCombo ? 'left-5' : 'left-0.5'}`} />
+              </div>
             </div>
-          </div>
-        )}
 
-        <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">Description</label>
-          <textarea
-            value={form.description}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            rows={2}
-            maxLength={MENU_ITEM_LIMITS.description}
-            placeholder="Short description…"
-            className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600 resize-none"
-          />
-        </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Item Name *</label>
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder={form.isCombo ? 'e.g. Burger Meal Deal' : 'e.g. Classic Burger'}
+                required
+                maxLength={MENU_ITEM_LIMITS.name}
+                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+              />
+            </div>
 
-        <MenuGalleryField images={form.images} onChange={(images) => setForm((f) => ({ ...f, images }))} />
+            {form.isCombo ? (
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Category</label>
+                <input type="text" value={COMBO_CATEGORY_NAME} disabled
+                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-400 rounded-xl px-4 py-2.5 text-sm cursor-not-allowed opacity-70" />
+                <p className="text-xs text-slate-500 mt-1">Combo products are always assigned to the Combos category.</p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Category *</label>
+                {selectableCategoryNames.length > 0 ? (
+                  <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    {selectableCategoryNames.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                ) : (
+                  <p className="text-xs text-slate-500 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-4 py-3">
+                    No active categories. Add categories first using the Categories button.
+                  </p>
+                )}
+              </div>
+            )}
 
-        {form.isCombo && (
-          <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-amber-500/20">
-            <p className="text-sm font-semibold text-amber-400 mb-3 flex items-center gap-1.5">
-              <Link2 size={14} /> Combo Items
-            </p>
-            <ComboBuilder
-              comboItems={form.comboItems}
-              onChange={(comboItems) => setForm((f) => ({ ...f, comboItems }))}
-              allItems={items}
-              currentItemId={editing?._id}
-            />
-          </div>
-        )}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Description</label>
+              <textarea
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                rows={2}
+                maxLength={MENU_ITEM_LIMITS.description}
+                placeholder="Short description…"
+                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600 resize-none"
+              />
+            </div>
 
-        {!form.isCombo && (
-          <>
+            <MenuGalleryField images={form.images} onChange={(images) => setForm((f) => ({ ...f, images }))} />
+
             <div className="flex items-center justify-between bg-[var(--pos-surface-inset)] rounded-xl px-4 py-3">
               <div>
-                <p className="text-sm font-medium text-slate-300">Has Variants</p>
-                <p className="text-xs text-slate-500">Sell in different sizes and flavors</p>
+                <p className="text-sm font-medium text-slate-300">Available on menu</p>
+                <p className="text-xs text-slate-500">Show to cashiers</p>
               </div>
-              <button type="button" onClick={() => setForm((f) => ({ ...f, hasVariants: !f.hasVariants, price: f.hasVariants ? f.price : '' }))}
-                className={`w-12 h-6 rounded-full transition relative ${form.hasVariants ? 'bg-amber-500' : 'bg-slate-700'}`}>
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${form.hasVariants ? 'left-6' : 'left-0.5'}`} />
+              <button type="button" onClick={() => setForm((f) => ({ ...f, available: !f.available }))}
+                className={`w-12 h-6 rounded-full transition relative ${form.available ? 'bg-amber-500' : 'bg-slate-700'}`}>
+                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${form.available ? 'left-6' : 'left-0.5'}`} />
               </button>
             </div>
-
-            {form.hasVariants && (
-              <VariantsBuilder
-                form={form}
-                setForm={setForm}
-                savedCriteria={savedCriteria}
-                saveCriteriaMutation={saveCriteriaMutation}
-                priceLabel={priceLabel}
-                activePartners={activePartners}
-              />
-            )}
-          </>
+          </div>
         )}
 
-        <div className="flex items-center justify-between bg-[var(--pos-surface-inset)] rounded-xl px-4 py-3">
-          <div>
-            <p className="text-sm font-medium text-slate-300">Available on menu</p>
-            <p className="text-xs text-slate-500">Show to cashiers</p>
-          </div>
-          <button type="button" onClick={() => setForm((f) => ({ ...f, available: !f.available }))}
-            className={`w-12 h-6 rounded-full transition relative ${form.available ? 'bg-amber-500' : 'bg-slate-700'}`}>
-            <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${form.available ? 'left-6' : 'left-0.5'}`} />
-          </button>
-        </div>
+        {activeTab === 'pricing' && (
+          <div className="space-y-4">
+            {form.isCombo && (
+              <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-amber-500/20">
+                <p className="text-sm font-semibold text-amber-400 mb-3 flex items-center gap-1.5">
+                  <Link2 size={14} /> Combo Items
+                </p>
+                <ComboBuilder
+                  comboItems={form.comboItems}
+                  onChange={(comboItems) => setForm((f) => ({ ...f, comboItems }))}
+                  allItems={items}
+                  currentItemId={editing?._id}
+                />
+              </div>
+            )}
 
-        {/* Ingredients section */}
-        {!form.isCombo && (
-          <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-purple-500/20">
-            <p className="text-sm font-semibold text-purple-400 mb-3 flex items-center gap-1.5">
-              <Package size={14} /> Ingredients
-            </p>
-            {editing?._id ? (
-              <IngredientsBuilder
-                menuItemId={editing._id}
-                storeId={selectedStoreId}
-              />
-            ) : (
+            {!form.hasVariants && (
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">{priceLabel} *</label>
+                <input type="number" step="0.01" min="0" value={form.price}
+                  onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+                  placeholder="0.00" required
+                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
+                {form.isCombo && <p className="text-xs text-slate-500 mt-1">Set the combo price (can differ from sum of parts)</p>}
+              </div>
+            )}
+
+            {!form.hasVariants && activePartners.length > 0 && (
+              <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-slate-800/60 space-y-3">
+                <p className="text-xs font-semibold text-slate-400">Foodmarket Partner Price Overrides</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {activePartners.map((partner) => (
+                    <div key={partner._id}>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">{partner.name} Price</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={form.channelPrices?.[partner._id] || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setForm((f) => ({
+                            ...f,
+                            channelPrices: {
+                              ...f.channelPrices,
+                              [partner._id]: val === '' ? undefined : Number(val),
+                            },
+                          }));
+                        }}
+                        placeholder="Use base price"
+                        className="w-full bg-slate-900 border border-slate-800 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-600"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!form.isCombo && (
+              <>
+                <div className="flex items-center justify-between bg-[var(--pos-surface-inset)] rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-300">Has Variants</p>
+                    <p className="text-xs text-slate-500">Sell in different sizes and flavors</p>
+                  </div>
+                  <button type="button" onClick={() => setForm((f) => ({ ...f, hasVariants: !f.hasVariants, price: f.hasVariants ? f.price : '' }))}
+                    className={`w-12 h-6 rounded-full transition relative ${form.hasVariants ? 'bg-amber-500' : 'bg-slate-700'}`}>
+                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${form.hasVariants ? 'left-6' : 'left-0.5'}`} />
+                  </button>
+                </div>
+
+                {form.hasVariants && (
+                  <VariantsBuilder
+                    form={form}
+                    setForm={setForm}
+                    savedCriteria={savedCriteria}
+                    saveCriteriaMutation={saveCriteriaMutation}
+                    priceLabel={priceLabel}
+                    activePartners={activePartners}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'ingredients' && (
+          <div className="space-y-4">
+            {form.isCombo ? (
               <p className="text-xs text-slate-500 bg-slate-900/40 border border-slate-800 rounded-lg p-3">
-                To link ingredients to this new product, please save the item first. Once saved, reopen the product settings to customize the ingredient recipe list.
+                Combo products do not have recipes. Ingredients are tracked on individual products in the combo.
               </p>
+            ) : (
+              <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-purple-500/20 space-y-4">
+                <p className="text-sm font-semibold text-purple-400 flex items-center gap-1.5">
+                  <Package size={14} /> Recipe Ingredients
+                </p>
+
+                {inventoryItems.length > 0 ? (
+                  <div className="bg-slate-900/40 border border-slate-850 rounded-xl p-3 space-y-3">
+                    <p className="text-xs font-semibold text-slate-400">Link Ingredient Link</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[10px] text-slate-500 mb-1">Inventory Item</label>
+                        <select
+                          value={selectedInventoryId}
+                          onChange={(e) => setSelectedInventoryId(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        >
+                          <option value="">Select item...</option>
+                          {inventoryItems.map((inv) => (
+                            <option key={inv._id} value={inv._id}>
+                              {inv.itemName} ({inv.quantity} {inv.unit})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-slate-500 mb-1">Qty Used</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          value={ingQuantity}
+                          onChange={(e) => setIngQuantity(e.target.value)}
+                          placeholder="0.00"
+                          className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        />
+                      </div>
+
+                      {form.hasVariants && (
+                        <div>
+                          <label className="block text-[10px] text-slate-500 mb-1">Apply to Variant</label>
+                          <select
+                            value={ingVariantId}
+                            onChange={(e) => setIngVariantId(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          >
+                            <option value="">All Variants / Base Item</option>
+                            {form.variants?.map((v) => (
+                              <option key={v._id} value={v._id}>
+                                {v.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+
+                    {ingError && (
+                      <p className="text-xs text-red-400 mt-1">{ingError}</p>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleAddIngredient}
+                      className="flex items-center justify-center gap-1 bg-amber-500 hover:bg-amber-400 text-white font-medium px-3 py-1.5 rounded-lg transition text-xs"
+                    >
+                      <Plus size={13} />
+                      Link Ingredient
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 bg-slate-900/40 border border-slate-800 rounded-lg p-3">
+                    No inventory items available. Create inventory items first under Menu & Stock → Inventory.
+                  </p>
+                )}
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-slate-400">Current Ingredients Checklist</p>
+                  {(form.ingredients || []).length > 0 ? (
+                    <div className="bg-[var(--pos-surface-inset)] rounded-xl divide-y divide-slate-800 max-h-60 overflow-y-auto">
+                      {form.ingredients.map((link, idx) => {
+                        const variant = form.hasVariants && link.variantId
+                          ? form.variants?.find(v => v._id === link.variantId)
+                          : null;
+
+                        return (
+                          <div key={idx} className="flex items-center gap-3 px-3 py-2">
+                            <Package size={14} className="text-slate-500 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-slate-200 truncate">{link.itemName}</p>
+                              {form.hasVariants && (
+                                <span className="text-[10px] text-amber-400 block truncate">
+                                  {variant ? `↳ Variant: ${variant.name}` : '↳ Applies to all variants'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                value={link.quantity}
+                                onChange={(e) => handleUpdateIngredientQty(link.inventoryItemId, link.variantId, e.target.value)}
+                                className="w-16 bg-slate-900 border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2 py-0.5 text-xs text-right focus:outline-none"
+                              />
+                              <span className="text-[10px] text-slate-500 w-10 truncate">{link.unit}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveIngredient(link.inventoryItemId, link.variantId)}
+                                className="p-1 text-slate-500 hover:text-red-400 transition"
+                                title="Remove ingredient"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-slate-600 bg-slate-900/20 border border-dashed border-slate-800 rounded-xl text-xs">
+                      No ingredients linked yet.
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         )}
+
         {formError && (
           <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm">{formError}</div>
         )}
