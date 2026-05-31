@@ -75,7 +75,14 @@ export default function ConsumptionReport() {
               <input
                 type="date"
                 value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
+                max={toDate}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFromDate(val);
+                  if (toDate && val > toDate) {
+                    setToDate(val);
+                  }
+                }}
                 className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
@@ -87,14 +94,21 @@ export default function ConsumptionReport() {
               <input
                 type="date"
                 value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
+                min={fromDate}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setToDate(val);
+                  if (fromDate && val < fromDate) {
+                    setFromDate(val);
+                  }
+                }}
                 className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
           </div>
           <button
             onClick={handleGenerate}
-            disabled={isFetching || !fromDate || !toDate}
+            disabled={isFetching || !fromDate || !toDate || fromDate > toDate}
             className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-white font-semibold px-4 py-2 rounded-lg transition text-sm"
           >
             {isFetching ? (
@@ -129,7 +143,7 @@ export default function ConsumptionReport() {
               </div>
               <div>
                 <p className="text-xs text-slate-500">Items Tracked</p>
-                <p className="text-2xl font-bold text-[var(--pos-text-primary)]">{report.summary.totalItems}</p>
+                <p className="text-2xl font-bold text-[var(--pos-text-primary)]">{report.summary?.totalItems ?? 0}</p>
               </div>
             </div>
           </div>
@@ -140,7 +154,7 @@ export default function ConsumptionReport() {
               </div>
               <div>
                 <p className="text-xs text-slate-500">Completed Orders</p>
-                <p className="text-2xl font-bold text-[var(--pos-text-primary)]">{report.summary.totalOrders}</p>
+                <p className="text-2xl font-bold text-[var(--pos-text-primary)]">{report.summary?.totalOrders ?? 0}</p>
               </div>
             </div>
           </div>
@@ -151,7 +165,7 @@ export default function ConsumptionReport() {
               </div>
               <div>
                 <p className="text-xs text-slate-500">Items with Variance</p>
-                <p className="text-2xl font-bold text-[var(--pos-text-primary)]">{report.summary.itemsWithVariance}</p>
+                <p className="text-2xl font-bold text-[var(--pos-text-primary)]">{report.summary?.itemsWithVariance ?? 0}</p>
               </div>
             </div>
           </div>

@@ -98,7 +98,15 @@ router.get('/consumption-report', protect, authorize('manager', 'merchant_admin'
     });
 
     if (menuItemIds.size === 0) {
-      return res.json({ period: { from, to }, items: [] });
+      return res.json({
+        period: { from, to },
+        items: [],
+        summary: {
+          totalItems: 0,
+          totalOrders: orders.length,
+          itemsWithVariance: 0,
+        }
+      });
     }
 
     // Get ingredient links for these menu items
@@ -134,7 +142,7 @@ router.get('/consumption-report', protect, authorize('manager', 'merchant_admin'
               totalUsage: 0,
             };
           }
-          consumptionMap[invId].totalUsage += link.quantity * orderItem.quantity;
+          consumptionMap[invId].totalUsage += link.quantity * (orderItem.qty || 0);
         });
       });
     });
@@ -142,7 +150,15 @@ router.get('/consumption-report', protect, authorize('manager', 'merchant_admin'
     // Get current inventory items
     const inventoryIds = Object.keys(consumptionMap);
     if (inventoryIds.length === 0) {
-      return res.json({ period: { from, to }, items: [] });
+      return res.json({
+        period: { from, to },
+        items: [],
+        summary: {
+          totalItems: 0,
+          totalOrders: orders.length,
+          itemsWithVariance: 0,
+        }
+      });
     }
 
     const currentInventory = await Inventory.find({
@@ -151,39 +167,72 @@ router.get('/consumption-report', protect, authorize('manager', 'merchant_admin'
       ...storeFilter,
     }).lean();
 
+    // Filter out items that did not exist yet during the selected period
+    const validInventory = currentInventory.filter(inv => {
+      const createdAt = new Date(inv.createdAt);
+      return createdAt <= toDate;
+    });
+
+    if (validInventory.length === 0) {
+      return res.json({
+        period: { from, to },
+        items: [],
+        summary: {
+          totalItems: 0,
+          totalOrders: orders.length,
+          itemsWithVariance: 0,
+        }
+      });
+    }
+
+    const validInventoryIds = validInventory.map(inv => inv._id.toString());
     const inventoryById = {};
-    currentInventory.forEach(inv => {
+    validInventory.forEach(inv => {
       inventoryById[inv._id.toString()] = inv;
     });
 
-    // Get stock movements in period to calculate starting stock
+    // Get stock movements from fromDate onwards (until now) to calculate starting stock and stock at toDate
     const movements = await StockMovement.find({
       tenantId: req.tenantId,
       ...storeFilter,
-      inventoryItemId: { $in: inventoryIds },
-      createdAt: { $gte: fromDate, $lte: toDate },
+      inventoryItemId: { $in: validInventoryIds },
+      createdAt: { $gte: fromDate },
     }).lean();
 
-    // Calculate starting stock: current - sum(movements)
-    const movementSumMap = {};
+    // Calculate sum of movements after fromDate and after toDate
+    const movementSumAfterStart = {};
+    const movementSumAfterEnd = {};
     movements.forEach(mov => {
       const invId = mov.inventoryItemId.toString();
-      movementSumMap[invId] = (movementSumMap[invId] || 0) + mov.quantity;
+      const movDate = new Date(mov.createdAt);
+      
+      movementSumAfterStart[invId] = (movementSumAfterStart[invId] || 0) + mov.quantity;
+      if (movDate > toDate) {
+        movementSumAfterEnd[invId] = (movementSumAfterEnd[invId] || 0) + mov.quantity;
+      }
     });
 
     // Build report items
-    const reportItems = inventoryIds.map(invId => {
+    const reportItems = validInventoryIds.map(invId => {
       const consumption = consumptionMap[invId];
       const currentInv = inventoryById[invId];
       const currentStock = currentInv?.quantity || 0;
-      const movementSum = movementSumMap[invId] || 0;
-      const startingStock = currentStock - movementSum;
+      
+      const sumAfterStart = movementSumAfterStart[invId] || 0;
+      const sumAfterEnd = movementSumAfterEnd[invId] || 0;
 
-      // Variance: (startingStock - theoreticalUsage) - currentStock
-      // Simplified: startingStock - theoreticalUsage - currentStock
-      // Or: actual change vs theoretical change
+      // Starting stock is: current - (all movements since fromDate)
+      // But if the item was created after fromDate, it didn't exist yet at the start
+      let startingStock = currentStock - sumAfterStart;
+      if (currentInv && new Date(currentInv.createdAt) > fromDate) {
+        startingStock = 0;
+      }
+
+      // Stock at the end of the period (toDate) is: current - (all movements after toDate)
+      const periodEndStock = currentStock - sumAfterEnd;
+
       const expectedStock = startingStock - consumption.totalUsage;
-      const variance = currentStock - expectedStock;
+      const variance = periodEndStock - expectedStock;
 
       return {
         inventoryItemId: invId,
@@ -191,7 +240,7 @@ router.get('/consumption-report', protect, authorize('manager', 'merchant_admin'
         unit: consumption.item.unit,
         theoreticalUsage: Math.round(consumption.totalUsage * 100) / 100,
         startingStock: Math.round(startingStock * 100) / 100,
-        currentStock: Math.round(currentStock * 100) / 100,
+        currentStock: Math.round(periodEndStock * 100) / 100, // Show period-end stock as "current stock" in report
         expectedStock: Math.round(expectedStock * 100) / 100,
         variance: Math.round(variance * 100) / 100,
         variancePercentage: startingStock > 0 
