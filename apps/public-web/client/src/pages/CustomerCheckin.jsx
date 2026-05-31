@@ -91,7 +91,7 @@ export default function CustomerCheckin() {
     }
 
     axios
-      .get(`/api/customer-checkin/tenant-info`, { params: { tenantId, storeId, sessionId } })
+      .get(`/customer-checkin/tenant-info`, { params: { tenantId, storeId, sessionId } })
       .then((res) => {
         setBranding((prev) => ({ ...prev, ...res.data }));
       })
@@ -209,7 +209,7 @@ export default function CustomerCheckin() {
         birthday: bdayString,
       };
 
-      const { data } = await axios.post('/api/customer-checkin/initiate', payload);
+      const { data } = await axios.post('/customer-checkin/initiate', payload);
 
       if (data.otpRequired) {
         setOtpRequired(true);
@@ -235,7 +235,7 @@ export default function CustomerCheckin() {
 
     setLoading(true);
     try {
-      const { data } = await axios.post('/api/customer-checkin/verify', {
+      const { data } = await axios.post('/customer-checkin/verify', {
         sessionId,
         otp: otpCode,
       });
