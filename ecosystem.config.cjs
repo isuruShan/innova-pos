@@ -89,7 +89,9 @@ function cloudBootstrapEnv() {
     AZURE_KEY_VAULT_SECRET_NAME: process.env.AZURE_KEY_VAULT_SECRET_NAME || 'innovapos-production-env',
     UPLOAD_SERVICE_URL: process.env.UPLOAD_SERVICE_URL || 'http://127.0.0.1:3002',
     AUDIT_SERVICE_URL: process.env.AUDIT_SERVICE_URL || 'http://127.0.0.1:3004',
-      POS_SERVER_URL: process.env.POS_SERVER_URL || 'http://127.0.0.1:5000',
+    };
+}
+const cloudEnv = cloudBootstrapEnv();
 module.exports = {
   apps: [
     // ── POS App ──────────────────────────────────────────────────────────────
