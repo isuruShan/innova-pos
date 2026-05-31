@@ -17,9 +17,14 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
     }
     if (req.query.active === 'true') {
       const now = new Date();
+      const startOfToday = new Date(now);
+      startOfToday.setUTCHours(0, 0, 0, 0);
+      const endOfToday = new Date(now);
+      endOfToday.setUTCHours(23, 59, 59, 999);
+
       filter.active = true;
-      filter.startDate = { $lte: now };
-      filter.endDate = { $gte: now };
+      filter.startDate = { $lte: endOfToday };
+      filter.endDate = { $gte: startOfToday };
       filter.$and = [
         ...(filter.$and || []),
         {
@@ -124,6 +129,12 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
 
     // Track changes
     const previousValues = existing.toObject();
+    delete previousValues.changeHistory;
+    delete previousValues._id;
+    delete previousValues.__v;
+    delete previousValues.createdAt;
+    delete previousValues.updatedAt;
+
     const changeEntry = {
       changedBy: req.user.id,
       changedAt: new Date(),

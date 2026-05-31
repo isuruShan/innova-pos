@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { X } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import OrderTypeBadge from '../OrderTypeBadge';
 import { useBranding } from '../../context/BrandingContext';
@@ -113,14 +114,24 @@ export default function CollectPaymentModal({
   return (
     <div className="fixed inset-0 z-[150] bg-black/70 flex items-end sm:items-center justify-center p-3 sm:p-4">
       <div
-        className="w-full max-w-lg bg-[var(--pos-panel)] border border-slate-600/80 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl shadow-black/50 max-h-[92vh] overflow-y-auto"
+        className="w-full max-w-lg bg-[var(--pos-panel)] border border-slate-600/80 rounded-none p-5 sm:p-6 shadow-2xl shadow-black/50 max-h-[92vh] overflow-y-auto"
         {...bind}
         style={style}
       >
         <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden shrink-0" />
-        <h3 className="text-[var(--pos-text-primary)] font-bold text-xl sm:text-2xl tracking-tight">
-          Collect payment
-        </h3>
+        <div className="flex justify-between items-start">
+          <h3 className="text-[var(--pos-text-primary)] font-bold text-xl sm:text-2xl tracking-tight">
+            Collect payment
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 rounded-lg text-slate-400 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition"
+            aria-label="Close"
+          >
+            <X size={20} />
+          </button>
+        </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-400">
           {orderNumber != null && (

@@ -1377,17 +1377,11 @@ export default function NewOrder() {
                     >
                       {selectedCustomer ? (
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-base">👤</span>
-                          <div className="min-w-0 text-left">
-                            <span className="font-semibold truncate block">
-                              {selectedCustomer.name || 'Customer'}
-                            </span>
-                            {(selectedCustomer.email || selectedCustomer.mobile) && (
-                              <span className="text-xs text-slate-500 truncate block">
-                                {selectedCustomer.email || selectedCustomer.mobile}
-                              </span>
-                            )}
-                          </div>
+                          <span className="text-base shrink-0">👤</span>
+                          <span className="font-semibold truncate text-left">
+                            {selectedCustomer.name || 'Customer'}
+                            {(selectedCustomer.mobile || selectedCustomer.email) && ` (${selectedCustomer.mobile || selectedCustomer.email})`}
+                          </span>
                         </div>
                       ) : (
                         <span className="text-slate-500">Select customer…</span>
@@ -1539,14 +1533,14 @@ export default function NewOrder() {
                   )}
                 </span>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-slate-500">Auto</span>
+                  <span className="text-sm text-slate-500">Auto</span>
                   <button
                     onClick={() => { setAutoApply(v => !v); setSelectedPromoIds([]); setShowPromoList(false); }}
                     title={autoApply ? 'Auto-applying best deals' : 'Manual selection'}
                   >
                     {autoApply
-                      ? <ToggleRight size={20} className="text-green-400" />
-                      : <ToggleLeft  size={20} className="text-slate-600" />}
+                      ? <ToggleRight size={28} className="text-green-400" />
+                      : <ToggleLeft  size={28} className="text-slate-600" />}
                   </button>
                 </div>
               </div>

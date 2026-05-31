@@ -156,10 +156,11 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
           <span className="text-xs text-slate-600">{formatTime(order.createdAt)}</span>
           <button
             onClick={() => onViewEdit(order)}
-            className="p-1 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-[var(--pos-text-primary)] border border-slate-700/60 transition text-xs font-semibold"
             title="View / Edit"
           >
             <Eye size={13} />
+            View
           </button>
         </div>
       </div>

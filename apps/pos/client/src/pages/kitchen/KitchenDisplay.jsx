@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Clock, RefreshCw, ChefHat, Link2, Sun, Moon } from 'lucide-react';
+import { Clock, RefreshCw, ChefHat, Link2, Sun, Moon, Eye } from 'lucide-react';
 import api from '../../api/axios';
 import OfflineBanner from '../../components/OfflineBanner';
 import { mergeOrderLists } from '../../offline/mergeOrders.js';
@@ -229,7 +229,13 @@ function KitchenCard({
       <div className="px-3 pb-3 pt-1 space-y-2">
         <div className="flex items-center justify-between text-xs text-[var(--pos-text-muted)]">
           <span>{totalQty} item{totalQty !== 1 ? 's' : ''} total</span>
-          <span className="text-[var(--pos-text-muted)] text-xs group-hover:text-[var(--pos-text-secondary)] transition">tap for details →</span>
+          <button
+            onClick={(e) => { e.stopPropagation(); onOpen(order); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-[var(--pos-text-primary)] border border-slate-700/60 transition text-xs font-semibold"
+          >
+            <Eye size={13} />
+            View
+          </button>
         </div>
         {showPrimary && primaryLabel && (
           <button
