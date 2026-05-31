@@ -146,7 +146,7 @@ export default function CustomerTerminal() {
     };
   }, [orderState.customerSessionId]);
 
-  const resetForm = () => {
+  function resetForm() {
     setMobile('');
     setSelectedCountry(COUNTRY_CODES[0]);
     setName('');
@@ -160,7 +160,7 @@ export default function CustomerTerminal() {
     setErrorMessage('');
     setSuccessMessage('');
     setActiveField('mobile');
-  };
+  }
 
   // Keyboard/Numpad inputs handler
   const handleKeyPress = (key) => {
