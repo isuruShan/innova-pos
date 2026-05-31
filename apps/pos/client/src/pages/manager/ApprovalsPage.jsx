@@ -336,7 +336,7 @@ export default function ApprovalsPage() {
                 ) : (
                   <ul className="space-y-3">
                     {rewards.map((r) => (
-                    <li key={r._id} className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-4 flex flex-col gap-3">
+                      <li key={r._id} className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-4 flex flex-col gap-3">
                       <div>
                         <p className="font-semibold text-[var(--pos-text-primary)] text-base">{r.name}</p>
                         <p className="text-xs text-slate-500 mt-0.5">
