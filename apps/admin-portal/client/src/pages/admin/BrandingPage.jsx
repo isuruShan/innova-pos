@@ -66,6 +66,11 @@ export default function BrandingPage() {
   const tenant = subData?.tenant;
   const qrOrderingActive = tenant?.paidAddons?.qrOrdering?.active;
 
+  const { data: partners = [] } = useQuery({
+    queryKey: ['foodmarket-partners'],
+    queryFn: () => api.get('/foodmarket-partners').then((r) => r.data),
+  });
+
   useEffect(() => {
     if (settings && !form) {
       const parsed = parsePhoneForField(settings.phone, settings.countryIso || DEFAULT_COUNTRY_CODE);
@@ -618,11 +623,7 @@ export default function BrandingPage() {
             <p className="text-xs text-gray-500 mb-4">Choose when the POS prints a bill for each channel.</p>
             <div className="grid sm:grid-cols-2 gap-3">
               {(() => {
-                const { data: partners = [] } = useQuery({
-                  queryKey: ['foodmarket-partners'],
-                  queryFn: () => api.get('/foodmarket-partners').then((r) => r.data),
-                });
-                const activePartners = partners.filter((p) => p.isActive);
+                const activePartners = (partners || []).filter((p) => p && p.isActive);
                 const orderTypesToShow = [
                   { key: 'dine-in', label: 'Dine-in', hint: 'Table service' },
                   { key: 'takeaway', label: 'Take away', hint: 'Counter pickup' },
