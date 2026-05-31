@@ -4,6 +4,7 @@ import { Inbox, Check, X, Clock, User, Edit, Plus, ChevronDown, ChevronUp } from
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
+import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 
 // Helper to format dates
 const formatDate = (date) => {
@@ -180,6 +181,9 @@ export default function ApprovalsPage() {
   const [rejectReason, setRejectReason] = useState({});
   const [showReject, setShowReject] = useState({});
 
+  const { data: paidAddons } = useTenantPaidAddons();
+  const loyaltyAddonActive = paidAddons?.loyalty === true;
+
   const { data: promos = [], isPending: p1 } = useQuery({
     queryKey: ['promotions-pending'],
     queryFn: () => api.get('/promotions', { params: { pending: true } }).then((r) => r.data),
@@ -188,6 +192,7 @@ export default function ApprovalsPage() {
   const { data: rewards = [], isPending: p2 } = useQuery({
     queryKey: ['loyalty-rewards-pending'],
     queryFn: () => api.get('/loyalty/rewards', { params: { pending: true } }).then((r) => r.data),
+    enabled: loyaltyAddonActive,
   });
 
   const approvePromo = useMutation({
@@ -232,7 +237,7 @@ export default function ApprovalsPage() {
     },
   });
 
-  const pending = promos.length + rewards.length;
+  const pending = promos.length + (loyaltyAddonActive ? rewards.length : 0);
 
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
@@ -323,13 +328,14 @@ export default function ApprovalsPage() {
               )}
             </section>
 
-            <section>
-              <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">Loyalty rewards</h2>
-              {rewards.length === 0 ? (
-                <p className="text-slate-600 text-sm">No pending rewards.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {rewards.map((r) => (
+            {loyaltyAddonActive && (
+              <section>
+                <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-3">Loyalty rewards</h2>
+                {rewards.length === 0 ? (
+                  <p className="text-slate-600 text-sm">No pending rewards.</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {rewards.map((r) => (
                     <li key={r._id} className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-4 flex flex-col gap-3">
                       <div>
                         <p className="font-semibold text-[var(--pos-text-primary)] text-base">{r.name}</p>
@@ -396,6 +402,7 @@ export default function ApprovalsPage() {
                 </ul>
               )}
             </section>
+            )}
           </div>
         )}
       </div>
