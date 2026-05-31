@@ -113,7 +113,7 @@ router.post('/initiate', async (req, res) => {
     }
 
     // Direct trigger to POS if no OTP is required
-    const posUrl = process.env.POS_SERVER_URL || 'http://localhost:5000';
+    const posUrl = process.env.POS_URL || 'http://localhost:5000';
     await axios.post(`${posUrl}/api/customers/session-checkin-trigger/${sessionId}`, {});
 
     res.json({ otpRequired: false, checkedIn: true, status: 'completed' });
@@ -157,7 +157,7 @@ router.post('/verify', async (req, res) => {
     await checkin.save();
 
     // Trigger POS server
-    const posUrl = process.env.POS_SERVER_URL || 'http://localhost:5000';
+    const posUrl = process.env.POS_URL || 'http://localhost:5000';
     await axios.post(`${posUrl}/api/customers/session-checkin-trigger/${sessionId}`, {});
 
     res.json({ success: true, checkedIn: true });
