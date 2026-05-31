@@ -33,6 +33,7 @@ const notificationSchema = new mongoose.Schema(
         'order_status_changed',
         'table_waiter_call',
         'qr_order_updated',
+        'inventory_session_closed',
       ],
       required: true,
     },

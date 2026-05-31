@@ -2,7 +2,7 @@ const express = require('express');
 const InventorySession = require('../models/InventorySession');
 const StockMovement = require('../models/StockMovement');
 const Inventory = require('../models/Inventory');
-const Notification = require('../models/Notification');
+const { notifyMerchantAdmins } = require('../lib/notificationHelpers');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
 
@@ -125,35 +125,33 @@ router.post('/:id/close', protect, authorize('manager', 'merchant_admin', 'super
       .populate('inventoryItemId', 'itemName unit')
       .sort({ createdAt: 1 });
 
-    // Create notification for merchant admins if there were adjustments
+    // Notify merchant admins if there were adjustments
     if (session.adjustmentCount > 0 && movements.length > 0) {
-      const summary = movements.slice(0, 5).map(m => {
-        if (!m.inventoryItemId) return null;
-        const sign = m.quantity >= 0 ? '+' : '';
-        return `${m.inventoryItemId.itemName}: ${sign}${m.quantity} ${m.inventoryItemId.unit}`;
-      }).filter(Boolean).join(', ');
+      try {
+        const summary = movements.slice(0, 5).map(m => {
+          if (!m.inventoryItemId) return null;
+          const sign = m.quantity >= 0 ? '+' : '';
+          return `${m.inventoryItemId.itemName}: ${sign}${m.quantity} ${m.inventoryItemId.unit}`;
+        }).filter(Boolean).join(', ');
 
-      const moreSummary = movements.length > 5 ? ` and ${movements.length - 5} more` : '';
+        const moreSummary = movements.length > 5 ? ` and ${movements.length - 5} more` : '';
 
-      // Only create notification if we have a valid summary
-      if (summary) {
-        await Notification.create({
-          tenantId: req.tenantId,
-          type: 'inventory_session_closed',
-          title: 'Inventory Adjustment Session Closed',
-          message: `${req.user.name} closed an adjustment session with ${session.adjustmentCount} changes: ${summary}${moreSummary}`,
-          targetRoles: ['merchant_admin'],
-          data: {
-            sessionId: session._id,
-            userId: req.user.id,
-            userName: req.user.name,
-            adjustmentCount: session.adjustmentCount,
-            totalQuantityChanged: session.totalQuantityChanged,
-          },
-        });
+        if (summary) {
+          await notifyMerchantAdmins(req.tenantId, {
+            type: 'inventory_session_closed',
+            title: 'Inventory Adjustment Session Closed',
+            body: `${req.user.name} closed an adjustment session with ${session.adjustmentCount} changes: ${summary}${moreSummary}`,
+            meta: {
+              resourceType: 'inventory_session',
+              resourceId: String(session._id),
+            },
+          }, { excludeUserId: req.user.role === 'merchant_admin' ? req.user.id : null });
 
-        session.notificationSent = true;
-        await session.save();
+          session.notificationSent = true;
+          await session.save();
+        }
+      } catch (notifyErr) {
+        console.error('[inventory close] notification failed:', notifyErr.message);
       }
     }
 

@@ -1193,7 +1193,7 @@ export default function MenuItemFormModal({
                             onChange={(e) => setIngVariantId(e.target.value)}
                             className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
                           >
-                            <option value="">All Variants / Base Item</option>
+                            <option value="">Default (all variants)</option>
                             {form.variants?.map((v) => (
                               <option key={v._id} value={v._id}>
                                 {v.name}
@@ -1239,7 +1239,7 @@ export default function MenuItemFormModal({
                               <p className="text-xs text-slate-200 truncate">{link.itemName}</p>
                               {form.hasVariants && (
                                 <span className="text-[10px] text-amber-400 block truncate">
-                                  {variant ? `↳ Variant: ${variant.name}` : '↳ Applies to all variants'}
+                                  {variant ? `↳ Variant: ${variant.name}` : '↳ Default'}
                                 </span>
                               )}
                             </div>
