@@ -59,7 +59,9 @@ const customerSessionCheckinSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Auto-delete check-in sessions after 30 minutes
-customerSessionCheckinSchema.index({ createdAt: 1 }, { expireAfterSeconds: 1800 });
+// Auto-delete check-in sessions after 2 hours (7200 seconds)
+// Increased from 30 minutes to give customers more time to complete registration
+// especially when there are network delays or nginx timeouts
+customerSessionCheckinSchema.index({ createdAt: 1 }, { expireAfterSeconds: 7200 });
 
 module.exports = mongoose.model('CustomerSessionCheckin', customerSessionCheckinSchema);
