@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Smartphone, Mail, User, Calendar, CheckCircle2, ShieldAlert, ArrowLeft, Loader2 } from 'lucide-react';
+import { Smartphone, Mail, User, Calendar, CheckCircle2, ShieldAlert, Loader2 } from 'lucide-react';
 import axios from '../api/index';
 
 const COUNTRY_CODES = [
@@ -28,7 +28,6 @@ export default function CustomerCheckin() {
     textColor: '#E2E8F0',
     buttonColor: '#E94560',
     buttonTextColor: '#F8FAFC',
-    otpRequired: false,
   });
 
   const [loadingBrand, setLoadingBrand] = useState(true);
@@ -77,10 +76,6 @@ export default function CustomerCheckin() {
       setDays(Array.from({ length: 31 }, (_, i) => i + 1));
     }
   }, [birthYear, birthMonth]);
-
-  // OTP Fields
-  const [otpRequired, setOtpRequired] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
 
   // Load merchant settings
   useEffect(() => {
@@ -211,41 +206,11 @@ export default function CustomerCheckin() {
 
       const { data } = await axios.post('/customer-checkin/initiate', payload);
 
-      if (data.otpRequired) {
-        setOtpRequired(true);
-      } else {
-        setFormSubmitted(true);
-        setSuccessMessage('Successfully checked into the order!');
-      }
+      // Registration complete - customer added to order
+      setFormSubmitted(true);
+      setSuccessMessage('Successfully checked into the order!');
     } catch (err) {
       setErrorMessage(err.response?.data?.message || 'Check-in failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    setErrorMessage('');
-    
-    if (otpCode.length < 4) {
-      setErrorMessage('Please enter a valid verification code');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { data } = await axios.post('/customer-checkin/verify', {
-        sessionId,
-        otp: otpCode,
-      });
-
-      if (data.success) {
-        setFormSubmitted(true);
-        setSuccessMessage('Successfully verified and checked into order!');
-      }
-    } catch (err) {
-      setErrorMessage(err.response?.data?.message || 'Invalid or expired OTP code');
     } finally {
       setLoading(false);
     }
@@ -302,46 +267,6 @@ export default function CustomerCheckin() {
             </p>
             <p className="text-xs text-slate-500">You can safely close this browser window now.</p>
           </div>
-        ) : otpRequired ? (
-          /* OTP Form */
-          <form onSubmit={handleVerifyOtp} className="space-y-4">
-            <button
-              type="button"
-              onClick={() => setOtpRequired(false)}
-              className="flex items-center gap-1 text-xs text-slate-400 hover:text-white transition cursor-pointer"
-            >
-              <ArrowLeft size={14} /> Back
-            </button>
-
-            <div className="space-y-2">
-              <label className="block text-xs font-semibold text-slate-300">Enter OTP Verification Code</label>
-              <p className="text-xs text-slate-500">We have sent a verification code to your phone number.</p>
-              <input
-                type="text"
-                placeholder="6-digit code"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                maxLength={6}
-                className="w-full text-center tracking-widest font-mono text-xl font-bold bg-slate-800/40 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-amber-500"
-              />
-            </div>
-
-            {errorMessage && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-lg text-xs flex items-center gap-1.5">
-                <ShieldAlert size={14} />
-                <span>{errorMessage}</span>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading || otpCode.length < 4}
-              style={{ backgroundColor: branding.buttonColor, color: branding.buttonTextColor }}
-              className="w-full py-3.5 hover:opacity-90 disabled:opacity-60 font-bold rounded-xl transition text-sm flex items-center justify-center gap-2 cursor-pointer"
-            >
-              {loading ? <Loader2 size={16} className="animate-spin" /> : 'Verify & Check In'}
-            </button>
-          </form>
         ) : (
           /* Sign In / Register Form */
           <form onSubmit={handleInitiate} className="space-y-4">

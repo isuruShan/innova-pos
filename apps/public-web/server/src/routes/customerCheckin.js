@@ -1,20 +1,11 @@
 const express = require('express');
 const axios = require('axios');
 const Tenant = require('../../../../pos/server/src/models/Tenant');
-const TenantSettings = require('../../../../pos/server/src/models/TenantSettings');
 const Customer = require('../../../../pos/server/src/models/Customer');
 const CustomerSessionCheckin = require('../models/CustomerSessionCheckin');
 const { sendRouteError } = require('@innovapos/shared-middleware');
 
 const router = express.Router();
-
-// Helper function to mock sending SMS
-function mockSendSms(mobile, message) {
-  console.log(`\n==================================================`);
-  console.log(`[SMS GATEWAY] Sending to: ${mobile}`);
-  console.log(`[SMS GATEWAY] Message: ${message}`);
-  console.log(`==================================================\n`);
-}
 
 // GET /api/customer-checkin/tenant-info — Fetch brand details and settings
 router.get('/tenant-info', async (req, res) => {
@@ -68,7 +59,7 @@ router.get('/tenant-info', async (req, res) => {
   }
 });
 
-// POST /api/customer-checkin/initiate — Start check-in process (send OTP if required)
+// POST /api/customer-checkin/initiate — Start check-in process (no OTP, direct registration)
 router.post('/initiate', async (req, res) => {
   try {
     const { tenantId, storeId, sessionId, mobile, name, email, birthday } = req.body;
@@ -82,15 +73,11 @@ router.post('/initiate', async (req, res) => {
     }
 
     const tenant = await Tenant.findById(tenantId);
-    const settings = await TenantSettings.findOne({ tenantId });
     if (!tenant) {
       return res.status(404).json({ message: 'Merchant not found' });
     }
 
-    const otpRequired = Boolean(tenant.smsGatewayAllowed && settings?.customerOtpVerificationEnabled);
-    const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit code
-    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes validity
-
+    // Create/update the checkin session as completed (no OTP verification)
     const checkin = await CustomerSessionCheckin.findOneAndUpdate(
       { sessionId },
       {
@@ -100,19 +87,12 @@ router.post('/initiate', async (req, res) => {
         name: name || '',
         email: email || '',
         birthday: birthday ? new Date(birthday) : null,
-        status: otpRequired ? 'pending_otp' : 'completed',
-        otp: otpRequired ? otp : '',
-        otpExpiresAt: otpRequired ? otpExpiresAt : null,
+        status: 'completed',
       },
       { upsert: true, new: true }
     );
 
-    if (otpRequired) {
-      mockSendSms(mobile, `Your Cafinity check-in verification code is: ${otp}. Valid for 5 minutes.`);
-      return res.json({ otpRequired: true, status: 'pending_otp' });
-    }
-
-    // Direct trigger to POS if no OTP is required
+    // Trigger POS server immediately
     const posUrl = process.env.POS_URL || 'http://localhost:5000';
     try {
       console.log(`[customer-checkin] Triggering POS at ${posUrl}/api/customers/session-checkin-trigger/${sessionId}`);
@@ -130,12 +110,12 @@ router.post('/initiate', async (req, res) => {
   }
 });
 
-// POST /api/customer-checkin/verify — Validate OTP and trigger cashier sync
+// POST /api/customer-checkin/verify — Legacy endpoint (OTP removed, now just returns success)
 router.post('/verify', async (req, res) => {
   try {
-    const { sessionId, otp } = req.body;
-    if (!sessionId || !otp) {
-      return res.status(400).json({ message: 'Session ID and OTP are required' });
+    const { sessionId } = req.body;
+    if (!sessionId) {
+      return res.status(400).json({ message: 'Session ID is required' });
     }
 
     const checkin = await CustomerSessionCheckin.findOne({ sessionId });
@@ -147,33 +127,7 @@ router.post('/verify', async (req, res) => {
       return res.status(400).json({ message: 'This order session has already been completed.' });
     }
 
-    if (checkin.status === 'completed') {
-      return res.json({ success: true, checkedIn: true });
-    }
-
-    if (!checkin.otp || checkin.otp !== String(otp).trim()) {
-      return res.status(400).json({ message: 'Invalid OTP code' });
-    }
-
-    if (checkin.otpExpiresAt && new Date() > checkin.otpExpiresAt) {
-      return res.status(400).json({ message: 'OTP code has expired' });
-    }
-
-    // Set checkin status to completed
-    checkin.status = 'completed';
-    await checkin.save();
-
-    // Trigger POS server
-    const posUrl = process.env.POS_URL || 'http://localhost:5000';
-    try {
-      console.log(`[customer-checkin] Triggering POS at ${posUrl}/api/customers/session-checkin-trigger/${sessionId}`);
-      await axios.post(`${posUrl}/api/customers/session-checkin-trigger/${sessionId}`, {}, { timeout: 5000 });
-      console.log(`[customer-checkin] POS trigger successful for session ${sessionId}`);
-    } catch (triggerErr) {
-      console.error(`[customer-checkin] Failed to trigger POS:`, triggerErr.message);
-      // Don't fail the request - customer is already registered
-    }
-
+    // Session exists and is completed (no OTP verification needed)
     res.json({ success: true, checkedIn: true });
   } catch (err) {
     console.error('[customer-checkin verify]', err.message);
