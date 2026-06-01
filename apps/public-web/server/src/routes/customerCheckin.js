@@ -114,7 +114,14 @@ router.post('/initiate', async (req, res) => {
 
     // Direct trigger to POS if no OTP is required
     const posUrl = process.env.POS_URL || 'http://localhost:5000';
-    await axios.post(`${posUrl}/api/customers/session-checkin-trigger/${sessionId}`, {});
+    try {
+      console.log(`[customer-checkin] Triggering POS at ${posUrl}/api/customers/session-checkin-trigger/${sessionId}`);
+      await axios.post(`${posUrl}/api/customers/session-checkin-trigger/${sessionId}`, {}, { timeout: 5000 });
+      console.log(`[customer-checkin] POS trigger successful for session ${sessionId}`);
+    } catch (triggerErr) {
+      console.error(`[customer-checkin] Failed to trigger POS:`, triggerErr.message);
+      // Don't fail the request - customer is already registered
+    }
 
     res.json({ otpRequired: false, checkedIn: true, status: 'completed' });
   } catch (err) {
@@ -158,7 +165,14 @@ router.post('/verify', async (req, res) => {
 
     // Trigger POS server
     const posUrl = process.env.POS_URL || 'http://localhost:5000';
-    await axios.post(`${posUrl}/api/customers/session-checkin-trigger/${sessionId}`, {});
+    try {
+      console.log(`[customer-checkin] Triggering POS at ${posUrl}/api/customers/session-checkin-trigger/${sessionId}`);
+      await axios.post(`${posUrl}/api/customers/session-checkin-trigger/${sessionId}`, {}, { timeout: 5000 });
+      console.log(`[customer-checkin] POS trigger successful for session ${sessionId}`);
+    } catch (triggerErr) {
+      console.error(`[customer-checkin] Failed to trigger POS:`, triggerErr.message);
+      // Don't fail the request - customer is already registered
+    }
 
     res.json({ success: true, checkedIn: true });
   } catch (err) {

@@ -224,6 +224,7 @@ const { publishCheckinEvent, subscribeCheckinEvent } = require('../lib/notificat
 // GET /api/customers/session-checkin-sse/:sessionId — SSE stream for cashier to receive check-in notification
 router.get('/session-checkin-sse/:sessionId', async (req, res) => {
   const { sessionId } = req.params;
+  console.log(`[session-checkin-sse] Client connected for session: ${sessionId}`);
   
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -239,10 +240,12 @@ router.get('/session-checkin-sse/:sessionId', async (req, res) => {
 
   // Subscribe to check-in notifications from the notification bus (clustered/single instance safe)
   const unsubscribe = subscribeCheckinEvent(sessionId, (message) => {
+    console.log(`[session-checkin-sse] Sending event to client for session ${sessionId}`);
     res.write(`data: ${message}\n\n`);
   });
 
   req.on('close', () => {
+    console.log(`[session-checkin-sse] Client disconnected for session: ${sessionId}`);
     clearInterval(keepAlive);
     unsubscribe();
   });
@@ -252,8 +255,11 @@ router.get('/session-checkin-sse/:sessionId', async (req, res) => {
 router.post('/session-checkin-trigger/:sessionId', async (req, res) => {
   try {
     const { sessionId } = req.params;
+    console.log(`[session-checkin-trigger] Received trigger for session: ${sessionId}`);
+    
     const checkin = await CustomerSessionCheckin.findOne({ sessionId });
     if (!checkin) {
+      console.log(`[session-checkin-trigger] Session not found: ${sessionId}`);
       return res.status(404).json({ message: 'Active check-in session not found' });
     }
 
@@ -296,10 +302,12 @@ router.post('/session-checkin-trigger/:sessionId', async (req, res) => {
     }
 
     // Broadcast check-in complete event across all process instances via Redis/Bus
+    console.log(`[session-checkin-trigger] Publishing event for session ${sessionId}, customer: ${customer._id}`);
     publishCheckinEvent(sessionId, customer);
 
     res.json({ success: true, customer });
   } catch (err) {
+    console.error(`[session-checkin-trigger] Error:`, err.message);
     sendRouteError(res, err, { req });
   }
 });

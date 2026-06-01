@@ -58,6 +58,10 @@ app.use('/api/newsletter', require('./routes/newsletter'));
 app.use('/api/contact', require('./routes/contact'));
 app.use('/api/customer-checkin', require('./routes/customerCheckin'));
 
+// Log POS_URL configuration for customer registration SSE
+const posUrl = process.env.POS_URL || 'http://localhost:5000';
+logger.info(`[customer-checkin] Will trigger POS server at: ${posUrl}`);
+
 app.get('/api/health', (_req, res) =>
   res.json({ status: 'ok', service: 'public-web-server', ts: new Date().toISOString() })
 );
