@@ -14,6 +14,8 @@ const tenantSettingsSchema = new mongoose.Schema(
     tagline: { type: String, default: '', trim: true },
     logoUrl: { type: String, default: '' },
     logoKey: { type: String, default: '' },
+    customerTerminalBgUrl: { type: String, default: '' },
+    customerTerminalBgKey: { type: String, default: '' },
     faviconUrl: { type: String, default: '' },
     themePresetId: { type: String, default: 'default' },
     themePresetName: { type: String, default: 'Default / Base' },

@@ -133,7 +133,7 @@ router.post('/initiate', async (req, res) => {
         email: email || '',
         birthday: birthday ? new Date(birthday) : null,
         status: 'completed',
-        processed: true,
+        processed: false,
       },
       { upsert: true, new: true }
     );
