@@ -257,14 +257,25 @@ router.post('/session-checkin-trigger/:sessionId', async (req, res) => {
     const { sessionId } = req.params;
     console.log(`[session-checkin-trigger] Received trigger for session: ${sessionId}`);
     
-    const checkin = await CustomerSessionCheckin.findOne({ sessionId });
-    if (!checkin) {
-      console.log(`[session-checkin-trigger] Session not found: ${sessionId}`);
-      return res.status(404).json({ message: 'Active check-in session not found' });
-    }
+    // Atomically lock and mark this checkin session as processed to avoid duplicate processing
+    const checkin = await CustomerSessionCheckin.findOneAndUpdate(
+      { sessionId, status: 'completed', processed: { $ne: true } },
+      { $set: { processed: true } },
+      { returnDocument: 'before' }
+    );
 
-    if (checkin.status !== 'completed') {
-      return res.status(400).json({ message: 'Check-in is not completed' });
+    if (!checkin) {
+      // If we couldn't lock, it might be already processed (either by Change Stream or another process)
+      // Let's check if the session checkin exists and is completed to return success
+      const existingCheckin = await CustomerSessionCheckin.findOne({ sessionId });
+      if (existingCheckin && existingCheckin.status === 'completed') {
+        console.log(`[session-checkin-trigger] Session ${sessionId} already processed or duplicate request. Returning success.`);
+        const emailNorm = normalizeEmail(existingCheckin.email);
+        const customer = await findExistingCustomerByContact(existingCheckin.tenantId, emailNorm, existingCheckin.mobile);
+        return res.json({ success: true, customer, message: 'Already processed' });
+      }
+      console.log(`[session-checkin-trigger] Session not found or check-in not completed: ${sessionId}`);
+      return res.status(404).json({ message: 'Active check-in session not found or not completed' });
     }
 
     // Match or create the customer in POS database
@@ -321,5 +332,126 @@ router.delete('/:id', protect, authorize('manager', 'merchant_admin'), tenantSco
     sendRouteError(res, err, { req });
   }
 });
+
+let changeStreamActive = false;
+
+function initCheckinChangeStream() {
+  try {
+    const mongoose = require('mongoose');
+    const pipeline = [
+      {
+        $match: {
+          $or: [
+            {
+              operationType: 'insert',
+              'fullDocument.status': 'completed'
+            },
+            {
+              operationType: { $in: ['update', 'replace'] },
+              'updateDescription.updatedFields.status': 'completed'
+            }
+          ]
+        }
+      }
+    ];
+
+    const changeStream = CustomerSessionCheckin.watch(pipeline, { fullDocument: 'updateLookup' });
+
+    changeStream.on('change', async (next) => {
+      try {
+        console.log('[change-stream] Received event:', next.operationType);
+        const doc = next.fullDocument;
+        if (!doc) {
+          console.warn('[change-stream] No fullDocument in event');
+          return;
+        }
+
+        const { sessionId } = doc;
+        console.log(`[change-stream] Attempting lock for session: ${sessionId}`);
+
+        // Atomically lock and mark this checkin session as processed
+        const checkin = await CustomerSessionCheckin.findOneAndUpdate(
+          { sessionId, status: 'completed', processed: { $ne: true } },
+          { $set: { processed: true } },
+          { returnDocument: 'before' }
+        );
+
+        if (!checkin) {
+          console.log(`[change-stream] Session ${sessionId} already processed or status not completed. Skipping.`);
+          return;
+        }
+
+        console.log(`[change-stream] Lock acquired for session ${sessionId}. Processing customer matching/creation...`);
+
+        // Match or create the customer in POS database
+        const emailNorm = normalizeEmail(checkin.email);
+        let customer = await findExistingCustomerByContact(checkin.tenantId, emailNorm, checkin.mobile);
+        
+        if (!customer) {
+          customer = await Customer.create({
+            tenantId: checkin.tenantId,
+            storeId: checkin.storeId,
+            name: checkin.name || 'Customer',
+            mobile: checkin.mobile,
+            email: emailNorm,
+            birthday: checkin.birthday || null,
+            lastLoyaltyActivityAt: new Date(),
+          });
+          console.log(`[change-stream] Created new customer: ${customer._id}`);
+        } else {
+          // If customer exists, let's update their details if they inputted new values
+          let changed = false;
+          if (checkin.name && !customer.name) {
+            customer.name = checkin.name;
+            changed = true;
+          }
+          if (checkin.birthday && !customer.birthday) {
+            customer.birthday = checkin.birthday;
+            changed = true;
+          }
+          if (emailNorm && !customer.email) {
+            customer.email = emailNorm;
+            changed = true;
+          }
+          if (changed) {
+            await customer.save();
+            console.log(`[change-stream] Updated existing customer: ${customer._id}`);
+          } else {
+            console.log(`[change-stream] Reused existing customer: ${customer._id}`);
+          }
+        }
+
+        // Broadcast check-in complete event across all process instances via Redis/Bus
+        console.log(`[change-stream] Publishing check-in complete event for session ${sessionId}`);
+        publishCheckinEvent(sessionId, customer);
+
+      } catch (err) {
+        console.error('[change-stream] Error processing change stream event:', err.message);
+      }
+    });
+
+    changeStream.on('error', (err) => {
+      console.warn('[change-stream] Change stream error (graceful fallback active):', err.message);
+      changeStreamActive = false;
+      changeStream.close().catch(() => {});
+    });
+
+    changeStreamActive = true;
+    console.log('[change-stream] Change stream watching CustomerSessionCheckin initialized successfully.');
+  } catch (err) {
+    console.warn('[change-stream] Failed to start change stream (graceful fallback active):', err.message);
+    changeStreamActive = false;
+  }
+}
+
+// Initialize change stream when DB is connected
+const mongoose = require('mongoose');
+if (mongoose.connection.readyState === 1) {
+  initCheckinChangeStream();
+} else {
+  mongoose.connection.once('open', () => {
+    initCheckinChangeStream();
+  });
+}
 
 module.exports = router;
