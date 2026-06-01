@@ -125,6 +125,11 @@ const DEFAULT_ADDONS = [
     isActive: true,
     sortOrder: 3,
   },
+  {
+    code: 'accounting',
+    name: 'Advanced Accounting Module',
+    shortDescription: 'Double-entry bookkeeping, payroll management, creditors, debtors, and automated tax statements.',
+    longDescription: 'Automates accounting records directly from checkout sales. Configure custom tax rates, run staff payroll, track debtor/creditor balances, and instantly export P&L reports, Cash Flow sheets, and Balance Sheets.',
     isActive: true,
     sortOrder: 4,
   },

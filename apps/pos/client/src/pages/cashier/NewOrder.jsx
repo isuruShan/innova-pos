@@ -764,6 +764,7 @@ export default function NewOrder() {
     staleTime: 60_000,
   });
   const loyaltyAddonActive = paidAddons?.loyalty === true;
+  const dualScreenAddonActive = paidAddons?.dualScreen === true;
 
   const { data: loyaltyConfig } = useQuery({
     queryKey: ['loyalty-config'],
@@ -1463,15 +1464,17 @@ export default function NewOrder() {
                 {cart.reduce((s, i) => s + i.qty, 0)}
               </span>
             )}
-            <button
-              type="button"
-              onClick={() => window.open('/customer-terminal', 'customer_terminal', 'width=1024,height=768')}
-              className="ml-auto bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-2 py-1 rounded text-xs transition flex items-center gap-1 border border-slate-700 cursor-pointer"
-              title="Open Customer-Facing Screen"
-            >
-              <Monitor size={12} />
-              <span>Customer Screen</span>
-            </button>
+            {dualScreenAddonActive && (
+              <button
+                type="button"
+                onClick={() => window.open('/customer-terminal', 'customer_terminal', 'width=1024,height=768')}
+                className="ml-auto bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-2 py-1 rounded text-xs transition flex items-center gap-1 border border-slate-700 cursor-pointer"
+                title="Open Customer-Facing Screen"
+              >
+                <Monitor size={12} />
+                <span>Customer Screen</span>
+              </button>
+            )}
           </div>
 
           <CashierDraftTabs
