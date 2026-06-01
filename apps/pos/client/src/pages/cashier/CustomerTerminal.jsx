@@ -106,8 +106,9 @@ export default function CustomerTerminal() {
           setCustomerName('');
         }
       } else if (type === 'CUSTOMER_CONNECTED') {
-        setCustomerName(payload.name);
-        setSuccessMessage(`Welcome back, ${payload.name}!`);
+        const name = payload.name || 'Stranger';
+        setCustomerName(name);
+        setSuccessMessage(`Welcome back, ${name}!`);
         setTimeout(() => setSuccessMessage(''), 4000);
         setShowInputScreen(false);
       } else if (type === 'ORDER_COMPLETED' || type === 'ORDER_CANCELLED') {
@@ -175,10 +176,15 @@ export default function CustomerTerminal() {
               }
             });
           }
-          setCustomerName(data.customer?.name || 'Customer');
-          setSuccessMessage(`Welcome back, ${data.customer?.name || 'Customer'}!`);
+          const customerDisplayName = data.customer?.name || 'Stranger';
+          setCustomerName(customerDisplayName);
+          if (customerDisplayName === 'Stranger') {
+            setSuccessMessage('Hi there Stranger! Wanna sign up? Just ask your cashier.');
+          } else {
+            setSuccessMessage(`Welcome back, ${customerDisplayName}!`);
+          }
           setShowInputScreen(false);
-          setTimeout(() => setSuccessMessage(''), 4000);
+          setTimeout(() => setSuccessMessage(''), 6000);
         }
       } catch (err) {
         setErrorMessage(err.response?.data?.message || 'Verification failed');
@@ -252,10 +258,15 @@ export default function CustomerTerminal() {
             }
           });
         }
-        setCustomerName(data.customer?.name || 'Customer');
-        setSuccessMessage(`Welcome back, ${data.customer?.name || 'Customer'}!`);
+        const customerDisplayName = data.customer?.name || 'Stranger';
+        setCustomerName(customerDisplayName);
+        if (customerDisplayName === 'Stranger') {
+          setSuccessMessage('Hi there Stranger! Wanna sign up? Just ask your cashier.');
+        } else {
+          setSuccessMessage(`Welcome back, ${customerDisplayName}!`);
+        }
         setShowInputScreen(false);
-        setTimeout(() => setSuccessMessage(''), 4000);
+        setTimeout(() => setSuccessMessage(''), 6000);
       }
     } catch (err) {
       setErrorMessage(err.response?.data?.message || 'Failed to submit check-in');
@@ -389,7 +400,7 @@ export default function CustomerTerminal() {
           )}
           {customerName && (
             <div className="bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-semibold text-emerald-400 animate-pulse">
-              Greeting: Hello, {customerName}!
+              Greeting: Hello, {customerName === 'Stranger' ? 'Stranger' : customerName}!
             </div>
           )}
         </div>
@@ -507,12 +518,18 @@ export default function CustomerTerminal() {
                 </p>
 
                 <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_2px_10px_rgba(255,255,255,0.15)] truncate w-full px-2">
-                  {customerName || orderState.selectedCustomer?.name || 'Customer'}
+                  {customerName || orderState.selectedCustomer?.name || 'Stranger'}
                 </h1>
 
-                <p className="text-slate-300 text-sm leading-relaxed max-w-[260px] mb-6">
-                  You are earning loyalty points and active rewards on this order automatically!
-                </p>
+                {customerName === 'Stranger' ? (
+                  <p className="text-slate-300 text-sm leading-relaxed max-w-[260px] mb-6">
+                    Hi there! Wanna sign up? Just ask your cashier.
+                  </p>
+                ) : (
+                  <p className="text-slate-300 text-sm leading-relaxed max-w-[260px] mb-6">
+                    You are earning loyalty points and active rewards on this order automatically!
+                  </p>
+                )}
 
                 <button
                   onClick={() => {

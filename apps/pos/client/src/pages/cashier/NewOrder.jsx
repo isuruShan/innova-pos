@@ -1018,6 +1018,33 @@ export default function NewOrder() {
     );
   };
 
+  // Reprice cart items when orderType or partners change (for food market partner prices)
+  useEffect(() => {
+    if (!cart.length || !menuItems.length || !partners) return;
+    
+    setCart(prevCart => {
+      return prevCart.map(cartItem => {
+        // Find the full menu item
+        const menuItem = menuItems.find(m => m._id === cartItem.menuItem);
+        if (!menuItem) return cartItem;
+        
+        // Find the variant if applicable
+        const variant = cartItem.variantId 
+          ? menuItem.variants?.find(v => v._id === cartItem.variantId)
+          : null;
+        
+        // Recalculate price with current orderType and partners
+        const newPrice = getItemPrice(menuItem, variant, orderType, partners);
+        
+        // Only update if price changed
+        if (Math.abs(newPrice - cartItem.price) > 0.01) {
+          return { ...cartItem, price: newPrice };
+        }
+        return cartItem;
+      });
+    });
+  }, [orderType, partners, menuItems]); // Don't include cart to avoid infinite loop
+
   const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
   // Which promo IDs are "active" based on mode (all IDs are sid()-normalised strings)
