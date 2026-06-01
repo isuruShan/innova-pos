@@ -1,6 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const Tenant = require('../../../../pos/server/src/models/Tenant');
+const TenantSettings = require('../../../../pos/server/src/models/TenantSettings');
 const Customer = require('../../../../pos/server/src/models/Customer');
 const CustomerSessionCheckin = require('../models/CustomerSessionCheckin');
 const { sendRouteError } = require('@innovapos/shared-middleware');
@@ -39,9 +40,7 @@ router.get('/tenant-info', async (req, res) => {
       return res.status(404).json({ message: 'Merchant not found' });
     }
 
-    // Determine if OTP SMS verification is required
-    const otpRequired = Boolean(tenant.smsGatewayAllowed && settings?.customerOtpVerificationEnabled);
-
+    // OTP verification removed - always return false
     res.json({
       businessName: tenant.businessName,
       logoUrl: settings?.logoUrl || '',
@@ -52,7 +51,6 @@ router.get('/tenant-info', async (req, res) => {
       textColor: settings?.textColor || '#E2E8F0',
       buttonColor: settings?.buttonColor || '#E94560',
       buttonTextColor: settings?.buttonTextColor || '#F8FAFC',
-      otpRequired
     });
   } catch (err) {
     sendRouteError(res, err, { req });
