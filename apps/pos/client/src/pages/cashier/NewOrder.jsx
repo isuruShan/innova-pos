@@ -1190,6 +1190,7 @@ export default function NewOrder() {
     return map;
   }, [drafts, cafeTables]);
 
+  // Broadcast order updates to dual monitor screen
   useEffect(() => {
     const channel = new BroadcastChannel('pos-dual-monitor');
     channel.postMessage({
@@ -1208,32 +1209,6 @@ export default function NewOrder() {
       }
     });
 
-    let eventSource = null;
-    if (activeDraft.customerSessionId) {
-      eventSource = new EventSource(`/api/customers/session-checkin-sse/${activeDraft.customerSessionId}`);
-      
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'CHECKIN_COMPLETE' && data.customer) {
-            setSelectedCustomer(data.customer);
-            setCustomerSearch(data.customer.name || data.customer.mobile || '');
-            qc.invalidateQueries({ queryKey: ['customers-search'] });
-            qc.invalidateQueries({ queryKey: ['customer-loyalty'] });
-            showToast(`User ${data.customer.name} added to the order!`);
-            
-            // Forward connection notification to the customer screen so it updates greeting
-            channel.postMessage({
-              type: 'CUSTOMER_CONNECTED',
-              payload: data.customer
-            });
-          }
-        } catch (err) {
-          console.error('Failed to parse SSE checkin event:', err);
-        }
-      };
-    }
-
     const onChannelMessage = (e) => {
       if (e.data.type === 'CUSTOMER_CHECKED_IN_DIRECT') {
         // Handled via SSE automatically
@@ -1242,11 +1217,48 @@ export default function NewOrder() {
     channel.addEventListener('message', onChannelMessage);
 
     return () => {
-      if (eventSource) eventSource.close();
       channel.removeEventListener('message', onChannelMessage);
       channel.close();
     };
-  }, [cart, subtotal, taxAmount, total, discountTotal, serviceFeeAmount, activeDraft.customerSessionId, selectedCustomer, qc, setSelectedCustomer, setCustomerSearch, showToast, user?.tenantId, branding.tenantId, branding._id, selectedStoreId]);
+  }, [cart, subtotal, taxAmount, total, discountTotal, serviceFeeAmount, activeDraft.customerSessionId, selectedCustomer, user?.tenantId, branding.tenantId, branding._id, selectedStoreId]);
+
+  // SSE listener for customer check-in events (separate effect to avoid reconnection on cart changes)
+  useEffect(() => {
+    if (!activeDraft.customerSessionId) return;
+
+    const eventSource = new EventSource(`/api/customers/session-checkin-sse/${activeDraft.customerSessionId}`);
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'CHECKIN_COMPLETE' && data.customer) {
+          setSelectedCustomer(data.customer);
+          setCustomerSearch(data.customer.name || data.customer.mobile || '');
+          qc.invalidateQueries({ queryKey: ['customers-search'] });
+          qc.invalidateQueries({ queryKey: ['customer-loyalty'] });
+          showToast(`User ${data.customer.name} added to the order!`);
+          
+          // Forward connection notification to the customer screen
+          const channel = new BroadcastChannel('pos-dual-monitor');
+          channel.postMessage({
+            type: 'CUSTOMER_CONNECTED',
+            payload: data.customer
+          });
+          channel.close();
+        }
+      } catch (err) {
+        console.error('Failed to parse SSE checkin event:', err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error('SSE connection error:', err);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [activeDraft.customerSessionId, setSelectedCustomer, setCustomerSearch, qc, showToast]);
 
 
   useEffect(() => {
