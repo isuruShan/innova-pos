@@ -41,9 +41,11 @@ function initNotificationBus(logger) {
       await pubClient.ping();
       await subClient.ping();
       await subClient.pSubscribe('pos:notif:*:*', (message, channel) => {
+        console.log(`[notification-bus] Received Redis message on ${channel}`);
         bus.emit(String(channel), message);
       });
       await subClient.pSubscribe('pos:checkin:*', (message, channel) => {
+        console.log(`[notification-bus] Received Redis checkin message on ${channel}`);
         bus.emit(String(channel), message);
       });
       redisReady = true;
@@ -83,9 +85,14 @@ function subscribeUserNotifications(tenantId, userId, handler) {
 function publishCheckinEvent(sessionId, customer) {
   const ch = `pos:checkin:${String(sessionId)}`;
   const payload = JSON.stringify({ type: 'CHECKIN_COMPLETE', customer });
+  console.log(`[publishCheckinEvent] Redis ready: ${redisReady}, pubClient ready: ${pubClient?.isReady}`);
   if (redisReady && pubClient?.isReady) {
-    pubClient.publish(ch, payload).catch(() => {});
+    console.log(`[publishCheckinEvent] Publishing to Redis channel: ${ch}`);
+    pubClient.publish(ch, payload).catch((err) => {
+      console.error(`[publishCheckinEvent] Redis publish failed:`, err.message);
+    });
   } else {
+    console.log(`[publishCheckinEvent] Publishing to in-memory bus (Redis not ready)`);
     bus.emit(ch, payload);
   }
 }
