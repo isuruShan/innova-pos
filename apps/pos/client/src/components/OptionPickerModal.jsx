@@ -12,7 +12,7 @@ import useSwipeDismiss from '../hooks/useSwipeDismiss';
  * @param {function} onClose - Close handler
  * @param {string} title - Modal title
  * @param {string} subtitle - Optional subtitle text
- * @param {Array} options - Array of { value, label, icon?, description?, disabled?, badge? }
+ * @param {Array} options - Array of { value, label, icon?, logoUrl?, description?, disabled?, badge? }
  * @param {string} value - Currently selected value
  * @param {function} onChange - (value) => void
  * @param {number} columns - Grid columns (default 2)
@@ -105,10 +105,12 @@ export default function OptionPickerModal({
                     </span>
                   )}
 
-                  {/* Icon */}
-                  {opt.icon && (
+                  {/* Icon or Logo */}
+                  {opt.logoUrl ? (
+                    <img src={opt.logoUrl} alt={opt.label} className="w-10 h-10 object-contain" />
+                  ) : opt.icon ? (
                     <span className="text-xl leading-none">{opt.icon}</span>
-                  )}
+                  ) : null}
 
                   {/* Label */}
                   <span className={`text-sm font-semibold leading-tight ${isSelected ? 'text-amber-300' : ''}`}>

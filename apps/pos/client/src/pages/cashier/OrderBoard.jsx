@@ -148,6 +148,9 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
             orderType={order.orderType}
             tableNumber={order.tableNumber}
             reference={order.reference}
+            logoUrl={order.orderTypeBranding?.logoUrl}
+            icon={order.orderTypeBranding?.icon}
+            color={order.orderTypeBranding?.color}
             size="xs"
           />
         </div>

@@ -1,4 +1,5 @@
-export const ORDER_TYPES = [
+// Base order types (always available)
+export const BASE_ORDER_TYPES = [
   {
     id: 'dine-in',
     label: 'Dine-In',
@@ -21,6 +22,10 @@ export const ORDER_TYPES = [
     placeholder: 'Customer name (optional)',
     hint: 'Customer name or ref',
   },
+];
+
+// Legacy hardcoded partner types (for fallback)
+const LEGACY_PARTNER_TYPES = [
   {
     id: 'uber-eats',
     label: 'Uber Eats',
@@ -45,31 +50,66 @@ export const ORDER_TYPES = [
   },
 ];
 
+// Export full hardcoded list for backwards compatibility
+export const ORDER_TYPES = [...BASE_ORDER_TYPES, ...LEGACY_PARTNER_TYPES];
+
+/**
+ * Generate dynamic ORDER_TYPES from foodmarket partners
+ * @param {Array} partners - Active foodmarket partners with logo, icon, and color
+ * @returns {Array} Combined order types (base + dynamic partners)
+ */
+export function buildOrderTypes(partners = []) {
+  const dynamicPartners = partners
+    .filter(p => p.isActive)
+    .map(p => ({
+      id: p.name.toLowerCase().replace(/\s+/g, '-'),
+      label: p.name,
+      icon: p.icon || '🛵',
+      logoUrl: p.logoUrl,
+      color: p.color || '#10b981',
+      bg: `bg-[${p.color || '#10b981'}]/10`,
+      border: `border-[${p.color || '#10b981'}]/30`,
+      activeBg: `bg-[${p.color || '#10b981'}]`,
+      placeholder: `${p.name} order #`,
+      hint: `${p.name} order number`,
+      partnerId: p._id,
+    }));
+  
+  return [...BASE_ORDER_TYPES, ...dynamicPartners];
+}
+
 export const ORDER_TYPE_MAP = Object.fromEntries(ORDER_TYPES.map(t => [t.id, t]));
 
-export default function OrderTypeBadge({ orderType, tableNumber, reference, size = 'sm' }) {
+export default function OrderTypeBadge({ orderType, tableNumber, reference, logoUrl, icon, color, size = 'sm' }) {
   const type = ORDER_TYPE_MAP[orderType] || ORDER_TYPE_MAP['dine-in'];
   const tooltipText = orderType === 'dine-in' && tableNumber
     ? `Table ${tableNumber}`
     : reference || type.label;
 
-  if (size === 'xs') {
-    return (
-      <span 
-        className={`inline-flex items-center justify-center w-6 h-6 text-sm rounded-full border ${type.bg} ${type.color} ${type.border}`}
-        title={tooltipText}
-      >
-        <span>{type.icon}</span>
-      </span>
-    );
-  }
+  // Use prop values if provided (for dynamic partners), else fall back to type config
+  const displayLogoUrl = logoUrl || type.logoUrl;
+  const displayIcon = icon || type.icon;
+  const displayColor = color || type.color;
+
+  const sizeClasses = size === 'xs' 
+    ? 'w-6 h-6 text-sm' 
+    : 'w-8 h-8 text-lg';
 
   return (
     <span 
-      className={`inline-flex items-center justify-center w-8 h-8 text-lg rounded-full border ${type.bg} ${type.color} ${type.border}`}
+      className={`inline-flex items-center justify-center ${sizeClasses} rounded-full border ${type.bg} ${type.border}`}
+      style={{ 
+        color: displayColor,
+        borderColor: displayColor + '40',
+        backgroundColor: displayColor + '10',
+      }}
       title={tooltipText}
     >
-      <span>{type.icon}</span>
+      {displayLogoUrl ? (
+        <img src={displayLogoUrl} alt={type.label} className="w-full h-full object-contain rounded-full p-0.5" />
+      ) : (
+        <span>{displayIcon}</span>
+      )}
     </span>
   );
 }

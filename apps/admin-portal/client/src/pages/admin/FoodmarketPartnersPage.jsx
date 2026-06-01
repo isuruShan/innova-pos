@@ -1,8 +1,19 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit2, Trash2, Shield, Percent, DollarSign, Check, X, RefreshCw } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tantml:function_calls>
+<invoke name="Plus, Edit2, Trash2, Shield, Percent, DollarSign, Check, X, RefreshCw, Upload, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import api from '../../api/axios';
+
+const DEFAULT_COLORS = [
+  { name: 'Green', value: '#10b981' },
+  { name: 'Blue', value: '#3b82f6' },
+  { name: 'Purple', value: '#a855f7' },
+  { name: 'Orange', value: '#f97316' },
+  { name: 'Red', value: '#ef4444' },
+  { name: 'Yellow', value: '#eab308' },
+];
+
+const DEFAULT_ICONS = ['🛵', '🏍️', '🚗', '🚴', '🛻', '🚚', '🍕', '🍔', '🌮'];
 
 export default function FoodmarketPartnersPage() {
   const toast = useToast();
@@ -16,6 +27,10 @@ export default function FoodmarketPartnersPage() {
   const [commissionFlat, setCommissionFlat] = useState(0);
   const [commissionPercentage, setCommissionPercentage] = useState(0);
   const [isActive, setIsActive] = useState(true);
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState('');
+  const [icon, setIcon] = useState('🛵');
+  const [color, setColor] = useState('#10b981');
 
   // Fetch partners
   const { data: partners = [], isLoading, isRefetching, refetch } = useQuery({
@@ -68,6 +83,10 @@ export default function FoodmarketPartnersPage() {
     setCommissionFlat(0);
     setCommissionPercentage(0);
     setIsActive(true);
+    setLogoFile(null);
+    setLogoPreview('');
+    setIcon('🛵');
+    setColor('#10b981');
     setModalOpen(true);
   };
 
@@ -78,6 +97,10 @@ export default function FoodmarketPartnersPage() {
     setCommissionFlat(partner.commissionFlat || 0);
     setCommissionPercentage(partner.commissionPercentage || 0);
     setIsActive(partner.isActive !== false);
+    setLogoFile(null);
+    setLogoPreview(partner.logoUrl || '');
+    setIcon(partner.icon || '🛵');
+    setColor(partner.color || '#10b981');
     setModalOpen(true);
   };
 
@@ -86,20 +109,60 @@ export default function FoodmarketPartnersPage() {
     setEditingPartner(null);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    let logoUrl = logoPreview;
+    let logoKey = editingPartner?.logoKey || '';
+
+    // Upload logo if new file selected
+    if (logoFile) {
+      try {
+        const formData = new FormData();
+        formData.append('file', logoFile);
+        const uploadRes = await api.post('/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        logoUrl = uploadRes.data.url;
+        logoKey = uploadRes.data.key || '';
+      } catch (err) {
+        toast.error('Failed to upload logo image');
+        return;
+      }
+    }
+
     const payload = {
       name: name.trim(),
       commissionType,
       commissionFlat: Number(commissionFlat) || 0,
       commissionPercentage: Number(commissionPercentage) || 0,
       isActive,
+      logoUrl,
+      logoKey,
+      icon,
+      color,
     };
 
     if (editingPartner) {
       updateMutation.mutate({ id: editingPartner._id, payload });
     } else {
       createMutation.mutate(payload);
+    }
+  };
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Logo file must be less than 5MB');
+        return;
+      }
+      setLogoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -166,15 +229,31 @@ export default function FoodmarketPartnersPage() {
             >
               <div>
                 <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900 leading-tight">{partner.name}</h3>
-                    <span
-                      className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mt-1.5 ${
-                        partner.isActive ? 'bg-green-55 text-green-800' : 'bg-gray-100 text-gray-500'
-                      }`}
+                  <div className="flex items-center gap-3">
+                    {/* Logo or Icon */}
+                    <div
+                      className="w-12 h-12 rounded-lg flex items-center justify-center border-2"
+                      style={{
+                        borderColor: partner.color + '40' || '#10b98140',
+                        backgroundColor: partner.color + '10' || '#10b98110',
+                      }}
                     >
-                      {partner.isActive ? 'Active' : 'Inactive'}
-                    </span>
+                      {partner.logoUrl ? (
+                        <img src={partner.logoUrl} alt={partner.name} className="w-full h-full object-contain rounded-lg" />
+                      ) : (
+                        <span className="text-2xl">{partner.icon || '🛵'}</span>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 leading-tight">{partner.name}</h3>
+                      <span
+                        className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mt-1.5 ${
+                          partner.isActive ? 'bg-green-55 text-green-800' : 'bg-gray-100 text-gray-500'
+                        }`}
+                      >
+                        {partner.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <button
@@ -238,6 +317,98 @@ export default function FoodmarketPartnersPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Partner Name</label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Uber Eats, PickMe"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange bg-white"
+                />
+              </div>
+
+              {/* Logo Upload */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Partner Logo</label>
+                <div className="flex items-start gap-3">
+                  {logoPreview ? (
+                    <div className="relative w-20 h-20 rounded-lg border-2 border-gray-200 overflow-hidden bg-white">
+                      <img src={logoPreview} alt="Logo preview" className="w-full h-full object-contain" />
+                      <button
+                        type="button"
+                        onClick={() => { setLogoFile(null); setLogoPreview(''); }}
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 text-xs"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
+                      <ImageIcon size={24} className="text-gray-400" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      id="logo-upload"
+                      accept="image/*"
+                      onChange={handleLogoChange}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="logo-upload"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
+                    >
+                      <Upload size={14} />
+                      Choose Image
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1.5">PNG, JPG up to 5MB. Recommended: 200x200px square.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Icon & Color */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Icon (Fallback)</label>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {DEFAULT_ICONS.map((ic) => (
+                      <button
+                        key={ic}
+                        type="button"
+                        onClick={() => setIcon(ic)}
+                        className={`p-2 text-lg rounded-lg border-2 transition ${
+                          icon === ic ? 'border-brand-orange bg-brand-orange/5' : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        {ic}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Badge Color</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {DEFAULT_COLORS.map((col) => (
+                      <button
+                        key={col.value}
+                        type="button"
+                        onClick={() => setColor(col.value)}
+                        className={`p-2 rounded-lg border-2 transition flex items-center justify-center ${
+                          color === col.value ? 'border-gray-900' : 'border-gray-200'
+                        }`}
+                        style={{ backgroundColor: col.value + '20' }}
+                        title={col.name}
+                      >
+                        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: col.value }} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Partner Name</label>
                 <input

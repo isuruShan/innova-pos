@@ -47,6 +47,12 @@ const orderSchema = new mongoose.Schema(
       enum: ['dine-in', 'takeaway', 'uber-eats', 'pickme'],
       default: 'dine-in',
     },
+    /** Display branding for order type (for partner logos/colors) */
+    orderTypeBranding: {
+      logoUrl: { type: String, default: '' },
+      icon: { type: String, default: '' },
+      color: { type: String, default: '' },
+    },
     tableNumber: { type: String, default: '' },
     tableId: { type: mongoose.Schema.Types.ObjectId, ref: 'CafeTable', default: null, index: true },
     reference: { type: String, default: '' },

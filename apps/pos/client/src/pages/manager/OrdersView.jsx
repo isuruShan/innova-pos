@@ -513,6 +513,9 @@ export default function OrdersView() {
                       orderType={order.orderType}
                       tableNumber={order.tableNumber}
                       reference={order.reference}
+                      logoUrl={order.orderTypeBranding?.logoUrl}
+                      icon={order.orderTypeBranding?.icon}
+                      color={order.orderTypeBranding?.color}
                       size="xs"
                     />
                     <span className="text-xs font-medium text-slate-300 truncate" title={formatPaymentTypeLabel(order.paymentType)}>
@@ -547,7 +550,15 @@ export default function OrdersView() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <OrderTypeBadge orderType={order.orderType} tableNumber={order.tableNumber} reference={order.reference} size="xs" />
+                      <OrderTypeBadge 
+                        orderType={order.orderType} 
+                        tableNumber={order.tableNumber} 
+                        reference={order.reference} 
+                        logoUrl={order.orderTypeBranding?.logoUrl}
+                        icon={order.orderTypeBranding?.icon}
+                        color={order.orderTypeBranding?.color}
+                        size="xs" 
+                      />
                       <span className="text-[10px] uppercase tracking-wide text-slate-500 bg-slate-800/80 px-2 py-0.5 rounded-md">
                         {formatPaymentTypeLabel(order.paymentType)}
                       </span>

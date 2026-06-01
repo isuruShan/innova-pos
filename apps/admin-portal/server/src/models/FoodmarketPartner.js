@@ -33,6 +33,26 @@ const foodmarketPartnerSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    /** Logo image URL for display in order types */
+    logoUrl: {
+      type: String,
+      default: '',
+    },
+    /** Logo storage key (for S3/Blob) */
+    logoKey: {
+      type: String,
+      default: '',
+    },
+    /** Icon emoji fallback if no logo */
+    icon: {
+      type: String,
+      default: '🛵',
+    },
+    /** Display color for badges */
+    color: {
+      type: String,
+      default: '#10b981',
+    },
   },
   { timestamps: true }
 );

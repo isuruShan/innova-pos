@@ -32,7 +32,7 @@ router.get('/', protect, tenantScope, async (req, res) => {
 // POST create a partner
 router.post('/', protect, authorize('merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
   try {
-    const { name, commissionType, commissionFlat, commissionPercentage, isActive } = req.body;
+    const { name, commissionType, commissionFlat, commissionPercentage, isActive, logoUrl, logoKey, icon, color } = req.body;
     if (!name) return res.status(400).json({ message: 'Name is required' });
     
     const dup = await FoodmarketPartner.findOne({ tenantId: req.tenantId, name: { $regex: new RegExp(`^${name.trim()}$`, 'i') } });
@@ -45,6 +45,10 @@ router.post('/', protect, authorize('merchant_admin', 'superadmin'), tenantScope
       commissionFlat: commissionFlat || 0,
       commissionPercentage: commissionPercentage || 0,
       isActive: isActive !== false,
+      logoUrl: logoUrl || '',
+      logoKey: logoKey || '',
+      icon: icon || '🛵',
+      color: color || '#10b981',
     });
     res.status(201).json(partner);
   } catch (err) {
@@ -55,13 +59,17 @@ router.post('/', protect, authorize('merchant_admin', 'superadmin'), tenantScope
 // PUT update a partner
 router.put('/:id', protect, authorize('merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
   try {
-    const { name, commissionType, commissionFlat, commissionPercentage, isActive } = req.body;
+    const { name, commissionType, commissionFlat, commissionPercentage, isActive, logoUrl, logoKey, icon, color } = req.body;
     const update = {};
     if (name) update.name = name.trim();
     if (commissionType) update.commissionType = commissionType;
     if (commissionFlat !== undefined) update.commissionFlat = commissionFlat;
     if (commissionPercentage !== undefined) update.commissionPercentage = commissionPercentage;
     if (isActive !== undefined) update.isActive = isActive;
+    if (logoUrl !== undefined) update.logoUrl = logoUrl;
+    if (logoKey !== undefined) update.logoKey = logoKey;
+    if (icon !== undefined) update.icon = icon;
+    if (color !== undefined) update.color = color;
 
     const partner = await FoodmarketPartner.findOneAndUpdate(
       { _id: req.params.id, tenantId: req.tenantId },

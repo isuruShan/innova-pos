@@ -16,7 +16,7 @@ import CashierDraftTabs from '../../components/cashier/CashierDraftTabs';
 import { useCashierDraftOrders } from '../../context/CashierDraftOrdersContext';
 import { useFohrMode } from '../../hooks/useFohrMode';
 import { CASHIER_SESSION_QUERY_KEY } from '../../components/cashier/cashierSessionContext';
-import OrderTypeBadge, { ORDER_TYPES, ORDER_TYPE_MAP } from '../../components/OrderTypeBadge';
+import OrderTypeBadge, { ORDER_TYPES, ORDER_TYPE_MAP, buildOrderTypes } from '../../components/OrderTypeBadge';
 import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
 import OptionPickerModal, { TablePickerModal, CustomerPickerModal } from '../../components/OptionPickerModal';
 import { mergeOrderLists } from '../../offline/mergeOrders.js';
@@ -1174,8 +1174,21 @@ export default function NewOrder() {
 
   const handlePaymentConfirm = ({ paymentType, paymentAmount, cashTender }) => {
     if (!canPlace) return;
+    
+    // Get branding for the current order type
+    const dynamicTypes = buildOrderTypes(partners);
+    const currentType = dynamicTypes.find(t => t.id === orderType);
+    const orderTypeBranding = currentType?.logoUrl || currentType?.icon || currentType?.color
+      ? {
+          logoUrl: currentType.logoUrl || '',
+          icon: currentType.icon || '',
+          color: currentType.color || '',
+        }
+      : undefined;
+    
     mutation.mutate({
       orderType,
+      ...(orderTypeBranding ? { orderTypeBranding } : {}),
       ...(orderType === 'dine-in' && tableMgmt && selectedTableId ? { tableId: selectedTableId } : {}),
       tableNumber: orderType === 'dine-in' && !tableMgmt ? tableNumber.trim() : '',
       reference: orderType !== 'dine-in' ? nonDineInReference : '',
@@ -1193,8 +1206,21 @@ export default function NewOrder() {
 
   const sendTableTabOrder = () => {
     if (!canPlace) return;
+    
+    // Get branding for the current order type
+    const dynamicTypes = buildOrderTypes(partners);
+    const currentType = dynamicTypes.find(t => t.id === orderType);
+    const orderTypeBranding = currentType?.logoUrl || currentType?.icon || currentType?.color
+      ? {
+          logoUrl: currentType.logoUrl || '',
+          icon: currentType.icon || '',
+          color: currentType.color || '',
+        }
+      : undefined;
+    
     mutation.mutate({
       orderType,
+      ...(orderTypeBranding ? { orderTypeBranding } : {}),
       ...(orderType === 'dine-in' && tableMgmt && selectedTableId ? { tableId: selectedTableId } : {}),
       tableNumber: orderType === 'dine-in' && !tableMgmt ? tableNumber.trim() : '',
       reference: orderType !== 'dine-in' ? nonDineInReference : '',
@@ -1942,20 +1968,12 @@ export default function NewOrder() {
         title="Order Type"
         subtitle="Select how the customer will receive their order"
         options={(() => {
-          const activePartners = partners.filter((p) => p.isActive);
-          return ORDER_TYPES.filter((type) => {
-            if (type.id === 'dine-in' || type.id === 'takeaway') return true;
-            if (type.id === 'uber-eats') {
-              return activePartners.some((p) => p.name?.toLowerCase().includes('uber'));
-            }
-            if (type.id === 'pickme') {
-              return activePartners.some((p) => p.name?.toLowerCase().includes('pickme') || p.name?.toLowerCase().includes('pick me'));
-            }
-            return false;
-          }).map((type) => ({
+          const dynamicTypes = buildOrderTypes(partners);
+          return dynamicTypes.map((type) => ({
             value: type.id,
             label: type.label,
-            icon: type.icon,
+            icon: type.logoUrl ? undefined : type.icon,
+            logoUrl: type.logoUrl,
           }));
         })()}
         value={orderType}
