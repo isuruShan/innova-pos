@@ -1226,12 +1226,20 @@ export default function NewOrder() {
   useEffect(() => {
     if (!activeDraft.customerSessionId) return;
 
+    console.log(`[SSE] Connecting to session: ${activeDraft.customerSessionId}`);
     const eventSource = new EventSource(`/api/customers/session-checkin-sse/${activeDraft.customerSessionId}`);
     
+    eventSource.onopen = () => {
+      console.log(`[SSE] Connected successfully to session: ${activeDraft.customerSessionId}`);
+    };
+
     eventSource.onmessage = (event) => {
+      console.log(`[SSE] Received message:`, event.data);
       try {
         const data = JSON.parse(event.data);
+        console.log(`[SSE] Parsed data:`, data);
         if (data.type === 'CHECKIN_COMPLETE' && data.customer) {
+          console.log(`[SSE] Customer check-in complete:`, data.customer);
           setSelectedCustomer(data.customer);
           setCustomerSearch(data.customer.name || data.customer.mobile || '');
           qc.invalidateQueries({ queryKey: ['customers-search'] });
@@ -1245,17 +1253,20 @@ export default function NewOrder() {
             payload: data.customer
           });
           channel.close();
+        } else {
+          console.log(`[SSE] Ignoring message type:`, data.type);
         }
       } catch (err) {
-        console.error('Failed to parse SSE checkin event:', err);
+        console.error('[SSE] Failed to parse SSE checkin event:', err, 'Raw data:', event.data);
       }
     };
 
     eventSource.onerror = (err) => {
-      console.error('SSE connection error:', err);
+      console.error('[SSE] Connection error:', err);
     };
 
     return () => {
+      console.log(`[SSE] Disconnecting from session: ${activeDraft.customerSessionId}`);
       eventSource.close();
     };
   }, [activeDraft.customerSessionId, setSelectedCustomer, setCustomerSearch, qc, showToast]);

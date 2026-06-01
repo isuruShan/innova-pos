@@ -240,7 +240,7 @@ router.get('/session-checkin-sse/:sessionId', async (req, res) => {
 
   // Subscribe to check-in notifications from the notification bus (clustered/single instance safe)
   const unsubscribe = subscribeCheckinEvent(sessionId, (message) => {
-    console.log(`[session-checkin-sse] Sending event to client for session ${sessionId}`);
+    console.log(`[session-checkin-sse] Sending event to client for session ${sessionId}, data:`, message);
     res.write(`data: ${message}\n\n`);
   });
 
