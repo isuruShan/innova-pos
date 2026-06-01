@@ -23,6 +23,13 @@ function addDays(d, n) {
   return x;
 }
 
+function formatAddress(addr) {
+  if (!addr) return 'No address';
+  if (typeof addr === 'string') return addr;
+  const parts = [addr.street1, addr.street2, addr.city, addr.state, addr.postalCode, addr.country].filter(Boolean);
+  return parts.join(', ') || 'No address';
+}
+
 function StatCard({ label, value, icon: Icon, sub, color = 'orange' }) {
   const ring = { orange: 'text-brand-orange bg-brand-orange/10', blue: 'text-blue-600 bg-blue-50', green: 'text-green-600 bg-green-50', purple: 'text-purple-600 bg-purple-50', red: 'text-red-600 bg-red-50' };
   return (
@@ -175,7 +182,7 @@ export default function AnalyticsPage() {
             ))}
           </select>
           {selectedStore && (
-            <p className="text-xs text-gray-500 mt-2">{selectedStore.address || 'No address on file'}</p>
+            <p className="text-xs text-gray-500 mt-2">{formatAddress(selectedStore.address)}</p>
           )}
         </div>
 
