@@ -38,6 +38,8 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
       tenantId: req.tenantId,
       businessName: data.businessName,
       logoUrl: data.logoUrl,
+      customerTerminalBgUrl: data.customerTerminalBgUrl,
+      customerTerminalBgKey: data.customerTerminalBgKey,
       paymentMethods: data.paymentMethods,
       currency: data.currency,
       currencySymbol: data.currencySymbol,

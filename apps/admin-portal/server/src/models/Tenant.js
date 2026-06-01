@@ -117,6 +117,17 @@ const tenantSchema = new mongoose.Schema(
         trialEndsAt: { type: Date, default: null },
         billingCycle: { type: String, enum: ['', 'monthly', 'yearly'], default: '' },
       },
+      dualScreen: {
+        active: { type: Boolean, default: false },
+        activatedAt: { type: Date, default: null },
+        amountPerCycle: { type: Number, default: 0, min: 0 },
+        currency: { type: String, default: '', trim: true, uppercase: true },
+        periodEndsAt: { type: Date, default: null },
+        cancelAtPeriodEnd: { type: Boolean, default: false },
+        trialActivatedAt: { type: Date, default: null },
+        trialEndsAt: { type: Date, default: null },
+        billingCycle: { type: String, enum: ['', 'monthly', 'yearly'], default: '' },
+      },
     },
 
     // Branding — managed via admin portal
@@ -127,6 +138,8 @@ const tenantSchema = new mongoose.Schema(
       textColor: { type: String, default: '#ffffff' },
       logoUrl: { type: String, default: '' },
       logoKey: { type: String, default: '' },
+      customerTerminalBgUrl: { type: String, default: '' },
+      customerTerminalBgKey: { type: String, default: '' },
       paymentMethods: { type: [String], default: ['cash'] },
     },
 

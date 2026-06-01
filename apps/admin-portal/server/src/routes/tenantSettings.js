@@ -103,9 +103,14 @@ const getOrCreate = async (tenantId) => {
 
 async function attachFreshLogoUrl(settingsDoc, req) {
   const plain = settingsDoc.toObject ? settingsDoc.toObject() : { ...settingsDoc };
-  if (!plain.logoKey) return plain;
-  const url = await presignObjectKey(plain.logoKey, 86400);
-  if (url) plain.logoUrl = url;
+  if (plain.logoKey) {
+    const url = await presignObjectKey(plain.logoKey, 86400);
+    if (url) plain.logoUrl = url;
+  }
+  if (plain.customerTerminalBgKey) {
+    const url = await presignObjectKey(plain.customerTerminalBgKey, 86400);
+    if (url) plain.customerTerminalBgUrl = url;
+  }
   return plain;
 }
 
@@ -144,7 +149,7 @@ router.put('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
     }
 
     const allowed = [
-      'businessName', 'logoKey', 'faviconUrl',
+      'businessName', 'logoKey', 'faviconUrl', 'customerTerminalBgKey', 'customerTerminalBgUrl',
       'themePresetId', 'themePresetName', 'themeBaseColor',
       'bodyColor', 'headerBarColor', 'buttonColor', 'selectionHighlightColor', 'hoverColor',
       'buttonTextColor', 'headerBarTextColor', 'bodyTextColor',
@@ -165,6 +170,10 @@ router.put('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
     if (req.body.logoKey !== undefined) {
       tenantBrandingUpdate['settings.logoUrl'] = '';
       tenantBrandingUpdate['settings.logoKey'] = req.body.logoKey || '';
+    }
+    if (req.body.customerTerminalBgKey !== undefined) {
+      tenantBrandingUpdate['settings.customerTerminalBgUrl'] = '';
+      tenantBrandingUpdate['settings.customerTerminalBgKey'] = req.body.customerTerminalBgKey || '';
     }
     const themeKeys = [
       'bodyColor', 'headerBarColor', 'buttonColor', 'selectionHighlightColor', 'hoverColor',
@@ -269,6 +278,66 @@ router.delete('/logo', authenticateJWT, authorize('merchant_admin', 'superadmin'
     res.json({ message: 'Logo removed successfully' });
   } catch (err) {
     logger.error('Logo removal failed', { error: err.message, stack: err.stack });
+    sendRouteError(res, err, { req });
+  }
+});
+
+const uploadTerminalBg = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ok = ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype);
+    cb(ok ? null : new Error('Background image must be JPEG, PNG, or WebP'), ok);
+  },
+});
+
+// POST /tenant-settings/terminal-bg — upload terminal background image
+router.post('/terminal-bg', authenticateJWT, authorize('merchant_admin', 'superadmin'), tenantScope,
+  uploadTerminalBg.single('terminalBg'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    try {
+      const uploaded = await proxyUploadToService({
+        buffer: req.file.buffer,
+        filename: req.file.originalname || 'terminal_bg.webp',
+        mimetype: req.file.mimetype,
+        type: 'logo',
+        authorization: req.headers.authorization,
+      });
+      const { key } = uploaded;
+
+      const tenantId = req.user.role === 'superadmin' ? (req.body.tenantId || req.tenantId) : req.tenantId;
+      const s = await getOrCreate(tenantId);
+      s.customerTerminalBgUrl = '';
+      s.customerTerminalBgKey = key;
+      s.updatedBy = req.user.id;
+      await s.save();
+      await Tenant.findByIdAndUpdate(tenantId, { 'settings.customerTerminalBgUrl': '', 'settings.customerTerminalBgKey': key });
+
+      const freshUrl = await presignObjectKey(key, 86400);
+      res.json({ customerTerminalBgUrl: freshUrl, customerTerminalBgKey: key });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ message: err.message });
+      sendRouteError(res, err, { req });
+    }
+  }
+);
+
+// DELETE /tenant-settings/terminal-bg — remove terminal background image
+router.delete('/terminal-bg', authenticateJWT, authorize('merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
+  const logger = childLogger(req.app.locals.logger, req);
+  try {
+    const tenantId = req.user.role === 'superadmin' ? (req.query.tenantId || req.tenantId) : req.tenantId;
+    const s = await getOrCreate(tenantId);
+    s.customerTerminalBgUrl = '';
+    s.customerTerminalBgKey = '';
+    s.updatedBy = req.user.id;
+    await s.save();
+    await Tenant.findByIdAndUpdate(tenantId, { 'settings.customerTerminalBgUrl': '', 'settings.customerTerminalBgKey': '' });
+    
+    logger.info('Customer terminal background removed successfully', { tenantId });
+    res.json({ message: 'Customer terminal background removed successfully' });
+  } catch (err) {
+    logger.error('Customer terminal background removal failed', { error: err.message, stack: err.stack });
     sendRouteError(res, err, { req });
   }
 });

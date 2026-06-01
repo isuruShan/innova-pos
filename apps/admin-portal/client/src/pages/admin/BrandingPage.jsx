@@ -46,6 +46,9 @@ export default function BrandingPage() {
   const fileRef = useRef(null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [logoFile, setLogoFile] = useState(null);
+  const fileTerminalBgRef = useRef(null);
+  const [terminalBgPreview, setTerminalBgPreview] = useState(null);
+  const [terminalBgFile, setTerminalBgFile] = useState(null);
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -134,6 +137,53 @@ export default function BrandingPage() {
     },
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to remove logo'),
   });
+
+  const terminalBgMutation = useMutation({
+    mutationFn: (fd) => api.post('/tenant-settings/terminal-bg', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    onSuccess: (response) => {
+      setTerminalBgFile(null);
+      setTerminalBgPreview(null);
+      if (response.data?.customerTerminalBgUrl) {
+        setForm(f => ({ ...f, customerTerminalBgUrl: response.data.customerTerminalBgUrl, customerTerminalBgKey: response.data.customerTerminalBgKey }));
+      }
+      queryClient.invalidateQueries({ queryKey: ['tenant-settings'] });
+      toast.success('Background image uploaded');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Background image upload failed'),
+  });
+
+  const removeTerminalBgMutation = useMutation({
+    mutationFn: () => api.delete('/tenant-settings/terminal-bg'),
+    onSuccess: () => {
+      setTerminalBgFile(null);
+      setTerminalBgPreview(null);
+      setForm(f => ({ ...f, customerTerminalBgUrl: '', customerTerminalBgKey: '' }));
+      queryClient.invalidateQueries({ queryKey: ['tenant-settings'] });
+      toast.success('Background image removed');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to remove background image'),
+  });
+
+  const handleTerminalBgChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Invalid file type. Please select an image.');
+      if (fileTerminalBgRef.current) fileTerminalBgRef.current.value = '';
+      return;
+    }
+    const preview = URL.createObjectURL(file);
+    setTerminalBgPreview(preview);
+    const webp = await optimizeToWebP(file);
+    setTerminalBgFile(webp);
+  };
+
+  const handleUploadTerminalBg = async () => {
+    if (!terminalBgFile) return;
+    const fd = new FormData();
+    fd.append('terminalBg', terminalBgFile);
+    terminalBgMutation.mutate(fd);
+  };
 
   const handleLogoChange = async (e) => {
     const file = e.target.files[0];
@@ -309,6 +359,65 @@ export default function BrandingPage() {
               )}
             </div>
             <p className="text-xs text-gray-400 mt-1.5">Recommended: 512×512px. Will be converted to WebP.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Customer Terminal Background Image */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Palette size={16} className="text-brand-orange" /> Customer Terminal Background
+        </h3>
+        <p className="text-sm text-gray-500 mb-4">
+          Upload a background image for the customer terminal secondary monitor. This image is displayed on the check-in section and takes over the right panel once a customer has checked in.
+        </p>
+        <div className="flex flex-col sm:flex-row items-center gap-6">
+          <div className="relative w-48 h-28 shrink-0">
+            <div className="w-full h-full rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
+              {terminalBgPreview || form.customerTerminalBgUrl ? (
+                <img src={terminalBgPreview || form.customerTerminalBgUrl} alt="terminal bg" className="w-full h-full object-cover" />
+              ) : (
+                <Upload size={24} className="text-gray-300" />
+              )}
+              {(terminalBgPreview || form.customerTerminalBgUrl) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (terminalBgPreview) {
+                      setTerminalBgPreview(null);
+                      setTerminalBgFile(null);
+                      if (fileTerminalBgRef.current) fileTerminalBgRef.current.value = '';
+                      return;
+                    }
+                    removeTerminalBgMutation.mutate();
+                  }}
+                  disabled={removeTerminalBgMutation.isPending}
+                  className="absolute top-1.5 right-1.5 w-7 h-7 rounded-lg bg-gray-900/80 backdrop-blur text-white hover:bg-red-600 disabled:opacity-60 flex items-center justify-center shadow-md transition-colors"
+                  title="Remove background"
+                  aria-label="Remove background"
+                >
+                  {removeTerminalBgMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="text-center sm:text-left w-full sm:w-auto">
+            <input ref={fileTerminalBgRef} type="file" accept="image/*" onChange={handleTerminalBgChange} className="hidden" />
+            <div className="flex justify-center sm:justify-start gap-2">
+              <button onClick={() => fileTerminalBgRef.current?.click()}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Choose image
+              </button>
+              {terminalBgFile && (
+                <button onClick={handleUploadTerminalBg} disabled={terminalBgMutation.isPending}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-orange text-sm font-semibold text-white hover:bg-brand-orange-hover disabled:opacity-60"
+                >
+                  {terminalBgMutation.isPending ? <Loader size={13} className="animate-spin" /> : <Upload size={13} />}
+                  Upload
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5">Recommended: 1920×1080px (16:9 ratio). Will be converted to WebP.</p>
           </div>
         </div>
       </div>

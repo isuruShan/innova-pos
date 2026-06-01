@@ -40,6 +40,11 @@ router.get('/tenant-info', async (req, res) => {
       return res.status(404).json({ message: 'Merchant not found' });
     }
 
+    const { isDualScreenEffective } = require('@innovapos/paid-addons');
+    if (!isDualScreenEffective(tenant.paidAddons)) {
+      return res.status(402).json({ message: 'The Dual Screen Customer Terminal add-on is not active for this business.' });
+    }
+
     // OTP verification removed - always return false
     res.json({
       businessName: tenant.businessName,
@@ -73,6 +78,11 @@ router.post('/initiate', async (req, res) => {
     const tenant = await Tenant.findById(tenantId);
     if (!tenant) {
       return res.status(404).json({ message: 'Merchant not found' });
+    }
+
+    const { isDualScreenEffective } = require('@innovapos/paid-addons');
+    if (!isDualScreenEffective(tenant.paidAddons)) {
+      return res.status(402).json({ message: 'The Dual Screen Customer Terminal add-on is not active for this business.' });
     }
 
     // Find or create customer

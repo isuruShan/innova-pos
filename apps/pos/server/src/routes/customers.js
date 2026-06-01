@@ -269,9 +269,12 @@ router.post('/session-checkin-trigger/:sessionId', async (req, res) => {
       // Let's check if the session checkin exists and is completed to return success
       const existingCheckin = await CustomerSessionCheckin.findOne({ sessionId });
       if (existingCheckin && existingCheckin.status === 'completed') {
-        console.log(`[session-checkin-trigger] Session ${sessionId} already processed or duplicate request. Returning success.`);
+        console.log(`[session-checkin-trigger] Session ${sessionId} already processed or duplicate request. Re-publishing check-in event.`);
         const emailNorm = normalizeEmail(existingCheckin.email);
         const customer = await findExistingCustomerByContact(existingCheckin.tenantId, emailNorm, existingCheckin.mobile);
+        if (customer) {
+          publishCheckinEvent(sessionId, customer);
+        }
         return res.json({ success: true, customer, message: 'Already processed' });
       }
       console.log(`[session-checkin-trigger] Session not found or check-in not completed: ${sessionId}`);
@@ -385,7 +388,15 @@ function initCheckinChangeStream() {
         );
 
         if (!checkin) {
-          console.log(`[change-stream] Session ${sessionId} already processed or status not completed. Skipping.`);
+          console.log(`[change-stream] Session ${sessionId} already processed or status not completed. Re-publishing check-in event.`);
+          const existingCheckin = await CustomerSessionCheckin.findOne({ sessionId });
+          if (existingCheckin && existingCheckin.status === 'completed') {
+            const emailNorm = normalizeEmail(existingCheckin.email);
+            const customer = await findExistingCustomerByContact(existingCheckin.tenantId, emailNorm, existingCheckin.mobile);
+            if (customer) {
+              publishCheckinEvent(sessionId, customer);
+            }
+          }
           return;
         }
 

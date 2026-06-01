@@ -12,6 +12,8 @@ const ADDON_MESSAGES = {
     'The Table Management add-on is not active for this business. Subscribe in the admin portal under Add-ons.',
   uber_eats:
     'Uber Eats Integration is not active for this business. Subscribe in the admin portal under Add-ons.',
+  dual_screen:
+    'The Dual Screen Customer Terminal add-on is not active for this business. Subscribe in the admin portal under Add-ons.',
 };
 
 /**

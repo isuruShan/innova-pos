@@ -82,6 +82,18 @@ router.post('/initiate', async (req, res) => {
     }
 
     const tenant = await Tenant.findById(tenantId);
+    if (!tenant) {
+      return res.status(404).json({ message: 'Merchant not found' });
+    }
+
+    const { isDualScreenEffective } = require('@innovapos/paid-addons');
+    if (!isDualScreenEffective(tenant.paidAddons)) {
+      return res.status(402).json({
+        message: 'The Dual Screen Customer Terminal add-on is not active for this business. Subscribe in the admin portal under Add-ons.',
+        code: 'dual_screen_addon_required'
+      });
+    }
+
     const settings = await TenantSettings.findOne({ tenantId });
     if (!tenant) {
       return res.status(404).json({ message: 'Merchant not found' });
@@ -186,6 +198,15 @@ router.post('/verify', async (req, res) => {
     const checkin = await CustomerSessionCheckin.findOne({ sessionId });
     if (!checkin) {
       return res.status(404).json({ message: 'Active session not found' });
+    }
+
+    const tenant = await Tenant.findById(checkin.tenantId);
+    const { isDualScreenEffective } = require('@innovapos/paid-addons');
+    if (!tenant || !isDualScreenEffective(tenant.paidAddons)) {
+      return res.status(402).json({
+        message: 'The Dual Screen Customer Terminal add-on is not active for this business. Subscribe in the admin portal under Add-ons.',
+        code: 'dual_screen_addon_required'
+      });
     }
 
     if (checkin.status === 'placed') {
@@ -326,6 +347,15 @@ router.post('/register-session', async (req, res) => {
     const { sessionId, tenantId, storeId } = req.body;
     if (!sessionId || !tenantId || !storeId) {
       return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const tenant = await Tenant.findById(tenantId);
+    const { isDualScreenEffective } = require('@innovapos/paid-addons');
+    if (!tenant || !isDualScreenEffective(tenant.paidAddons)) {
+      return res.status(402).json({
+        message: 'The Dual Screen Customer Terminal add-on is not active for this business. Subscribe in the admin portal under Add-ons.',
+        code: 'dual_screen_addon_required'
+      });
     }
 
     // Create or update the session check-in record as 'pending'

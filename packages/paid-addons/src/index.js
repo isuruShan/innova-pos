@@ -7,6 +7,7 @@ const ENTITLEMENT_BY_CODE = {
   table_management: 'tableManagement',
   uber_eats: 'uberEats',
   accounting: 'accounting',
+  dual_screen: 'dualScreen',
 };
 
 const KNOWN_ENTITLEMENT_KEYS = Object.values(ENTITLEMENT_BY_CODE);
@@ -75,6 +76,10 @@ function isAccountingEffective(paidAddons) {
   return isPaidAddonEffective(paidAddons, 'accounting');
 }
 
+function isDualScreenEffective(paidAddons) {
+  return isPaidAddonEffective(paidAddons, 'dualScreen');
+}
+
 module.exports = {
   ENTITLEMENT_BY_CODE,
   KNOWN_ENTITLEMENT_KEYS,
@@ -86,5 +91,6 @@ module.exports = {
   isTableManagementEffective,
   isUberEatsEffective,
   isAccountingEffective,
+  isDualScreenEffective,
   isInTrialPeriod,
 };

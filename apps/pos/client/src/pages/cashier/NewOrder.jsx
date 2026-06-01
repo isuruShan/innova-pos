@@ -1236,6 +1236,12 @@ export default function NewOrder() {
               console.error('[BroadcastChannel] Failed to load customer details:', err);
             });
         }
+      } else if (e.data.type === 'CUSTOMER_DISCONNECTED') {
+        console.log('[BroadcastChannel] Received CUSTOMER_DISCONNECTED from terminal');
+        setSelectedCustomer(null);
+        setCustomerSearch('');
+        qc.invalidateQueries({ queryKey: ['customer-loyalty'] });
+        showToast('Customer disconnected from order.');
       }
     };
     channel.addEventListener('message', onChannelMessage);

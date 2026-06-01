@@ -91,6 +91,8 @@ const tenantSchema = new mongoose.Schema(
       accentColor: { type: String, default: '#e94560' },
       logoUrl: { type: String, default: '' },
       logoKey: { type: String, default: '' },
+      customerTerminalBgUrl: { type: String, default: '' },
+      customerTerminalBgKey: { type: String, default: '' },
       paymentMethods: { type: [String], default: ['cash'] },
     },
 

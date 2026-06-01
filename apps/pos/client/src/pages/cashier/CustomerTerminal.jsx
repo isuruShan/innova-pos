@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { getPublicWebUrl } from '@innovapos/app-urls';
 import { useBranding } from '../../context/BrandingContext';
 import { useStoreContext } from '../../context/StoreContext';
-import { Package, Smartphone, Touchpad, CheckCircle2, User, Calendar, Mail, ArrowLeft } from 'lucide-react';
+import { Package, Smartphone, Touchpad, CheckCircle2, User, Calendar, Mail, ArrowLeft, Monitor, Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 import axios from 'axios';
 
 const COUNTRY_CODES = [
@@ -47,6 +48,7 @@ export default function CustomerTerminal() {
   const branding = useBranding();
   const { user } = useAuth();
   const { selectedStoreId } = useStoreContext();
+  const { data: paidAddons, isPending: isAddonsPending } = useTenantPaidAddons();
   const [orderState, setOrderState] = useState({
     items: [],
     subtotal: 0,
@@ -100,6 +102,8 @@ export default function CustomerTerminal() {
           resetForm();
         } else if (payload.selectedCustomer) {
           setCustomerName(payload.selectedCustomer.name);
+        } else {
+          setCustomerName('');
         }
       } else if (type === 'CUSTOMER_CONNECTED') {
         setCustomerName(payload.name);
@@ -268,6 +272,102 @@ export default function CustomerTerminal() {
     ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrTargetUrl)}&color=ffffff&bgcolor=151f2e`
     : '';
 
+  if (isAddonsPending) {
+    return (
+      <div 
+        className="min-h-screen flex flex-col items-center justify-center font-sans bg-[#0B1220] text-slate-200"
+        style={{
+          backgroundColor: branding.bodyColor || '#0B1220',
+          color: branding.textColor || '#E2E8F0',
+        }}
+      >
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm font-medium tracking-wide text-slate-400">Loading Customer Terminal...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (paidAddons?.dualScreen !== true) {
+    return (
+      <div 
+        className="min-h-screen flex flex-col font-sans"
+        style={{
+          backgroundColor: branding.bodyColor || '#0B1220',
+          color: branding.textColor || '#E2E8F0',
+        }}
+      >
+        {/* Header bar */}
+        <header 
+          className="px-6 py-4 flex items-center justify-between border-b border-slate-800/80"
+          style={{ backgroundColor: branding.headerBarColor || '#151F2E' }}
+        >
+          <div className="flex items-center gap-4">
+            {branding.logoUrl ? (
+              <img src={branding.logoUrl} alt="logo" className="h-10 object-contain" />
+            ) : (
+              <span className="text-xl font-bold tracking-wide text-white">{branding.businessName}</span>
+            )}
+          </div>
+        </header>
+
+        {/* Info/Subscribe Screen */}
+        <div className="flex-1 flex items-center justify-center p-6 bg-slate-950/20">
+          <div className="max-w-2xl w-full bg-slate-900/60 border border-slate-800/60 backdrop-blur-xl p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center relative overflow-hidden">
+            {/* Elegant glowing background elements */}
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            {/* Glowing Icon */}
+            <div className="w-20 h-20 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(245,158,11,0.08)]">
+              <Monitor className="w-10 h-10 text-amber-400" />
+            </div>
+
+            {/* Premium Addon Tag */}
+            <span className="bg-amber-500/10 border border-amber-500/35 px-3 py-1 rounded-full text-xs font-semibold text-amber-400 uppercase tracking-widest mb-4">
+              Premium Addon
+            </span>
+
+            {/* Title */}
+            <h1 className="text-3xl font-extrabold text-white tracking-tight mb-4">
+              Dual Screen Customer Terminal
+            </h1>
+
+            {/* Description */}
+            <p className="text-slate-400 leading-relaxed max-w-md text-sm mb-8">
+              Enable a beautiful secondary customer-facing display to show order breakdowns, display custom branding background images, run promotions, and let guests check in or sign up via QR code or phone number.
+            </p>
+
+            {/* Steps or details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left w-full max-w-lg mb-8">
+              <div className="p-4 bg-slate-800/40 border border-slate-700/40 rounded-2xl flex gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-200">Interactive Check-In</h3>
+                  <p className="text-xs text-slate-400 mt-1">Let customers sign up or scan to connect their loyalty account instantly.</p>
+                </div>
+              </div>
+              <div className="p-4 bg-slate-800/40 border border-slate-700/40 rounded-2xl flex gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-200">Custom Branding</h3>
+                  <p className="text-xs text-slate-400 mt-1">Upload dynamic background images matching your store's style and vibe.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl px-5 py-3 text-xs text-slate-400 max-w-md">
+              <p>
+                Go to the <span className="font-semibold text-white">Billing & Add-ons</span> tab in the Admin Portal to subscribe and unlock this feature instantly.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div 
       className="min-h-screen flex flex-col font-sans"
@@ -341,7 +441,7 @@ export default function CustomerTerminal() {
                   <span>{branding.currencySymbol}{Number(orderState.subtotal).toFixed(2)}</span>
                 </div>
                 {orderState.discountTotal > 0 && (
-                  <div className="flex justify-between text-sm text-red-400">
+                  <div className="flex justify-between text-sm text-emerald-400">
                     <span>Discount</span>
                     <span>-{branding.currencySymbol}{Number(orderState.discountTotal).toFixed(2)}</span>
                   </div>
@@ -362,178 +462,230 @@ export default function CustomerTerminal() {
         </div>
 
         {/* Right Side: Customer Check-in / QR / Touchpad */}
-        <div className="lg:col-span-5 flex flex-col justify-center p-6 bg-slate-900/40">
-          {successMessage && (
-            <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-4 rounded-xl flex items-center gap-2 mb-6">
-              <CheckCircle2 size={18} />
-              <span className="font-medium text-sm">{successMessage}</span>
-            </div>
-          )}
+        <div 
+          className="lg:col-span-5 flex flex-col justify-center p-6 relative overflow-hidden bg-cover bg-center"
+          style={{
+            backgroundImage: branding.customerTerminalBgUrl 
+              ? `url(${branding.customerTerminalBgUrl})` 
+              : 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+          }}
+        >
+          {/* Semi-transparent dark overlay for readability */}
+          <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-[2px] z-0"></div>
 
-          {errorMessage && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl text-sm font-medium mb-6">
-              {errorMessage}
-            </div>
-          )}
-
-          {!orderState.customerSessionId ? (
-            <div className="text-center py-12 text-slate-500">
-              <Smartphone size={32} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm font-medium">No Active Placement Session</p>
-              <p className="text-xs opacity-70 mt-1">Start placing an order to link your account</p>
-            </div>
-          ) : !showInputScreen ? (
-            <div className="flex flex-col items-center justify-center space-y-6">
-              {/* QR Check-in Box */}
-              <div className="bg-slate-800/50 border border-slate-800 p-5 rounded-2xl text-center flex flex-col items-center w-full max-w-[320px]">
-                <h3 className="text-sm font-semibold mb-3 text-slate-300">Scan QR Code to Check-in</h3>
-                <div className="w-[180px] h-[180px] bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden border border-slate-700/50">
-                  {qrCodeImgSrc && <img src={qrCodeImgSrc} alt="Check-in QR" className="w-[160px] h-[160px]" />}
-                </div>
-                <p className="text-xs text-slate-400 mt-3.5">Use your mobile phone browser to earn points & rewards</p>
+          <div className="relative z-10 flex flex-col justify-center h-full items-center w-full">
+            {successMessage && (
+              <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-4 rounded-xl flex items-center gap-2 mb-6 w-full max-w-[320px]">
+                <CheckCircle2 size={18} />
+                <span className="font-medium text-sm">{successMessage}</span>
               </div>
+            )}
 
-              <div className="text-slate-600 text-xs">OR</div>
+            {errorMessage && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl text-sm font-medium mb-6 w-full max-w-[320px]">
+                {errorMessage}
+              </div>
+            )}
 
-              {/* On-screen Input Button */}
-              <button
-                onClick={() => setShowInputScreen(true)}
-                className="w-full max-w-[320px] py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm cursor-pointer"
-              >
-                <Touchpad size={18} />
-                Enter Mobile on Screen
-              </button>
-            </div>
-          ) : (
-            // On screen Form & Keypad Input Screen
-            <div className="flex flex-col space-y-5 h-full justify-between">
-              <div>
+            {customerName || orderState.selectedCustomer ? (
+              // Vivid, Glassmorphic Customer Greeting Card
+              <div className="w-full max-w-[380px] bg-slate-900/60 border border-white/10 backdrop-blur-xl p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center relative overflow-hidden animate-fade-in">
+                {/* Subtle glowing elements */}
+                <div className="absolute -top-12 -left-12 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+                <div className="w-20 h-20 bg-emerald-500/10 border border-emerald-500/30 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(16,185,129,0.15)]">
+                  <Sparkles className="w-10 h-10 text-emerald-400 animate-pulse" />
+                </div>
+
+                <span className="bg-emerald-500/15 border border-emerald-500/35 px-3 py-1 rounded-full text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-3">
+                  Signed In
+                </span>
+
+                <p className="text-slate-450 text-xs uppercase tracking-widest font-bold mb-1">
+                  Welcome back
+                </p>
+
+                <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_2px_10px_rgba(255,255,255,0.15)] truncate w-full px-2">
+                  {customerName || orderState.selectedCustomer?.name || 'Customer'}
+                </h1>
+
+                <p className="text-slate-300 text-sm leading-relaxed max-w-[260px] mb-6">
+                  You are earning loyalty points and active rewards on this order automatically!
+                </p>
+
                 <button
                   onClick={() => {
-                    if (otpRequired) setOtpRequired(false);
-                    else setShowInputScreen(false);
+                    if (channelRef.current) {
+                      channelRef.current.postMessage({ type: 'CUSTOMER_DISCONNECTED' });
+                    }
+                    setCustomerName('');
+                    resetForm();
                   }}
-                  className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white mb-4 transition cursor-pointer"
+                  className="px-5 py-2.5 bg-slate-800/80 hover:bg-slate-700/80 text-xs font-semibold text-slate-300 rounded-xl transition border border-white/5 hover:border-white/10 cursor-pointer"
                 >
-                  <ArrowLeft size={14} />
-                  Back
+                  Not you? Disconnect
                 </button>
+              </div>
+            ) : !orderState.customerSessionId ? (
+              <div className="text-center py-12 text-slate-500 w-full">
+                <Smartphone size={32} className="mx-auto mb-3 opacity-30" />
+                <p className="text-sm font-medium text-slate-300">No Active Placement Session</p>
+                <p className="text-xs opacity-70 mt-1 max-w-[200px] mx-auto text-slate-400">Start placing an order to link your account</p>
+              </div>
+            ) : !showInputScreen ? (
+              <div className="flex flex-col items-center justify-center space-y-6 w-full">
+                {/* QR Check-in Box */}
+                <div className="bg-slate-800/50 border border-slate-800 p-5 rounded-2xl text-center flex flex-col items-center w-full max-w-[320px] shadow-lg backdrop-blur-sm">
+                  <h3 className="text-sm font-semibold mb-3 text-slate-300">Scan QR Code to Check-in</h3>
+                  <div className="w-[180px] h-[180px] bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden border border-slate-700/50">
+                    {qrCodeImgSrc && <img src={qrCodeImgSrc} alt="Check-in QR" className="w-[160px] h-[160px]" />}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-3.5 leading-relaxed">Use your mobile phone browser to earn points & rewards</p>
+                </div>
 
-                <h3 className="text-base font-semibold text-white mb-3">
-                  {otpRequired 
-                    ? 'Enter Verification Code' 
-                    : 'Customer Check In'}
-                </h3>
+                <div className="text-slate-500 text-xs font-bold tracking-wider">OR</div>
 
-                {/* Form Input Blocks */}
-                <div className="space-y-3">
-                  {!otpRequired && (
-                    <>
-                      {/* Mobile input with Country Selector */}
-                      <div className="space-y-1">
-                        <label className="block text-xs font-semibold text-slate-455">Mobile Number</label>
-                        <div className="flex gap-2">
-                          <div className="relative shrink-0">
-                            <select
-                              value={selectedCountry.code}
-                              onChange={(e) => {
-                                const country = COUNTRY_CODES.find(c => c.code === e.target.value);
-                                setSelectedCountry(country);
-                                const cleanDigits = mobile.replace(/\D/g, '');
-                                setMobile(formatPhoneNumber(cleanDigits, country.code));
-                              }}
-                              className="bg-slate-850 border border-slate-700/60 text-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                {/* On-screen Input Button */}
+                <button
+                  onClick={() => setShowInputScreen(true)}
+                  className="w-full max-w-[320px] py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm cursor-pointer"
+                >
+                  <Touchpad size={18} />
+                  Enter Mobile on Screen
+                </button>
+              </div>
+            ) : (
+              // On screen Form & Keypad Input Screen
+              <div className="flex flex-col space-y-5 w-full max-w-[320px] justify-between">
+                <div>
+                  <button
+                    onClick={() => {
+                      if (otpRequired) setOtpRequired(false);
+                      else setShowInputScreen(false);
+                    }}
+                    className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white mb-4 transition cursor-pointer"
+                  >
+                    <ArrowLeft size={14} />
+                    Back
+                  </button>
+
+                  <h3 className="text-base font-semibold text-white mb-3">
+                    {otpRequired 
+                      ? 'Enter Verification Code' 
+                      : 'Customer Check In'}
+                  </h3>
+
+                  {/* Form Input Blocks */}
+                  <div className="space-y-3">
+                    {!otpRequired && (
+                      <>
+                        {/* Mobile input with Country Selector */}
+                        <div className="space-y-1">
+                          <label className="block text-xs font-semibold text-slate-455">Mobile Number</label>
+                          <div className="flex gap-2">
+                            <div className="relative shrink-0">
+                              <select
+                                value={selectedCountry.code}
+                                onChange={(e) => {
+                                  const country = COUNTRY_CODES.find(c => c.code === e.target.value);
+                                  setSelectedCountry(country);
+                                  const cleanDigits = mobile.replace(/\D/g, '');
+                                  setMobile(formatPhoneNumber(cleanDigits, country.code));
+                                }}
+                                className="bg-slate-850 border border-slate-700/60 text-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                              >
+                                {COUNTRY_CODES.map((c) => (
+                                  <option key={c.code} value={c.code}>
+                                    {c.flag} {c.code}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div 
+                              onClick={() => setActiveField('mobile')}
+                              className={`flex-1 p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition ${activeField === 'mobile' ? 'border-amber-500 bg-slate-800/40' : 'border-slate-800 bg-slate-800/10'}`}
                             >
-                              {COUNTRY_CODES.map((c) => (
-                                <option key={c.code} value={c.code}>
-                                  {c.flag} {c.code}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div 
-                            onClick={() => setActiveField('mobile')}
-                            className={`flex-1 p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition ${activeField === 'mobile' ? 'border-amber-500 bg-slate-800/40' : 'border-slate-800 bg-slate-800/10'}`}
-                          >
-                            <Smartphone size={16} className="text-slate-400" />
-                            <input
-                              type="text"
-                              placeholder="771234567"
-                              value={mobile}
-                              readOnly
-                              className="bg-transparent border-none outline-none text-sm w-full text-slate-200 pointer-events-none"
-                            />
+                              <Smartphone size={16} className="text-slate-400" />
+                              <input
+                                type="text"
+                                placeholder="771234567"
+                                value={mobile}
+                                readOnly
+                                className="bg-transparent border-none outline-none text-sm w-full text-slate-200 pointer-events-none"
+                              />
+                            </div>
                           </div>
                         </div>
+                      </>
+                    )}
+
+                    {otpRequired && (
+                      <div 
+                        onClick={() => setActiveField('otp')}
+                        className={`p-3 rounded-lg border text-center cursor-pointer transition ${activeField === 'otp' ? 'border-amber-500 bg-slate-800/40' : 'border-slate-800 bg-slate-800/10'}`}
+                      >
+                        <input
+                          type="text"
+                          placeholder="Enter 6-digit OTP"
+                          value={otp}
+                          readOnly
+                          className="bg-transparent border-none outline-none text-lg tracking-widest text-center w-full font-bold text-amber-400"
+                        />
                       </div>
-                    </>
-                  )}
-
-                  {otpRequired && (
-                    <div 
-                      onClick={() => setActiveField('otp')}
-                      className={`p-3 rounded-lg border text-center cursor-pointer transition ${activeField === 'otp' ? 'border-amber-500 bg-slate-800/40' : 'border-slate-800 bg-slate-800/10'}`}
-                    >
-                      <input
-                        type="text"
-                        placeholder="Enter 6-digit OTP"
-                        value={otp}
-                        readOnly
-                        className="bg-transparent border-none outline-none text-lg tracking-widest text-center w-full font-bold text-amber-400"
-                      />
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Numpad for Mobile / OTP */}
-              <div className="bg-slate-800/35 border border-slate-800/80 p-3 rounded-xl">
-                <div className="grid grid-cols-3 gap-2 max-w-[280px] mx-auto">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                {/* Numpad for Mobile / OTP */}
+                <div className="bg-slate-800/35 border border-slate-800/80 p-3 rounded-xl">
+                  <div className="grid grid-cols-3 gap-2 max-w-[280px] mx-auto">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                      <button
+                        key={num}
+                        onClick={() => handleKeyPress(num.toString())}
+                        className="py-3 bg-slate-800 hover:bg-slate-700 active:bg-amber-500 rounded-lg text-lg font-bold text-white transition cursor-pointer"
+                      >
+                        {num}
+                      </button>
+                    ))}
                     <button
-                      key={num}
-                      onClick={() => handleKeyPress(num.toString())}
+                      onClick={() => handleKeyPress('+')}
+                      className="py-3 bg-slate-850 hover:bg-slate-800 rounded-lg text-lg font-bold text-slate-400 transition cursor-pointer"
+                    >
+                      +
+                    </button>
+                    <button
+                      onClick={() => handleKeyPress('0')}
                       className="py-3 bg-slate-800 hover:bg-slate-700 active:bg-amber-500 rounded-lg text-lg font-bold text-white transition cursor-pointer"
                     >
-                      {num}
+                      0
                     </button>
-                  ))}
-                  <button
-                    onClick={() => handleKeyPress('+')}
-                    className="py-3 bg-slate-850 hover:bg-slate-800 rounded-lg text-lg font-bold text-slate-400 transition cursor-pointer"
-                  >
-                    +
-                  </button>
-                  <button
-                    onClick={() => handleKeyPress('0')}
-                    className="py-3 bg-slate-800 hover:bg-slate-700 active:bg-amber-500 rounded-lg text-lg font-bold text-white transition cursor-pointer"
-                  >
-                    0
-                  </button>
-                  <button
-                    onClick={() => handleKeyPress('BACK')}
-                    className="py-3 bg-red-950/50 hover:bg-red-900/50 rounded-lg text-xs font-semibold text-red-400 transition cursor-pointer"
-                  >
-                    Delete
-                  </button>
-                  <button
-                    onClick={() => handleKeyPress('CLEAR')}
-                    className="col-span-3 py-2 bg-slate-850 hover:bg-slate-800 rounded-lg text-xs font-semibold text-slate-400 transition cursor-pointer"
-                  >
-                    Clear All
-                  </button>
+                    <button
+                      onClick={() => handleKeyPress('BACK')}
+                      className="py-3 bg-red-950/50 hover:bg-red-900/50 rounded-lg text-xs font-semibold text-red-400 transition cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => handleKeyPress('CLEAR')}
+                      className="col-span-3 py-2 bg-slate-850 hover:bg-slate-800 rounded-lg text-xs font-semibold text-slate-400 transition cursor-pointer"
+                    >
+                      Clear All
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <button
-                onClick={handleTextSubmit}
-                disabled={loading}
-                className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-slate-900 font-bold rounded-xl shadow-lg transition text-sm cursor-pointer"
-              >
-                {loading ? 'Processing...' : otpRequired ? 'Verify OTP' : 'Check In'}
-              </button>
-            </div>
-          )}
+                <button
+                  onClick={handleTextSubmit}
+                  disabled={loading}
+                  className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-slate-900 font-bold rounded-xl shadow-lg transition text-sm cursor-pointer"
+                >
+                  {loading ? 'Processing...' : otpRequired ? 'Verify OTP' : 'Check In'}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

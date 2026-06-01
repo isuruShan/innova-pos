@@ -9,6 +9,7 @@ const {
   isTableManagementEffective,
   isUberEatsEffective,
   isAccountingEffective,
+  isDualScreenEffective,
 } = require('@innovapos/paid-addons');
 
 /**
@@ -37,7 +38,7 @@ async function applyAddonExpiryIfNeeded(tenant, entitlementKey) {
   return tenant;
 }
 
-/** Expire QR ordering, loyalty, table management, and Uber Eats when their paid periods have ended. */
+/** Expire QR ordering, loyalty, table management, Uber Eats, accounting, and dual screen when their paid periods have ended. */
 async function applyPaidAddonExpiryIfNeeded(tenant) {
   let t = tenant;
   t = await applyAddonExpiryIfNeeded(t, 'qrOrdering');
@@ -45,6 +46,7 @@ async function applyPaidAddonExpiryIfNeeded(tenant) {
   t = await applyAddonExpiryIfNeeded(t, 'tableManagement');
   t = await applyAddonExpiryIfNeeded(t, 'uberEats');
   t = await applyAddonExpiryIfNeeded(t, 'accounting');
+  t = await applyAddonExpiryIfNeeded(t, 'dualScreen');
   return t;
 }
 
@@ -62,6 +64,7 @@ module.exports = {
   isTableManagementEffective,
   isUberEatsEffective,
   isAccountingEffective,
+  isDualScreenEffective,
   applyAddonExpiryIfNeeded,
   applyPaidAddonExpiryIfNeeded,
   applyQrOrderingExpiryIfNeeded,

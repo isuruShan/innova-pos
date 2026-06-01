@@ -125,13 +125,16 @@ const DEFAULT_ADDONS = [
     isActive: true,
     sortOrder: 3,
   },
-  {
-    code: 'accounting',
-    name: 'Advanced Accounting Module',
-    shortDescription: 'Double-entry bookkeeping, payroll management, creditors, debtors, and automated tax statements.',
-    longDescription: 'Automates accounting records directly from checkout sales. Configure custom tax rates, run staff payroll, track debtor/creditor balances, and instantly export P&L reports, Cash Flow sheets, and Balance Sheets.',
     isActive: true,
     sortOrder: 4,
+  },
+  {
+    code: 'dual_screen',
+    name: 'Dual Screen Customer Terminal',
+    shortDescription: 'Show order details, promotions, and scan-to-check-in on a customer-facing secondary display.',
+    longDescription: 'Enable the secondary customer terminal screen to display items as they are added, present custom branding, run discount promotions, and allow guests to sign in or register via QR code/phone. Pricing follows your subscription billing period (monthly or yearly).',
+    isActive: true,
+    sortOrder: 5,
   },
 ];
 
@@ -243,13 +246,14 @@ async function computeSubscriptionRenewalExpected(tenant, planOverride = null) {
 
   const addons = [];
   let addonTotal = 0;
-  const { isQrOrderingEffective, isLoyaltyEffective, isTableManagementEffective, isUberEatsEffective, isAccountingEffective } = require('./addonPeriod');
+  const { isQrOrderingEffective, isLoyaltyEffective, isTableManagementEffective, isUberEatsEffective, isAccountingEffective, isDualScreenEffective } = require('./addonPeriod');
   const renewalRows = [
     { code: 'qr_ordering', label: 'QR Ordering', key: 'qrOrdering', check: isQrOrderingEffective },
     { code: 'loyalty', label: 'Loyalty program', key: 'loyalty', check: isLoyaltyEffective },
     { code: 'table_management', label: 'Table Management', key: 'tableManagement', check: isTableManagementEffective },
     { code: 'uber_eats', label: 'Uber Eats Integration', key: 'uberEats', check: isUberEatsEffective },
     { code: 'accounting', label: 'Advanced Accounting Module', key: 'accounting', check: isAccountingEffective },
+    { code: 'dual_screen', label: 'Dual Screen Customer Terminal', key: 'dualScreen', check: isDualScreenEffective },
   ];
   for (const row of renewalRows) {
     if (!row.check(t.paidAddons)) continue;
