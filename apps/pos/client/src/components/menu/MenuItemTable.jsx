@@ -31,8 +31,8 @@ export default function MenuItemTable({
   }
 
   return (
-    <div className="bg-[var(--pos-panel)] rounded-xl border border-slate-700/50 overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="bg-[var(--pos-panel)] rounded-xl border border-slate-700/50 sm:overflow-visible">
+      <div className="overflow-x-auto sm:overflow-visible">
         <table className="w-full">
           <thead className="sticky top-[132px] bg-[var(--pos-panel)] z-10 border-b border-slate-700">
             <tr className="border-b border-slate-700">

@@ -18,6 +18,7 @@ const UPLOAD_TYPES = {
   menu: { folder: 'menu', allowed: ALLOWED_IMAGE_TYPES, maxSize: MAX_IMAGE_SIZE },
   profile: { folder: 'profiles', allowed: ALLOWED_IMAGE_TYPES, maxSize: MAX_IMAGE_SIZE },
   logo: { folder: 'logos', allowed: ALLOWED_IMAGE_TYPES, maxSize: MAX_IMAGE_SIZE },
+  'partner-logo': { folder: 'partner-logos', allowed: ALLOWED_IMAGE_TYPES, maxSize: MAX_IMAGE_SIZE },
   'payment-icon': { folder: 'platform-payment-icons', allowed: ALLOWED_IMAGE_TYPES, maxSize: MAX_IMAGE_SIZE },
   receipt: { folder: 'receipts', allowed: [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOC_TYPES], maxSize: MAX_DOC_SIZE },
   /** Business registration: images only (optimized to WebP on server) */

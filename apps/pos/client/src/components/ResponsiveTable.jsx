@@ -1,3 +1,5 @@
+import SortableTh from './SortableTh';
+
 /**
  * ResponsiveTable
  *
@@ -17,6 +19,7 @@
  *       mobilePrimary: bool?        — if true, this value appears as the card title
  *       mobileSecondary: bool?      — appears as a sub-title (smaller, slate-400)
  *       mobileRight : bool?         — aligns this field value to the right on the card
+ *       sortField  : string?        — if present, enables sorting on this column
  *     }
  *   rows      - Array of data objects
  *   rowKey    - (row) => string | number — extracts a unique key from each row
@@ -25,6 +28,9 @@
  *   skeletonRows - number (default 5) — number of skeleton rows to show
  *   mobileGridCols - string (default "grid-cols-1") — tailwind grid class for mobile
  *   className  - string — additional className for the wrapper
+ *   onSort    - function — callback when a header is clicked
+ *   currentSort - string — currently active sort field name
+ *   currentOrder - 'asc' | 'desc' — current sort order
  */
 export default function ResponsiveTable({
   columns = [],
@@ -35,6 +41,9 @@ export default function ResponsiveTable({
   skeletonRows = 5,
   mobileGridCols = 'grid-cols-1 sm-card:grid-cols-2',
   className = '',
+  onSort,
+  currentSort,
+  currentOrder,
 }) {
   const primaryCol = columns.find((c) => c.mobilePrimary);
   const secondaryCol = columns.find((c) => c.mobileSecondary);
@@ -46,19 +55,36 @@ export default function ResponsiveTable({
   return (
     <div className={className}>
       {/* ─── DESKTOP TABLE (sm+) ─── */}
-      <div className="hidden sm:block bg-[var(--pos-panel)] rounded-2xl border border-slate-700 overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="hidden sm:block bg-[var(--pos-panel)] rounded-2xl border border-slate-700">
+        <div className="overflow-x-auto sm:overflow-visible">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-[var(--pos-panel)]">
-                {columns.map((col) => (
-                  <th
-                    key={col.key}
-                    className={`sticky top-16 bg-[var(--pos-panel)] z-10 text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3 border-b border-slate-700 ${col.headerClassName || ''}`}
-                  >
-                    {col.header}
-                  </th>
-                ))}
+                {columns.map((col) => {
+                  const isSortable = col.sortField && onSort;
+                  if (isSortable) {
+                    return (
+                      <SortableTh
+                        key={col.key}
+                        label={col.header}
+                        field={col.sortField}
+                        currentSort={currentSort}
+                        currentOrder={currentOrder}
+                        onSort={onSort}
+                        align={col.className?.includes('text-right') ? 'right' : col.className?.includes('text-center') ? 'center' : 'left'}
+                        className={`sticky top-16 bg-[var(--pos-panel)] z-10 border-b border-slate-700 ${col.headerClassName || ''}`}
+                      />
+                    );
+                  }
+                  return (
+                    <th
+                      key={col.key}
+                      className={`sticky top-16 bg-[var(--pos-panel)] z-10 text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3 border-b border-slate-700 ${col.headerClassName || ''}`}
+                    >
+                      {col.header}
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/30">

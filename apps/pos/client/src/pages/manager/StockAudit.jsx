@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useListSort } from '../../hooks/useListSort';
 import {
   ClipboardList, Search, RefreshCw, Save, Loader2, Package, Check, X,
 } from 'lucide-react';
@@ -21,6 +22,8 @@ export default function StockAudit() {
   const [activeTab, setActiveTab] = useState('audit');
   const [searchTerm, setSearchTerm] = useState('');
   const [physicalCounts, setPhysicalCounts] = useState({}); // inventoryItemId -> countString
+
+  const { sort, order, toggleSort } = useListSort('itemName', 'asc');
 
   // 1. Fetch inventory items
   const { data: items = [], isPending: itemsLoading, refetch } = useQuery({
@@ -60,6 +63,34 @@ export default function StockAudit() {
   const filteredItems = items.filter(item =>
     item.itemName.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const sortedItems = useMemo(() => {
+    let result = [...filteredItems];
+    const dir = order === 'asc' ? 1 : -1;
+    result.sort((a, b) => {
+      if (sort === 'itemName') {
+        return a.itemName.localeCompare(b.itemName) * dir;
+      }
+      if (sort === 'unit') {
+        return (a.unit || '').localeCompare(b.unit || '') * dir;
+      }
+      if (sort === 'systemQty') {
+        return (a.quantity - b.quantity) * dir;
+      }
+      if (sort === 'physicalCount') {
+        const valA = physicalCounts[a._id] !== undefined && physicalCounts[a._id] !== '' ? parseFloat(physicalCounts[a._id]) : -1;
+        const valB = physicalCounts[b._id] !== undefined && physicalCounts[b._id] !== '' ? parseFloat(physicalCounts[b._id]) : -1;
+        return (valA - valB) * dir;
+      }
+      if (sort === 'variance') {
+        const valA = physicalCounts[a._id] !== undefined && physicalCounts[a._id] !== '' ? parseFloat(physicalCounts[a._id]) - a.quantity : 0;
+        const valB = physicalCounts[b._id] !== undefined && physicalCounts[b._id] !== '' ? parseFloat(physicalCounts[b._id]) - b.quantity : 0;
+        return (valA - valB) * dir;
+      }
+      return 0;
+    });
+    return result;
+  }, [filteredItems, sort, order, physicalCounts]);
 
   const pendingAdjustments = Object.entries(physicalCounts).filter(([_, count]) => count !== '').map(([itemId, count]) => {
     const item = items.find(i => i._id === itemId);
@@ -187,9 +218,12 @@ export default function StockAudit() {
               </div>
             ) : (
               <ResponsiveTable
-                rows={filteredItems}
+                rows={sortedItems}
                 rowKey={(item) => item._id}
                 loading={false}
+                onSort={toggleSort}
+                currentSort={sort}
+                currentOrder={order}
                 emptyState={
                   <span className="flex flex-col items-center gap-2">
                     <Package size={36} className="opacity-30" />
@@ -201,11 +235,13 @@ export default function StockAudit() {
                     key: 'itemName',
                     header: 'Item Name',
                     mobilePrimary: true,
+                    sortField: 'itemName',
                     render: (item) => <span className="font-medium text-[var(--pos-text-primary)]">{item.itemName}</span>,
                   },
                   {
                     key: 'unit',
                     header: 'Unit',
+                    sortField: 'unit',
                     render: (item) => <span className="text-slate-400">{item.unit}</span>,
                   },
                   {
@@ -213,11 +249,13 @@ export default function StockAudit() {
                     header: 'System Qty',
                     className: 'text-right',
                     headerClassName: 'text-right',
+                    sortField: 'systemQty',
                     render: (item) => <span className="text-slate-300 font-semibold">{item.quantity}</span>,
                   },
                   {
                     key: 'physicalCount',
                     header: 'Physical Count',
+                    sortField: 'physicalCount',
                     render: (item) => {
                       const val = physicalCounts[item._id] !== undefined ? physicalCounts[item._id] : '';
                       return (
@@ -249,6 +287,7 @@ export default function StockAudit() {
                     header: 'Variance',
                     className: 'text-right',
                     headerClassName: 'text-right',
+                    sortField: 'variance',
                     render: (item) => {
                       const val = physicalCounts[item._id];
                       if (val === undefined || val === '') return <span className="text-slate-500">—</span>;

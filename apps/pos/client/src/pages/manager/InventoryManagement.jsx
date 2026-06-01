@@ -117,6 +117,7 @@ export default function InventoryManagement() {
   const [activeSessionDetails, setActiveSessionDetails] = useState(null);
   const [sessionSearch, setSessionSearch] = useState('');
   const [showSessionFilters, setShowSessionFilters] = useState(false);
+  const { sort: sessionSort, order: sessionOrder, toggleSort: toggleSessionSort } = useListSort('createdAt', 'desc');
 
   // Graph States
   const [graphItem, setGraphItem] = useState(null);
@@ -289,6 +290,32 @@ export default function InventoryManagement() {
     return result;
   }, [sessions, sessionSearch]);
 
+  const sortedSessions = useMemo(() => {
+    let result = [...filteredSessions];
+    const dir = sessionOrder === 'asc' ? 1 : -1;
+    result.sort((a, b) => {
+      if (sessionSort === 'createdAt') {
+        return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir;
+      }
+      if (sessionSort === 'staff') {
+        const nameA = a.userId?.name || '';
+        const nameB = b.userId?.name || '';
+        return nameA.localeCompare(nameB) * dir;
+      }
+      if (sessionSort === 'adjustments') {
+        return ((a.adjustmentCount || 0) - (b.adjustmentCount || 0)) * dir;
+      }
+      if (sessionSort === 'totalQty') {
+        return ((a.totalQuantityChanged || 0) - (b.totalQuantityChanged || 0)) * dir;
+      }
+      if (sessionSort === 'status') {
+        return (a.status || '').localeCompare(b.status || '') * dir;
+      }
+      return 0;
+    });
+    return result;
+  }, [filteredSessions, sessionSort, sessionOrder]);
+
   const lowCount = items.filter(i => getStockStatus(i.quantity, i.minThreshold).variant !== 'ok').length;
   const isPending = createMutation.isPending || updateMutation.isPending;  return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
@@ -416,6 +443,9 @@ export default function InventoryManagement() {
                 rows={filtered}
                 rowKey={(item) => item._id}
                 loading={false}
+                onSort={toggleSort}
+                currentSort={sort}
+                currentOrder={order}
                 emptyState={
                   <span className="flex flex-col items-center gap-2">
                     <Package size={36} className="opacity-30" />
@@ -426,6 +456,7 @@ export default function InventoryManagement() {
                   {
                     key: 'name', header: 'Item Name',
                     mobilePrimary: true,
+                    sortField: 'name',
                     render: (item) => <span className="font-medium text-[var(--pos-text-primary)]">{item.itemName}</span>,
                   },
                   {
@@ -441,6 +472,7 @@ export default function InventoryManagement() {
                     mobileRight: true,
                     className: 'text-right',
                     headerClassName: 'text-right',
+                    sortField: 'quantity',
                     render: (item) => (
                       <span className="text-[var(--pos-text-primary)] font-semibold">{item.quantity}</span>
                     ),
@@ -460,6 +492,7 @@ export default function InventoryManagement() {
                   },
                   {
                     key: 'updated', header: 'Updated',
+                    sortField: 'createdAt',
                     render: (item) => (
                       <span className="text-slate-500 text-xs">
                         {new Date(item.lastUpdated || item.updatedAt).toLocaleDateString()}
@@ -585,19 +618,23 @@ export default function InventoryManagement() {
             {/* Content Lists */}
             {sessionsPending ? (
               <div className="text-center py-12 text-slate-500">Loading history...</div>
-            ) : filteredSessions.length === 0 ? (
+            ) : sortedSessions.length === 0 ? (
               <div className="text-center py-16 bg-[var(--pos-panel)] rounded-xl border border-slate-700">
                 <Package size={36} className="mx-auto opacity-30 mb-2 text-slate-400" />
                 <p className="text-sm text-slate-500">No adjustment sessions found</p>
               </div>
             ) : sessionViewMode === 'table' ? (
               <ResponsiveTable
-                rows={filteredSessions}
+                rows={sortedSessions}
                 rowKey={(sess) => sess._id}
                 loading={false}
+                onSort={toggleSessionSort}
+                currentSort={sessionSort}
+                currentOrder={sessionOrder}
                 columns={[
                   {
                     key: 'started', header: 'Date Started',
+                    sortField: 'createdAt',
                     render: (sess) => (
                       <span className="text-xs text-[var(--pos-text-primary)] font-medium">
                         {new Date(sess.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
@@ -606,6 +643,7 @@ export default function InventoryManagement() {
                   },
                   {
                     key: 'user', header: 'Staff Member',
+                    sortField: 'staff',
                     render: (sess) => (
                       <span className="text-xs text-slate-300 font-semibold">
                         {sess.userId?.name || 'Staff'}
@@ -614,6 +652,7 @@ export default function InventoryManagement() {
                   },
                   {
                     key: 'changes', header: 'Changes',
+                    sortField: 'adjustments',
                     render: (sess) => (
                       <span className="text-xs text-amber-400 font-bold">
                         {sess.adjustmentCount} adjustments
@@ -622,6 +661,7 @@ export default function InventoryManagement() {
                   },
                   {
                     key: 'qtyChanged', header: 'Total Quantity',
+                    sortField: 'totalQty',
                     render: (sess) => (
                       <span className="text-xs text-slate-400">
                         {sess.totalQuantityChanged} units
@@ -630,6 +670,7 @@ export default function InventoryManagement() {
                   },
                   {
                     key: 'status', header: 'Status',
+                    sortField: 'status',
                     render: (sess) => (
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${sess.status === 'active' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-slate-550/15 text-slate-400'}`}>
                         {sess.status}
@@ -658,7 +699,7 @@ export default function InventoryManagement() {
               />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {filteredSessions.map((sess) => (
+                {sortedSessions.map((sess) => (
                   <div key={sess._id} className="bg-[var(--pos-panel)] border border-slate-700 rounded-xl p-3.5 flex flex-col justify-between hover:border-slate-600 transition">
                     <div>
                       <div className="flex justify-between items-start gap-2 mb-2">

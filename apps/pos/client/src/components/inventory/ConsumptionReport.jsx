@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useListSort } from '../../hooks/useListSort';
+import ResponsiveTable from '../ResponsiveTable';
 import { Loader2, Package, TrendingDown, TrendingUp, Download, Calendar } from 'lucide-react';
 import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
@@ -20,6 +22,7 @@ export default function ConsumptionReport() {
   const [fromDate, setFromDate] = useState(getDefaultFromDate());
   const [toDate, setToDate] = useState(getDefaultToDate());
   const [hasRun, setHasRun] = useState(false);
+  const { sort, order, toggleSort } = useListSort('itemName', 'asc');
 
   const { data: report, isFetching, refetch } = useQuery({
     queryKey: ['consumption-report', selectedStoreId, fromDate, toDate],
@@ -33,6 +36,37 @@ export default function ConsumptionReport() {
     setHasRun(true);
     refetch();
   };
+
+  const sortedReportItems = useMemo(() => {
+    if (!report?.items) return [];
+    let result = [...report.items];
+    const dir = order === 'asc' ? 1 : -1;
+    result.sort((a, b) => {
+      if (sort === 'itemName') {
+        return a.itemName.localeCompare(b.itemName) * dir;
+      }
+      if (sort === 'unit') {
+        return (a.unit || '').localeCompare(b.unit || '') * dir;
+      }
+      if (sort === 'startingStock') {
+        return (a.startingStock - b.startingStock) * dir;
+      }
+      if (sort === 'theoreticalUsage') {
+        return (a.theoreticalUsage - b.theoreticalUsage) * dir;
+      }
+      if (sort === 'expectedStock') {
+        return (a.expectedStock - b.expectedStock) * dir;
+      }
+      if (sort === 'currentStock') {
+        return (a.currentStock - b.currentStock) * dir;
+      }
+      if (sort === 'variance') {
+        return (a.variance - b.variance) * dir;
+      }
+      return 0;
+    });
+    return result;
+  }, [report?.items, sort, order]);
 
   const handleExportCSV = () => {
     if (!report?.items?.length) return;
@@ -196,79 +230,104 @@ export default function ConsumptionReport() {
       )}
 
       {!isPending && report?.items?.length > 0 && (
-        <div className="bg-[var(--pos-panel)] rounded-xl border border-slate-700/50 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-700/50 bg-[var(--pos-surface-inset)]/50">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                    Item
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                    Unit
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                    Starting Stock
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                    Theoretical Usage
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                    Expected Stock
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                    Current Stock
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                    Variance
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/80">
-                {report.items.map((item) => {
-                  const hasVariance = Math.abs(item.variance) > 0.1;
-                  const isPositive = item.variance > 0;
-                  const varianceColor = !hasVariance 
-                    ? 'text-slate-500' 
-                    : isPositive 
-                      ? 'text-green-400' 
-                      : 'text-red-400';
-                  
-                  return (
-                    <tr key={item.inventoryItemId} className="hover:bg-slate-800/30 transition">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Package size={12} className="text-slate-500 flex-shrink-0" />
-                          <span className="text-slate-200 font-medium">{item.itemName}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-400">{item.unit}</td>
-                      <td className="px-4 py-3 text-right text-slate-300">{item.startingStock}</td>
-                      <td className="px-4 py-3 text-right text-amber-400 font-medium">{item.theoreticalUsage}</td>
-                      <td className="px-4 py-3 text-right text-slate-400">{item.expectedStock}</td>
-                      <td className="px-4 py-3 text-right text-slate-200 font-medium">{item.currentStock}</td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex flex-col items-end">
-                          <div className={`flex items-center gap-1 font-semibold ${varianceColor}`}>
-                            {hasVariance && (
-                              isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />
-                            )}
-                            <span>{isPositive ? '+' : ''}{item.variance}</span>
-                          </div>
-                          {hasVariance && (
-                            <span className={`text-xs ${varianceColor}`}>
-                              ({isPositive ? '+' : ''}{item.variancePercentage}%)
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <ResponsiveTable
+          rows={sortedReportItems}
+          rowKey={(item) => item.inventoryItemId}
+          loading={false}
+          onSort={toggleSort}
+          currentSort={sort}
+          currentOrder={order}
+          emptyState={
+            <span className="flex flex-col items-center gap-2">
+              <Package size={36} className="opacity-30" />
+              No consumption data for this period
+            </span>
+          }
+          columns={[
+            {
+              key: 'itemName',
+              header: 'Item',
+              mobilePrimary: true,
+              sortField: 'itemName',
+              render: (item) => (
+                <div className="flex items-center gap-2">
+                  <Package size={12} className="text-slate-500 flex-shrink-0" />
+                  <span className="text-[var(--pos-text-primary)] font-medium">{item.itemName}</span>
+                </div>
+              ),
+            },
+            {
+              key: 'unit',
+              header: 'Unit',
+              sortField: 'unit',
+              render: (item) => <span className="text-slate-400">{item.unit}</span>,
+            },
+            {
+              key: 'startingStock',
+              header: 'Starting Stock',
+              className: 'text-right',
+              headerClassName: 'text-right',
+              sortField: 'startingStock',
+              render: (item) => <span className="text-slate-350">{item.startingStock}</span>,
+            },
+            {
+              key: 'theoreticalUsage',
+              header: 'Theoretical Usage',
+              className: 'text-right',
+              headerClassName: 'text-right',
+              sortField: 'theoreticalUsage',
+              render: (item) => <span className="text-amber-400 font-semibold">{item.theoreticalUsage}</span>,
+            },
+            {
+              key: 'expectedStock',
+              header: 'Expected Stock',
+              className: 'text-right',
+              headerClassName: 'text-right',
+              sortField: 'expectedStock',
+              render: (item) => <span className="text-slate-450">{item.expectedStock}</span>,
+            },
+            {
+              key: 'currentStock',
+              header: 'Current Stock',
+              className: 'text-right',
+              headerClassName: 'text-right',
+              sortField: 'currentStock',
+              render: (item) => <span className="text-slate-200 font-semibold">{item.currentStock}</span>,
+            },
+            {
+              key: 'variance',
+              header: 'Variance',
+              className: 'text-right',
+              headerClassName: 'text-right',
+              sortField: 'variance',
+              render: (item) => {
+                const hasVariance = Math.abs(item.variance) > 0.1;
+                const isPositive = item.variance > 0;
+                const varianceColor = !hasVariance 
+                  ? 'text-slate-500' 
+                  : isPositive 
+                    ? 'text-green-400' 
+                    : 'text-red-400';
+                
+                return (
+                  <div className="flex flex-col items-end">
+                    <div className={`flex items-center gap-1 font-semibold ${varianceColor}`}>
+                      {hasVariance && (
+                        isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />
+                      )}
+                      <span>{isPositive ? '+' : ''}{item.variance}</span>
+                    </div>
+                    {hasVariance && (
+                      <span className={`text-xs ${varianceColor}`}>
+                        ({isPositive ? '+' : ''}{item.variancePercentage}%)
+                      </span>
+                    )}
+                  </div>
+                );
+              },
+            },
+          ]}
+        />
       )}
 
       {/* Help Text */}
