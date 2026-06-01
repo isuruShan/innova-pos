@@ -88,9 +88,10 @@ else
   echo -e "${RED}Error: Nginx configuration test failed. Restoring backup...${NC}"
   
   # Restore backup
-  rm -f "$NGINX_CONF_DIR"/*
-  cp -r "$BACKUP_DIR"/* "$NGINX_CONF_DIR/" 2>/dev/null || true
-  if [ -d "$BACKUP_DIR/sites-enabled" ]; then
+  find "$NGINX_CONF_DIR" -maxdepth 1 -type f -delete
+  # Copy back configs (excluding the sites-enabled folder we backed up inside it)
+  find "$BACKUP_DIR" -maxdepth 1 -type f -exec cp {} "$NGINX_CONF_DIR/" \;
+  if [ -d "$BACKUP_DIR/sites-enabled" ] && [ -d "$NGINX_SITES_ENABLED" ]; then
     cp -r "$BACKUP_DIR/sites-enabled/"* "$NGINX_SITES_ENABLED/" 2>/dev/null || true
   fi
   
