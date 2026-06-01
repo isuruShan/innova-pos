@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tantml:function_calls>
-<invoke name="Plus, Edit2, Trash2, Shield, Percent, DollarSign, Check, X, RefreshCw, Upload, Image as ImageIcon } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Edit2, Trash2, Shield, Percent, DollarSign, Check, X, RefreshCw, Upload, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import api from '../../api/axios';
 
