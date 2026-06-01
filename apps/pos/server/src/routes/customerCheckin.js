@@ -112,11 +112,63 @@ router.post('/initiate', async (req, res) => {
       return res.json({ otpRequired: true, status: 'pending_otp' });
     }
 
-    // Direct trigger to POS if no OTP is required
+    // Direct check-in (no OTP)
+    // Find or create customer
+    const emailNorm = String(email || '').trim().toLowerCase();
+    let customer = null;
+    if (emailNorm) {
+      customer = await Customer.findOne({ tenantId, email: emailNorm });
+    }
+    if (!customer && mobile) {
+      customer = await Customer.findOne({ tenantId, mobile });
+    }
+    if (!customer && mobile) {
+      const md = String(mobile).replace(/\D/g, '');
+      if (md.length >= 8) {
+        customer = await Customer.findOne({ tenantId, mobileDigits: md });
+      }
+    }
+
+    if (!customer) {
+      customer = await Customer.create({
+        tenantId,
+        storeId,
+        name: name || 'Customer',
+        mobile,
+        email: emailNorm,
+        birthday: birthday ? new Date(birthday) : null,
+        lastLoyaltyActivityAt: new Date(),
+      });
+      console.log(`[customer-checkin initiate] Created new customer: ${customer._id}`);
+    } else {
+      let changed = false;
+      if (name && !customer.name) {
+        customer.name = name;
+        changed = true;
+      }
+      if (birthday && !customer.birthday) {
+        customer.birthday = new Date(birthday);
+        changed = true;
+      }
+      if (emailNorm && !customer.email) {
+        customer.email = emailNorm;
+        changed = true;
+      }
+      if (changed) {
+        await customer.save();
+        console.log(`[customer-checkin initiate] Updated customer: ${customer._id}`);
+      }
+    }
+
+    // Mark checkin as processed so change stream or trigger doesn't re-process
+    checkin.processed = true;
+    await checkin.save();
+
+    // Trigger POS server
     const posUrl = process.env.POS_SERVER_URL || 'http://localhost:5000';
     await axios.post(`${posUrl}/api/customers/session-checkin-trigger/${sessionId}`, {});
 
-    res.json({ otpRequired: false, checkedIn: true, status: 'completed' });
+    res.json({ otpRequired: false, checkedIn: true, status: 'completed', customer });
   } catch (err) {
     console.error('[customer-checkin initiate]', err.message);
     res.status(400).json({ message: err.message });
@@ -141,7 +193,22 @@ router.post('/verify', async (req, res) => {
     }
 
     if (checkin.status === 'completed') {
-      return res.json({ success: true, checkedIn: true });
+      // Find customer
+      const emailNorm = String(checkin.email || '').trim().toLowerCase();
+      let customer = null;
+      if (emailNorm) {
+        customer = await Customer.findOne({ tenantId: checkin.tenantId, email: emailNorm });
+      }
+      if (!customer && checkin.mobile) {
+        customer = await Customer.findOne({ tenantId: checkin.tenantId, mobile: checkin.mobile });
+      }
+      if (!customer && checkin.mobile) {
+        const md = String(checkin.mobile).replace(/\D/g, '');
+        if (md.length >= 8) {
+          customer = await Customer.findOne({ tenantId: checkin.tenantId, mobileDigits: md });
+        }
+      }
+      return res.json({ success: true, checkedIn: true, customer });
     }
 
     if (!checkin.otp || checkin.otp !== String(otp).trim()) {
@@ -152,15 +219,63 @@ router.post('/verify', async (req, res) => {
       return res.status(400).json({ message: 'OTP code has expired' });
     }
 
-    // Set checkin status to completed
+    // Find or create customer
+    const emailNorm = String(checkin.email || '').trim().toLowerCase();
+    let customer = null;
+    if (emailNorm) {
+      customer = await Customer.findOne({ tenantId: checkin.tenantId, email: emailNorm });
+    }
+    if (!customer && checkin.mobile) {
+      customer = await Customer.findOne({ tenantId: checkin.tenantId, mobile: checkin.mobile });
+    }
+    if (!customer && checkin.mobile) {
+      const md = String(checkin.mobile).replace(/\D/g, '');
+      if (md.length >= 8) {
+        customer = await Customer.findOne({ tenantId: checkin.tenantId, mobileDigits: md });
+      }
+    }
+
+    if (!customer) {
+      customer = await Customer.create({
+        tenantId: checkin.tenantId,
+        storeId: checkin.storeId,
+        name: checkin.name || 'Customer',
+        mobile: checkin.mobile,
+        email: emailNorm,
+        birthday: checkin.birthday || null,
+        lastLoyaltyActivityAt: new Date(),
+      });
+      console.log(`[customer-checkin verify] Created new customer: ${customer._id}`);
+    } else {
+      let changed = false;
+      if (checkin.name && !customer.name) {
+        customer.name = checkin.name;
+        changed = true;
+      }
+      if (checkin.birthday && !customer.birthday) {
+        customer.birthday = checkin.birthday;
+        changed = true;
+      }
+      if (emailNorm && !customer.email) {
+        customer.email = emailNorm;
+        changed = true;
+      }
+      if (changed) {
+        await customer.save();
+        console.log(`[customer-checkin verify] Updated customer: ${customer._id}`);
+      }
+    }
+
+    // Set checkin status to completed and processed
     checkin.status = 'completed';
+    checkin.processed = true;
     await checkin.save();
 
     // Trigger POS server
     const posUrl = process.env.POS_SERVER_URL || 'http://localhost:5000';
     await axios.post(`${posUrl}/api/customers/session-checkin-trigger/${sessionId}`, {});
 
-    res.json({ success: true, checkedIn: true });
+    res.json({ success: true, checkedIn: true, customer });
   } catch (err) {
     console.error('[customer-checkin verify]', err.message);
     res.status(400).json({ message: err.message });

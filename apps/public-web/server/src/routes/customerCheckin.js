@@ -75,7 +75,54 @@ router.post('/initiate', async (req, res) => {
       return res.status(404).json({ message: 'Merchant not found' });
     }
 
-    // Create/update the checkin session as completed (no OTP verification)
+    // Find or create customer
+    const emailNorm = String(email || '').trim().toLowerCase();
+    let customer = null;
+    if (emailNorm) {
+      customer = await Customer.findOne({ tenantId, email: emailNorm });
+    }
+    if (!customer && mobile) {
+      customer = await Customer.findOne({ tenantId, mobile });
+    }
+    if (!customer && mobile) {
+      const md = String(mobile).replace(/\D/g, '');
+      if (md.length >= 8) {
+        customer = await Customer.findOne({ tenantId, mobileDigits: md });
+      }
+    }
+
+    if (!customer) {
+      customer = await Customer.create({
+        tenantId,
+        storeId,
+        name: name || 'Customer',
+        mobile,
+        email: emailNorm,
+        birthday: birthday ? new Date(birthday) : null,
+        lastLoyaltyActivityAt: new Date(),
+      });
+      console.log(`[customer-checkin initiate] Created new customer: ${customer._id}`);
+    } else {
+      let changed = false;
+      if (name && !customer.name) {
+        customer.name = name;
+        changed = true;
+      }
+      if (birthday && !customer.birthday) {
+        customer.birthday = new Date(birthday);
+        changed = true;
+      }
+      if (emailNorm && !customer.email) {
+        customer.email = emailNorm;
+        changed = true;
+      }
+      if (changed) {
+        await customer.save();
+        console.log(`[customer-checkin initiate] Updated customer: ${customer._id}`);
+      }
+    }
+
+    // Create/update the checkin session as completed and processed (no OTP verification)
     const checkin = await CustomerSessionCheckin.findOneAndUpdate(
       { sessionId },
       {
@@ -86,6 +133,7 @@ router.post('/initiate', async (req, res) => {
         email: email || '',
         birthday: birthday ? new Date(birthday) : null,
         status: 'completed',
+        processed: true,
       },
       { upsert: true, new: true }
     );
@@ -98,10 +146,9 @@ router.post('/initiate', async (req, res) => {
       console.log(`[customer-checkin] POS trigger successful for session ${sessionId}`);
     } catch (triggerErr) {
       console.error(`[customer-checkin] Failed to trigger POS:`, triggerErr.message);
-      // Don't fail the request - customer is already registered
     }
 
-    res.json({ otpRequired: false, checkedIn: true, status: 'completed' });
+    res.json({ otpRequired: false, checkedIn: true, status: 'completed', customer });
   } catch (err) {
     console.error('[customer-checkin initiate]', err.message);
     res.status(400).json({ message: err.message });
@@ -125,8 +172,36 @@ router.post('/verify', async (req, res) => {
       return res.status(400).json({ message: 'This order session has already been completed.' });
     }
 
+    // Find customer
+    const emailNorm = String(checkin.email || '').trim().toLowerCase();
+    let customer = null;
+    if (emailNorm) {
+      customer = await Customer.findOne({ tenantId: checkin.tenantId, email: emailNorm });
+    }
+    if (!customer && checkin.mobile) {
+      customer = await Customer.findOne({ tenantId: checkin.tenantId, mobile: checkin.mobile });
+    }
+    if (!customer && checkin.mobile) {
+      const md = String(checkin.mobile).replace(/\D/g, '');
+      if (md.length >= 8) {
+        customer = await Customer.findOne({ tenantId: checkin.tenantId, mobileDigits: md });
+      }
+    }
+
+    if (!customer) {
+      customer = await Customer.create({
+        tenantId: checkin.tenantId,
+        storeId: checkin.storeId,
+        name: checkin.name || 'Customer',
+        mobile: checkin.mobile,
+        email: emailNorm,
+        birthday: checkin.birthday || null,
+        lastLoyaltyActivityAt: new Date(),
+      });
+    }
+
     // Session exists and is completed (no OTP verification needed)
-    res.json({ success: true, checkedIn: true });
+    res.json({ success: true, checkedIn: true, customer });
   } catch (err) {
     console.error('[customer-checkin verify]', err.message);
     res.status(400).json({ message: err.message });

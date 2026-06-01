@@ -1211,12 +1211,20 @@ export default function NewOrder() {
 
     const onChannelMessage = (e) => {
       if (e.data.type === 'CUSTOMER_CHECKED_IN_DIRECT') {
-        const { sessionId } = e.data.payload || {};
-        if (sessionId) {
+        const { sessionId, customer } = e.data.payload || {};
+        if (customer) {
+          console.log('[BroadcastChannel] Received customer details directly from terminal payload:', customer);
+          setSelectedCustomer(customer);
+          setCustomerSearch(customer.name || customer.mobile || '');
+          qc.invalidateQueries({ queryKey: ['customers-search'] });
+          qc.invalidateQueries({ queryKey: ['customer-loyalty'] });
+          showToast(`User ${customer.name} added to the order!`);
+        } else if (sessionId) {
+          // Fallback to fetch from backend if customer was not included
           api.get(`/customer-checkin/session-status/${sessionId}`)
             .then(({ data }) => {
               if (data && data.customer) {
-                console.log('[BroadcastChannel] Loaded customer details directly:', data.customer);
+                console.log('[BroadcastChannel] Loaded customer details via session-status fallback:', data.customer);
                 setSelectedCustomer(data.customer);
                 setCustomerSearch(data.customer.name || data.customer.mobile || '');
                 qc.invalidateQueries({ queryKey: ['customers-search'] });

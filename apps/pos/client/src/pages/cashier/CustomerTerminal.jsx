@@ -165,11 +165,16 @@ export default function CustomerTerminal() {
           if (channelRef.current) {
             channelRef.current.postMessage({
               type: 'CUSTOMER_CHECKED_IN_DIRECT',
-              payload: { sessionId: orderState.customerSessionId }
+              payload: {
+                sessionId: orderState.customerSessionId,
+                customer: data.customer
+              }
             });
           }
-          setSuccessMessage('Check-in successful!');
-          setTimeout(() => resetForm(), 3000);
+          setCustomerName(data.customer?.name || 'Customer');
+          setSuccessMessage(`Welcome back, ${data.customer?.name || 'Customer'}!`);
+          setShowInputScreen(false);
+          setTimeout(() => setSuccessMessage(''), 4000);
         }
       } catch (err) {
         setErrorMessage(err.response?.data?.message || 'Verification failed');
@@ -237,11 +242,16 @@ export default function CustomerTerminal() {
         if (channelRef.current) {
           channelRef.current.postMessage({
             type: 'CUSTOMER_CHECKED_IN_DIRECT',
-            payload: { sessionId: orderState.customerSessionId }
+            payload: {
+              sessionId: orderState.customerSessionId,
+              customer: data.customer
+            }
           });
         }
-        setSuccessMessage('Check-in complete!');
-        setTimeout(() => resetForm(), 3000);
+        setCustomerName(data.customer?.name || 'Customer');
+        setSuccessMessage(`Welcome back, ${data.customer?.name || 'Customer'}!`);
+        setShowInputScreen(false);
+        setTimeout(() => setSuccessMessage(''), 4000);
       }
     } catch (err) {
       setErrorMessage(err.response?.data?.message || 'Failed to submit check-in');
