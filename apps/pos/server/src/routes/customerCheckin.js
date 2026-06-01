@@ -167,6 +167,44 @@ router.post('/verify', async (req, res) => {
   }
 });
 
+// GET /api/customer-checkin/session-status/:sessionId — Fetch check-in status and customer details if completed
+router.get('/session-status/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const checkin = await CustomerSessionCheckin.findOne({ sessionId }).lean();
+    if (!checkin) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+
+    if (checkin.status === 'completed' || checkin.status === 'placed') {
+      const Customer = require('../models/Customer');
+      const emailNorm = String(checkin.email || '').trim().toLowerCase();
+      
+      let customer = null;
+      if (emailNorm) {
+        customer = await Customer.findOne({ tenantId: checkin.tenantId, email: emailNorm });
+      }
+      if (!customer && checkin.mobile) {
+        customer = await Customer.findOne({ tenantId: checkin.tenantId, mobile: checkin.mobile });
+      }
+      if (!customer && checkin.mobile) {
+        const md = String(checkin.mobile).replace(/\D/g, '');
+        if (md.length >= 8) {
+          customer = await Customer.findOne({ tenantId: checkin.tenantId, mobileDigits: md });
+        }
+      }
+
+      if (customer) {
+        return res.json({ status: checkin.status, customer });
+      }
+    }
+
+    res.json({ status: checkin.status, customer: null });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 // POST /api/customer-checkin/register-session — Initialize check-in session from POS cashier/terminal
 router.post('/register-session', async (req, res) => {
   try {

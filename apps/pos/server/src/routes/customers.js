@@ -219,7 +219,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin'), tenantScope,
 });
 
 const CustomerSessionCheckin = require('../models/CustomerSessionCheckin');
-const { publishCheckinEvent, subscribeCheckinEvent } = require('../lib/notificationBus');
+const { publishCheckinEvent, subscribeCheckinEvent, hasLocalCheckinListeners } = require('../lib/notificationBus');
 
 // GET /api/customers/session-checkin-sse/:sessionId — SSE stream for cashier to receive check-in notification
 router.get('/session-checkin-sse/:sessionId', async (req, res) => {
@@ -367,6 +367,14 @@ function initCheckinChangeStream() {
         }
 
         const { sessionId } = doc;
+        
+        // Only process the change stream event on the process that has the active cashier SSE connection.
+        // If no process has a local connection, we don't need to process it (or the POST trigger will handle it).
+        if (!hasLocalCheckinListeners(sessionId)) {
+          console.log(`[change-stream] No local SSE listener for session: ${sessionId}. Skipping.`);
+          return;
+        }
+
         console.log(`[change-stream] Attempting lock for session: ${sessionId}`);
 
         // Atomically lock and mark this checkin session as processed

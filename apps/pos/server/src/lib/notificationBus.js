@@ -105,10 +105,16 @@ function subscribeCheckinEvent(sessionId, handler) {
   };
 }
 
+function hasLocalCheckinListeners(sessionId) {
+  const ch = `pos:checkin:${String(sessionId)}`;
+  return bus.listenerCount(ch) > 0;
+}
+
 module.exports = {
   initNotificationBus,
   publishNotificationRefresh,
   subscribeUserNotifications,
   publishCheckinEvent,
   subscribeCheckinEvent,
+  hasLocalCheckinListeners,
 };

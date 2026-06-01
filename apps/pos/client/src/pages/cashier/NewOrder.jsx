@@ -1211,7 +1211,23 @@ export default function NewOrder() {
 
     const onChannelMessage = (e) => {
       if (e.data.type === 'CUSTOMER_CHECKED_IN_DIRECT') {
-        // Handled via SSE automatically
+        const { sessionId } = e.data.payload || {};
+        if (sessionId) {
+          api.get(`/customer-checkin/session-status/${sessionId}`)
+            .then(({ data }) => {
+              if (data && data.customer) {
+                console.log('[BroadcastChannel] Loaded customer details directly:', data.customer);
+                setSelectedCustomer(data.customer);
+                setCustomerSearch(data.customer.name || data.customer.mobile || '');
+                qc.invalidateQueries({ queryKey: ['customers-search'] });
+                qc.invalidateQueries({ queryKey: ['customer-loyalty'] });
+                showToast(`User ${data.customer.name} added to the order!`);
+              }
+            })
+            .catch(err => {
+              console.error('[BroadcastChannel] Failed to load customer details:', err);
+            });
+        }
       }
     };
     channel.addEventListener('message', onChannelMessage);
