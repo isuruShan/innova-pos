@@ -120,7 +120,7 @@ export default function FoodmarketPartnersPage() {
       try {
         const formData = new FormData();
         formData.append('file', logoFile);
-        const uploadRes = await api.post('/upload', formData, {
+        const uploadRes = await api.post('/foodmarket-partners/logo', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         logoUrl = uploadRes.data.url;

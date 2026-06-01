@@ -1,8 +1,21 @@
 const express = require('express');
 const FoodmarketPartner = require('../models/FoodmarketPartner');
 const { protect, authorize, tenantScope } = require('../middleware/auth');
+const multer = require('multer');
+const { proxyUploadToService } = require('../lib/uploadProxy');
 
 const router = express.Router();
+
+const uploadLogo = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    allowed.includes(file.mimetype)
+      ? cb(null, true)
+      : cb(new Error('Logo must be JPEG, PNG, or WebP'));
+  },
+});
 
 // Helper to seed default partners
 async function seedDefaultPartners(tenantId) {
@@ -93,5 +106,26 @@ router.delete('/:id', protect, authorize('merchant_admin', 'superadmin'), tenant
     res.status(500).json({ message: err.message });
   }
 });
+
+// POST /foodmarket-partners/logo — upload partner logo
+router.post('/logo', protect, authorize('merchant_admin', 'superadmin'), tenantScope,
+  uploadLogo.single('file'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    try {
+      const uploaded = await proxyUploadToService({
+        buffer: req.file.buffer,
+        filename: req.file.originalname || 'partner-logo.webp',
+        mimetype: req.file.mimetype,
+        type: 'partner-logo',
+        authorization: req.headers.authorization,
+      });
+      
+      res.json({ url: uploaded.url, key: uploaded.key });
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ message: err.message });
+      res.status(500).json({ message: err.message || 'Upload failed' });
+    }
+  }
+);
 
 module.exports = router;
