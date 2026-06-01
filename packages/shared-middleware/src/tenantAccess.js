@@ -7,23 +7,7 @@ let redisClient = null;
 let redisInitAttempted = false;
 
 function getRedis() {
-  if (redisInitAttempted) return redisClient;
-  redisInitAttempted = true;
-  const url = String(process.env.REDIS_URL || '').trim();
-  if (!url) return null;
-  try {
-    const Redis = require('ioredis');
-    redisClient = new Redis(url, {
-      maxRetriesPerRequest: 2,
-      lazyConnect: true,
-      enableOfflineQueue: false,
-    });
-    redisClient.on('error', () => {});
-    redisClient.connect().catch(() => {});
-    return redisClient;
-  } catch (e) {
-    return null;
-  }
+  return null;
 }
 
 /** Invalidation helper exported for superadmin status/plan edits. */

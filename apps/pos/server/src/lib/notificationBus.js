@@ -43,6 +43,9 @@ function initNotificationBus(logger) {
       await subClient.pSubscribe('pos:notif:*:*', (message, channel) => {
         bus.emit(String(channel), message);
       });
+      await subClient.pSubscribe('pos:checkin:*', (message, channel) => {
+        bus.emit(String(channel), message);
+      });
       redisReady = true;
       if (logger?.info) logger.info('[notification-bus] Redis pub/sub ready for notification SSE');
     } catch (e) {
@@ -77,8 +80,28 @@ function subscribeUserNotifications(tenantId, userId, handler) {
   };
 }
 
+function publishCheckinEvent(sessionId, customer) {
+  const ch = `pos:checkin:${String(sessionId)}`;
+  const payload = JSON.stringify({ type: 'CHECKIN_COMPLETE', customer });
+  if (redisReady && pubClient?.isReady) {
+    pubClient.publish(ch, payload).catch(() => {});
+  } else {
+    bus.emit(ch, payload);
+  }
+}
+
+function subscribeCheckinEvent(sessionId, handler) {
+  const ch = `pos:checkin:${String(sessionId)}`;
+  bus.on(ch, handler);
+  return () => {
+    bus.off(ch, handler);
+  };
+}
+
 module.exports = {
   initNotificationBus,
   publishNotificationRefresh,
   subscribeUserNotifications,
+  publishCheckinEvent,
+  subscribeCheckinEvent,
 };

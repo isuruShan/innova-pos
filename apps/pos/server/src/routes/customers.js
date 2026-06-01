@@ -219,8 +219,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin'), tenantScope,
 });
 
 const CustomerSessionCheckin = require('../models/CustomerSessionCheckin');
-
-const sseClients = {};
+const { publishCheckinEvent, subscribeCheckinEvent } = require('../lib/notificationBus');
 
 // GET /api/customers/session-checkin-sse/:sessionId — SSE stream for cashier to receive check-in notification
 router.get('/session-checkin-sse/:sessionId', async (req, res) => {
@@ -238,19 +237,14 @@ router.get('/session-checkin-sse/:sessionId', async (req, res) => {
     res.write(': keep-alive\n\n');
   }, 15000);
 
-  if (!sseClients[sessionId]) {
-    sseClients[sessionId] = [];
-  }
-  sseClients[sessionId].push(res);
+  // Subscribe to check-in notifications from the notification bus (clustered/single instance safe)
+  const unsubscribe = subscribeCheckinEvent(sessionId, (message) => {
+    res.write(`data: ${message}\n\n`);
+  });
 
   req.on('close', () => {
     clearInterval(keepAlive);
-    if (sseClients[sessionId]) {
-      sseClients[sessionId] = sseClients[sessionId].filter(c => c !== res);
-      if (sseClients[sessionId].length === 0) {
-        delete sseClients[sessionId];
-      }
-    }
+    unsubscribe();
   });
 });
 
@@ -301,13 +295,8 @@ router.post('/session-checkin-trigger/:sessionId', async (req, res) => {
       }
     }
 
-    // Send SSE event to all cashier clients listening to this session
-    const clients = sseClients[sessionId];
-    if (clients && clients.length > 0) {
-      clients.forEach(client => {
-        client.write(`data: ${JSON.stringify({ type: 'CHECKIN_COMPLETE', customer })}\n\n`);
-      });
-    }
+    // Broadcast check-in complete event across all process instances via Redis/Bus
+    publishCheckinEvent(sessionId, customer);
 
     res.json({ success: true, customer });
   } catch (err) {
