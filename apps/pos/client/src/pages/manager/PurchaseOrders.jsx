@@ -280,48 +280,90 @@ export default function PurchaseOrders() {
             </button>
           ))}
         </div>
-
         {/* Search + Filter button + Sort */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="flex-1 flex items-center gap-2 bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl px-3 py-2">
+        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700/50 items-center justify-between">
+          <div className="flex-1 w-full flex items-center gap-2 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2">
             <Search size={15} className="text-slate-500 flex-shrink-0" />
             <input
               type="text"
               placeholder="Search by PO number, supplier, notes..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
+              className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-650"
             />
             {search && (
               <button onClick={() => setSearch('')}><X size={13} className="text-slate-500 hover:text-white" /></button>
             )}
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            <button
-              onClick={() => setShowFilters(f => !f)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium transition ${
-                showFilters || fromDate || toDate
-                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
-                  : 'bg-[var(--pos-panel)] border-slate-700/50 text-slate-400 hover:text-[var(--pos-text-primary)]'
-              }`}
-            >
-              <SlidersHorizontal size={14} />
-              Filters
-              {(fromDate || toDate) && (
-                <span className="bg-amber-500 text-white text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  1
-                </span>
-              )}
-              <ChevronDown size={13} className={`transition ${showFilters ? 'rotate-180' : ''}`} />
-            </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+            <div className="relative">
+              <button
+                onClick={() => setShowFilters(f => !f)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
+                  (fromDate || toDate)
+                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 font-semibold'
+                    : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-white'
+                }`}
+              >
+                <SlidersHorizontal size={14} />
+                <span>Filters</span>
+                {(fromDate || toDate) && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
+                    1
+                  </span>
+                )}
+                <ChevronDown size={13} className={`transition ${showFilters ? 'rotate-180' : ''}`} />
+              </button>
 
-            <label htmlFor="po-sort" className="text-xs text-slate-500 shrink-0 ml-2">Sort</label>
+              {showFilters && (
+                <div className="absolute right-0 mt-2 w-64 bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-2xl z-30 p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-700 pb-2">
+                    <span className="text-xs font-semibold text-slate-355">Filters</span>
+                    {(fromDate || toDate) && (
+                      <button
+                        onClick={() => { setFromDate(''); setToDate(''); }}
+                        className="text-[10px] text-amber-450 hover:underline"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Date Range */}
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-455 uppercase tracking-wider mb-2">Date Range</p>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-1">From</label>
+                        <PosDateField
+                          value={fromDate}
+                          onChange={setFromDate}
+                          max={toDate}
+                          className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-1">To</label>
+                        <PosDateField
+                          value={toDate}
+                          onChange={setToDate}
+                          min={fromDate}
+                          className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <label htmlFor="po-sort" className="text-xs text-slate-550 shrink-0">Sort</label>
             <select
               id="po-sort"
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
             >
               {PO_SORT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -330,82 +372,13 @@ export default function PurchaseOrders() {
             <button
               type="button"
               onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-              className="p-2 rounded-xl bg-[var(--pos-panel)] border border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)] transition"
+              className="p-1.5 rounded-lg bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-400 hover:text-white transition"
               title={order === 'asc' ? 'Ascending' : 'Descending'}
             >
               {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
             </button>
           </div>
         </div>
-
-        {/* Collapsible Filter Panel */}
-        {showFilters && (
-          <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-2xl p-4 mb-6 space-y-4">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium text-slate-400">Date Created Range</p>
-                {(fromDate || toDate) && (
-                  <button
-                    onClick={() => { setFromDate(''); setToDate(''); }}
-                    className="text-xs text-amber-500 hover:text-amber-400"
-                  >
-                    Clear Range
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2 mb-3">
-                <button
-                  type="button"
-                  onClick={() => setQuickDateRange(1)}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:text-[var(--pos-text-primary)] transition"
-                >
-                  Last 24 Hours
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickDateRange(3)}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:text-[var(--pos-text-primary)] transition"
-                >
-                  Last 3 Days
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickDateRange(7)}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:text-[var(--pos-text-primary)] transition"
-                >
-                  Last 7 Days
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickDateRange(30)}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:text-[var(--pos-text-primary)] transition"
-                >
-                  Last 30 Days
-                </button>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1">
-                  <label className="text-xs text-slate-500 block mb-1">From</label>
-                  <PosDateField
-                    value={fromDate}
-                    onChange={setFromDate}
-                    max={toDate}
-                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="text-xs text-slate-500 block mb-1">To</label>
-                  <PosDateField
-                    value={toDate}
-                    onChange={setToDate}
-                    min={fromDate}
-                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Orders List */}
         {ordersPending ? (

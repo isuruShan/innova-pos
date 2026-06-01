@@ -86,7 +86,7 @@ export default function MenuManagement() {
   const [formError, setFormError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [menuSearch, setMenuSearch] = useState('');
-  const [viewMode, setViewMode] = useState(() => window.innerWidth < 768 ? 'grid' : 'table');
+  const [viewMode, setViewMode] = useState('grid');
   const [importModalOpen, setImportModalOpen] = useState(false);
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
@@ -513,28 +513,28 @@ export default function MenuManagement() {
           ]}
         />
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-          <div className="relative flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+        {/* Search + View Toggle */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 mb-4 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
             <input
               type="text"
               value={menuSearch}
               onChange={(e) => setMenuSearch(e.target.value)}
               placeholder="Search menu items…"
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg pl-9 pr-9 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500"
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg pl-10 pr-8 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-550"
             />
             {menuSearch && (
               <button
                 type="button"
                 onClick={() => setMenuSearch('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                aria-label="Clear search"
               >
-                ×
+                <X size={14} />
               </button>
             )}
           </div>
-          <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg p-0.5 shrink-0">
+          <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg p-0.5 shrink-0 self-end sm:self-auto">
             <button
               type="button"
               onClick={() => setViewMode('table')}
@@ -552,26 +552,29 @@ export default function MenuManagement() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 mb-5">
+        {/* Sticky Category Tabs */}
+        <div className="sticky top-[64px] z-20 bg-[var(--pos-page-bg)] py-3 border-b border-slate-700 mb-5">
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             {filterTabs.map((cat) => (
               <button key={cat} type="button" onClick={() => setActiveCategory(cat)}
                 className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
                   activeCategory === cat
                     ? 'bg-amber-500 text-[var(--pos-selection-text)] shadow-lg shadow-amber-500/20'
-                    : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700'
+                    : 'text-slate-450 hover:text-[var(--pos-text-primary)] bg-[var(--pos-panel)] hover:bg-slate-800 border border-slate-700'
                 }`}>
                 {cat}
               </button>
             ))}
           </div>
-          {canDragProducts ? (
-            <p className="text-xs text-slate-500 flex items-center gap-1">
-              <GripVertical size={12} /> Drag products to reorder within {activeCategory}
-            </p>
-          ) : (
-            <p className="text-xs text-slate-500">Select a category tab to drag and reorder products</p>
-          )}
+          <div className="flex items-center justify-between mt-2">
+            {canDragProducts ? (
+              <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                <GripVertical size={11} /> Drag products to reorder within {activeCategory}
+              </p>
+            ) : (
+              <p className="text-[11px] text-slate-500">Select a category tab to drag and reorder products</p>
+            )}
+          </div>
         </div>
 
         {menuLoading ? (

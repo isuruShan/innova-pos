@@ -46,15 +46,15 @@ export default function ResponsiveTable({
   return (
     <div className={className}>
       {/* ─── DESKTOP TABLE (sm+) ─── */}
-      <div className="hidden sm:block bg-[var(--pos-panel)] rounded-2xl border border-slate-700/50 overflow-hidden">
+      <div className="hidden sm:block bg-[var(--pos-panel)] rounded-2xl border border-slate-700 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-700/50">
+              <tr className="bg-[var(--pos-panel)]">
                 {columns.map((col) => (
                   <th
                     key={col.key}
-                    className={`text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3 ${col.headerClassName || ''}`}
+                    className={`sticky top-16 bg-[var(--pos-panel)] z-10 text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3 border-b border-slate-700 ${col.headerClassName || ''}`}
                   >
                     {col.header}
                   </th>

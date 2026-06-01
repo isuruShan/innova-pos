@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, Truck, Package, Search, X,
   Phone, Mail, MapPin, User, FileText, ChevronDown, ChevronRight, ArrowDown, ArrowUp,
+  SlidersHorizontal, List, LayoutGrid
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -14,6 +15,8 @@ import { useListSort } from '../../hooks/useListSort';
 import { useBranding } from '../../context/BrandingContext';
 import PosPhoneField, { validatePosPhoneField, phoneDisplayFromParts, parseStoredPhone } from '../../components/PosPhoneField';
 import PageHeader from '../../components/PageHeader';
+import Badge from '../../components/Badge';
+import ResponsiveTable from '../../components/ResponsiveTable';
 
 const SUPPLIER_SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -100,7 +103,7 @@ function SupplierForm({
 
 function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded }) {
   return (
-    <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-2xl p-5 space-y-4">
+    <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-2xl p-3.5 space-y-3.5">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -191,6 +194,9 @@ export default function SupplierManagement() {
   const [expandedId, setExpandedId] = useState(null);
   const [expandedItems, setExpandedItems] = useState({});
   const [search, setSearch] = useState('');
+  const [viewMode, setViewMode] = useState('table');
+  const [hasLinkedFilter, setHasLinkedFilter] = useState('all'); // 'all', 'linked', 'not_linked'
+  const [showFilters, setShowFilters] = useState(false);
   const qc = useQueryClient();
   const { sort, order, toggleSort, sortParams, setSort, setOrder } = useListSort('name', 'asc');
 
@@ -201,16 +207,24 @@ export default function SupplierManagement() {
   });
 
   const filteredSuppliers = useMemo(() => {
-    if (!search.trim()) return suppliers;
-    const query = search.toLowerCase();
-    return suppliers.filter(s =>
-      s.name?.toLowerCase().includes(query) ||
-      s.contactPerson?.toLowerCase().includes(query) ||
-      s.email?.toLowerCase().includes(query) ||
-      s.phone?.toLowerCase().includes(query) ||
-      s.notes?.toLowerCase().includes(query)
-    );
-  }, [suppliers, search]);
+    let result = suppliers;
+    if (search.trim()) {
+      const query = search.toLowerCase();
+      result = result.filter(s =>
+        s.name?.toLowerCase().includes(query) ||
+        s.contactPerson?.toLowerCase().includes(query) ||
+        s.email?.toLowerCase().includes(query) ||
+        s.phone?.toLowerCase().includes(query) ||
+        s.notes?.toLowerCase().includes(query)
+      );
+    }
+    if (hasLinkedFilter === 'linked') {
+      result = result.filter(s => s.itemCount > 0);
+    } else if (hasLinkedFilter === 'not_linked') {
+      result = result.filter(s => s.itemCount === 0 || !s.itemCount);
+    }
+    return result;
+  }, [suppliers, search, hasLinkedFilter]);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['suppliers'] });
 
@@ -325,23 +339,91 @@ export default function SupplierManagement() {
         />
 
         {/* Search + Sort row */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="flex-1 flex items-center gap-2 bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl px-3 py-2">
+        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700/50 items-center justify-between">
+          <div className="flex-1 w-full flex items-center gap-2 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2">
             <Search size={15} className="text-slate-500 flex-shrink-0" />
             <input
               type="text"
               placeholder="Search suppliers by name, contact, phone, email, notes..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
+              className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-655"
             />
             {search && (
               <button onClick={() => setSearch('')}><X size={13} className="text-slate-500 hover:text-white" /></button>
             )}
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            <label htmlFor="supplier-sort" className="text-xs text-slate-500 shrink-0">Sort by</label>
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+            {/* View toggle */}
+            <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-705 rounded-lg p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-semibold transition ${viewMode === 'table' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
+              >
+                <List size={12} /> Table
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-semibold transition ${viewMode === 'grid' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
+              >
+                <LayoutGrid size={12} /> Grid
+              </button>
+            </div>
+
+            <div className="relative">
+              <button
+                onClick={() => setShowFilters(f => !f)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
+                  hasLinkedFilter !== 'all'
+                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 font-semibold'
+                    : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-white'
+                }`}
+              >
+                <SlidersHorizontal size={14} />
+                <span>Filters</span>
+                {hasLinkedFilter !== 'all' && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
+                    1
+                  </span>
+                )}
+                <ChevronDown size={13} className={`transition ${showFilters ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showFilters && (
+                <div className="absolute right-0 mt-2 w-56 bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-2xl z-30 p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-700 pb-2">
+                    <span className="text-xs font-semibold text-slate-350">Inventory Link</span>
+                    {hasLinkedFilter !== 'all' && (
+                      <button onClick={() => setHasLinkedFilter('all')} className="text-[10px] text-amber-450 hover:underline">Clear</button>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    {[
+                      { key: 'all', label: 'All Suppliers' },
+                      { key: 'linked', label: 'Has Linked Items' },
+                      { key: 'not_linked', label: 'No Linked Items' },
+                    ].map(f => (
+                      <button
+                        key={f.key}
+                        onClick={() => { setHasLinkedFilter(f.key); setShowFilters(false); }}
+                        className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
+                          hasLinkedFilter === f.key
+                            ? 'bg-amber-500/15 text-amber-400 font-semibold border-l-2 border-amber-500'
+                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <label htmlFor="supplier-sort" className="text-xs text-slate-550 shrink-0">Sort</label>
             <select
               id="supplier-sort"
               value={sort}
@@ -350,7 +432,7 @@ export default function SupplierManagement() {
                 if (next === sort) toggleSort(next);
                 else { setSort(next); setOrder('asc'); }
               }}
-              className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
             >
               {SUPPLIER_SORT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -359,7 +441,7 @@ export default function SupplierManagement() {
             <button
               type="button"
               onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-              className="p-2 rounded-xl bg-[var(--pos-panel)] border border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)] transition"
+              className="p-1.5 rounded-lg bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-400 hover:text-white transition"
               title={order === 'asc' ? 'Ascending' : 'Descending'}
             >
               {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
@@ -381,6 +463,90 @@ export default function SupplierManagement() {
             <p className="text-xl font-semibold">No matching suppliers</p>
             <p className="text-sm mt-1 opacity-60">Try adjusting your search query</p>
           </div>
+        ) : viewMode === 'table' ? (
+          <ResponsiveTable
+            rows={suppliersWithItems}
+            rowKey={(s) => s._id}
+            loading={false}
+            columns={[
+              {
+                key: 'name', header: 'Supplier Name',
+                mobilePrimary: true,
+                render: (s) => (
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                      <Truck size={12} className="text-purple-400" />
+                    </div>
+                    <span className="font-semibold text-[var(--pos-text-primary)]">{s.name}</span>
+                  </div>
+                ),
+              },
+              {
+                key: 'contact', header: 'Contact Person',
+                mobileSecondary: true,
+                render: (s) => <span className="text-slate-350">{s.contactPerson || '—'}</span>,
+              },
+              {
+                key: 'phone', header: 'Phone',
+                render: (s) => <span className="text-slate-400">{s.phone || '—'}</span>,
+              },
+              {
+                key: 'email', header: 'Email',
+                render: (s) => <span className="text-slate-400">{s.email || '—'}</span>,
+              },
+              {
+                key: 'address', header: 'Address',
+                render: (s) => <span className="text-slate-450 truncate max-w-xs block">{s.address || '—'}</span>,
+              },
+              {
+                key: 'items', header: 'Linked Items',
+                render: (s) => (
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => handleToggleItems(s._id)}
+                      className="flex items-center gap-1 text-slate-400 hover:text-amber-450 transition"
+                    >
+                      {expandedId === s._id ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                      <span className="font-semibold">{s.itemCount || 0} items</span>
+                    </button>
+                    {expandedId === s._id && s.items && (
+                      <div className="bg-[var(--pos-surface-inset)] rounded-lg p-2 space-y-1 text-[10px] mt-1 border border-slate-800 max-h-24 overflow-y-auto">
+                        {s.items.length === 0 ? (
+                          <p className="text-slate-500 text-center">No linked items</p>
+                        ) : (
+                          s.items.map(item => (
+                            <div key={item._id} className="flex items-center justify-between gap-2">
+                              <span className="text-slate-355">{item.itemName}</span>
+                              <span className="text-slate-555 shrink-0">{item.quantity} {item.unit}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ),
+              },
+              {
+                key: 'notes', header: 'Notes',
+                render: (s) => <span className="text-slate-500 italic truncate max-w-[120px] block" title={s.notes}>{s.notes || '—'}</span>,
+              },
+              {
+                key: 'actions', header: '',
+                render: (s) => (
+                  <div className="flex items-center gap-1.5 justify-end">
+                    <button onClick={() => openEdit(s)}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition">
+                      <Edit2 size={13} />
+                    </button>
+                    <button onClick={() => handleDelete(s._id)}
+                      className="p-1.5 rounded-lg text-slate-550 hover:text-red-400 hover:bg-red-500/10 transition">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ),
+              },
+            ]}
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {suppliersWithItems.map(supplier => (

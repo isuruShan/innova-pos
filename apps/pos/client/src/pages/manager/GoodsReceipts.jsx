@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, FileCheck, Package, Edit2, Trash2, Calendar,
   CheckCircle, FileText, AlertCircle, TrendingUp, TrendingDown,
-  Search, SlidersHorizontal, ChevronDown, X, ArrowDown, ArrowUp
+  Search, SlidersHorizontal, ChevronDown, X, ArrowDown, ArrowUp,
+  List, LayoutGrid
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -15,6 +16,8 @@ import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { formatCurrency } from '../../utils/format';
 import PosDateField from '../../components/PosDateField';
+import Badge from '../../components/Badge';
+import ResponsiveTable from '../../components/ResponsiveTable';
 
 const TYPE_COLORS = {
   receipt: 'text-green-400 bg-green-500/10',
@@ -48,6 +51,7 @@ export default function GoodsReceipts() {
   const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState('receiptDate');
   const [order, setOrder] = useState('desc');
+  const [viewMode, setViewMode] = useState('table');
 
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
@@ -239,8 +243,18 @@ export default function GoodsReceipts() {
   };
 
   const pendingPOs = useMemo(() => {
-    return purchaseOrders.filter((po) => ['sent', 'partial'].includes(po.status));
-  }, [purchaseOrders]);
+    return purchaseOrders.filter((po) => {
+      if (!['sent', 'partial'].includes(po.status)) return false;
+      const receivedCount = po.items?.reduce((sum, i) => sum + (i.receivedQty || 0), 0) || 0;
+      const orderedCount = po.items?.reduce((sum, i) => sum + (i.orderedQty || 0), 0) || 0;
+      if (receivedCount >= orderedCount && orderedCount > 0) return false;
+      const hasDraftGRN = receipts.some(
+        (r) => r.purchaseOrderId && (r.purchaseOrderId._id === po._id || r.purchaseOrderId === po._id) && r.status === 'draft'
+      );
+      if (hasDraftGRN) return false;
+      return true;
+    });
+  }, [purchaseOrders, receipts]);
 
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
@@ -284,48 +298,134 @@ export default function GoodsReceipts() {
             </button>
           ))}
         </div>
-
         {/* Search + Filter button + Sort */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="flex-1 flex items-center gap-2 bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl px-3 py-2">
+        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700/50 items-center justify-between">
+          <div className="flex-1 w-full flex items-center gap-2 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2">
             <Search size={15} className="text-slate-500 flex-shrink-0" />
             <input
               type="text"
-              placeholder={`Search by number, supplier, notes, PO...`}
+              placeholder="Search by number, supplier, notes, PO..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
+              className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-650"
             />
             {search && (
               <button onClick={() => setSearch('')}><X size={13} className="text-slate-500 hover:text-white" /></button>
             )}
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            <button
-              onClick={() => setShowFilters(f => !f)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium transition ${
-                showFilters || fromDate || toDate || statusFilter.length > 0
-                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
-                  : 'bg-[var(--pos-panel)] border-slate-700/50 text-slate-400 hover:text-[var(--pos-text-primary)]'
-              }`}
-            >
-              <SlidersHorizontal size={14} />
-              Filters
-              {(fromDate || toDate || statusFilter.length > 0) && (
-                <span className="bg-amber-500 text-white text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {(fromDate || toDate ? 1 : 0) + (statusFilter.length > 0 ? 1 : 0)}
-                </span>
-              )}
-              <ChevronDown size={13} className={`transition ${showFilters ? 'rotate-180' : ''}`} />
-            </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+            {/* View toggle */}
+            <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-705 rounded-lg p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-semibold transition ${viewMode === 'table' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
+              >
+                <List size={12} /> Table
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-semibold transition ${viewMode === 'grid' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
+              >
+                <LayoutGrid size={12} /> Grid
+              </button>
+            </div>
 
-            <label htmlFor="grn-sort" className="text-xs text-slate-500 shrink-0 ml-2">Sort</label>
+            <div className="relative">
+              <button
+                onClick={() => setShowFilters(f => !f)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
+                  (fromDate || toDate || statusFilter.length > 0)
+                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 font-semibold'
+                    : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-white'
+                }`}
+              >
+                <SlidersHorizontal size={14} />
+                <span>Filters</span>
+                {(fromDate || toDate || statusFilter.length > 0) && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
+                    {(fromDate || toDate ? 1 : 0) + statusFilter.length}
+                  </span>
+                )}
+                <ChevronDown size={13} className={`transition ${showFilters ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showFilters && (
+                <div className="absolute right-0 mt-2 w-64 bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-2xl z-30 p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-700 pb-2">
+                    <span className="text-xs font-semibold text-slate-350">Filters</span>
+                    {(fromDate || toDate || statusFilter.length > 0) && (
+                      <button
+                        onClick={() => { setFromDate(''); setToDate(''); setStatusFilter([]); }}
+                        className="text-[10px] text-amber-450 hover:underline"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Status Filter */}
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-450 uppercase tracking-wider mb-2">Status</p>
+                    <div className="flex flex-col gap-1">
+                      {['draft', 'confirmed'].map((status) => {
+                        const active = statusFilter.includes(status);
+                        return (
+                          <button
+                            key={status}
+                            type="button"
+                            onClick={() => setStatusFilter(prev => 
+                              active ? prev.filter(s => s !== status) : [...prev, status]
+                            )}
+                            className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
+                              active
+                                ? 'bg-amber-500/15 text-amber-400 font-semibold border-l-2 border-amber-500'
+                                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                            }`}
+                          >
+                            <span className="capitalize">{status}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Date Range */}
+                  <div className="pt-2 border-t border-slate-800/60">
+                    <p className="text-[11px] font-semibold text-slate-455 uppercase tracking-wider mb-2">Date Range</p>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-1">From</label>
+                        <PosDateField
+                          value={fromDate}
+                          onChange={setFromDate}
+                          max={toDate}
+                          className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 block mb-1">To</label>
+                        <PosDateField
+                          value={toDate}
+                          onChange={setToDate}
+                          min={fromDate}
+                          className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <label htmlFor="grn-sort" className="text-xs text-slate-550 shrink-0 ml-1">Sort</label>
             <select
               id="grn-sort"
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
             >
               {GRN_SORT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -334,109 +434,13 @@ export default function GoodsReceipts() {
             <button
               type="button"
               onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-              className="p-2 rounded-xl bg-[var(--pos-panel)] border border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)] transition"
+              className="p-1.5 rounded-lg bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-400 hover:text-white transition"
               title={order === 'asc' ? 'Ascending' : 'Descending'}
             >
               {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
             </button>
           </div>
         </div>
-
-        {/* Collapsible Filter Panel */}
-        {showFilters && (
-          <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-2xl p-4 mb-6 space-y-4">
-            {/* Status Filter */}
-            <div>
-              <p className="text-xs font-medium text-slate-400 mb-2">Status</p>
-              <div className="flex flex-wrap gap-2">
-                {['draft', 'confirmed'].map((status) => {
-                  const active = statusFilter.includes(status);
-                  return (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => setStatusFilter(prev => 
-                        active ? prev.filter(s => s !== status) : [...prev, status]
-                      )}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border capitalize transition ${
-                        active
-                          ? 'bg-amber-500 border-amber-500 text-white'
-                          : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {status}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Date Range */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium text-slate-400">Date Range</p>
-                {(fromDate || toDate) && (
-                  <button
-                    onClick={() => { setFromDate(''); setToDate(''); }}
-                    className="text-xs text-amber-500 hover:text-amber-400"
-                  >
-                    Clear Range
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2 mb-3">
-                <button
-                  type="button"
-                  onClick={() => setQuickDateRange(1)}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:text-[var(--pos-text-primary)] transition"
-                >
-                  Last 24 Hours
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickDateRange(3)}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:text-[var(--pos-text-primary)] transition"
-                >
-                  Last 3 Days
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickDateRange(7)}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:text-[var(--pos-text-primary)] transition"
-                >
-                  Last 7 Days
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickDateRange(30)}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-slate-700 bg-[var(--pos-surface-inset)] text-slate-400 hover:text-[var(--pos-text-primary)] transition"
-                >
-                  Last 30 Days
-                </button>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1">
-                  <label className="text-xs text-slate-500 block mb-1">From</label>
-                  <PosDateField
-                    value={fromDate}
-                    onChange={setFromDate}
-                    max={toDate}
-                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="text-xs text-slate-500 block mb-1">To</label>
-                  <PosDateField
-                    value={toDate}
-                    onChange={setToDate}
-                    min={fromDate}
-                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-sm rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Pending POs Quick Create */}
         {activeTab === 'receipts' && pendingPOs.length > 0 && (
@@ -475,10 +479,10 @@ export default function GoodsReceipts() {
 
         {/* Receipts/Returns List */}
         {receiptsPending ? (
-          <div className="text-center py-16 text-slate-500">Loading...</div>
+          <div className="text-center py-16 text-slate-550">Loading...</div>
         ) : receipts.filter((r) => r.type === (activeTab === 'receipts' ? 'receipt' : 'return')).length === 0 ? (
           <div className="text-center py-16">
-            <Package size={48} className="mx-auto mb-4 text-slate-600" />
+            <Package size={48} className="mx-auto mb-4 text-slate-650 opacity-40" />
             <p className="text-slate-500 text-lg mb-2">
               No {activeTab === 'receipts' ? 'receipts' : 'returns'} found
             </p>
@@ -498,160 +502,213 @@ export default function GoodsReceipts() {
           </div>
         ) : sortedAndFiltered.length === 0 ? (
           <div className="text-center py-16">
-            <Search size={48} className="mx-auto mb-4 text-slate-600" />
-            <p className="text-slate-500 text-lg mb-2">No results match your filters</p>
+            <Search size={48} className="mx-auto mb-4 text-slate-650 opacity-40" />
+            <p className="text-slate-555 text-lg mb-2">No results match your filters</p>
             <p className="text-slate-600 text-sm mb-6">Try adjusting your search query, status, or date range</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {sortedAndFiltered.map((receipt) => {
-
-              const totalItems = receipt.items.length;
-              const totalQty = receipt.items.reduce((sum, i) => {
-                return sum + (receipt.type === 'receipt' ? i.acceptedQty : i.receivedQty);
-              }, 0);
-
-              return (
-                <div
-                  key={receipt._id}
-                  className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-4 hover:border-slate-600 transition"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-[var(--pos-text-primary)]">
-                          {receipt.receiptNumber}
-                        </h3>
-                        <span
-                          className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            STATUS_COLORS[receipt.status]
-                          }`}
-                        >
-                          {receipt.status === 'draft' ? <FileText size={12} /> : <CheckCircle size={12} />}
-                          {receipt.status.charAt(0).toUpperCase() + receipt.status.slice(1)}
+          <div>
+            {viewMode === 'table' ? (
+              <ResponsiveTable
+                rows={sortedAndFiltered}
+                rowKey={(r) => r._id}
+                loading={false}
+                columns={[
+                  {
+                    key: 'receiptNumber', header: 'GRN Number',
+                    mobilePrimary: true,
+                    render: (r) => <span className="font-semibold text-[var(--pos-text-primary)]">{r.receiptNumber}</span>,
+                  },
+                  {
+                    key: 'status', header: 'Status',
+                    render: (r) => (
+                      <Badge label={r.status} variant={r.status === 'confirmed' ? 'ok' : 'low'} />
+                    ),
+                  },
+                  {
+                    key: 'supplier', header: 'Supplier',
+                    mobileSecondary: true,
+                    render: (r) => <span className="text-slate-300 font-medium">{r.supplierId?.name || 'Unknown Supplier'}</span>,
+                  },
+                  {
+                    key: 'po', header: 'PO Ref',
+                    render: (r) => <span className="text-slate-450 font-medium">{r.purchaseOrderId?.orderNumber || '—'}</span>,
+                  },
+                  {
+                    key: 'date', header: 'Date',
+                    render: (r) => <span className="text-slate-400">{formatDate(r.receiptDate)}</span>,
+                  },
+                  {
+                    key: 'items', header: 'Items / Qty',
+                    render: (r) => {
+                      const totalQty = r.items.reduce((sum, item) => sum + (r.type === 'receipt' ? item.acceptedQty : item.receivedQty), 0);
+                      return (
+                        <span className="text-slate-400 text-xs">
+                          {r.items.length} items ({totalQty} units)
                         </span>
-                        <span
-                          className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            TYPE_COLORS[receipt.type]
-                          }`}
-                        >
-                          {receipt.type === 'receipt' ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                          {receipt.type === 'receipt' ? 'Receipt' : 'Return'}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
-                        <span className="flex items-center gap-1">
-                          <Package size={14} />
-                          {receipt.supplierId?.name || 'Unknown Supplier'}
-                        </span>
-                        {receipt.purchaseOrderId && (
-                          <span className="flex items-center gap-1">
-                            <FileCheck size={14} />
-                            PO: {receipt.purchaseOrderId.orderNumber}
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1">
-                          <Calendar size={14} />
-                          {formatDate(receipt.receiptDate)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {receipt.status === 'draft' && (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmTarget(receipt)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-lg text-xs font-medium transition"
-                        >
-                          <CheckCircle size={13} />
-                          Confirm
-                        </button>
-                      )}
-                      {receipt.status === 'draft' && (
-                        <button
-                          type="button"
-                          onClick={() => openEdit(receipt)}
-                          className="w-8 h-8 bg-slate-700/50 hover:bg-slate-600 rounded-lg flex items-center justify-center text-slate-300 hover:text-white transition"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                      )}
-                      {receipt.status === 'draft' && (
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget(receipt)}
-                          className="w-8 h-8 bg-slate-700/50 hover:bg-red-500/20 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-400 transition"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Items Summary */}
-                  <div className="bg-[var(--pos-surface-inset)] rounded-lg p-3 mb-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-                      <div>
-                        <p className="text-xs text-slate-500 mb-1">Items</p>
-                        <p className="text-sm font-medium text-[var(--pos-text-primary)]">
-                          {totalItems} item{totalItems !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500 mb-1">Total Quantity</p>
-                        <p className="text-sm font-medium text-[var(--pos-text-primary)]">{totalQty} units</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500 mb-1">Total Amount</p>
-                        <p className="text-sm font-medium text-amber-400">{formatCurrency(receipt.totalAmount)}</p>
-                      </div>
-                    </div>
-
-                    {/* Items List (collapsed) */}
-                    <details className="group">
-                      <summary className="text-xs text-amber-400 hover:text-amber-300 cursor-pointer font-medium list-none flex items-center gap-1">
-                        <span className="group-open:rotate-90 transition">▶</span>
-                        View {totalItems} item{totalItems !== 1 ? 's' : ''}
-                      </summary>
-                      <div className="mt-2 space-y-1.5">
-                        {receipt.items.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center justify-between text-xs bg-slate-800/50 rounded px-2 py-1.5"
+                      );
+                    },
+                  },
+                  {
+                    key: 'amount', header: 'Total Amount',
+                    className: 'text-right',
+                    headerClassName: 'text-right',
+                    render: (r) => <span className="text-amber-450 font-bold">{formatCurrency(r.totalAmount)}</span>,
+                  },
+                  {
+                    key: 'actions', header: '',
+                    render: (r) => (
+                      <div className="flex items-center gap-1.5 justify-end">
+                        {r.status === 'draft' && (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmTarget(r)}
+                            className="flex items-center gap-1 px-2.5 py-1 bg-green-500/10 hover:bg-green-500/20 text-green-450 border border-green-500/20 rounded-lg text-xs font-semibold transition"
                           >
-                            <span className="text-slate-300">{item.itemName}</span>
-                            <div className="flex items-center gap-3">
-                              {receipt.type === 'receipt' ? (
-                                <>
-                                  <span className="text-slate-500">Received: {item.receivedQty}</span>
-                                  <span className="text-green-400">Accepted: {item.acceptedQty}</span>
-                                  {item.rejectedQty > 0 && (
-                                    <span className="text-red-400">Rejected: {item.rejectedQty}</span>
-                                  )}
-                                </>
-                              ) : (
-                                <span className="text-red-400">Returned: {item.receivedQty}</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                            Confirm
+                          </button>
+                        )}
+                        {r.status === 'draft' && (
+                          <button
+                            type="button"
+                            onClick={() => openEdit(r)}
+                            className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                        )}
+                        {r.status === 'draft' && (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(r)}
+                            className="p-1.5 bg-slate-800 hover:bg-red-500/10 rounded-lg text-slate-400 hover:text-red-400 transition"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
-                    </details>
-                  </div>
+                    ),
+                  },
+                ]}
+              />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {sortedAndFiltered.map((receipt) => {
+                  const totalItems = receipt.items.length;
+                  const totalQty = receipt.items.reduce((sum, i) => {
+                    return sum + (receipt.type === 'receipt' ? i.acceptedQty : i.receivedQty);
+                  }, 0);
+                  return (
+                    <div
+                      key={receipt._id}
+                      className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-3.5 hover:border-slate-600 transition flex flex-col justify-between"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <h3 className="text-base font-semibold text-[var(--pos-text-primary)]">
+                              {receipt.receiptNumber}
+                            </h3>
+                            <Badge label={receipt.status} variant={receipt.status === 'confirmed' ? 'ok' : 'low'} className="text-[10px] px-1.5 py-0.5" />
+                          </div>
+                          <div className="space-y-1 text-xs text-slate-400">
+                            <p className="flex items-center gap-1 font-medium text-slate-350">
+                              <Package size={12} className="text-purple-400 shrink-0" />
+                              {receipt.supplierId?.name || 'Unknown Supplier'}
+                            </p>
+                            {receipt.purchaseOrderId && (
+                              <p className="flex items-center gap-1 text-[11px]">
+                                <FileCheck size={12} className="text-sky-400 shrink-0" />
+                                PO: {receipt.purchaseOrderId.orderNumber}
+                              </p>
+                            )}
+                            <p className="flex items-center gap-1 text-[11px]">
+                              <Calendar size={12} className="text-slate-500 shrink-0" />
+                              {formatDate(receipt.receiptDate)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {receipt.status === 'draft' && (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmTarget(receipt)}
+                              className="p-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 text-green-400 rounded-lg text-[10px] font-semibold transition"
+                            >
+                              Confirm
+                            </button>
+                          )}
+                          {receipt.status === 'draft' && (
+                            <button
+                              type="button"
+                              onClick={() => openEdit(receipt)}
+                              className="p-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                          )}
+                          {receipt.status === 'draft' && (
+                            <button
+                              type="button"
+                              onClick={() => setDeleteTarget(receipt)}
+                              className="p-1 bg-slate-800 hover:bg-red-500/10 rounded-lg text-slate-450 hover:text-red-400 transition"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                  {receipt.notes && (
-                    <div className="text-xs text-slate-500 bg-slate-800/30 rounded px-3 py-2 mb-2">
-                      <span className="font-medium">Notes:</span> {receipt.notes}
+                      {/* Items Summary */}
+                      <div className="bg-[var(--pos-surface-inset)] rounded-lg p-2.5 mt-2">
+                        <div className="grid grid-cols-3 gap-2 text-[11px] mb-2">
+                          <div>
+                            <p className="text-slate-500">Items</p>
+                            <p className="font-semibold text-slate-300">{totalItems}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-500">Quantity</p>
+                            <p className="font-semibold text-slate-300">{totalQty}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-500">Total</p>
+                            <p className="font-bold text-amber-455">{formatCurrency(receipt.totalAmount)}</p>
+                          </div>
+                        </div>
+
+                        {/* Items List (collapsed) */}
+                        <details className="group border-t border-slate-800/40 pt-1.5">
+                          <summary className="text-[10px] text-amber-450 hover:text-amber-400 cursor-pointer font-medium list-none flex items-center gap-1 justify-between">
+                            <span>Details ({totalItems} items)</span>
+                            <span className="group-open:rotate-90 transition">▶</span>
+                          </summary>
+                          <div className="mt-1.5 space-y-1 max-h-32 overflow-y-auto pr-1">
+                            {receipt.items.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between text-[10px] bg-slate-800/40 rounded px-1.5 py-1"
+                              >
+                                <span className="text-slate-350 truncate max-w-[120px]">{item.itemName}</span>
+                                <div className="flex items-center gap-2">
+                                  {receipt.type === 'receipt' ? (
+                                    <>
+                                      <span className="text-slate-500">Rcvd: {item.receivedQty}</span>
+                                      <span className="text-green-455">Acpt: {item.acceptedQty}</span>
+                                    </>
+                                  ) : (
+                                    <span className="text-red-400">Ret: {item.receivedQty}</span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      </div>
                     </div>
-                  )}
-                  {receipt.type === 'return' && receipt.returnReason && (
-                    <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded px-3 py-2">
-                      <span className="font-medium">Return Reason:</span> {receipt.returnReason}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>

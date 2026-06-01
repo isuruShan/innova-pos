@@ -1,8 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Plus, Edit2, Trash2, Package, Check, X, AlertTriangle, Truck, Search,
+  Plus, Edit2, Package, Check, X, AlertTriangle, Truck, Search,
+  LineChart as LineChartIcon, Calendar, User, Clock, SlidersHorizontal,
+  ChevronDown, ArrowUp, ArrowDown, LayoutGrid, List, Eye
 } from 'lucide-react';
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis,
+  CartesianGrid, Tooltip, Legend
+} from 'recharts';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
@@ -15,8 +21,6 @@ import SortableTh from '../../components/SortableTh';
 import { useListSort } from '../../hooks/useListSort';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import InventoryAdjustments from '../../components/inventory/InventoryAdjustments';
-import InventoryMovements from '../../components/inventory/InventoryMovements';
-import ConsumptionReport from '../../components/inventory/ConsumptionReport';
 import PageHeader from '../../components/PageHeader';
 import ResponsiveTable from '../../components/ResponsiveTable';
 
@@ -99,11 +103,23 @@ export default function InventoryManagement() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
   const [filter, setFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState('');
   const [customUnit, setCustomUnit] = useState('');
   const qc = useQueryClient();
   const { sort, order, toggleSort, sortParams } = useListSort('name', 'asc');
   const { toast, showToast, clearToast } = useToast();
+
+  // Adjustment History States
+  const [sessionStatus, setSessionStatus] = useState('all');
+  const [sessionViewMode, setSessionViewMode] = useState('table');
+  const [activeSessionDetails, setActiveSessionDetails] = useState(null);
+  const [sessionSearch, setSessionSearch] = useState('');
+  const [showSessionFilters, setShowSessionFilters] = useState(false);
+
+  // Graph States
+  const [graphItem, setGraphItem] = useState(null);
 
   const { data: items = [], isPending: invPending } = useQuery({
     queryKey: ['inventory', selectedStoreId, sortParams],
@@ -115,6 +131,27 @@ export default function InventoryManagement() {
     queryKey: ['suppliers', selectedStoreId],
     queryFn: () => api.get('/suppliers').then(r => r.data),
     enabled: isStoreReady,
+  });
+
+  // Query for Sessions History
+  const { data: sessions = [], isPending: sessionsPending } = useQuery({
+    queryKey: ['inventory-sessions', selectedStoreId, sessionStatus],
+    queryFn: () => api.get('/inventory-sessions', { params: { status: sessionStatus === 'all' ? undefined : sessionStatus } }).then(r => r.data),
+    enabled: isStoreReady && activeTab === 'sessions',
+  });
+
+  // Query for Session Movements Details
+  const { data: sessionMovements = [], isPending: movementsPending } = useQuery({
+    queryKey: ['session-movements', activeSessionDetails?._id],
+    queryFn: () => api.get(`/stock-movements/by-session/${activeSessionDetails._id}`).then(r => r.data),
+    enabled: !!activeSessionDetails?._id,
+  });
+
+  // Query for Item Movements Details (Graph + Table)
+  const { data: itemMovements = [], isPending: itemMovementsPending } = useQuery({
+    queryKey: ['item-movements', graphItem?._id],
+    queryFn: () => api.get(`/stock-movements/by-item/${graphItem._id}`).then(r => r.data),
+    enabled: !!graphItem?._id,
   });
 
   const pageLoading = !isStoreReady || invPending || supPending;
@@ -145,11 +182,6 @@ export default function InventoryManagement() {
       setFormError(msg);
       showToast(msg, 'error');
     },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id) => api.delete(`/inventory/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['inventory'] }),
   });
 
   const openAdd = () => { 
@@ -198,17 +230,23 @@ export default function InventoryManagement() {
     setFormError('');
     const finalUnit = form.unit === 'other' ? customUnit.trim() : form.unit;
     if (!finalUnit) return setFormError('Please enter a custom unit');
+    
     const payload = {
-      ...form,
+      itemName: form.itemName.trim(),
       unit: finalUnit,
-      quantity: parseFloat(form.quantity),
       minThreshold: parseFloat(form.minThreshold),
+      suppliers: form.suppliers,
     };
-    if (!payload.itemName.trim()) return setFormError('Item name is required');
-    if (isNaN(payload.quantity) || payload.quantity < 0) return setFormError('Quantity must be 0 or more');
+
+    if (!payload.itemName) return setFormError('Item name is required');
     if (isNaN(payload.minThreshold) || payload.minThreshold < 0) return setFormError('Threshold must be 0 or more');
-    if (editing) updateMutation.mutate({ id: editing._id, data: payload });
-    else createMutation.mutate(payload);
+    
+    if (editing) {
+      updateMutation.mutate({ id: editing._id, data: payload });
+    } else {
+      payload.quantity = 0; // force 0 on creation
+      createMutation.mutate(payload);
+    }
   };
 
   const filteredSuppliers = useMemo(() => {
@@ -224,16 +262,35 @@ export default function InventoryManagement() {
     setForm(f => ({ ...f, suppliers: f.suppliers.filter(s => s !== id) }));
   };
 
-  const filtered = items.filter(item => {
-    if (filter === 'all') return true;
-    const s = getStockStatus(item.quantity, item.minThreshold);
-    return s.variant === filter;
-  });
+  const filtered = useMemo(() => {
+    let result = items;
+    if (filter !== 'all') {
+      result = result.filter(item => {
+        const s = getStockStatus(item.quantity, item.minThreshold);
+        return s.variant === filter;
+      });
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(item => item.itemName.toLowerCase().includes(q));
+    }
+    return result;
+  }, [items, filter, searchQuery]);
+
+  const filteredSessions = useMemo(() => {
+    let result = sessions;
+    if (sessionSearch.trim()) {
+      const q = sessionSearch.toLowerCase();
+      result = result.filter(s => 
+        (s.notes || '').toLowerCase().includes(q) || 
+        (s.userId?.name || '').toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [sessions, sessionSearch]);
 
   const lowCount = items.filter(i => getStockStatus(i.quantity, i.minThreshold).variant !== 'ok').length;
-  const isPending = createMutation.isPending || updateMutation.isPending;
-
-  return (
+  const isPending = createMutation.isPending || updateMutation.isPending;  return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
       <Navbar groups={MANAGER_NAV_GROUPS} />
 
@@ -243,7 +300,7 @@ export default function InventoryManagement() {
             <span className="flex items-center gap-2">
               Inventory
               {activeTab === 'stock' && lowCount > 0 && (
-                <span className="flex items-center gap-1 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 text-xs font-semibold px-2.5 py-1 rounded-full">
+                <span className="flex items-center gap-1 bg-yellow-500/20 text-yellow-450 border border-yellow-500/30 text-xs font-semibold px-2.5 py-1 rounded-full">
                   <AlertTriangle size={12} /> {lowCount} need attention
                 </span>
               )}
@@ -252,8 +309,7 @@ export default function InventoryManagement() {
           subtitle={
             activeTab === 'stock' ? `${items.length} items tracked` :
             activeTab === 'adjustments' ? 'Make manual stock adjustments' :
-            activeTab === 'consumption' ? 'View theoretical vs actual usage' :
-            'View stock movement history'
+            'View history of stock adjustments'
           }
           actions={activeTab === 'stock' ? [
             { label: 'Add Item', icon: Plus, onClick: openAdd, primary: true },
@@ -261,12 +317,11 @@ export default function InventoryManagement() {
         />
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 border-b border-slate-700/50 overflow-x-auto no-scrollbar">
+        <div className="flex gap-1 mb-6 border-b border-slate-700 overflow-x-auto no-scrollbar">
           {[
             { key: 'stock', label: 'Stock Levels' },
             { key: 'adjustments', label: 'Adjustments' },
-            { key: 'consumption', label: 'Consumption' },
-            { key: 'movements', label: 'Movements' },
+            { key: 'sessions', label: 'Adjustment History' },
           ].map(tab => (
             <button
               key={tab.key}
@@ -274,7 +329,7 @@ export default function InventoryManagement() {
               className={`px-3 sm:px-4 py-2.5 text-sm font-medium transition border-b-2 whitespace-nowrap shrink-0 ${
                 activeTab === tab.key
                   ? 'border-amber-500 text-amber-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-300'
+                  : 'border-transparent text-slate-400 hover:text-slate-350'
               }`}
             >
               {tab.label}
@@ -285,23 +340,73 @@ export default function InventoryManagement() {
         {/* Tab Content */}
         {activeTab === 'stock' && (
           <>
-            {/* Filter tabs */}
-            <div className="flex gap-2 mb-5 overflow-x-auto no-scrollbar pb-1">
-              {[
-                { key: 'all', label: 'All' },
-                { key: 'ok', label: 'OK' },
-                { key: 'low', label: 'Low' },
-                { key: 'critical', label: 'Critical' },
-              ].map(f => (
-                <button key={f.key} onClick={() => setFilter(f.key)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
-                    filter === f.key
-                      ? 'bg-amber-500 text-[var(--pos-selection-text)]'
-                      : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700'
-                  }`}>
-                  {f.label}
+            {/* Standardized Search & Filter Header */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 mb-6 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search inventory items by name..."
+                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg pl-10 pr-8 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-500"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              
+              <div className="relative self-end sm:self-auto">
+                <button
+                  onClick={() => setShowFilters(f => !f)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
+                    filter !== 'all'
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-405'
+                      : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <SlidersHorizontal size={14} />
+                  <span>Filters</span>
+                  {filter !== 'all' && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
+                      1
+                    </span>
+                  )}
                 </button>
-              ))}
+
+                {showFilters && (
+                  <div className="absolute right-0 mt-2 w-64 bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-2xl z-30 p-4 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-700 pb-2">
+                      <span className="text-xs font-semibold text-slate-300">Status Filter</span>
+                      {filter !== 'all' && (
+                        <button onClick={() => setFilter('all')} className="text-[10px] text-amber-450 hover:underline">Clear</button>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      {[
+                        { key: 'all', label: 'All Statuses' },
+                        { key: 'ok', label: 'OK' },
+                        { key: 'low', label: 'Low Stock' },
+                        { key: 'critical', label: 'Critical' },
+                      ].map(f => (
+                        <button
+                          key={f.key}
+                          onClick={() => { setFilter(f.key); setShowFilters(false); }}
+                          className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
+                            filter === f.key
+                              ? 'bg-amber-500/15 text-amber-400 font-semibold'
+                              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                          }`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {pageLoading ? (
@@ -337,10 +442,7 @@ export default function InventoryManagement() {
                     className: 'text-right',
                     headerClassName: 'text-right',
                     render: (item) => (
-                      <InlineEdit
-                        value={item.quantity}
-                        onSave={(qty) => updateMutation.mutate({ id: item._id, data: { quantity: qty } })}
-                      />
+                      <span className="text-[var(--pos-text-primary)] font-semibold">{item.quantity}</span>
                     ),
                   },
                   {
@@ -368,13 +470,15 @@ export default function InventoryManagement() {
                     key: 'actions', header: '', mobileHide: true,
                     render: (item) => (
                       <div className="flex items-center gap-1">
-                        <button onClick={() => openEdit(item)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition">
-                          <Edit2 size={13} />
+                        <button onClick={() => setGraphItem(item)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-amber-400 hover:bg-slate-700 transition"
+                          title="View Stock Movements & Graph">
+                          <LineChartIcon size={13} />
                         </button>
-                        <button onClick={() => { if (confirm('Delete this item?')) deleteMutation.mutate(item._id); }}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition">
-                          <Trash2 size={13} />
+                        <button onClick={() => openEdit(item)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition"
+                          title="Edit Item Details">
+                          <Edit2 size={13} />
                         </button>
                       </div>
                     ),
@@ -386,8 +490,215 @@ export default function InventoryManagement() {
         )}
 
         {activeTab === 'adjustments' && <InventoryAdjustments />}
-        {activeTab === 'consumption' && <ConsumptionReport />}
-        {activeTab === 'movements' && <InventoryMovements />}
+
+        {/* Adjustment History Tab */}
+        {activeTab === 'sessions' && (
+          <>
+            {/* Standardized Search & Filter Header */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 mb-6 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                <input
+                  type="text"
+                  value={sessionSearch}
+                  onChange={(e) => setSessionSearch(e.target.value)}
+                  placeholder="Search sessions by user or notes..."
+                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg pl-10 pr-8 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-500"
+                />
+                {sessionSearch && (
+                  <button onClick={() => setSessionSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-350">
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+                {/* View toggle */}
+                <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setSessionViewMode('table')}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition ${sessionViewMode === 'table' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    <List size={12} /> Table
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSessionViewMode('grid')}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition ${sessionViewMode === 'grid' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    <LayoutGrid size={12} /> Grid
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <button
+                    onClick={() => setShowSessionFilters(f => !f)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
+                      sessionStatus !== 'all'
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                        : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <SlidersHorizontal size={14} />
+                    <span>Filters</span>
+                    {sessionStatus !== 'all' && (
+                      <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
+                        1
+                      </span>
+                    )}
+                  </button>
+
+                  {showSessionFilters && (
+                    <div className="absolute right-0 mt-2 w-56 bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-2xl z-30 p-4 space-y-3">
+                      <div className="flex items-center justify-between border-b border-slate-700 pb-2">
+                        <span className="text-xs font-semibold text-slate-300">Session Status</span>
+                        {sessionStatus !== 'all' && (
+                          <button onClick={() => setSessionStatus('all')} className="text-[10px] text-amber-450 hover:underline">Clear</button>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        {[
+                          { key: 'all', label: 'All Statuses' },
+                          { key: 'active', label: 'Active Sessions' },
+                          { key: 'closed', label: 'Closed Sessions' },
+                        ].map(st => (
+                          <button
+                            key={st.key}
+                            onClick={() => { setSessionStatus(st.key); setShowSessionFilters(false); }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
+                              sessionStatus === st.key
+                                ? 'bg-amber-500/15 text-amber-400 font-semibold'
+                                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                            }`}
+                          >
+                            {st.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Content Lists */}
+            {sessionsPending ? (
+              <div className="text-center py-12 text-slate-500">Loading history...</div>
+            ) : filteredSessions.length === 0 ? (
+              <div className="text-center py-16 bg-[var(--pos-panel)] rounded-xl border border-slate-700">
+                <Package size={36} className="mx-auto opacity-30 mb-2 text-slate-400" />
+                <p className="text-sm text-slate-500">No adjustment sessions found</p>
+              </div>
+            ) : sessionViewMode === 'table' ? (
+              <ResponsiveTable
+                rows={filteredSessions}
+                rowKey={(sess) => sess._id}
+                loading={false}
+                columns={[
+                  {
+                    key: 'started', header: 'Date Started',
+                    render: (sess) => (
+                      <span className="text-xs text-[var(--pos-text-primary)] font-medium">
+                        {new Date(sess.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'user', header: 'Staff Member',
+                    render: (sess) => (
+                      <span className="text-xs text-slate-300 font-semibold">
+                        {sess.userId?.name || 'Staff'}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'changes', header: 'Changes',
+                    render: (sess) => (
+                      <span className="text-xs text-amber-400 font-bold">
+                        {sess.adjustmentCount} adjustments
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'qtyChanged', header: 'Total Quantity',
+                    render: (sess) => (
+                      <span className="text-xs text-slate-400">
+                        {sess.totalQuantityChanged} units
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'status', header: 'Status',
+                    render: (sess) => (
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${sess.status === 'active' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-slate-550/15 text-slate-400'}`}>
+                        {sess.status}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'notes', header: 'Notes',
+                    render: (sess) => (
+                      <span className="text-xs text-slate-500 italic max-w-xs truncate block" title={sess.notes}>
+                        {sess.notes || '—'}
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'actions', header: '',
+                    render: (sess) => (
+                      <button onClick={() => setActiveSessionDetails(sess)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition"
+                        title="View Session Details">
+                        <Eye size={14} />
+                      </button>
+                    ),
+                  },
+                ]}
+              />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {filteredSessions.map((sess) => (
+                  <div key={sess._id} className="bg-[var(--pos-panel)] border border-slate-700 rounded-xl p-3.5 flex flex-col justify-between hover:border-slate-600 transition">
+                    <div>
+                      <div className="flex justify-between items-start gap-2 mb-2">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${sess.status === 'active' ? 'bg-green-500/10 text-green-400' : 'bg-slate-800 text-slate-400'}`}>
+                          {sess.status}
+                        </span>
+                        <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                          <Calendar size={10} />
+                          {new Date(sess.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[var(--pos-text-primary)] font-bold flex items-center gap-1.5 mt-1.5">
+                        <User size={12} className="text-slate-500" />
+                        {sess.userId?.name || 'Staff'}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 mt-3 bg-[var(--pos-surface-inset)] rounded-lg p-2 border border-slate-800">
+                        <div>
+                          <p className="text-[9px] uppercase text-slate-500 tracking-wide font-medium">Changes</p>
+                          <p className="text-xs font-bold text-amber-400">{sess.adjustmentCount}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9px] uppercase text-slate-500 tracking-wide font-medium">Total Qty</p>
+                          <p className="text-xs font-bold text-slate-350">{sess.totalQuantityChanged}</p>
+                        </div>
+                      </div>
+                      {sess.notes && (
+                        <p className="text-xs text-slate-500 italic mt-2.5 border-t border-slate-800/40 pt-2 line-clamp-1">{sess.notes}</p>
+                      )}
+                    </div>
+                    <button onClick={() => setActiveSessionDetails(sess)}
+                      className="mt-3.5 w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1.5">
+                      <Eye size={12} />
+                      View Movements
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       <SlideOver open={slideOpen} onClose={closeSlide} title={editing ? 'Edit Inventory Item' : 'Add Inventory Item'}>
@@ -420,14 +731,6 @@ export default function InventoryManagement() {
                 className="mt-2 w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
               />
             )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Current Quantity *</label>
-            <input type="number" min="0" step="0.01" value={form.quantity}
-              onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}
-              placeholder="0" required
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
           </div>
 
           <div>
@@ -532,6 +835,227 @@ export default function InventoryManagement() {
           </div>
         </form>
       </SlideOver>
+
+      {/* Stock Movements Graph & Table Modal */}
+      {graphItem && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 p-4 sm:p-5">
+              <div>
+                <h2 className="text-lg font-bold text-[var(--pos-text-primary)]">Stock Movements & History</h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Historical stock levels and audit logs for <span className="font-semibold text-amber-400">{graphItem.itemName}</span> ({graphItem.unit})
+                </p>
+              </div>
+              <button onClick={() => setGraphItem(null)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4 sm:p-6 space-y-6 flex-1">
+              {itemMovementsPending ? (
+                <div className="text-center py-12 text-slate-500">Loading movement history...</div>
+              ) : itemMovements.length === 0 ? (
+                <div className="text-center py-12 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-800">
+                  <Package size={40} className="mx-auto text-slate-600 opacity-35 mb-2" />
+                  <p className="text-sm text-slate-500">No stock movements recorded for this item yet.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Recharts Graph Container */}
+                  <div className="bg-[var(--pos-surface-inset)] border border-slate-800 rounded-2xl p-4">
+                    <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Stock Level Trend (Last 50 changes)</h3>
+                    <div className="h-64 sm:h-72 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={[...itemMovements].reverse().map(m => ({
+                          date: new Date(m.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                          stock: m.newQuantity,
+                        }))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
+                          <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} tickLine={false} />
+                          <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: 'var(--pos-panel)', borderColor: '#475569', borderRadius: '12px', color: 'var(--pos-text-primary)' }}
+                            labelStyle={{ fontSize: '11px', fontWeight: 'bold', color: '#f59e0b' }}
+                            itemStyle={{ fontSize: '12px' }}
+                          />
+                          <Line type="monotone" dataKey="stock" name="Stock Level" stroke="#f59e0b" strokeWidth={2} dot={{ fill: '#f59e0b', strokeWidth: 1 }} activeDot={{ r: 6 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Movements Table */}
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Detailed Movements Audit Log</h3>
+                    <div className="border border-slate-800 rounded-xl overflow-hidden bg-[var(--pos-surface-inset)] max-h-80 overflow-y-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-slate-900 border-b border-slate-800 text-slate-400 font-medium uppercase tracking-wider">
+                            <th className="p-3">Date & Time</th>
+                            <th className="p-3">Type</th>
+                            <th className="p-3 text-right">Prev</th>
+                            <th className="p-3 text-right">Change</th>
+                            <th className="p-3 text-right">New Qty</th>
+                            <th className="p-3">Reason / Notes</th>
+                            <th className="p-3">Staff</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/40">
+                          {itemMovements.map((m) => {
+                            const MOVEMENT_TYPE_BADGES = {
+                              sale: { label: 'Sale', variant: 'low' },
+                              adjustment: { label: 'Adjustment', variant: 'warning' },
+                              grn: { label: 'GRN', variant: 'ok' },
+                              wastage: { label: 'Wastage', variant: 'critical' },
+                              return: { label: 'Return', variant: 'critical' },
+                              po: { label: 'PO', variant: 'info' },
+                            };
+                            const badge = MOVEMENT_TYPE_BADGES[m.type] || { label: m.type?.toUpperCase().replace('_', ' ') || 'OTHER', variant: 'info' };
+                            const changeQty = m.quantity;
+                            const isPositive = changeQty > 0;
+                            return (
+                              <tr key={m._id} className="hover:bg-slate-800/40 transition">
+                                <td className="p-3 text-slate-350 whitespace-nowrap">
+                                  {new Date(m.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                                </td>
+                                <td className="p-3">
+                                  <Badge label={badge.label} variant={badge.variant} className="text-[10px] px-1.5 py-0.5" />
+                                </td>
+                                <td className="p-3 text-right text-slate-500 font-medium">{m.previousQuantity}</td>
+                                <td className={`p-3 text-right font-bold ${isPositive ? 'text-green-450' : changeQty < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                                  {isPositive ? `+${changeQty}` : changeQty}
+                                </td>
+                                <td className="p-3 text-right text-slate-300 font-semibold">{m.newQuantity}</td>
+                                <td className="p-3 text-slate-400 max-w-[200px] truncate" title={m.notes || m.reason || ''}>
+                                  {m.notes || m.reason || <span className="text-slate-650">—</span>}
+                                </td>
+                                <td className="p-3 text-slate-300 font-medium">{m.createdBy?.name || 'System'}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-slate-800 bg-slate-900 p-4 flex justify-end rounded-b-2xl">
+              <button onClick={() => setGraphItem(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl transition text-xs">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Session Details Modal */}
+      {activeSessionDetails && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 p-4 sm:p-5">
+              <div>
+                <h2 className="text-lg font-bold text-[var(--pos-text-primary)]">Adjustment Session Details</h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Started on <span className="font-semibold text-slate-200">{new Date(activeSessionDetails.createdAt).toLocaleString()}</span>
+                </p>
+              </div>
+              <button onClick={() => setActiveSessionDetails(null)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4 sm:p-6 space-y-4 flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-[var(--pos-surface-inset)] border border-slate-800 rounded-xl p-3.5">
+                <div>
+                  <p className="text-[10px] uppercase text-slate-500 tracking-wider">Staff Member</p>
+                  <p className="text-sm font-semibold text-[var(--pos-text-primary)]">{activeSessionDetails.userId?.name || 'Staff'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase text-slate-500 tracking-wider">Status</p>
+                  <p className="text-sm font-semibold">
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${activeSessionDetails.status === 'active' ? 'bg-green-500/10 text-green-400' : 'bg-slate-800 text-slate-450'}`}>
+                      {activeSessionDetails.status}
+                    </span>
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase text-slate-500 tracking-wider">Total Adjustments</p>
+                  <p className="text-sm font-semibold text-amber-450">{activeSessionDetails.adjustmentCount} items adjusted</p>
+                </div>
+              </div>
+
+              {activeSessionDetails.notes && (
+                <div className="bg-slate-800/20 border border-slate-800 rounded-xl p-3 text-xs text-slate-400 italic">
+                  <span className="font-semibold text-slate-350 not-italic block mb-0.5">Session Notes:</span>
+                  {activeSessionDetails.notes}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Session Stock Changes</h3>
+                {movementsPending ? (
+                  <div className="text-center py-8 text-slate-500">Loading adjustments list...</div>
+                ) : sessionMovements.length === 0 ? (
+                  <div className="text-center py-8 text-slate-500 italic bg-slate-900/20 rounded-xl border border-slate-800">
+                    No stock movements recorded in this session.
+                  </div>
+                ) : (
+                  <div className="border border-slate-800 rounded-xl overflow-hidden bg-[var(--pos-surface-inset)] max-h-64 overflow-y-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-900 border-b border-slate-800 text-slate-400 font-medium uppercase tracking-wider">
+                          <th className="p-3">Inventory Item</th>
+                          <th className="p-3 text-right">Previous Stock</th>
+                          <th className="p-3 text-right">Adjustment</th>
+                          <th className="p-3 text-right">New Stock</th>
+                          <th className="p-3">Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-850">
+                        {sessionMovements.map((m) => {
+                          const changeQty = m.quantity;
+                          const isPositive = changeQty > 0;
+                          return (
+                            <tr key={m._id} className="hover:bg-slate-800/40 transition">
+                              <td className="p-3 font-medium text-slate-300">
+                                {m.inventoryItemId?.itemName || 'Unknown Item'}
+                                {m.inventoryItemId?.unit && <span className="text-[10px] text-slate-500 ml-1.5">({m.inventoryItemId.unit})</span>}
+                              </td>
+                              <td className="p-3 text-right text-slate-500">{m.previousQuantity}</td>
+                              <td className={`p-3 text-right font-bold ${isPositive ? 'text-green-450' : changeQty < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                                {isPositive ? `+${changeQty}` : changeQty}
+                              </td>
+                              <td className="p-3 text-right text-slate-350 font-semibold">{m.newQuantity}</td>
+                              <td className="p-3 text-slate-400 truncate max-w-[200px]" title={m.notes || ''}>
+                                {m.notes || <span className="text-slate-655">—</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-slate-800 bg-slate-900 p-4 flex justify-end rounded-b-2xl">
+              <button onClick={() => setActiveSessionDetails(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl transition text-xs">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {toast && <Toast message={toast.message} variant={toast.variant} onClose={clearToast} />}
     </div>

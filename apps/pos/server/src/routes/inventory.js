@@ -29,7 +29,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
   try {
     const storeId = await resolveWriteStoreId(req);
     if (!storeId) return res.status(400).json({ message: 'No store available for inventory item creation' });
-    const item = await Inventory.create({ ...req.body, tenantId: req.tenantId, storeId, createdBy: req.user.id });
+    const item = await Inventory.create({ ...req.body, quantity: 0, tenantId: req.tenantId, storeId, createdBy: req.user.id });
     res.status(201).json(item);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -38,9 +38,11 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
 
 router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
+    const updateData = { ...req.body };
+    delete updateData.quantity; // Direct modification of quantity is not allowed
     const item = await Inventory.findOneAndUpdate(
       { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) },
-      { ...req.body, lastUpdated: Date.now(), updatedBy: req.user.id },
+      { ...updateData, lastUpdated: Date.now(), updatedBy: req.user.id },
       { new: true, runValidators: true }
     ).populate('suppliers', 'name phone email');
     if (!item) return res.status(404).json({ message: 'Inventory item not found' });
@@ -52,9 +54,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
 
 router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const item = await Inventory.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) });
-    if (!item) return res.status(404).json({ message: 'Inventory item not found' });
-    res.json({ message: 'Item deleted' });
+    return res.status(403).json({ message: 'Deleting inventory items is not allowed.' });
   } catch (err) {
     sendRouteError(res, err, { req });
   }

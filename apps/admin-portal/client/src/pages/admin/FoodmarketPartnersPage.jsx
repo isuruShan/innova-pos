@@ -303,200 +303,233 @@ export default function FoodmarketPartnersPage() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Sidebar Form */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-gray-100 overflow-hidden animate-scale-up">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h3 className="text-lg font-bold text-gray-900">
-                {editingPartner ? 'Edit Foodmarket Partner' : 'Add Foodmarket Partner'}
-              </h3>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 rounded-lg p-1">
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/30"
+            onClick={closeModal}
+            aria-hidden="true"
+          />
+          <aside className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-white shadow-2xl border-l border-gray-200 flex flex-col">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white shrink-0">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">
+                  {editingPartner ? 'Edit Foodmarket Partner' : 'Add Foodmarket Partner'}
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {editingPartner ? 'Update partner branding and commission settings' : 'Configure a new delivery partner integration'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeModal}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors shrink-0"
+              >
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Partner Name</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Uber Eats, PickMe"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange bg-white"
-                />
-              </div>
+            <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                {/* Partner Name */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Partner Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Uber Eats, PickMe Food"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange bg-white"
+                  />
+                </div>
 
-              {/* Logo Upload */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Partner Logo</label>
-                <div className="flex items-start gap-3">
-                  {logoPreview ? (
-                    <div className="relative w-20 h-20 rounded-lg border-2 border-gray-200 overflow-hidden bg-white">
-                      <img src={logoPreview} alt="Logo preview" className="w-full h-full object-contain" />
-                      <button
-                        type="button"
-                        onClick={() => { setLogoFile(null); setLogoPreview(''); }}
-                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 text-xs"
+                {/* Logo Upload */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Partner Logo</label>
+                  <div className="flex items-start gap-3">
+                    {logoPreview ? (
+                      <div className="relative w-24 h-24 rounded-lg border-2 border-gray-200 overflow-hidden bg-white shrink-0">
+                        <img src={logoPreview} alt="Logo preview" className="w-full h-full object-contain p-1" />
+                        <button
+                          type="button"
+                          onClick={() => { setLogoFile(null); setLogoPreview(''); }}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 shadow-md"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-24 h-24 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 shrink-0">
+                        <ImageIcon size={28} className="text-gray-400" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        id="logo-upload"
+                        accept="image/*"
+                        onChange={handleLogoChange}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="logo-upload"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
                       >
-                        <X size={12} />
-                      </button>
+                        <Upload size={16} />
+                        Choose Image
+                      </label>
+                      <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                        PNG, JPG, or WebP up to 5MB.<br />
+                        Recommended: 200×200px square logo
+                      </p>
                     </div>
-                  ) : (
-                    <div className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
-                      <ImageIcon size={24} className="text-gray-400" />
+                  </div>
+                </div>
+
+                {/* Icon & Color Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Icon Fallback</label>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {DEFAULT_ICONS.map((ic) => (
+                        <button
+                          key={ic}
+                          type="button"
+                          onClick={() => setIcon(ic)}
+                          className={`p-2.5 text-xl rounded-lg border-2 transition hover:scale-105 ${
+                            icon === ic ? 'border-brand-orange bg-brand-orange/10' : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                          title={ic}
+                        >
+                          {ic}
+                        </button>
+                      ))}
                     </div>
-                  )}
-                  <div className="flex-1">
+                    <p className="text-xs text-gray-500 mt-1.5">Used when no logo uploaded</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Badge Color</label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {DEFAULT_COLORS.map((col) => (
+                        <button
+                          key={col.value}
+                          type="button"
+                          onClick={() => setColor(col.value)}
+                          className={`p-3 rounded-lg border-2 transition flex items-center justify-center hover:scale-105 ${
+                            color === col.value ? 'border-gray-900 shadow-sm' : 'border-gray-200'
+                          }`}
+                          style={{ backgroundColor: col.value + '20' }}
+                          title={col.name}
+                        >
+                          <div className="w-5 h-5 rounded-full" style={{ backgroundColor: col.value }} />
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1.5">For order type badges</p>
+                  </div>
+                </div>
+
+                <hr className="border-gray-200" />
+
+                {/* Commission Settings */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Commission Type</label>
+                  <select
+                    value={commissionType}
+                    onChange={(e) => setCommissionType(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange bg-white"
+                  >
+                    <option value="percentage">Percentage Only</option>
+                    <option value="flat">Flat Fee Only</option>
+                    <option value="both">Both (Flat + Percentage)</option>
+                  </select>
+                </div>
+
+                {(commissionType === 'percentage' || commissionType === 'both') && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Commission Percentage (%)</label>
                     <input
-                      type="file"
-                      id="logo-upload"
-                      accept="image/*"
-                      onChange={handleLogoChange}
-                      className="hidden"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      required
+                      value={commissionPercentage}
+                      onChange={(e) => setCommissionPercentage(e.target.value)}
+                      placeholder="e.g. 15"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange bg-white"
                     />
-                    <label
-                      htmlFor="logo-upload"
-                      className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
-                    >
-                      <Upload size={14} />
-                      Choose Image
+                  </div>
+                )}
+
+                {(commissionType === 'flat' || commissionType === 'both') && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">Flat Fee Amount</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      required
+                      value={commissionFlat}
+                      onChange={(e) => setCommissionFlat(e.target.value)}
+                      placeholder="e.g. 50"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange bg-white"
+                    />
+                  </div>
+                )}
+
+                {/* Active Toggle */}
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <input
+                    type="checkbox"
+                    id="partner-active"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="w-5 h-5 rounded text-brand-orange focus:ring-brand-orange"
+                  />
+                  <div className="flex-1">
+                    <label htmlFor="partner-active" className="text-sm font-semibold text-gray-900 cursor-pointer block">
+                      Enable Partner Channel
                     </label>
-                    <p className="text-xs text-gray-500 mt-1.5">PNG, JPG up to 5MB. Recommended: 200x200px square.</p>
+                    <p className="text-xs text-gray-600 mt-0.5">
+                      When enabled, partner appears as an order type in POS
+                    </p>
                   </div>
                 </div>
               </div>
 
-              {/* Icon & Color */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Icon (Fallback)</label>
-                  <div className="grid grid-cols-5 gap-1.5">
-                    {DEFAULT_ICONS.map((ic) => (
-                      <button
-                        key={ic}
-                        type="button"
-                        onClick={() => setIcon(ic)}
-                        className={`p-2 text-lg rounded-lg border-2 transition ${
-                          icon === ic ? 'border-brand-orange bg-brand-orange/5' : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        {ic}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Badge Color</label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {DEFAULT_COLORS.map((col) => (
-                      <button
-                        key={col.value}
-                        type="button"
-                        onClick={() => setColor(col.value)}
-                        className={`p-2 rounded-lg border-2 transition flex items-center justify-center ${
-                          color === col.value ? 'border-gray-900' : 'border-gray-200'
-                        }`}
-                        style={{ backgroundColor: col.value + '20' }}
-                        title={col.name}
-                      >
-                        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: col.value }} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Partner Name</label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Uber Eats, PickMe"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange bg-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Commission Type</label>
-                <select
-                  value={commissionType}
-                  onChange={(e) => setCommissionType(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange bg-white"
-                >
-                  <option value="percentage">Percentage Only</option>
-                  <option value="flat">Flat Fee Only</option>
-                  <option value="both">Both (Flat + Percentage)</option>
-                </select>
-              </div>
-
-              {(commissionType === 'percentage' || commissionType === 'both') && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Commission Percentage (%)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    required
-                    value={commissionPercentage}
-                    onChange={(e) => setCommissionPercentage(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange bg-white"
-                  />
-                </div>
-              )}
-
-              {(commissionType === 'flat' || commissionType === 'both') && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Flat Fee Amount</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    required
-                    value={commissionFlat}
-                    onChange={(e) => setCommissionFlat(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange bg-white"
-                  />
-                </div>
-              )}
-
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="partner-active"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="w-4 h-4 rounded text-brand-orange focus:ring-brand-orange"
-                />
-                <label htmlFor="partner-active" className="text-sm font-semibold text-gray-700 cursor-pointer select-none">
-                  Enable Partner Channel
-                </label>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              {/* Footer Actions */}
+              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-end gap-3 shrink-0">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50"
+                  className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-100 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="px-5 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-hover text-white text-sm font-semibold shadow-md flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-lg bg-brand-orange hover:bg-brand-orange-hover text-white text-sm font-semibold shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
-                  {createMutation.isPending || updateMutation.isPending ? 'Saving...' : 'Save Partner'}
+                  {createMutation.isPending || updateMutation.isPending ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Check size={16} />
+                      {editingPartner ? 'Update Partner' : 'Create Partner'}
+                    </>
+                  )}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+          </aside>
+        </>
       )}
     </div>
   );

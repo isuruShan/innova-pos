@@ -34,17 +34,17 @@ export default function MenuItemTable({
     <div className="bg-[var(--pos-panel)] rounded-xl border border-slate-700/50 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="sticky top-0 bg-[var(--pos-surface-inset)]/90 backdrop-blur z-10">
-            <tr className="border-b border-slate-700/50 bg-[var(--pos-surface-inset)]/50">
+          <thead className="sticky top-[132px] bg-[var(--pos-panel)] z-10 border-b border-slate-700">
+            <tr className="border-b border-slate-700">
               {canDrag && (
-                <th className="w-10 px-2 py-3" aria-label="Reorder" />
+                <th className="w-10 px-2 py-3 bg-[var(--pos-panel)]" aria-label="Reorder" />
               )}
               <SortableTh label="Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} />
               <SortableTh label="Category" field="category" currentSort={sort} currentOrder={order} onSort={toggleSort} />
               <SortableTh label="Price" field="price" currentSort={sort} currentOrder={order} onSort={toggleSort} align="right" />
               <SortableTh label="Created" field="createdAt" currentSort={sort} currentOrder={order} onSort={toggleSort} />
               <SortableTh label="Active" field="available" currentSort={sort} currentOrder={order} onSort={toggleSort} align="center" />
-              <th className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide text-right">Actions</th>
+              <th className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide text-right bg-[var(--pos-panel)]">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/80">
