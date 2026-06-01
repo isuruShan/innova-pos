@@ -1255,6 +1255,7 @@ export default function NewOrder() {
 
   // SSE listener for customer check-in events (separate effect to avoid reconnection on cart changes)
   useEffect(() => {
+    if (!dualScreenAddonActive) return;
     if (!activeDraft.customerSessionId) return;
 
     console.log(`[SSE] Connecting to session: ${activeDraft.customerSessionId}`);
@@ -1300,10 +1301,11 @@ export default function NewOrder() {
       console.log(`[SSE] Disconnecting from session: ${activeDraft.customerSessionId}`);
       eventSource.close();
     };
-  }, [activeDraft.customerSessionId, setSelectedCustomer, setCustomerSearch, qc, showToast]);
+  }, [activeDraft.customerSessionId, setSelectedCustomer, setCustomerSearch, qc, showToast, dualScreenAddonActive]);
 
 
   useEffect(() => {
+    if (!dualScreenAddonActive) return;
     if (activeDraft.customerSessionId && (user?.tenantId || branding.tenantId || branding._id) && selectedStoreId) {
       const resolvedTenantId = user?.tenantId || branding.tenantId || branding._id;
       api.post('/customer-checkin/register-session', {
@@ -1314,7 +1316,7 @@ export default function NewOrder() {
         console.error('Failed to register checkin session with backend:', err);
       });
     }
-  }, [activeDraft.customerSessionId, user?.tenantId, branding.tenantId, branding._id, selectedStoreId]);
+  }, [activeDraft.customerSessionId, user?.tenantId, branding.tenantId, branding._id, selectedStoreId, dualScreenAddonActive]);
 
   useEffect(() => {
     setPaymentModalOpen(false);

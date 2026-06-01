@@ -352,10 +352,7 @@ router.post('/register-session', async (req, res) => {
     const tenant = await Tenant.findById(tenantId);
     const { isDualScreenEffective } = require('@innovapos/paid-addons');
     if (!tenant || !isDualScreenEffective(tenant.paidAddons)) {
-      return res.status(402).json({
-        message: 'The Dual Screen Customer Terminal add-on is not active for this business. Subscribe in the admin portal under Add-ons.',
-        code: 'dual_screen_addon_required'
-      });
+      return res.json({ success: true, skipped: true, message: 'Dual screen addon not active, skipping registration.' });
     }
 
     // Create or update the session check-in record as 'pending'
