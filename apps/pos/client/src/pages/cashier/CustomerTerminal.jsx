@@ -535,8 +535,8 @@ export default function CustomerTerminal() {
               </div>
             ) : !showInputScreen ? (
               <div className="flex flex-col items-center justify-center space-y-6 w-full">
-                {/* QR Check-in Box */}
-                <div className="bg-slate-800/50 border border-slate-800 p-5 rounded-2xl text-center flex flex-col items-center w-full max-w-[320px] shadow-lg backdrop-blur-sm">
+                {/* QR Check-in Box - HIDDEN FOR NOW */}
+                {/* <div className="bg-slate-800/50 border border-slate-800 p-5 rounded-2xl text-center flex flex-col items-center w-full max-w-[320px] shadow-lg backdrop-blur-sm">
                   <h3 className="text-sm font-semibold mb-3 text-slate-300">Scan QR Code to Check-in</h3>
                   <div className="w-[180px] h-[180px] bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden border border-slate-700/50">
                     {qrCodeImgSrc && <img src={qrCodeImgSrc} alt="Check-in QR" className="w-[160px] h-[160px]" />}
@@ -544,7 +544,7 @@ export default function CustomerTerminal() {
                   <p className="text-xs text-slate-400 mt-3.5 leading-relaxed">Use your mobile phone browser to earn points & rewards</p>
                 </div>
 
-                <div className="text-slate-500 text-xs font-bold tracking-wider">OR</div>
+                <div className="text-slate-500 text-xs font-bold tracking-wider">OR</div> */}
 
                 {/* On-screen Input Button */}
                 <button
