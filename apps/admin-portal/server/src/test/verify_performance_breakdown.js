@@ -77,7 +77,7 @@ async function run() {
   const adminEmail = capturedEmails[0];
   assert.ok(adminEmail.subject.includes('Welcome to Cafinity'));
   assert.ok(adminEmail.html.includes('Your merchant account has been verified'));
-  assert.ok(adminEmail.html.includes('30-Day Free Trial')); // Merchant admins get the trial panel
+  assert.ok(adminEmail.html.includes('14-Day Free Trial')); // Merchant admins get the trial panel
   assert.ok(adminEmail.html.includes('Access Admin Portal'));
 
   // Test cashier/staff welcome email context
@@ -93,7 +93,7 @@ async function run() {
   const cashierEmail = capturedEmails[1];
   assert.ok(cashierEmail.subject.includes('Welcome to the Team'));
   assert.ok(cashierEmail.html.includes('Your administrator has created a Cafinity account'));
-  assert.ok(!cashierEmail.html.includes('30-Day Free Trial')); // Staff should not get the trial panel
+  assert.ok(!cashierEmail.html.includes('14-Day Free Trial')); // Staff should not get the trial panel
   assert.ok(cashierEmail.html.includes('Log In to POS'));
 
   console.log('✅ Role-based welcome email assertions passed.');

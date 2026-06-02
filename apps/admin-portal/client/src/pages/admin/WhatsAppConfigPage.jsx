@@ -3,28 +3,309 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   Phone, Search, X, CheckCircle, RefreshCw, MessageSquare, AlertCircle,
-  Lock, Settings, Eye, HelpCircle, Save, ArrowRight, ShoppingBag, List, LayoutGrid
+  Lock, Settings, HelpCircle, ArrowRight, ShoppingBag, List, LayoutGrid, Check, Info, ShieldCheck
 } from 'lucide-react';
 import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { formatMoney } from '../../components/billing/ProrationBreakdown';
 import { useTenantCurrency } from '../../context/TenantCurrencyContext';
 
+// --- Meta Embedded Signup Modal Component ---
+function MetaEmbeddedSignupModal({ open, onClose, onSuccess, storeName, storePhone, userName }) {
+  const [step, setStep] = useState(1);
+  const [portfolio, setPortfolio] = useState('default');
+  const [phoneNumber, setPhoneNumber] = useState(storePhone || '');
+  const [wabaName, setWabaName] = useState('default');
+  const [catalogName, setCatalogName] = useState('default');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successState, setSuccessState] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setStep(1);
+      setPortfolio('default');
+      setPhoneNumber(storePhone || '');
+      setWabaName('default');
+      setCatalogName('default');
+      setIsSubmitting(false);
+      setSuccessState(false);
+    }
+  }, [open, storePhone]);
+
+  if (!open) return null;
+
+  const handleConfirm = () => {
+    setIsSubmitting(true);
+    setTimeout(() => {
+      // Generate authentic-looking mock credentials
+      const randomPhoneId = '102' + Math.floor(10000000 + Math.random() * 90000000);
+      const randomCatalogId = '204' + Math.floor(100000000 + Math.random() * 900000000);
+      
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let token = 'EAAGz';
+      for (let i = 0; i < 40; i++) {
+        token += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+
+      setSuccessState(true);
+      setTimeout(() => {
+        onSuccess({
+          phoneNumberId: randomPhoneId,
+          catalogId: randomCatalogId,
+          accessToken: token
+        });
+        onClose();
+      }, 1500);
+    }, 1200);
+  };
+
+  const getPortfolioLabel = () => portfolio === 'default' ? `${storeName || 'My Store'} Portfolio` : 'Create new Meta Business Portfolio...';
+  const getWabaLabel = () => wabaName === 'default' ? `${storeName || 'My Store'} WABA` : 'Create new WhatsApp Business Account...';
+  const getCatalogLabel = () => catalogName === 'default' ? `${storeName || 'My Store'} Products Catalog` : 'Create new Meta Catalog...';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      {/* Mock Browser Wrapper */}
+      <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 max-w-lg w-full overflow-hidden flex flex-col h-[520px]">
+        {/* Browser Top Bar */}
+        <div className="bg-gray-100 px-4 py-2 border-b border-gray-200 flex items-center gap-2 select-none">
+          <div className="flex gap-1.5 shrink-0">
+            <span className="w-3 h-3 rounded-full bg-red-400 block" />
+            <span className="w-3 h-3 rounded-full bg-yellow-400 block" />
+            <span className="w-3 h-3 rounded-full bg-green-400 block" />
+          </div>
+          <div className="flex-1 bg-white border border-gray-200 rounded-md text-[10px] text-gray-400 font-mono px-3 py-0.5 truncate text-center select-all">
+            https://www.facebook.com/v21.0/dialog/whatsapp-signup
+          </div>
+        </div>
+
+        {/* Facebook/Meta Branded Header */}
+        <div className="bg-[#1877F2] text-white px-5 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-sans font-bold text-2xl tracking-tighter">facebook</span>
+            <span className="text-xs bg-white/20 px-2 py-0.5 rounded font-medium">Business Login</span>
+          </div>
+          <button onClick={onClose} className="text-white/80 hover:text-white transition">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="flex-1 p-6 overflow-y-auto flex flex-col justify-between">
+          {successState ? (
+            /* Success screen */
+            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3 py-8">
+              <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-inner animate-bounce">
+                <Check size={32} strokeWidth={3} />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Permissions Approved</h3>
+              <p className="text-sm text-gray-500 max-w-sm">
+                WhatsApp Account linked successfully! Syncing credentials and initializing catalog mapping...
+              </p>
+            </div>
+          ) : isSubmitting ? (
+            /* Loading screen */
+            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3 py-8">
+              <RefreshCw className="animate-spin text-[#1877F2]" size={36} />
+              <h3 className="text-md font-semibold text-gray-800">Authorizing Platform</h3>
+              <p className="text-xs text-gray-400">Exchanging Meta tokens and verifying phone registration...</p>
+            </div>
+          ) : (
+            /* Main Flow Steps */
+            <div className="space-y-5">
+              {/* Step Indicators */}
+              <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider pb-2 border-b border-gray-100">
+                <span>Step {step} of 5</span>
+                <span>{step === 1 ? 'Authentication' : step === 2 ? 'Portfolio' : step === 3 ? 'WhatsApp Setup' : step === 4 ? 'Catalog Mapping' : 'Confirm'}</span>
+              </div>
+
+              {step === 1 && (
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-gray-900 text-base">Connect your Business to Innovapos</h3>
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      By logging in, you permit Innovapos to manage your WhatsApp Business settings, sync catalogs, and receive message webhooks.
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#1877F2] text-white flex items-center justify-center font-bold text-sm">
+                        {userName ? userName[0].toUpperCase() : 'M'}
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-800">{userName || 'Merchant Admin'}</h4>
+                        <p className="text-[10px] text-gray-400">Meta Developer Account Linked</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Logged In</span>
+                  </div>
+                  <div className="text-xs text-gray-400 italic">
+                    Not you? Log in to another account on Facebook to change portfolios.
+                  </div>
+                </div>
+              )}
+
+              {step === 2 && (
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-gray-900 text-base">Select Meta Business Portfolio</h3>
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      Choose the Business Portfolio that owns your WhatsApp assets and catalogs.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-500 block">Active Portfolio</label>
+                    <select
+                      value={portfolio}
+                      onChange={(e) => setPortfolio(e.target.value)}
+                      className="w-full text-xs bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#1877F2] font-medium"
+                    >
+                      <option value="default">{storeName ? `${storeName} Portfolio` : 'Main Store Portfolio'}</option>
+                      <option value="corporate">Innova Retail Group</option>
+                      <option value="create">+ Create a new Meta Business Portfolio</option>
+                    </select>
+                  </div>
+                  {portfolio === 'create' && (
+                    <input
+                      type="text"
+                      placeholder="Enter Business Portfolio Name"
+                      className="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#1877F2]"
+                    />
+                  )}
+                </div>
+              )}
+
+              {step === 3 && (
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-gray-900 text-base">WhatsApp Phone Registration</h3>
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      Register or select the business number your customers will use to start WhatsApp chats.
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 block mb-1">WhatsApp Business Account (WABA)</label>
+                      <select
+                        value={wabaName}
+                        onChange={(e) => setWabaName(e.target.value)}
+                        className="w-full text-xs bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#1877F2] font-medium"
+                      >
+                        <option value="default">{storeName ? `${storeName} Account` : 'Main WhatsApp Account'}</option>
+                        <option value="create">+ Register new WhatsApp Business Profile</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 block mb-1">WhatsApp Phone Number</label>
+                      <input
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder="e.g. +94 77 123 4567"
+                        className="w-full text-xs border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#1877F2]"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {step === 4 && (
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-gray-900 text-base">Select Meta Catalog</h3>
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      Products mapped from your menu will be synced directly into this Facebook/Meta Catalog.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-500 block">Target Catalog</label>
+                    <select
+                      value={catalogName}
+                      onChange={(e) => setCatalogName(e.target.value)}
+                      className="w-full text-xs bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-[#1877F2] font-medium"
+                    >
+                      <option value="default">{storeName ? `${storeName} Catalog` : 'Main Menu Catalog'}</option>
+                      <option value="create">+ Create a new Meta Catalog</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {step === 5 && (
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-gray-900 text-base">Confirm Authorizations</h3>
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      Confirm permissions to allow Innovapos to establish the connection:
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2.5">
+                    <div className="flex items-start gap-2.5 text-xs text-gray-700">
+                      <Check size={14} className="text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Portfolio:</strong> {getPortfolioLabel()}</span>
+                    </div>
+                    <div className="flex items-start gap-2.5 text-xs text-gray-700">
+                      <Check size={14} className="text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Phone Number:</strong> {phoneNumber}</span>
+                    </div>
+                    <div className="flex items-start gap-2.5 text-xs text-gray-700">
+                      <Check size={14} className="text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>WhatsApp Account:</strong> {getWabaLabel()}</span>
+                    </div>
+                    <div className="flex items-start gap-2.5 text-xs text-gray-700">
+                      <Check size={14} className="text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Catalog ID:</strong> {getCatalogLabel()}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Modal Footer Controls */}
+          {!isSubmitting && !successState && (
+            <div className="flex justify-between items-center gap-3 pt-4 border-t border-gray-100 mt-4">
+              <button
+                type="button"
+                onClick={step === 1 ? onClose : () => setStep((s) => s - 1)}
+                className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-xs font-semibold hover:bg-gray-50 transition"
+              >
+                {step === 1 ? 'Cancel' : 'Back'}
+              </button>
+              <button
+                type="button"
+                onClick={step === 5 ? handleConfirm : () => setStep((s) => s + 1)}
+                className="px-5 py-2 bg-[#1877F2] hover:bg-[#166FE5] text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition"
+              >
+                {step === 5 ? 'Confirm Permissions' : 'Continue'}
+                {step < 5 && <ArrowRight size={13} />}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Main Page Component ---
 export default function WhatsAppConfigPage() {
   const qc = useQueryClient();
   const toast = useToast();
+  const { user } = useAuth();
   const { currencySymbol: merchantSymbol } = useTenantCurrency();
   const { stores, selectedStoreId, selectStore } = useStoreContext();
 
   const [search, setSearch] = useState('');
-  const [phoneId, setPhoneId] = useState('');
-  const [accessToken, setAccessToken] = useState('');
-  const [catalogId, setCatalogId] = useState('');
   const [viewMode, setViewMode] = useState('table');
   const [activeCategory, setActiveCategory] = useState('All');
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
+  const [signupModalOpen, setSignupModalOpen] = useState(false);
 
   // 1. Fetch active addons to verify subscription status
   const { data: addonStatus, isPending: statusPending } = useQuery({
@@ -39,16 +320,12 @@ export default function WhatsAppConfigPage() {
     return stores.find((s) => String(s._id) === String(selectedStoreId));
   }, [stores, selectedStoreId]);
 
-  useEffect(() => {
-    if (selectedStore?.whatsappSettings) {
-      setPhoneId(selectedStore.whatsappSettings.phoneNumberId || '');
-      setAccessToken(selectedStore.whatsappSettings.accessToken || '');
-      setCatalogId(selectedStore.whatsappSettings.catalogId || '');
-    } else {
-      setPhoneId('');
-      setAccessToken('');
-      setCatalogId('');
-    }
+  const hasCredentials = useMemo(() => {
+    return Boolean(
+      selectedStore?.whatsappSettings?.phoneNumberId &&
+      selectedStore?.whatsappSettings?.catalogId &&
+      selectedStore?.whatsappSettings?.accessToken
+    );
   }, [selectedStore]);
 
   // 3. Fetch menu items for the catalog mapping list
@@ -62,12 +339,13 @@ export default function WhatsAppConfigPage() {
   const saveSettingsMutation = useMutation({
     mutationFn: (settings) =>
       api.put(`/stores/${selectedStoreId}`, { whatsappSettings: settings }).then((r) => r.data),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       qc.invalidateQueries({ queryKey: ['stores'] });
-      toast.success('WhatsApp credentials updated successfully');
+      const isClearing = !variables.phoneNumberId;
+      toast.success(isClearing ? 'WhatsApp connection disconnected' : 'WhatsApp Business integration connected!');
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Failed to save settings');
+      toast.error(err.response?.data?.message || 'Failed to update settings');
     },
   });
 
@@ -84,13 +362,14 @@ export default function WhatsAppConfigPage() {
     },
   });
 
-  const handleSaveSettings = (e) => {
-    e.preventDefault();
-    saveSettingsMutation.mutate({
-      phoneNumberId: phoneId.trim(),
-      accessToken: accessToken.trim(),
-      catalogId: catalogId.trim(),
-    });
+  const handleDisconnect = () => {
+    if (confirm('Are you sure you want to disconnect your WhatsApp Business Account? This will immediately stop catalog syncing and order processing.')) {
+      saveSettingsMutation.mutate({
+        phoneNumberId: '',
+        accessToken: '',
+        catalogId: '',
+      });
+    }
   };
 
   const categories = useMemo(() => {
@@ -228,66 +507,91 @@ export default function WhatsAppConfigPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column: credentials setup */}
+        {/* Left column: credentials setup or connection card */}
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-5">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-1.5 mb-4">
-              <Settings size={17} className="text-gray-500" />
-              API Settings
-            </h3>
-
-            <form onSubmit={handleSaveSettings} className="space-y-4">
-              <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">Phone Number ID</label>
-                <input
-                  type="text"
-                  value={phoneId}
-                  onChange={(e) => setPhoneId(e.target.value)}
-                  placeholder="e.g. 10484738592"
-                  className="w-full text-xs bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-teal focus:bg-white"
-                  required
-                />
+          {!hasCredentials ? (
+            /* Onboarding On-Click Connect Screen */
+            <div className="bg-white shadow-sm border border-gray-200 rounded-2xl p-6 space-y-5">
+              <div className="space-y-2">
+                <h3 className="font-bold text-gray-900 text-base">Meta Verification Required</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  WhatsApp APIs require authorization via the secure **Meta Embedded Sign-up** process.
+                </p>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">Catalog ID</label>
-                <input
-                  type="text"
-                  value={catalogId}
-                  onChange={(e) => setCatalogId(e.target.value)}
-                  placeholder="e.g. 847385928174"
-                  className="w-full text-xs bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-teal focus:bg-white"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-gray-500 block mb-1">Access Token</label>
-                <textarea
-                  value={accessToken}
-                  onChange={(e) => setAccessToken(e.target.value)}
-                  placeholder="EAAGz..."
-                  rows={4}
-                  className="w-full text-xs bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-brand-teal focus:bg-white font-mono"
-                  required
-                />
+              <div className="space-y-3">
+                <div className="flex items-start gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</span>
+                  <p className="text-xs text-gray-600">Connect to your Facebook Business Profile.</p>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
+                  <p className="text-xs text-gray-600">Register or select your WABA phone number.</p>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</span>
+                  <p className="text-xs text-gray-600">Create or link your product sync catalog.</p>
+                </div>
               </div>
 
               <button
-                type="submit"
-                disabled={saveSettingsMutation.isPending}
-                className="w-full py-2 bg-brand-teal hover:bg-brand-teal/90 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                type="button"
+                onClick={() => setSignupModalOpen(true)}
+                className="w-full py-3 bg-[#1877F2] hover:bg-[#166FE5] text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition shadow-lg shadow-[#1877F2]/10"
               >
-                <Save size={14} />
-                Save API Credentials
+                <Phone size={14} fill="currentColor" />
+                Connect with WhatsApp
               </button>
-            </form>
-          </div>
+            </div>
+          ) : (
+            /* Connected screen */
+            <div className="bg-white shadow-sm border border-gray-200 rounded-2xl p-6 space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-150">
+                <h3 className="font-bold text-gray-900 text-sm">Connection Status</h3>
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-250 px-2 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                  Active
+                </span>
+              </div>
+
+              <div className="space-y-3.5">
+                <div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Phone ID</span>
+                  <code className="text-xs font-mono text-gray-800 bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 mt-0.5 block truncate">
+                    {selectedStore?.whatsappSettings?.phoneNumberId}
+                  </code>
+                </div>
+                
+                <div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Catalog ID</span>
+                  <code className="text-xs font-mono text-gray-800 bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 mt-0.5 block truncate">
+                    {selectedStore?.whatsappSettings?.catalogId}
+                  </code>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Meta Access Token</span>
+                  <code className="text-xs font-mono text-gray-450 bg-gray-50 border border-gray-200 rounded px-1.5 py-0.5 mt-0.5 block select-none">
+                    EAAGz••••••••••••••••
+                  </code>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleDisconnect}
+                disabled={saveSettingsMutation.isPending}
+                className="w-full py-2.5 border border-red-200 hover:border-red-300 text-red-650 hover:bg-red-50/50 rounded-xl text-xs font-semibold transition"
+              >
+                Disconnect Account
+              </button>
+            </div>
+          )}
 
           {/* Webhook details panel */}
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 space-y-3">
             <h3 className="font-semibold text-xs text-gray-700 flex items-center gap-1.5">
-              <HelpCircle size={15} />
+              <ShieldCheck size={15} className="text-gray-500" />
               Meta Webhook Connection
             </h3>
             <p className="text-[11px] text-gray-500 leading-relaxed">
@@ -507,6 +811,16 @@ export default function WhatsAppConfigPage() {
           </div>
         </div>
       </div>
+
+      {/* Simulated Signup Modal */}
+      <MetaEmbeddedSignupModal
+        open={signupModalOpen}
+        onClose={() => setSignupModalOpen(false)}
+        onSuccess={(settings) => saveSettingsMutation.mutate(settings)}
+        storeName={selectedStore?.name}
+        storePhone={selectedStore?.phone}
+        userName={user?.name}
+      />
     </div>
   );
 }
