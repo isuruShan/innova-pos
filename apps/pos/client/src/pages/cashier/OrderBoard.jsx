@@ -39,7 +39,7 @@ function thirtyDaysAgo() {
   return d.toISOString().split('T')[0];
 }
 
-const STATUSES = ['pending', 'preparing', 'ready', 'completed', 'cancelled'];
+const STATUSES = ['pending', 'preparing', 'ready', 'delivered', 'completed', 'cancelled'];
 
 const STATUS_META = {
   pending: {
@@ -61,6 +61,13 @@ const STATUS_META = {
     next: 'completed', prev: 'preparing',
     nextLabel: 'Complete ✓', nextClass: 'bg-green-500 hover:bg-green-400 text-white',
     prevLabel: '← Preparing',
+  },
+  delivered: {
+    label: 'Delivered', color: 'text-purple-400', border: 'border-purple-500/30',
+    bg: 'bg-purple-500/5', dot: 'bg-purple-400',
+    next: 'completed', prev: 'ready',
+    nextLabel: 'Complete ✓', nextClass: 'bg-green-500 hover:bg-green-400 text-white',
+    prevLabel: '← Ready',
   },
   completed: {
     label: 'Completed', color: 'text-slate-400', border: 'border-slate-600/30',
@@ -94,6 +101,24 @@ function ElapsedBadge({ createdAt, status }) {
 function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selectedStore }) {
   const meta = STATUS_META[order.status];
   const isBusy = busyId === order._id;
+
+  let nextStatus = meta?.next;
+  let nextLabel = meta?.nextLabel;
+  let nextClass = meta?.nextClass;
+  let prevStatus = meta?.prev;
+  let prevLabel = meta?.prevLabel;
+
+  if (order.status === 'ready' && order.orderType === 'delivery') {
+    nextStatus = 'delivered';
+    nextLabel = 'Mark Delivered';
+    nextClass = 'bg-purple-600 hover:bg-purple-500 text-white';
+  } else if (order.status === 'delivered') {
+    nextStatus = 'completed';
+    nextLabel = 'Complete ✓';
+    nextClass = 'bg-green-600 hover:bg-green-500 text-white';
+    prevStatus = 'ready';
+    prevLabel = '← Ready';
+  }
 
   const { showAlert } = useAlert();
 
@@ -229,30 +254,30 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
       </div>
 
       {/* Status action buttons */}
-      {(meta.next || meta.prev) && (
+      {(nextStatus || prevStatus) && (
         <div className="px-3 pb-3 flex gap-1.5">
-          {meta.prev && (
+          {prevStatus && (
             <button
-              onClick={() => onAdvanceStatus(order, meta.prev)}
+              onClick={() => onAdvanceStatus(order, prevStatus)}
               disabled={isBusy}
               className="flex-1 flex items-center justify-center gap-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-300 text-xs font-medium py-2 rounded-lg transition"
             >
               <ChevronLeft size={12} />
-              {meta.prevLabel}
+              {prevLabel}
             </button>
           )}
-          {meta.next && (
+          {nextStatus && (
             <button
-              onClick={() => onAdvanceStatus(order, meta.next)}
+              onClick={() => onAdvanceStatus(order, nextStatus)}
               disabled={isBusy}
-              className={`flex-1 flex items-center justify-center gap-1 text-xs font-semibold py-2 rounded-lg transition disabled:opacity-50 ${meta.nextClass}`}
+              className={`flex-1 flex items-center justify-center gap-1 text-xs font-semibold py-2 rounded-lg transition disabled:opacity-50 ${nextClass}`}
             >
               {isBusy ? (
                 <span className="flex items-center gap-1">
                   <RefreshCw size={11} className="animate-spin" /> …
                 </span>
               ) : (
-                <>{meta.nextLabel} {!meta.prev && <ChevronRight size={12} />}</>
+                <>{nextLabel} {!prevStatus && <ChevronRight size={12} />}</>
               )}
             </button>
           )}
@@ -456,7 +481,7 @@ export default function OrderBoard() {
   const currentUserId = user?._id || user?.id;
 
   const grouped = useMemo(() => {
-    const g = { pending: [], preparing: [], ready: [], completed: [], cancelled: [] };
+    const g = { pending: [], preparing: [], ready: [], delivered: [], completed: [], cancelled: [] };
     const q = searchQuery.trim().toLowerCase();
     
     [...orders].reverse().forEach((o) => {
@@ -491,7 +516,7 @@ export default function OrderBoard() {
     return g;
   }, [orders, searchQuery, fohr.isRegister, currentUserId]);
 
-  const totalActive = grouped.pending.length + grouped.preparing.length + grouped.ready.length;
+  const totalActive = grouped.pending.length + grouped.preparing.length + grouped.ready.length + grouped.delivered.length;
 
   const liveSelectedOrder = resolveLiveOrder(orders, selectedOrder);
 
@@ -603,7 +628,7 @@ export default function OrderBoard() {
             <KanbanSkeleton />
           </div>
         ) : (
-          <div className="flex-1 grid grid-cols-2 lg:grid-cols-5 gap-3 min-h-0 overflow-hidden">
+          <div className="flex-1 grid grid-cols-2 lg:grid-cols-6 gap-3 min-h-0 overflow-hidden">
             {STATUSES.map(status => (
               <Column
                 key={status}

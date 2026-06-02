@@ -29,7 +29,7 @@ const { consumeInventoryForOrder, reverseInventoryForOrder } = require('../lib/i
 
 const router = express.Router();
 
-const VALID_STATUSES = ['pending', 'preparing', 'ready', 'completed', 'cancelled'];
+const VALID_STATUSES = ['pending', 'preparing', 'ready', 'delivered', 'completed', 'cancelled'];
 const FORWARD_TRANSITIONS = { pending: 'preparing', preparing: 'ready', ready: 'completed' };
 
 function itemKitchenAddsSignature(items) {
@@ -86,7 +86,14 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
     }
 
     if (req.query.board === 'true') {
-      const activeQuery = { status: { $in: ['pending', 'preparing', 'ready'] } };
+      const activeQuery = {
+        status: { $in: ['pending', 'preparing', 'ready', 'delivered'] },
+        $or: [
+          { scheduledFor: { $exists: false } },
+          { scheduledFor: null },
+          { scheduledFor: { $lte: new Date() } }
+        ]
+      };
       const inactiveQuery = {
         status: { $in: ['completed', 'cancelled'] },
         ...(since || until ? { createdAt: dateFilter } : {})
@@ -720,7 +727,14 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
     } else if (status && VALID_STATUSES.includes(status)) {
       nextStatus = status;
     } else {
-      const next = FORWARD_TRANSITIONS[order.status];
+      let next;
+      if (order.status === 'ready' && order.orderType === 'delivery') {
+        next = 'delivered';
+      } else if (order.status === 'delivered') {
+        next = 'completed';
+      } else {
+        next = FORWARD_TRANSITIONS[order.status];
+      }
       if (!next) return res.status(400).json({ message: `Order cannot be advanced from "${order.status}"` });
       nextStatus = next;
     }
@@ -788,6 +802,16 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
         await markReady(order);
       } catch (err) {
         console.error(`[Uber API Auto-Ready Error] order ${order._id} failed:`, err.message);
+      }
+    }
+
+    // Auto-notify WhatsApp customer of status updates
+    if (order.orderSource === 'whatsapp' && prevStatus !== nextStatus) {
+      try {
+        const { sendOrderStatusNotification } = require('../services/whatsappNotificationService');
+        await sendOrderStatusNotification(order, nextStatus);
+      } catch (err) {
+        console.error(`[WhatsApp API Status Notification Error] order ${order._id} failed:`, err.message);
       }
     }
 

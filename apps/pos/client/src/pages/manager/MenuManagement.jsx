@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Link2,
   ChevronDown, ChevronUp, Tag, GripVertical, Search, LayoutGrid, List,
-  Download, Upload,
+  Download, Upload, Phone,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import CategoryManagerModal from '../../components/CategoryManagerModal';
@@ -21,6 +22,7 @@ import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { formatCurrency, getItemDisplayPrice } from '../../utils/format';
 import { compareSortValues, buildCategorySortMap, scopeMenuItemsByCategory, sortMenuItemsForDisplay } from '../../utils/menuItemSearch';
 import { useStoreContext } from '../../context/StoreContext';
+import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 import { 
   exportMenuItemsToCSV, 
   getMenuItemImportFields, 
@@ -77,7 +79,11 @@ function ComboItemsPreview({ comboItems }) {
 }
 
 export default function MenuManagement() {
+  const navigate = useNavigate();
   const { selectedStoreId, isStoreReady } = useStoreContext();
+  const { data: paidAddons } = useTenantPaidAddons();
+  const whatsappAddonActive = paidAddons?.whatsapp === true;
+
   const [activeCategory, setActiveCategory] = useState('All');
   const [formOpen, setFormOpen] = useState(false);
   const [catModalOpen, setCatModalOpen] = useState(false);
@@ -497,6 +503,23 @@ export default function MenuManagement() {
     };
   }, [menuKey, qc, allCategories, selectedStoreId, showToast]);
 
+  const headerActions = useMemo(() => {
+    const list = [
+      { label: 'Export', icon: Download, onClick: handleExportMenuItems },
+      { label: 'Import', icon: Upload, onClick: () => setImportModalOpen(true) },
+      { label: 'Categories', icon: Tag, onClick: () => setCatModalOpen(true) },
+    ];
+    if (whatsappAddonActive) {
+      list.push({
+        label: 'WhatsApp Catalog',
+        icon: Phone,
+        onClick: () => navigate('/manager/menu/whatsapp'),
+      });
+    }
+    list.push({ label: 'Add Item', icon: Plus, onClick: openAdd, primary: true });
+    return list;
+  }, [whatsappAddonActive, navigate, handleExportMenuItems, openAdd]);
+
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
       <Navbar groups={MANAGER_NAV_GROUPS} />
@@ -505,12 +528,7 @@ export default function MenuManagement() {
         <PageHeader
           title="Menu Items"
           subtitle={`${items.length} items · ${items.filter((i) => i.isCombo).length} combos`}
-          actions={[
-            { label: 'Export', icon: Download, onClick: handleExportMenuItems },
-            { label: 'Import', icon: Upload, onClick: () => setImportModalOpen(true) },
-            { label: 'Categories', icon: Tag, onClick: () => setCatModalOpen(true) },
-            { label: 'Add Item', icon: Plus, onClick: openAdd, primary: true },
-          ]}
+          actions={headerActions}
         />
 
         {/* Search + View Toggle */}

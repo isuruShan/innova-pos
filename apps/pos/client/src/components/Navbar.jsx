@@ -255,7 +255,10 @@ export function NavLogo({ branding }) {
 
 function filterLinksForRole(links, role, paidAddons = {}) {
   return links.filter((l) => {
-    if (l.addon && !paidAddons[l.addon]?.active) return false;
+    if (l.addon) {
+      const active = paidAddons[l.addon] === true || paidAddons[l.addon]?.active === true;
+      if (!active) return false;
+    }
     if (!l.roles?.length) return true;
     return l.roles.includes(role);
   });
@@ -389,7 +392,10 @@ export default function Navbar({ links = [], groups: groupsProp }) {
     }
     // Filter out groups where group.addon is unsubscribed
     return baseGroups.filter(group => {
-      if (group.addon && !activePaidAddons[group.addon]?.active) return false;
+      if (group.addon) {
+        const active = activePaidAddons[group.addon] === true || activePaidAddons[group.addon]?.active === true;
+        if (!active) return false;
+      }
       return true;
     });
   }, [groupsProp, links, activePaidAddons]);

@@ -63,6 +63,11 @@ const menuItemSchema = new mongoose.Schema(
       }],
       default: []
     },
+    whatsappSync: {
+      featured: { type: Boolean, default: true, index: true },
+      lastSyncedAt: { type: Date, default: null },
+      whatsappProductId: { type: String, default: '' }
+    },
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

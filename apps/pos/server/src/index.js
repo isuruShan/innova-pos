@@ -98,6 +98,7 @@ app.use('/api/variant-criteria', require('./routes/variantCriteria'));
 app.use('/api/reports',    require('./routes/reports'));
 app.use('/api/reports/extended', require('./routes/reportsExtended'));
 app.use('/api/analytics',  require('./routes/analytics'));
+app.use('/api/delivery-analytics', require('./routes/deliveryAnalytics'));
 app.use('/api/promotions', require('./routes/promotions'));
 app.use('/api/upload',           require('./routes/upload'));
 app.use('/api/settings',         require('./routes/settings'));
@@ -112,6 +113,7 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/foodmarket-partners', require('./routes/foodmarketPartners'));
 app.use('/api/uber', require('./routes/uber'));
 app.use('/api/uber', require('./routes/uberWebhook'));
+app.use('/api/webhooks/whatsapp', require('./routes/whatsappWebhook'));
 
 // Table Management add-on routes
 app.use('/api/floor-plan', require('./routes/floorPlan'));

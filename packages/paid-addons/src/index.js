@@ -8,6 +8,7 @@ const ENTITLEMENT_BY_CODE = {
   uber_eats: 'uberEats',
   accounting: 'accounting',
   dual_screen: 'dualScreen',
+  whatsapp_integration: 'whatsapp',
 };
 
 const KNOWN_ENTITLEMENT_KEYS = Object.values(ENTITLEMENT_BY_CODE);
@@ -80,6 +81,10 @@ function isDualScreenEffective(paidAddons) {
   return isPaidAddonEffective(paidAddons, 'dualScreen');
 }
 
+function isWhatsappEffective(paidAddons) {
+  return isPaidAddonEffective(paidAddons, 'whatsapp');
+}
+
 module.exports = {
   ENTITLEMENT_BY_CODE,
   KNOWN_ENTITLEMENT_KEYS,
@@ -92,5 +97,6 @@ module.exports = {
   isUberEatsEffective,
   isAccountingEffective,
   isDualScreenEffective,
+  isWhatsappEffective,
   isInTrialPeriod,
 };

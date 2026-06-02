@@ -10,6 +10,8 @@ const ADDON_MESSAGES = {
     'QR Ordering is not active for your account. Subscribe under Add-ons in this portal.',
   accounting:
     'The Advanced Accounting Module is not active for your account. Subscribe under Add-ons in this portal.',
+  whatsapp_integration:
+    'WhatsApp Business Integration is not active for your account. Subscribe under Add-ons in this portal.',
 };
 
 function requirePaidAddon(addonCode) {

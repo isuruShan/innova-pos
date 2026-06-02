@@ -29,7 +29,7 @@ const ORDER_TYPE_OPTIONS = [
   { value: 'uber-eats', label: 'Uber Eats' },
   { value: 'pickme',    label: 'PickMe' },
 ];
-const STATUS_OPTIONS = ['pending', 'preparing', 'ready', 'completed', 'cancelled'];
+const STATUS_OPTIONS = ['pending', 'preparing', 'ready', 'delivered', 'completed', 'cancelled'];
 
 function todayStr() {
   const x = new Date();

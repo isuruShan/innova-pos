@@ -14,6 +14,8 @@ const ADDON_MESSAGES = {
     'Uber Eats Integration is not active for this business. Subscribe in the admin portal under Add-ons.',
   dual_screen:
     'The Dual Screen Customer Terminal add-on is not active for this business. Subscribe in the admin portal under Add-ons.',
+  whatsapp_integration:
+    'WhatsApp Business Integration is not active for this business. Subscribe in the admin portal under Add-ons.',
 };
 
 /**

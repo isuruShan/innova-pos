@@ -50,7 +50,7 @@ const orderSchema = new mongoose.Schema(
     orderNumber: { type: Number },
     orderType: {
       type: String,
-      enum: ['dine-in', 'takeaway', 'uber-eats', 'pickme'],
+      enum: ['dine-in', 'takeaway', 'uber-eats', 'pickme', 'delivery'],
       default: 'dine-in',
     },
     /** Display branding for order type (for partner logos/colors) */
@@ -66,7 +66,7 @@ const orderSchema = new mongoose.Schema(
     items: [orderItemSchema],
     status: {
       type: String,
-      enum: ['pending', 'preparing', 'ready', 'completed', 'cancelled'],
+      enum: ['pending', 'preparing', 'ready', 'delivered', 'completed', 'cancelled'],
       default: 'pending',
     },
     /**
@@ -103,9 +103,24 @@ const orderSchema = new mongoose.Schema(
     totalAmount: { type: Number, required: true },
     orderSource: {
       type: String,
-      enum: ['pos', 'qr'],
+      enum: ['pos', 'qr', 'whatsapp'],
       default: 'pos',
     },
+    deliveryDetails: {
+      address: { type: String, default: '' },
+      coordinates: {
+        lat: { type: Number },
+        lng: { type: Number }
+      },
+      deliveryFee: { type: Number, default: 0 },
+      estimatedDeliveryTime: { type: Date, default: null },
+      actualDeliveryTime: { type: Date, default: null },
+      riderName: { type: String, default: '' },
+      riderPhone: { type: String, default: '' }
+    },
+    scheduledFor: { type: Date, default: null },
+    scheduledActivated: { type: Boolean, default: false },
+    whatsappPhone: { type: String, default: '' },
     customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', default: null, index: true },
     loyaltyPointsEarned: { type: Number, default: 0, min: 0 },
     loyaltyRedemption: {
