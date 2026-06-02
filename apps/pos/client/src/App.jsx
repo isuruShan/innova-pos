@@ -47,6 +47,7 @@ import StockReconciliation from './pages/manager/StockReconciliation';
 
 
 import StockAudit from './pages/manager/StockAudit';
+import WhatsAppProductsPage from './pages/manager/WhatsAppProductsPage';
 
 
 const queryClient = new QueryClient({
@@ -168,6 +169,11 @@ export default function App() {
                 <Route path="/manager/menu" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
                     <MenuManagement />
+                  </RoleRoute>
+                } />
+                <Route path="/manager/whatsapp-catalog" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <WhatsAppProductsPage />
                   </RoleRoute>
                 } />
                 <Route path="/manager/cafe-tables" element={

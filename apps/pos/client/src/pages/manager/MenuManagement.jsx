@@ -509,9 +509,16 @@ export default function MenuManagement() {
       { label: 'Import', icon: Upload, onClick: () => setImportModalOpen(true) },
       { label: 'Categories', icon: Tag, onClick: () => setCatModalOpen(true) },
     ];
+    if (whatsappAddonActive) {
+      list.push({
+        label: 'WhatsApp Catalog',
+        icon: Phone,
+        onClick: () => navigate('/manager/whatsapp-catalog'),
+      });
+    }
     list.push({ label: 'Add Item', icon: Plus, onClick: openAdd, primary: true });
     return list;
-  }, [navigate, handleExportMenuItems, openAdd]);
+  }, [navigate, handleExportMenuItems, openAdd, whatsappAddonActive]);
 
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
