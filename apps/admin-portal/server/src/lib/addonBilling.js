@@ -141,6 +141,14 @@ const DEFAULT_ADDONS = [
     isActive: true,
     sortOrder: 5,
   },
+  {
+    code: 'whatsapp_integration',
+    name: 'WhatsApp Business Integration',
+    shortDescription: 'Sync menus to WhatsApp catalog, receive customer orders, send status updates, and support scheduled delivery/pickup.',
+    longDescription: 'Manage customer ordering directly through WhatsApp. Supports automatic menu catalog sync, customer details acquisition, pickup/delivery scheduling, and status update notifications. Pricing follows your subscription cycle.',
+    isActive: true,
+    sortOrder: 6,
+  },
 ];
 
 async function ensureDefaultPaidAddons() {
@@ -251,7 +259,7 @@ async function computeSubscriptionRenewalExpected(tenant, planOverride = null) {
 
   const addons = [];
   let addonTotal = 0;
-  const { isQrOrderingEffective, isLoyaltyEffective, isTableManagementEffective, isUberEatsEffective, isAccountingEffective, isDualScreenEffective } = require('./addonPeriod');
+  const { isQrOrderingEffective, isLoyaltyEffective, isTableManagementEffective, isUberEatsEffective, isAccountingEffective, isDualScreenEffective, isWhatsappEffective } = require('./addonPeriod');
   const renewalRows = [
     { code: 'qr_ordering', label: 'QR Ordering', key: 'qrOrdering', check: isQrOrderingEffective },
     { code: 'loyalty', label: 'Loyalty program', key: 'loyalty', check: isLoyaltyEffective },
@@ -259,6 +267,7 @@ async function computeSubscriptionRenewalExpected(tenant, planOverride = null) {
     { code: 'uber_eats', label: 'Uber Eats Integration', key: 'uberEats', check: isUberEatsEffective },
     { code: 'accounting', label: 'Advanced Accounting Module', key: 'accounting', check: isAccountingEffective },
     { code: 'dual_screen', label: 'Dual Screen Customer Terminal', key: 'dualScreen', check: isDualScreenEffective },
+    { code: 'whatsapp_integration', label: 'WhatsApp Business Integration', key: 'whatsapp', check: isWhatsappEffective },
   ];
   for (const row of renewalRows) {
     if (!row.check(t.paidAddons)) continue;
