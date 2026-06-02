@@ -1,6 +1,6 @@
 'use strict';
 
-const axios = require('axios');
+const WhatsAppClient = require('./whatsappClient');
 const mongoose = require('mongoose');
 const { isWhatsappEffective } = require('@innovapos/paid-addons');
 
@@ -35,16 +35,12 @@ async function syncCatalogItem(menuItem) {
     if (!isFeatured) {
       // Delete from catalog
       try {
-        await axios.post(url, {
-          requests: [
-            {
-              method: 'DELETE',
-              retailer_id: menuItem._id.toString()
-            }
-          ]
-        }, {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
+        await WhatsAppClient.mutateCatalog(accessToken, catalogId, [
+          {
+            method: 'DELETE',
+            retailer_id: menuItem._id.toString()
+          }
+        ]);
 
         // Update DB without triggering pre/post save hooks
         await mongoose.model('MenuItem').updateOne(
@@ -65,24 +61,20 @@ async function syncCatalogItem(menuItem) {
       const imageUrl = menuItem.image || menuItem.images?.[0]?.url || 'https://placehold.co/600x400';
       
       try {
-        await axios.post(url, {
-          requests: [
-            {
-              method: 'CREATE',
-              retailer_id: menuItem._id.toString(),
-              data: {
-                name: menuItem.name,
-                description: menuItem.description || menuItem.name,
-                price: Math.round(menuItem.price * 100), // Standard format (cents/cents equivalent)
-                currency: store.currency || 'LKR',
-                availability: menuItem.available ? 'in stock' : 'out of stock',
-                image_url: imageUrl
-              }
+        await WhatsAppClient.mutateCatalog(accessToken, catalogId, [
+          {
+            method: 'CREATE',
+            retailer_id: menuItem._id.toString(),
+            data: {
+              name: menuItem.name,
+              description: menuItem.description || menuItem.name,
+              price: Math.round(menuItem.price * 100), // Standard format (cents/cents equivalent)
+              currency: store.currency || 'LKR',
+              availability: menuItem.available ? 'in stock' : 'out of stock',
+              image_url: imageUrl
             }
-          ]
-        }, {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
+          }
+        ]);
 
         // Update DB
         await mongoose.model('MenuItem').updateOne(

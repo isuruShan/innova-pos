@@ -2,7 +2,7 @@
 
 const express = require('express');
 const mongoose = require('mongoose');
-const axios = require('axios');
+const WhatsAppClient = require('../services/whatsappClient');
 const { isWhatsappEffective } = require('@innovapos/paid-addons');
 
 const router = express.Router();
@@ -10,14 +10,7 @@ const router = express.Router();
 // Mock/helper helper to send interactive button messages back to WhatsApp
 async function sendWhatsAppMessage(accessToken, phoneNumberId, recipientPhone, payload) {
   try {
-    const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
-    await axios.post(url, {
-      messaging_product: 'whatsapp',
-      to: recipientPhone,
-      ...payload
-    }, {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
+    await WhatsAppClient.postMessage(accessToken, phoneNumberId, recipientPhone, payload);
   } catch (err) {
     console.error('[WhatsApp Send Message Error]:', err.response?.data || err.message);
   }

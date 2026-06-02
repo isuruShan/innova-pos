@@ -8,6 +8,11 @@ import {
   X,
   ArrowLeft,
   Upload,
+  Sparkles,
+  Info,
+  Key,
+  Settings,
+  MessageSquare,
 } from 'lucide-react';
 import api from '../../api/axios';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
@@ -18,6 +23,133 @@ import BankReceiptFields from '../../components/billing/BankReceiptFields';
 import { useToast } from '../../context/ToastContext';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+
+/**
+ * Interactive WhatsApp Integration tab-based setup guide for merchants.
+ */
+function WhatsAppIntegrationGuide() {
+  const [activeTab, setActiveTab] = useState('overview');
+
+  return (
+    <div className="space-y-4">
+      {/* Tab Navigation */}
+      <div className="flex border-b border-gray-200">
+        {[
+          { id: 'overview', label: 'Overview', icon: Info },
+          { id: 'meta', label: 'Meta Setup', icon: Key },
+          { id: 'connect', label: 'InnovaPOS Connect', icon: Settings },
+          { id: 'workflow', label: 'Workflow', icon: MessageSquare }
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 transition-all ${
+                isActive
+                  ? 'border-emerald-500 text-emerald-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              <Icon size={14} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Contents */}
+      <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-4 min-h-[220px]">
+        {activeTab === 'overview' && (
+          <div className="space-y-3">
+            <h4 className="font-bold text-sm text-gray-900">Direct Chat Ordering Add-On</h4>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              Connect your venue directly with Meta's official WhatsApp Business API. Your customers can browse your real-time menu catalog, add products to a cart, choose delivery or pickup, specify scheduling times, and check out directly within a chat conversation.
+            </p>
+            <div className="bg-emerald-50/80 border border-emerald-100/70 rounded-xl p-3 text-emerald-800 text-xs flex gap-2 items-start">
+              <span className="text-sm">💡</span>
+              <div>
+                <strong>Premium Features:</strong> Automated dispatch notifications, dynamic menu catalog sync, WhatsApp phone matching for customer loyalty, and scheduled orders.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'meta' && (
+          <div className="space-y-3 text-xs text-gray-600 leading-relaxed">
+            <h4 className="font-bold text-sm text-gray-900">Meta Developer Platform Setup</h4>
+            <ol className="list-decimal list-inside space-y-2">
+              <li>
+                Visit <a href="https://developer.facebook.com" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline font-semibold">developer.facebook.com</a> and sign up for a developer account.
+              </li>
+              <li>
+                Create a <strong>Business App</strong> and add the <strong>WhatsApp</strong> product to it.
+              </li>
+              <li>
+                Configure a production phone number or use the default developer Sandbox test number.
+              </li>
+              <li>
+                Under <strong>Meta Business Manager</strong> settings, create a System User, assign access to the WhatsApp Account and Catalog, and generate a <strong>Permanent Access Token</strong>.
+              </li>
+            </ol>
+          </div>
+        )}
+
+        {activeTab === 'connect' && (
+          <div className="space-y-3 text-xs text-gray-600 leading-relaxed">
+            <h4 className="font-bold text-sm text-gray-900">Connect to InnovaPOS</h4>
+            <p>Configure these keys inside your POS manager dashboard under Store Settings:</p>
+            <div className="space-y-2 mt-2">
+              <div className="flex gap-2">
+                <span className="font-mono bg-gray-200 px-1.5 py-0.5 rounded text-gray-800 font-semibold shrink-0">Phone Number ID</span>
+                <span>Resolves which number receives messages.</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="font-mono bg-gray-200 px-1.5 py-0.5 rounded text-gray-800 font-semibold shrink-0">Catalog ID</span>
+                <span>Links to your Meta catalog for menu sync.</span>
+              </div>
+              <div className="flex gap-2">
+                <span className="font-mono bg-gray-200 px-1.5 py-0.5 rounded text-gray-800 font-semibold shrink-0">Access Token</span>
+                <span>Authenticates API requests from POS to Meta.</span>
+              </div>
+            </div>
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-amber-900 text-xs">
+              <strong>Webhook Setup:</strong> Copy your Webhook URL <code className="bg-amber-100/50 px-1 ...">/api/webhooks/whatsapp</code> and verification token to your Meta App's Webhooks configuration. Subscribe to <code className="bg-amber-100/50 px-1 ...">messages</code>.
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'workflow' && (
+          <div className="space-y-3">
+            <h4 className="font-bold text-sm text-gray-900">Integration Order Flow</h4>
+            <div className="font-mono text-[9px] bg-slate-900 text-slate-300 p-3 rounded-xl overflow-x-auto leading-relaxed">
+              <div className="text-emerald-400">╔═══════════════════════════════════════════════════╗</div>
+              <div className="text-emerald-400">║                WHATSAPP PLATFORM                  ║</div>
+              <div className="text-emerald-400">╚═══════════════════════════════════════════════════╝</div>
+              <div>   [Customer] Browses Catalog ➔ Sends cart in chat</div>
+              <div className="text-gray-500">                               │</div>
+              <div className="text-amber-400 font-bold">                               ▼ webhook trigger</div>
+              <div className="text-amber-400">╔═══════════════════════════════════════════════════╗</div>
+              <div className="text-amber-400">║              INNOVAPOS API ENGINE                 ║</div>
+              <div className="text-amber-400">╚═══════════════════════════════════════════════════╝</div>
+              <div>   Maps items ➔ Asks customer: [Pickup] or [Delivery]</div>
+              <div>   Validates delivery details & scheduled timers</div>
+              <div className="text-gray-500">                               │</div>
+              <div className="text-sky-400 font-bold">                               ▼ order active</div>
+              <div className="text-sky-400">╔═══════════════════════════════════════════════════╗</div>
+              <div className="text-sky-400">║               CASHIER ORDER BOARD                 ║</div>
+              <div className="text-sky-400">╚═══════════════════════════════════════════════════╝</div>
+              <div>   Order queue columns update live on cashier boards</div>
+              <div>   Status moves: Preparing ➔ Dispatched ➔ Completed</div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Paid add-ons (e.g. QR Ordering): review first, then choose an admin-configured
@@ -438,9 +570,13 @@ export default function MerchantAddonsPage() {
 
             {flowStep === 'review' && (
               <div className="space-y-4">
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {selectedAddon.longDescription || selectedAddon.shortDescription}
-                </p>
+                {selectedAddon.code === 'whatsapp' ? (
+                  <WhatsAppIntegrationGuide />
+                ) : (
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                    {selectedAddon.longDescription || selectedAddon.shortDescription}
+                  </p>
+                )}
                 {(selectedAddon.screenshotUrls || []).length > 0 ? (
                   <div>
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">App preview</p>

@@ -1,7 +1,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const axios = require('axios');
+const WhatsAppClient = require('./whatsappClient');
 const { isWhatsappEffective } = require('@innovapos/paid-addons');
 
 /**
@@ -66,23 +66,13 @@ async function sendOrderStatusNotification(order, status) {
     }
 
     // 4. Dispatch call to WhatsApp API
-    await axios.post(url, {
-      messaging_product: 'whatsapp',
-      to: recipientPhone,
-      type: 'template',
-      template: {
-        name: templateName,
-        language: { code: 'en' },
-        components: [
-          {
-            type: 'body',
-            parameters: parameters
-          }
-        ]
-      }
-    }, {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
+    await WhatsAppClient.sendTemplateNotification(
+      accessToken,
+      phoneNumberId,
+      recipientPhone,
+      templateName,
+      parameters
+    );
 
     console.log(`[WhatsApp Notifications] Dispatched ${templateName} template to ${recipientPhone} for order #${order.orderNumber}.`);
   } catch (err) {
