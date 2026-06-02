@@ -21,7 +21,6 @@ import CustomerTerminal from './pages/cashier/CustomerTerminal';
 import KitchenDisplay from './pages/kitchen/KitchenDisplay';
 import Dashboard from './pages/manager/Dashboard';
 import MenuManagement from './pages/manager/MenuManagement';
-import WhatsAppProductsPage from './pages/manager/WhatsAppProductsPage';
 import InventoryManagement from './pages/manager/InventoryManagement';
 import PurchaseOrders from './pages/manager/PurchaseOrders';
 import GoodsReceipts from './pages/manager/GoodsReceipts';
@@ -169,11 +168,6 @@ export default function App() {
                 <Route path="/manager/menu" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
                     <MenuManagement />
-                  </RoleRoute>
-                } />
-                <Route path="/manager/menu/whatsapp" element={
-                  <RoleRoute roles={['manager', 'merchant_admin']}>
-                    <WhatsAppProductsPage />
                   </RoleRoute>
                 } />
                 <Route path="/manager/cafe-tables" element={

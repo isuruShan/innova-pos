@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getPosUrl } from '@innovapos/app-urls';
 import {
   LayoutDashboard, Users, Palette, CreditCard, Building2,
-  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3, Sparkles, Landmark, Package, ShoppingBag, Percent, Search
+  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3, Sparkles, Landmark, Package, ShoppingBag, Percent, Search, MessageSquare
 } from 'lucide-react';
 import api from '../../api/axios';
 import NotificationBell from '../NotificationBell';
@@ -123,6 +123,7 @@ const ADMIN_NAV_GROUPS = [
       { label: 'Foodmarket Partners', icon: ShoppingBag, to: '/foodmarket-partners' },
       { label: 'Add-ons', icon: Sparkles, to: '/addons' },
       { label: 'Uber Eats Config', icon: Sparkles, to: '/uber-config', requiresAddon: 'uber_eats' },
+      { label: 'WhatsApp Config', icon: MessageSquare, to: '/whatsapp-config', requiresAddon: 'whatsapp_integration' },
       { 
         label: 'Subscription', 
         icon: CreditCard, 

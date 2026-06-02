@@ -570,7 +570,7 @@ export default function MerchantAddonsPage() {
 
             {flowStep === 'review' && (
               <div className="space-y-4">
-                {selectedAddon.code === 'whatsapp' ? (
+                {selectedAddon.code === 'whatsapp_integration' ? (
                   <WhatsAppIntegrationGuide />
                 ) : (
                   <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">

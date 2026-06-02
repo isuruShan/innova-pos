@@ -28,4 +28,32 @@ router.get('/', protect, authorize('merchant_admin'), tenantScope, resolveSelect
   }
 });
 
+router.put('/:id', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+  try {
+    const item = await MenuItem.findOne({ _id: req.params.id, tenantId: req.tenantId });
+    if (!item) return res.status(404).json({ message: 'Menu item not found' });
+
+    const updates = req.body;
+    for (const key of Object.keys(updates)) {
+      if (key.includes('.')) {
+        const parts = key.split('.');
+        let current = item;
+        for (let i = 0; i < parts.length - 1; i++) {
+          if (!current[parts[i]]) current[parts[i]] = {};
+          current = current[parts[i]];
+        }
+        current[parts[parts.length - 1]] = updates[key];
+        item.markModified(parts[0]);
+      } else {
+        item[key] = updates[key];
+      }
+    }
+
+    await item.save();
+    res.json(item);
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 module.exports = router;

@@ -230,8 +230,15 @@ router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), t
     });
     if (!store) return res.status(404).json({ message: 'Store not found' });
 
-    const { name, code, address, phone, paymentMethods, isActive, tableManagementEnabled, guestWaiterCallCooldownSeconds, posMenuLayout } = body;
+    const { name, code, address, phone, paymentMethods, isActive, tableManagementEnabled, guestWaiterCallCooldownSeconds, posMenuLayout, whatsappSettings } = body;
     if (name !== undefined) store.name = name.trim();
+    if (whatsappSettings !== undefined) {
+      store.whatsappSettings = {
+        phoneNumberId: String(whatsappSettings.phoneNumberId || '').trim(),
+        accessToken: String(whatsappSettings.accessToken || '').trim(),
+        catalogId: String(whatsappSettings.catalogId || '').trim(),
+      };
+    }
     if (code !== undefined) {
       let finalCode = String(code || '').trim().toUpperCase();
       if (!finalCode) {

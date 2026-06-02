@@ -47,6 +47,7 @@ import FoodmarketPartnersPage from './pages/admin/FoodmarketPartnersPage';
 import FoodmarketCommissionsPage from './pages/admin/FoodmarketCommissionsPage';
 import SessionReviewPage from './pages/admin/SessionReviewPage';
 import ReportsPortal from './pages/admin/ReportsPortal';
+import WhatsAppConfigPage from './pages/admin/WhatsAppConfigPage';
 const PrivateRoute = ({ children, roles }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
@@ -251,6 +252,11 @@ export default function App() {
           <Route path="/inventory-sessions" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><SessionReviewPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/whatsapp-config" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><WhatsAppConfigPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/profile" element={

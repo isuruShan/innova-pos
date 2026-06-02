@@ -80,4 +80,13 @@ menuItemSchema.index({ tenantId: 1, category: 1 });
 menuItemSchema.index({ tenantId: 1, storeId: 1, category: 1, available: 1 });
 menuItemSchema.index({ tenantId: 1, storeId: 1, category: 1, sortOrder: 1 });
 
+menuItemSchema.post('save', async function(doc) {
+  try {
+    const { syncCatalogItem } = require('../services/whatsappCatalogSync');
+    await syncCatalogItem(doc);
+  } catch (err) {
+    console.error(`[Mongoose Hook Error] Failed to sync menu item ${doc._id}:`, err.message);
+  }
+});
+
 module.exports = mongoose.model('MenuItem', menuItemSchema);
