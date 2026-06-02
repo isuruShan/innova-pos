@@ -101,7 +101,7 @@ router.post('/:id/review', protect, authorize('merchant_admin'), async (req, res
       return res.status(400).json({ error: 'Only closed sessions can be reviewed' });
     }
 
-    session.reviewedBy = user._id;
+    session.reviewedBy = req.user.id;
     session.reviewedAt = new Date();
 
     await session.save();

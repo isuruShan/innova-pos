@@ -912,7 +912,7 @@ router.post(
       const result = await applyOrderReturn(
         order,
         { items, reason, managerId, approvalSecret },
-        { tenantId: req.tenantId, userId: req.user.id, storeId: req.storeId },
+        { tenantId: req.tenantId, userId: req.user.id, storeId: req.storeId, userRole: req.user.role },
       );
 
       await emitAudit({

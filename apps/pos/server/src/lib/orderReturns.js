@@ -74,7 +74,7 @@ async function verifyManagerApproval({ tenantId, managerId, secret, storeId }) {
  * @param {object} order mongoose document
  * @param {{ items: { lineId: string, qty: number }[], reason?: string, managerId?: string, approvalSecret?: string }} input
  */
-async function applyOrderReturn(order, input, { tenantId, userId, storeId }) {
+async function applyOrderReturn(order, input, { tenantId, userId, storeId, userRole }) {
   if (order.status !== 'completed') {
     const err = new Error('Only completed orders can be returned');
     err.statusCode = 400;
@@ -89,7 +89,7 @@ async function applyOrderReturn(order, input, { tenantId, userId, storeId }) {
   }
 
   let approvedBy = null;
-  if (policy.returnsRequireManagerApproval) {
+  if (policy.returnsRequireManagerApproval && userRole !== 'merchant_admin') {
     const manager = await verifyManagerApproval({
       tenantId,
       managerId: input.managerId,

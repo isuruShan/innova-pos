@@ -83,7 +83,7 @@ export default function CashierOrderHistory() {
   });
 
   const returnsEnabled = Boolean(tenantSettings?.returnsEnabled);
-  const requireApproval = tenantSettings?.returnsRequireManagerApproval !== false;
+  const requireApproval = tenantSettings?.returnsRequireManagerApproval !== false && user?.role !== 'merchant_admin';
 
   const openReturn = (order) => {
     const init = {};

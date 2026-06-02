@@ -726,7 +726,7 @@ export default function GoodsReceipts() {
         type={activeTab === 'receipts' ? 'receipt' : 'return'}
         suppliers={suppliers}
         inventory={inventory}
-        purchaseOrders={purchaseOrders}
+        purchaseOrders={pendingPOs}
         onSubmit={(data) => {
           if (editing) {
             updateMutation.mutate({ id: editing._id, data });

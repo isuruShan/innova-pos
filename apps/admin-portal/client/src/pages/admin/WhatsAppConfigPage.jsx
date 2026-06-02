@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   Phone, Search, X, CheckCircle, RefreshCw, MessageSquare, AlertCircle,
-  Lock, Settings, Eye, HelpCircle, Save, ArrowRight, ShoppingBag
+  Lock, Settings, Eye, HelpCircle, Save, ArrowRight, ShoppingBag, List, LayoutGrid
 } from 'lucide-react';
 import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
@@ -21,6 +21,10 @@ export default function WhatsAppConfigPage() {
   const [phoneId, setPhoneId] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [catalogId, setCatalogId] = useState('');
+  const [viewMode, setViewMode] = useState('table');
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [sortBy, setSortBy] = useState('name');
+  const [sortOrder, setSortOrder] = useState('asc');
 
   // 1. Fetch active addons to verify subscription status
   const { data: addonStatus, isPending: statusPending } = useQuery({
@@ -89,13 +93,69 @@ export default function WhatsAppConfigPage() {
     });
   };
 
+  const categories = useMemo(() => {
+    const list = new Set(items.map((i) => i.category).filter(Boolean));
+    return ['All', ...Array.from(list)];
+  }, [items]);
+
   const filteredItems = useMemo(() => {
-    return items.filter(
-      (i) =>
+    return items.filter((i) => {
+      const matchSearch =
         i.name.toLowerCase().includes(search.toLowerCase()) ||
-        i.category.toLowerCase().includes(search.toLowerCase())
+        i.category.toLowerCase().includes(search.toLowerCase());
+      const matchCategory = activeCategory === 'All' || i.category === activeCategory;
+      return matchSearch && matchCategory;
+    });
+  }, [items, search, activeCategory]);
+
+  const sortedItems = useMemo(() => {
+    return [...filteredItems].sort((a, b) => {
+      let valA = a[sortBy];
+      let valB = b[sortBy];
+
+      if (sortBy === 'price') {
+        valA = a.channelPrices?.whatsapp || a.price || 0;
+        valB = b.channelPrices?.whatsapp || b.price || 0;
+      }
+
+      if (typeof valA === 'string') {
+        valA = valA.toLowerCase();
+        valB = (valB || '').toLowerCase();
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filteredItems, sortBy, sortOrder]);
+
+  const renderSortableHeader = (label, field, align = 'left') => {
+    const isCurrent = sortBy === field;
+    return (
+      <th
+        className={`py-3 px-4 cursor-pointer hover:bg-gray-150 select-none text-[10px] uppercase font-bold text-gray-500 tracking-wider bg-gray-50 ${
+          align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'
+        }`}
+        onClick={() => {
+          if (sortBy === field) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+          } else {
+            setSortBy(field);
+            setSortOrder('asc');
+          }
+        }}
+      >
+        <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start'}`}>
+          <span>{label}</span>
+          {isCurrent ? (
+            sortOrder === 'asc' ? ' ▲' : ' ▼'
+          ) : (
+            <span className="text-gray-300"> ↕</span>
+          )}
+        </div>
+      </th>
     );
-  }, [items, search]);
+  };
 
   const webhookUrl = `${window.location.origin}/api/webhooks/whatsapp`;
   const verificationToken = 'innovapos_verify_token';
@@ -255,53 +315,91 @@ export default function WhatsAppConfigPage() {
           <div className="bg-white shadow-sm border border-gray-200 rounded-xl p-5 flex flex-col h-full min-h-[500px]">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900">Catalog Product Sync</h3>
-              <div className="relative max-w-xs w-full">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                <input
-                  type="text"
-                  placeholder="Search catalog items..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full text-xs pl-8 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-teal"
-                />
-                {search && (
-                  <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                    <X size={12} />
+              <div className="flex items-center gap-2 max-w-sm w-full">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                  <input
+                    type="text"
+                    placeholder="Search catalog items..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full text-xs pl-8 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-teal"
+                  />
+                  {search && (
+                    <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-0.5 bg-gray-100 border border-gray-200 rounded-lg p-0.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('table')}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[10px] font-bold transition-all ${viewMode === 'table' ? 'bg-white text-gray-900 shadow-sm border border-gray-200/40' : 'text-gray-400 hover:text-gray-900'}`}
+                  >
+                    <List size={12} /> Table
                   </button>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('grid')}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[10px] font-bold transition-all ${viewMode === 'grid' ? 'bg-white text-gray-900 shadow-sm border border-gray-200/40' : 'text-gray-400 hover:text-gray-900'}`}
+                  >
+                    <LayoutGrid size={12} /> Grid
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Catalog Mapping Table */}
+            {/* Category Tabs */}
+            {categories.length > 1 && (
+              <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-2.5 border-b border-gray-100">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setActiveCategory(cat)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all border ${
+                      activeCategory === cat
+                        ? 'bg-brand-teal text-white border-brand-teal shadow-sm shadow-brand-teal/10'
+                        : 'text-gray-500 hover:text-gray-800 bg-white hover:bg-gray-50 border-gray-200'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Catalog Mapping Content */}
             {menuPending ? (
               <div className="flex-1 flex items-center justify-center py-16">
                 <RefreshCw className="animate-spin text-gray-400" size={24} />
               </div>
-            ) : filteredItems.length === 0 ? (
+            ) : sortedItems.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center py-16 text-center text-gray-400 space-y-2">
                 <ShoppingBag size={32} className="opacity-40" />
                 <p className="text-sm font-medium">No menu items found</p>
                 <p className="text-xs">Adjust your search filter or select another store.</p>
               </div>
-            ) : (
-              <div className="flex-1 overflow-x-auto mt-4">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-100 text-gray-400 uppercase tracking-wider text-[10px] font-semibold">
-                      <th className="py-2.5">Item Name</th>
-                      <th className="py-2.5">Category</th>
-                      <th className="py-2.5 text-right">Price</th>
-                      <th className="py-2.5 text-center">Sync Action</th>
+            ) : viewMode === 'table' ? (
+              <div className="flex-1 overflow-auto mt-4 max-h-[600px] border border-gray-150 rounded-lg">
+                <table className="w-full text-left text-xs border-collapse relative">
+                  <thead className="sticky top-0 bg-white shadow-sm z-10">
+                    <tr className="border-b border-gray-200 text-gray-500 uppercase tracking-wider text-[10px] font-semibold bg-gray-50">
+                      {renderSortableHeader('Item Name', 'name')}
+                      {renderSortableHeader('Category', 'category')}
+                      {renderSortableHeader('Price', 'price', 'right')}
+                      <th className="py-3 px-4 text-center text-[10px] uppercase font-bold text-gray-500 tracking-wider select-none bg-gray-50">Sync Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50 text-gray-700">
-                    {filteredItems.map((item) => {
+                  <tbody className="divide-y divide-gray-100 text-gray-700">
+                    {sortedItems.map((item) => {
                       const featured = item.whatsappSync?.featured !== false;
                       const lastSync = item.whatsappSync?.lastSyncedAt;
                       
                       return (
                         <tr key={item._id} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="py-3 pr-2">
+                          <td className="py-3 px-4">
                             <div>
                               <p className="font-semibold text-gray-900">{item.name}</p>
                               {lastSync && (
@@ -311,11 +409,11 @@ export default function WhatsAppConfigPage() {
                               )}
                             </div>
                           </td>
-                          <td className="py-3 text-gray-500 capitalize">{item.category}</td>
-                          <td className="py-3 text-right font-medium">
+                          <td className="py-3 px-4 text-gray-500 capitalize">{item.category}</td>
+                          <td className="py-3 px-4 text-right font-medium">
                             {formatMoney(item.channelPrices?.whatsapp || item.price, merchantSymbol)}
                           </td>
-                          <td className="py-3">
+                          <td className="py-3 px-4">
                             <div className="flex justify-center">
                               <button
                                 type="button"
@@ -341,6 +439,69 @@ export default function WhatsAppConfigPage() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 max-h-[600px] overflow-y-auto pr-1">
+                {sortedItems.map((item) => {
+                  const featured = item.whatsappSync?.featured !== false;
+                  const lastSync = item.whatsappSync?.lastSyncedAt;
+                  
+                  return (
+                    <div
+                      key={item._id}
+                      className={`bg-white rounded-xl border p-4 transition-all flex flex-col justify-between ${
+                        featured
+                          ? 'border-emerald-500/30 hover:border-emerald-500/50 shadow-sm shadow-emerald-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-[10px] uppercase font-semibold">
+                            {item.category}
+                          </span>
+                          {lastSync && (
+                            <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                              <CheckCircle size={10} className="text-emerald-500" />
+                              Synced
+                            </span>
+                          )}
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold text-gray-900 text-sm leading-snug">{item.name}</h4>
+                          <p className="text-xs text-brand-teal font-medium mt-1">
+                            {formatMoney(item.channelPrices?.whatsapp || item.price, merchantSymbol)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-gray-100 mt-4 flex items-center justify-between gap-2">
+                        <span className="text-[10px] text-gray-400">
+                          {lastSync ? `Updated: ${new Date(lastSync).toLocaleDateString()}` : 'Never synced'}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            toggleSyncMutation.mutate({
+                              id: item._id,
+                              featured: !featured,
+                            })
+                          }
+                          disabled={toggleSyncMutation.isPending}
+                          className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                            featured
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-gray-100 text-gray-500 border border-gray-300 hover:bg-gray-200'
+                          }`}
+                        >
+                          {featured ? 'Featured ✓' : 'Excluded'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
