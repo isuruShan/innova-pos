@@ -6,6 +6,8 @@ import { Utensils } from 'lucide-react';
 import { CASHIER_NAV_GROUPS } from '../constants/cashierLinks';
 import { REGISTER_NAV_GROUPS } from '../constants/registerLinks';
 
+import { useTenantPaidAddons } from './useTenantPaidAddons';
+
 export function normalizePosRole(role) {
   return String(role || '').trim().toLowerCase();
 }
@@ -18,16 +20,20 @@ export function useFohrMode() {
   const { pathname } = useLocation();
   const { user } = useAuth();
   const { stores, selectedStoreId } = useStoreContext();
+  const { data: paidAddons } = useTenantPaidAddons();
   const role = normalizePosRole(user?.role);
   const isRegister = pathname.startsWith('/register');
   const isCashierRole = role === 'cashier';
 
   const selectedStore = stores.find((s) => String(s._id) === String(selectedStoreId));
   const tableMgmt = selectedStore?.tableManagementEnabled === true;
+  const tableAddonActive = paidAddons?.tableManagement === true;
+  const isManagerOrAdmin = ['manager', 'merchant_admin'].includes(role);
+  const showTables = tableAddonActive && (tableMgmt || isRegister || isManagerOrAdmin);
 
   const navGroups = useMemo(() => {
     const base = isRegister ? [...REGISTER_NAV_GROUPS] : [...CASHIER_NAV_GROUPS];
-    if (tableMgmt) {
+    if (showTables) {
       const tableItem = {
         title: 'Tables',
         items: [{
@@ -49,7 +55,7 @@ export function useFohrMode() {
       }
     }
     return base;
-  }, [isRegister, tableMgmt]);
+  }, [isRegister, showTables]);
 
   return useMemo(
     () => ({
