@@ -86,6 +86,31 @@ router.post('/initiate', async (req, res) => {
       return res.status(404).json({ message: 'Merchant not found' });
     }
 
+    // Check if customer exists if name is not provided (sign-in/check-in request)
+    if (!name || !name.trim()) {
+      const emailNorm = String(email || '').trim().toLowerCase();
+      let customer = null;
+      if (emailNorm) {
+        customer = await Customer.findOne({ tenantId, email: emailNorm });
+      }
+      if (!customer && mobile) {
+        customer = await Customer.findOne({ tenantId, mobile });
+      }
+      if (!customer && mobile) {
+        const md = String(mobile).replace(/\D/g, '');
+        if (md.length >= 8) {
+          customer = await Customer.findOne({ tenantId, mobileDigits: md });
+        }
+      }
+      if (!customer) {
+        const isLoyaltyEnabled = tenant.paidAddons?.loyalty === true;
+        const msg = isLoyaltyEnabled
+          ? 'Entered mobile number is not a registered user. Please get registered to enjoy the loyalty.'
+          : 'Entered mobile number is not a registered user.';
+        return res.status(400).json({ message: msg });
+      }
+    }
+
     const { isDualScreenEffective } = require('@innovapos/paid-addons');
     if (!isDualScreenEffective(tenant.paidAddons)) {
       return res.status(402).json({
@@ -257,6 +282,13 @@ router.post('/verify', async (req, res) => {
     }
 
     if (!customer) {
+      if (!checkin.name || !checkin.name.trim()) {
+        const isLoyaltyEnabled = tenant.paidAddons?.loyalty === true;
+        const msg = isLoyaltyEnabled
+          ? 'Entered mobile number is not a registered user. Please get registered to enjoy the loyalty.'
+          : 'Entered mobile number is not a registered user.';
+        return res.status(400).json({ message: msg });
+      }
       customer = await Customer.create({
         tenantId: checkin.tenantId,
         storeId: checkin.storeId,

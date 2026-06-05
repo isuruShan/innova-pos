@@ -526,9 +526,11 @@ export default function CustomerTerminal() {
                     Hi there! Wanna sign up? Just ask your cashier.
                   </p>
                 ) : (
-                  <p className="text-slate-300 text-sm leading-relaxed max-w-[260px] mb-6">
-                    You are earning loyalty points and active rewards on this order automatically!
-                  </p>
+                  paidAddons?.loyalty === true && (
+                    <p className="text-slate-300 text-sm leading-relaxed max-w-[260px] mb-6">
+                      You are earning loyalty points and active rewards on this order automatically!
+                    </p>
+                  )
                 )}
 
                 <button

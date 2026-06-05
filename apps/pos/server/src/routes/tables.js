@@ -63,7 +63,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
   try {
     const storeId = await resolveWriteStoreId(req);
     if (!storeId) return res.status(400).json({ message: 'Store required' });
-    const { label, sortOrder = 0, active = true } = req.body;
+    const { label, sortOrder = 0, active = true, capacity } = req.body;
     if (!label || !String(label).trim()) return res.status(400).json({ message: 'label is required' });
     const doc = await CafeTable.create({
       tenantId: req.tenantId,
@@ -71,6 +71,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
       label: String(label).trim(),
       sortOrder: Number(sortOrder) || 0,
       active: active !== false,
+      capacity: capacity !== undefined ? Math.min(20, Math.max(1, Number(capacity) || 4)) : 4,
       createdBy: req.user.id,
     });
     res.status(201).json(doc);
@@ -86,10 +87,11 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ message: 'Invalid id' });
     const doc = await CafeTable.findOne({ _id: req.params.id, tenantId: req.tenantId, storeId });
     if (!doc) return res.status(404).json({ message: 'Table not found' });
-    const { label, sortOrder, active } = req.body;
+    const { label, sortOrder, active, capacity } = req.body;
     if (label !== undefined) doc.label = String(label).trim();
     if (sortOrder !== undefined) doc.sortOrder = Number(sortOrder) || 0;
     if (active !== undefined) doc.active = !!active;
+    if (capacity !== undefined) doc.capacity = Math.min(20, Math.max(1, Number(capacity) || 4));
     doc.updatedBy = req.user.id;
     await doc.save();
     res.json(doc);

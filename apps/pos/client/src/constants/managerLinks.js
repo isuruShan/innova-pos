@@ -73,6 +73,7 @@ export const MANAGER_NAV_GROUPS = [
     items: [
       { to: '/register/order', label: 'New Order', icon: ShoppingCart },
       { to: '/register/orders', label: 'Order Board', icon: ClipboardList },
+      { to: '/register/tables', label: 'Table View', icon: Table, addon: 'tableManagement' },
     ],
   },
 ];

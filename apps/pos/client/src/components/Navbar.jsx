@@ -383,6 +383,11 @@ export default function Navbar({ links = [], groups: groupsProp }) {
   const { data: paidAddons } = useTenantPaidAddons();
   const activePaidAddons = paidAddons || {};
 
+  const selectedStore = useMemo(() => {
+    return stores.find((s) => String(s._id) === String(selectedStoreId));
+  }, [stores, selectedStoreId]);
+  const tableMgmtEnabled = selectedStore?.tableManagementEnabled === true;
+
   const navGroups = useMemo(() => {
     let baseGroups = [];
     if (groupsProp?.length) {
@@ -390,15 +395,37 @@ export default function Navbar({ links = [], groups: groupsProp }) {
     } else if (links.length) {
       baseGroups = [{ title: 'Menu', items: links }];
     }
-    // Filter out groups where group.addon is unsubscribed
-    return baseGroups.filter(group => {
-      if (group.addon) {
-        const active = activePaidAddons[group.addon] === true || activePaidAddons[group.addon]?.active === true;
-        if (!active) return false;
-      }
-      return true;
-    });
-  }, [groupsProp, links, activePaidAddons]);
+    
+    return baseGroups
+      .map(group => {
+        // Filter out groups where group.addon is unsubscribed
+        if (group.addon) {
+          const active = activePaidAddons[group.addon] === true || activePaidAddons[group.addon]?.active === true;
+          if (!active) return null;
+        }
+        
+        // Hide Table Management group if table management is disabled in store settings
+        if (group.addon === 'tableManagement' && !tableMgmtEnabled) {
+          return null;
+        }
+
+        const filteredItems = group.items.filter(item => {
+          // Hide individual table management links if store table management is disabled
+          if (item.addon === 'tableManagement' && !tableMgmtEnabled) {
+            return false;
+          }
+          return true;
+        });
+
+        if (!filteredItems.length) return null;
+
+        return {
+          ...group,
+          items: filteredItems,
+        };
+      })
+      .filter(Boolean);
+  }, [groupsProp, links, activePaidAddons, tableMgmtEnabled]);
 
   return (
     <>
