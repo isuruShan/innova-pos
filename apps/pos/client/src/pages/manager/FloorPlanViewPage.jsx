@@ -391,7 +391,7 @@ export default function FloorPlanViewPage() {
 
       {/* Table List Sidebar */}
       {showTableList && (
-        <div className="fixed right-0 top-0 bottom-0 w-80 bg-[var(--pos-panel)] border-l border-slate-700 shadow-2xl z-40 overflow-y-auto">
+        <div className="fixed right-0 top-0 bottom-0 w-80 bg-[var(--pos-panel)] border-l border-slate-700 shadow-2xl z-[60] overflow-y-auto">
           <div className="p-4 border-b border-slate-700 flex justify-between items-center sticky top-0 bg-[var(--pos-panel)] z-10">
             <h3 className="font-bold text-[var(--pos-text-primary)] flex items-center gap-2">
               <List size={18} />

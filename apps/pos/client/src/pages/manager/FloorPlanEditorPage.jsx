@@ -586,6 +586,19 @@ export default function FloorPlanEditorPage() {
 
       console.log('Drop event:', { newTableId, tableId, x, y, zoom, cellSize });
 
+      let updatedGridWidth = localPlan.gridWidth || 20;
+      let updatedGridHeight = localPlan.gridHeight || 15;
+      const width = newTableId ? 2 : (currentTables.find((t) => String(t.tableId) === tableId)?.width || 2);
+      const height = newTableId ? 2 : (currentTables.find((t) => String(t.tableId) === tableId)?.height || 2);
+
+      // Expand grid size if table is dragged beyond current boundaries
+      if (x + width > updatedGridWidth) {
+        updatedGridWidth = Math.min(50, Math.max(updatedGridWidth + 5, x + width));
+      }
+      if (y + height > updatedGridHeight) {
+        updatedGridHeight = Math.min(40, Math.max(updatedGridHeight + 5, y + height));
+      }
+
       if (newTableId) {
         // Adding a new table from sidebar
         const table = tables.find((t) => String(t._id) === newTableId);
@@ -604,8 +617,8 @@ export default function FloorPlanEditorPage() {
         const newTablePos = {
           tableId: table._id,
           label: table.label,
-          x: Math.max(0, Math.min(x, (localPlan.gridWidth || 20) - 2)),
-          y: Math.max(0, Math.min(y, (localPlan.gridHeight || 15) - 2)),
+          x: Math.max(0, Math.min(x, updatedGridWidth - 2)),
+          y: Math.max(0, Math.min(y, updatedGridHeight - 2)),
           width: 2,
           height: 2,
           shape: selectedShape,
@@ -617,6 +630,8 @@ export default function FloorPlanEditorPage() {
 
         setLocalPlan({
           ...localPlan,
+          gridWidth: updatedGridWidth,
+          gridHeight: updatedGridHeight,
           tables: [...currentTables, newTablePos],
         });
         setIsDirty(true);
@@ -626,14 +641,19 @@ export default function FloorPlanEditorPage() {
           if (String(t.tableId) === tableId) {
             return {
               ...t,
-              x: Math.max(0, Math.min(x, (localPlan.gridWidth || 20) - t.width)),
-              y: Math.max(0, Math.min(y, (localPlan.gridHeight || 15) - t.height)),
+              x: Math.max(0, Math.min(x, updatedGridWidth - t.width)),
+              y: Math.max(0, Math.min(y, updatedGridHeight - t.height)),
             };
           }
           return t;
         });
 
-        setLocalPlan({ ...localPlan, tables: updatedTables });
+        setLocalPlan({
+          ...localPlan,
+          gridWidth: updatedGridWidth,
+          gridHeight: updatedGridHeight,
+          tables: updatedTables,
+        });
         setIsDirty(true);
       }
       draggedTableRef.current = null;
@@ -1270,7 +1290,7 @@ export default function FloorPlanEditorPage() {
 
       {/* Table List Sidebar */}
       {showTableList && (
-        <div className="fixed right-0 top-0 bottom-0 w-80 bg-[var(--pos-panel)] border-l border-slate-700 shadow-2xl z-40 overflow-y-auto">
+        <div className="fixed right-0 top-0 bottom-0 w-80 bg-[var(--pos-panel)] border-l border-slate-700 shadow-2xl z-[60] overflow-y-auto">
           <div className="p-4 border-b border-slate-700 flex justify-between items-center sticky top-0 bg-[var(--pos-panel)] z-10">
             <h3 className="font-bold text-[var(--pos-text-primary)] flex items-center gap-2">
               <List size={18} />
