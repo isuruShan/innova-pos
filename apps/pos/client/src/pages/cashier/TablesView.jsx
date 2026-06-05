@@ -226,12 +226,12 @@ export default function TablesView() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--pos-page-bg)] text-[var(--pos-text-primary)] select-none">
+    <div className="h-screen flex flex-col bg-[var(--pos-page-bg)] text-[var(--pos-text-primary)] select-none overflow-hidden">
       <Navbar groups={fohr.navGroups} />
 
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col p-4 overflow-y-auto gap-4 lg:border-r lg:border-slate-800">
+        <div className="flex-1 flex flex-col p-4 overflow-hidden gap-4 lg:border-r lg:border-slate-800 min-h-0">
           
           {/* Header & View Switcher */}
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -298,14 +298,14 @@ export default function TablesView() {
           </div>
 
           {/* Canvas or Grid container */}
-          <div className="flex-1 bg-[var(--pos-panel)] border border-slate-800/85 rounded-2xl overflow-auto p-4 relative min-h-[400px]">
+          <div className="flex-1 bg-[var(--pos-panel)] border border-slate-800/85 rounded-2xl overflow-auto p-4 relative min-h-0">
             {viewType === 'floor' && floorPlan ? (
               /* Floor Plan rendering */
               <div
                 className="relative"
                 style={{
-                  width: `${floorPlan.gridWidth * 150}px`,
-                  height: `${floorPlan.gridHeight * 150}px`,
+                  width: `${floorPlan.gridWidth * 50}px`,
+                  height: `${floorPlan.gridHeight * 50}px`,
                   backgroundImage:
                     'linear-gradient(to right, var(--pos-grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--pos-grid-line) 1px, transparent 1px)',
                   backgroundSize: '50px 50px',

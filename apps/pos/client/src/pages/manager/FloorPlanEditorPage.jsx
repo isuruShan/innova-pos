@@ -895,14 +895,14 @@ export default function FloorPlanEditorPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--pos-page-bg)]">
+    <div className="h-screen flex flex-col bg-[var(--pos-page-bg)] overflow-hidden">
       <Navbar groups={MANAGER_NAV_GROUPS} />
 
-      <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4">
+      <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4 overflow-hidden min-h-0">
         {/* Main Canvas Area */}
-        <div className="flex-1 flex flex-col gap-4">
+        <div className="flex-1 flex flex-col gap-4 overflow-hidden min-h-0">
           {/* Toolbar */}
-          <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-3 flex flex-wrap items-center gap-3">
+          <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-3 flex flex-wrap items-center gap-3 shrink-0">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setSelectedShape(null)}
@@ -1007,7 +1007,7 @@ export default function FloorPlanEditorPage() {
           </div>
 
           {/* Canvas */}
-          <div className="flex-1 bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl overflow-auto min-h-[400px]">
+          <div className="flex-1 bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl overflow-auto min-h-0">
             {isLoading ? (
               <div className="flex items-center justify-center h-full text-slate-400">
                 Loading floor plan...
@@ -1092,7 +1092,7 @@ export default function FloorPlanEditorPage() {
         </div>
 
         {/* Sidebar */}
-        <div className="w-full lg:w-72 flex flex-col gap-4">
+        <div className="w-full lg:w-72 flex flex-col gap-4 overflow-y-auto shrink-0 min-h-0">
           {/* Multi-Select Actions */}
           {selectedTables.length > 0 && (
             <div className="bg-[var(--pos-panel)] border border-amber-500/60 rounded-xl p-4 space-y-3">

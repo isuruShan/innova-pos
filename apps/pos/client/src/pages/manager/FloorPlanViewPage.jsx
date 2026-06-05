@@ -289,10 +289,10 @@ export default function FloorPlanViewPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--pos-page-bg)]">
+    <div className="h-screen flex flex-col bg-[var(--pos-page-bg)] overflow-hidden">
       <Navbar groups={MANAGER_NAV_GROUPS} />
 
-      <div className="flex-1 flex flex-col p-4 gap-4">
+      <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden min-h-0">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-xl font-bold text-[var(--pos-text-primary)] flex items-center gap-2">
@@ -350,7 +350,7 @@ export default function FloorPlanViewPage() {
         </div>
 
         {/* Floor Plan Canvas */}
-        <div className="flex-1 bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl overflow-auto p-4">
+        <div className="flex-1 bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl overflow-auto p-4 min-h-0">
           {isLoading ? (
             <div className="flex items-center justify-center h-full text-slate-400">
               Loading floor plan...
