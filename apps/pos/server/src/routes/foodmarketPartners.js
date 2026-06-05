@@ -4,6 +4,22 @@ const { protect, authorize, tenantScope } = require('../middleware/auth');
 
 const router = express.Router();
 
+const { presignObjectKey } = require('../utils/s3Runtime');
+
+// Helper to resolve partner logoKey to fresh presigned logoUrl
+async function resolvePartnerLogo(partner) {
+  if (!partner) return null;
+  const doc = partner.toObject ? partner.toObject() : partner;
+  if (doc.logoKey) {
+    try {
+      doc.logoUrl = await presignObjectKey(doc.logoKey, 86400); // 24-hour expiry
+    } catch (err) {
+      // ignore
+    }
+  }
+  return doc;
+}
+
 // Helper to seed default partners
 async function seedDefaultPartners(tenantId) {
   const defaults = [
@@ -23,7 +39,8 @@ router.get('/', protect, tenantScope, async (req, res) => {
   try {
     await seedDefaultPartners(req.tenantId);
     const partners = await FoodmarketPartner.find({ tenantId: req.tenantId }).sort({ name: 1 });
-    res.json(partners);
+    const enriched = await Promise.all(partners.map(p => resolvePartnerLogo(p)));
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -50,7 +67,8 @@ router.post('/', protect, authorize('merchant_admin', 'superadmin'), tenantScope
       icon: icon || '🛵',
       color: color || '#10b981',
     });
-    res.status(201).json(partner);
+    const enriched = await resolvePartnerLogo(partner);
+    res.status(201).json(enriched);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -77,7 +95,8 @@ router.put('/:id', protect, authorize('merchant_admin', 'superadmin'), tenantSco
       { new: true, runValidators: true }
     );
     if (!partner) return res.status(404).json({ message: 'Partner not found' });
-    res.json(partner);
+    const enriched = await resolvePartnerLogo(partner);
+    res.json(enriched);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }

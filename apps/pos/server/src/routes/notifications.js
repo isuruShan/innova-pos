@@ -15,7 +15,7 @@ router.get('/unread-count', protect, tenantScope, async (req, res) => {
       tenantId: req.tenantId,
       userId: req.user.id,
       readAt: null,
-      type: { $nin: ['table_waiter_call', 'qr_order_updated'] },
+      type: 'order_status_changed',
     });
     res.json({ count: n });
   } catch (err) {
@@ -88,7 +88,11 @@ router.get('/', protect, tenantScope, async (req, res) => {
     );
     const skip = Math.max(0, parseInt(req.query.skip, 10) || 0);
 
-    const base = { tenantId: req.tenantId, userId: req.user.id };
+    const base = {
+      tenantId: req.tenantId,
+      userId: req.user.id,
+      type: { $in: ['order_status_changed', 'table_waiter_call', 'qr_order_updated'] },
+    };
     const parts = [];
 
     const typeParam = (req.query.type || '').trim();
