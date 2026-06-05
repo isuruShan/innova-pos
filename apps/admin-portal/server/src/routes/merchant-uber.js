@@ -120,7 +120,7 @@ router.post('/menu/sync', authenticateJWT, authorize('merchant_admin'), tenantSc
       return res.status(400).json({ message: 'Valid storeId is required.' });
     }
 
-    const posUrl = process.env.POS_SERVER_URL || 'http://localhost:5000';
+    const posUrl = process.env.POS_URL || 'http://localhost:5000';
     
     // Call the POS server to run the sync
     const response = await axios.post(`${posUrl}/api/uber/menu/sync`, { storeId }, {

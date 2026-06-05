@@ -139,7 +139,7 @@ router.get('/status', resolveSelectedStore, async (req, res) => {
       tableId: { $ne: null },
       status: { $nin: ['completed', 'cancelled'] },
     })
-      .select('tableId status orderNumber createdAt total')
+      .select('tableId status orderNumber createdAt total guestsCount')
       .lean();
 
     // Get upcoming reservations
@@ -173,6 +173,7 @@ router.get('/status', resolveSelectedStore, async (req, res) => {
         orderTotal: o.total || 0,
         seatedAt: o.createdAt,
         seatedMinutes,
+        guestsCount: o.guestsCount || null,
       };
     });
 

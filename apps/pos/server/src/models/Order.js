@@ -62,6 +62,7 @@ const orderSchema = new mongoose.Schema(
     tableNumber: { type: String, default: '' },
     /** Set when store.tableManagementEnabled — links to CafeTable */
     tableId: { type: mongoose.Schema.Types.ObjectId, ref: 'CafeTable', default: null, index: true },
+    guestsCount: { type: Number, default: null },
     reference: { type: String, default: '' },
     items: [orderItemSchema],
     status: {

@@ -1193,6 +1193,7 @@ export default function NewOrder() {
       tableNumber: orderType === 'dine-in' && !tableMgmt ? tableNumber.trim() : '',
       reference: orderType !== 'dine-in' ? nonDineInReference : '',
       items: cart,
+      guestsCount: activeDraft.guestsCount || null,
       paymentType,
       paymentAmount,
       cashTender,
@@ -1225,6 +1226,7 @@ export default function NewOrder() {
       tableNumber: orderType === 'dine-in' && !tableMgmt ? tableNumber.trim() : '',
       reference: orderType !== 'dine-in' ? nonDineInReference : '',
       items: cart,
+      guestsCount: activeDraft.guestsCount || null,
       ...(selectedCustomer?._id ? { customerId: selectedCustomer._id } : {}),
       ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0 && !deferPayment
         ? { loyaltyRewardId: selectedLoyaltyRewardId }

@@ -470,6 +470,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
       ...(orderType === 'dine-in' && tableMgmt ? { tableId: selectedTableId } : {}),
       ...(orderType === 'dine-in' ? { tableNumber: tableNumber.trim() } : {}),
       reference,
+      guestsCount: order.guestsCount || null,
       items: items.map((i) => ({
         menuItem: i.menuItem,
         qty: i.qty,

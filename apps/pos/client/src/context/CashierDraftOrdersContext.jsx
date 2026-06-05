@@ -86,6 +86,18 @@ export function useCashierDraftOrders(storeId) {
     return draft.id;
   }, [ctx, storeId]);
 
+  const addDraftWithTable = useCallback((tableId, tableLabel) => {
+    const draft = createEmptyDraft();
+    draft.orderType = 'dine-in';
+    draft.selectedTableId = tableId;
+    draft.tableNumber = tableLabel;
+    ctx.updateStore(storeId, (state) => ({
+      activeDraftId: draft.id,
+      drafts: [...state.drafts, draft],
+    }));
+    return draft.id;
+  }, [ctx, storeId]);
+
   const removeDraft = useCallback((draftId) => {
     ctx.updateStore(storeId, (state) => {
       if (state.drafts.length <= 1) {
@@ -125,6 +137,7 @@ export function useCashierDraftOrders(storeId) {
     patchActiveDraft,
     selectDraft,
     addDraft,
+    addDraftWithTable,
     removeDraft,
     clearActiveDraftAfterSubmit,
     resetStoreDrafts,

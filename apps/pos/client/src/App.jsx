@@ -42,6 +42,7 @@ import TableAnalyticsPage from './pages/manager/TableAnalyticsPage';
 import ReportsPortal from './pages/manager/ReportsPortal';
 import SubscriptionBlocked from './pages/SubscriptionBlocked';
 import SubscriptionExpiredPage from './pages/SubscriptionExpiredPage';
+import TablesView from './pages/cashier/TablesView';
 import WastageManagement from './pages/manager/WastageManagement';
 import StockReconciliation from './pages/manager/StockReconciliation';
 
@@ -132,6 +133,11 @@ export default function App() {
                     <DayEndReport />
                   </RoleRoute>
                 } />
+                <Route path="/cashier/tables" element={
+                  <RoleRoute roles={['cashier']}>
+                    <TablesView />
+                  </RoleRoute>
+                } />
 
                 <Route path="/register/order" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
@@ -146,6 +152,11 @@ export default function App() {
                 <Route path="/register/order-history" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
                     <CashierOrderHistory />
+                  </RoleRoute>
+                } />
+                <Route path="/register/tables" element={
+                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                    <TablesView />
                   </RoleRoute>
                 } />
 

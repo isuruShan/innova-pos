@@ -187,6 +187,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       customerId,
       loyaltyRewardId,
       foodmarketPartnerId,
+      guestsCount,
     } = req.body;
     if (!items || items.length === 0)
       return res.status(400).json({ message: 'Items are required' });
@@ -429,6 +430,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       orderType,
       tableNumber: resolvedTableLabel,
       ...(resolvedTableId ? { tableId: resolvedTableId } : {}),
+      guestsCount: guestsCount !== undefined ? (Number(guestsCount) || null) : null,
       reference: reference || '',
       items: enrichedItems,
       subtotal: Math.round(subtotal * 100) / 100,
@@ -564,7 +566,7 @@ router.put('/:id', protect, authorize('cashier', 'manager', 'merchant_admin'), t
     if (['completed', 'cancelled'].includes(order.status))
       return res.status(400).json({ message: `Cannot edit a ${order.status} order` });
 
-    const { orderType, tableNumber, tableId: tableIdRaw, reference, items } = req.body;
+    const { orderType, tableNumber, tableId: tableIdRaw, reference, items, guestsCount } = req.body;
 
     const storeDoc = await Store.findById(order.storeId).lean();
     const tableMgmt = storeDoc?.tableManagementEnabled === true;
@@ -607,6 +609,9 @@ router.put('/:id', protect, authorize('cashier', 'manager', 'merchant_admin'), t
     }
 
     if (reference !== undefined) order.reference = reference;
+    if (guestsCount !== undefined) {
+      order.guestsCount = guestsCount !== null ? (Number(guestsCount) || null) : null;
+    }
 
     if (items && items.length > 0) {
       const sigBefore = itemKitchenAddsSignature(order.items);
