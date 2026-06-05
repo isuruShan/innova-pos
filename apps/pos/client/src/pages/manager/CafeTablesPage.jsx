@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Table, QrCode, RefreshCw } from 'lucide-react';
+import { Plus, Pencil, Trash2, Table, QrCode, RefreshCw, X } from 'lucide-react';
 import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { adminPath, getQrOrderWebOrigin } from '@innovapos/app-urls';
+import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 
 function orderPageUrlForTable(tenantId, storeId, tableId) {
   const base = getQrOrderWebOrigin();
@@ -43,12 +44,17 @@ export default function CafeTablesPage() {
   const tenantId = user?.tenantId;
   const { selectedStoreId, isStoreReady, stores } = useStoreContext();
   const selectedStore = stores.find((s) => String(s._id) === String(selectedStoreId));
+  const { data: paidAddons } = useTenantPaidAddons();
+  const qrAddonActive = paidAddons?.qrOrdering === true;
+
   const [label, setLabel] = useState('');
   const [sortOrder, setSortOrder] = useState('0');
   const [editing, setEditing] = useState(null);
   const [editLabel, setEditLabel] = useState('');
   const [editSort, setEditSort] = useState('0');
   const [editActive, setEditActive] = useState(true);
+  const [editCapacity, setEditCapacity] = useState(4);
+  const [editShape, setEditShape] = useState('rectangle');
   const [error, setError] = useState('');
 
   const { data: tables = [], isPending } = useQuery({
@@ -59,6 +65,7 @@ export default function CafeTablesPage() {
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['pos-tables'] });
+    qc.invalidateQueries({ queryKey: ['floor-plan'] });
   };
 
   const updateStoreMutation = useMutation({
@@ -197,22 +204,39 @@ export default function CafeTablesPage() {
               </button>
             </form>
 
-            <div className="rounded-xl border border-teal-700/40 bg-teal-950/25 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-teal-100">QR Ordering is a paid add-on</p>
-                <p className="text-xs text-slate-400 mt-1">
-                  Merchants activate it in the admin portal (subscription). Until it is active, guests opening your table
-                  QR link will see an error.
-                </p>
+            {qrAddonActive ? (
+              <div className="rounded-xl border border-green-700/40 bg-green-950/25 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-green-100 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-400" />
+                    QR Ordering is Active
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Guests can scan the QR codes below to browse your menu, build a cart, and place orders directly from their phones.
+                  </p>
+                </div>
+                <div className="text-xs font-semibold px-3 py-1.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/35 shrink-0 select-none text-center">
+                  Active
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setQrAddonModal(true)}
-                className="text-sm font-semibold px-4 py-2 rounded-lg bg-teal-600 text-white hover:bg-teal-500 shrink-0"
-              >
-                What is this? & subscribe
-              </button>
-            </div>
+            ) : (
+              <div className="rounded-xl border border-teal-700/40 bg-teal-950/25 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-teal-100">QR Ordering is a paid add-on</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Merchants activate it in the admin portal (subscription). Until it is active, guests opening your table
+                    QR link will see an error.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setQrAddonModal(true)}
+                  className="text-sm font-semibold px-4 py-2 rounded-lg bg-teal-600 text-white hover:bg-teal-500 shrink-0"
+                >
+                  What is this? & subscribe
+                </button>
+              </div>
+            )}
 
             <div className="rounded-xl border border-slate-700/60 bg-[var(--pos-panel)] overflow-hidden">
               {isPending ? (
@@ -225,6 +249,8 @@ export default function CafeTablesPage() {
                     <thead className="bg-slate-800/80 border-b border-slate-700">
                       <tr>
                         <th className="text-left px-4 py-2 font-semibold text-slate-400">Label</th>
+                        <th className="text-left px-4 py-2 font-semibold text-slate-400">Capacity</th>
+                        <th className="text-left px-4 py-2 font-semibold text-slate-400">Shape</th>
                         <th className="text-left px-4 py-2 font-semibold text-slate-400">Sort</th>
                         <th className="text-left px-4 py-2 font-semibold text-slate-400">Active</th>
                         <th className="text-left px-4 py-2 font-semibold text-slate-400">
@@ -239,6 +265,8 @@ export default function CafeTablesPage() {
                       {tables.map((t) => (
                         <tr key={t._id}>
                           <td className="px-4 py-3 font-medium text-[var(--pos-text-primary)]">{t.label}</td>
+                          <td className="px-4 py-3 text-slate-400">{t.capacity || 4}</td>
+                          <td className="px-4 py-3 text-slate-400 capitalize">{t.shape || 'rectangle'}</td>
                           <td className="px-4 py-3 text-slate-400">{t.sortOrder}</td>
                           <td className="px-4 py-3 text-slate-400">{t.active ? 'Yes' : 'No'}</td>
                           <td className="px-4 py-3 align-top">
@@ -253,6 +281,8 @@ export default function CafeTablesPage() {
                                 setEditLabel(t.label || '');
                                 setEditSort(String(t.sortOrder ?? 0));
                                 setEditActive(t.active !== false);
+                                setEditCapacity(t.capacity || 4);
+                                setEditShape(t.shape || 'rectangle');
                               }}
                             >
                               <Pencil size={14} className="inline mr-1" />
@@ -342,13 +372,50 @@ export default function CafeTablesPage() {
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="bg-[var(--pos-panel)] rounded-2xl w-full max-w-sm p-6 shadow-xl border border-slate-700 space-y-3">
-            <h3 className="font-bold text-[var(--pos-text-primary)]">Edit table</h3>
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-[var(--pos-text-primary)]">Edit table</h3>
+              <button 
+                onClick={() => setEditing(null)} 
+                className="text-slate-500 hover:text-slate-300 transition p-1 rounded-lg hover:bg-slate-700"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
             <label className="block text-xs text-slate-400">Label</label>
             <input
               className="w-full border border-slate-600 rounded-lg px-3 py-2 text-sm bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)]"
               value={editLabel}
               onChange={(e) => setEditLabel(e.target.value)}
             />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Capacity</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  className="w-full border border-slate-600 rounded-lg px-3 py-2 text-sm bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)]"
+                  value={editCapacity}
+                  onChange={(e) => setEditCapacity(parseInt(e.target.value) || 1)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Shape</label>
+                <select
+                  className="w-full border border-slate-600 rounded-lg px-3 py-2 text-sm bg-[var(--pos-panel)] text-[var(--pos-text-primary)] focus:outline-none"
+                  value={editShape}
+                  onChange={(e) => setEditShape(e.target.value)}
+                >
+                  <option value="rectangle">Rectangle</option>
+                  <option value="round">Round</option>
+                  <option value="booth">Booth</option>
+                  <option value="bar">Bar</option>
+                </select>
+              </div>
+            </div>
+
             <label className="block text-xs text-slate-400">Sort order</label>
             <input
               type="number"
@@ -378,6 +445,8 @@ export default function CafeTablesPage() {
                       label: editLabel.trim(),
                       sortOrder: Number(editSort) || 0,
                       active: editActive,
+                      capacity: Number(editCapacity) || 4,
+                      shape: editShape,
                     },
                   })
                 }

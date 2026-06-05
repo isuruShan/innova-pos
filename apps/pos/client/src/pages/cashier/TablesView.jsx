@@ -436,188 +436,183 @@ export default function TablesView() {
         </div>
 
         {/* Sidebar Action Panel */}
-        <div className="w-full lg:w-80 bg-[var(--pos-panel)] border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col shrink-0">
-          <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-[var(--pos-panel)]">
-            <h3 className="font-bold text-sm flex items-center gap-2">
-              Details Panel
-            </h3>
-            {selectedTableId && (
+        {selectedTableId && (
+          <div className="w-full lg:w-80 bg-[var(--pos-panel)] border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col shrink-0">
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-[var(--pos-panel)]">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                Details Panel
+              </h3>
               <button
                 onClick={() => setSelectedTableId(null)}
                 className="text-slate-500 hover:text-slate-300 transition p-1 rounded-lg hover:bg-slate-800"
               >
                 <X size={16} />
               </button>
-            )}
-          </div>
+            </div>
 
-          <div className="flex-1 p-4 overflow-y-auto space-y-4">
-            {selectedTable ? (
-              <div className="space-y-4">
-                {/* Table general info */}
-                <div>
-                  <h2 className="text-xl font-bold">{selectedTable.label}</h2>
-                  <p className="text-xs text-slate-500 mt-1">Capacity: {selectedTable.capacity} guests</p>
-                </div>
+            <div className="flex-1 p-4 overflow-y-auto space-y-4">
+              {selectedTable && (
+                <div className="space-y-4">
+                  {/* Table general info */}
+                  <div>
+                    <h2 className="text-xl font-bold">{selectedTable.label}</h2>
+                    <p className="text-xs text-slate-500 mt-1">Capacity: {selectedTable.capacity} guests</p>
+                  </div>
 
-                {/* Status Section */}
-                <div className="p-3 bg-[var(--pos-surface-inset)] border border-slate-800 rounded-xl">
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Current Status</p>
-                  
-                  {selectedTableStatus.status === 'occupied' && (
-                    <div className="mt-2 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                        <span className="text-sm font-bold text-red-400">Occupied</span>
-                      </div>
-                      
-                      <div className="space-y-1.5 text-xs text-slate-400 pt-2 border-t border-slate-800">
-                        <div className="flex justify-between">
-                          <span>Order ID:</span>
-                          <span className="font-mono text-slate-200 font-bold">#{String(selectedTableStatus.orderNumber).padStart(3, '0')}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Status:</span>
-                          <span className="capitalize text-slate-200 font-semibold">{selectedTableStatus.orderStatus}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Seated Time:</span>
-                          <span className="text-slate-200">{selectedTableStatus.seatedMinutes} mins ago</span>
-                        </div>
-                      </div>
-
-                      {/* Guest Count Setter for active occupied table */}
-                      <div className="pt-2 border-t border-slate-800 space-y-2">
-                        <label className="text-xs font-semibold text-slate-400 block">Guests Seated</label>
+                  {/* Status Section */}
+                  <div className="p-3 bg-[var(--pos-surface-inset)] border border-slate-800 rounded-xl">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Current Status</p>
+                    
+                    {selectedTableStatus.status === 'occupied' && (
+                      <div className="mt-2 space-y-3">
                         <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            disabled={localGuestsCount <= 1}
-                            onClick={() => setLocalGuestsCount(p => Math.max(1, p - 1))}
-                            className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition disabled:opacity-50"
-                          >
-                            -
-                          </button>
-                          <input
-                            type="number"
-                            min={1}
-                            max={20}
-                            value={localGuestsCount}
-                            onChange={(e) => setLocalGuestsCount(Math.max(1, parseInt(e.target.value) || 1))}
-                            className="w-14 bg-slate-900 border border-slate-700 text-center text-sm font-semibold rounded-lg py-1 focus:outline-none"
-                          />
-                          <button
-                            type="button"
-                            disabled={localGuestsCount >= 20}
-                            onClick={() => setLocalGuestsCount(p => Math.min(20, p + 1))}
-                            className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition"
-                          >
-                            +
-                          </button>
-                          <button
-                            type="button"
-                            disabled={savingGuests || localGuestsCount === selectedTableStatus.guestsCount}
-                            onClick={handleSaveGuestsCount}
-                            className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-semibold text-xs py-2 rounded-lg transition flex items-center justify-center gap-1.5"
-                          >
-                            <Save size={12} />
-                            {savingGuests ? 'Saving...' : 'Save'}
-                          </button>
+                          <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                          <span className="text-sm font-bold text-red-400">Occupied</span>
                         </div>
-                        {successMessage && (
-                          <p className="text-[10px] text-green-400 text-center font-medium mt-1 animate-fade-in">{successMessage}</p>
+                        
+                        <div className="space-y-1.5 text-xs text-slate-400 pt-2 border-t border-slate-800">
+                          <div className="flex justify-between">
+                            <span>Order ID:</span>
+                            <span className="font-mono text-slate-200 font-bold">#{String(selectedTableStatus.orderNumber).padStart(3, '0')}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Status:</span>
+                            <span className="capitalize text-slate-200 font-semibold">{selectedTableStatus.orderStatus}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Seated Time:</span>
+                            <span className="text-slate-200">{selectedTableStatus.seatedMinutes} mins ago</span>
+                          </div>
+                        </div>
+
+                        {/* Guest Count Setter for active occupied table */}
+                        <div className="pt-2 border-t border-slate-800 space-y-2">
+                          <label className="text-xs font-semibold text-slate-400 block">Guests Seated</label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={localGuestsCount <= 1}
+                              onClick={() => setLocalGuestsCount(p => Math.max(1, p - 1))}
+                              className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition disabled:opacity-50"
+                            >
+                              -
+                            </button>
+                            <input
+                              type="number"
+                              min={1}
+                              max={20}
+                              value={localGuestsCount}
+                              onChange={(e) => setLocalGuestsCount(Math.max(1, parseInt(e.target.value) || 1))}
+                              className="w-14 bg-slate-900 border border-slate-700 text-center text-sm font-semibold rounded-lg py-1 focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              disabled={localGuestsCount >= 20}
+                              onClick={() => setLocalGuestsCount(p => Math.min(20, p + 1))}
+                              className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition"
+                            >
+                              +
+                            </button>
+                            <button
+                              type="button"
+                              disabled={savingGuests || localGuestsCount === selectedTableStatus.guestsCount}
+                              onClick={handleSaveGuestsCount}
+                              className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-semibold text-xs py-2 rounded-lg transition flex items-center justify-center gap-1.5"
+                            >
+                              <Save size={12} />
+                              {savingGuests ? 'Saving...' : 'Save'}
+                            </button>
+                          </div>
+                          {successMessage && (
+                            <p className="text-[10px] text-green-400 text-center font-medium mt-1 animate-fade-in">{successMessage}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedTableStatus.status === 'reserved' && (
+                      <div className="mt-2 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
+                          <span className="text-sm font-bold text-yellow-400">Reserved</span>
+                        </div>
+                        
+                        <div className="space-y-1 text-xs text-slate-400 pt-2 border-t border-slate-800">
+                          <p className="font-semibold text-slate-200">{selectedTableStatus.guestName || 'Guest'}</p>
+                          <p>{selectedTableStatus.partySize || selectedTable.capacity} guests</p>
+                          <p className="text-yellow-400/90 font-medium mt-1">
+                            Reservation Time: {new Date(selectedTableStatus.reservationTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedTableStatus.status === 'available' && (
+                      <div className="mt-2 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                          <span className="text-sm font-bold text-green-400">Available</span>
+                        </div>
+                        
+                        {/* Guest Picker for starting a new order */}
+                        <div className="pt-2 border-t border-slate-800 space-y-2">
+                          <label className="text-xs font-semibold text-slate-400 block">Number of Guests</label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={localGuestsCount <= 1}
+                              onClick={() => setLocalGuestsCount(p => Math.max(1, p - 1))}
+                              className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition disabled:opacity-50"
+                            >
+                              -
+                            </button>
+                            <span className="w-12 text-center text-sm font-semibold">{localGuestsCount}</span>
+                            <button
+                              type="button"
+                              disabled={localGuestsCount >= 20}
+                              onClick={() => setLocalGuestsCount(p => Math.min(20, p + 1))}
+                              className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Operations Buttons */}
+                  <div className="space-y-2 pt-2">
+                    {selectedTableStatus.status === 'occupied' ? (
+                      <button
+                        onClick={() => handleOpenOrder(selectedTableStatus.orderId)}
+                        disabled={loadingOrder}
+                        className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2"
+                      >
+                        {loadingOrder ? (
+                          <span>Loading...</span>
+                        ) : (
+                          <>
+                            <span>View / Edit Order</span>
+                            <ChevronRight size={16} />
+                          </>
                         )}
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedTableStatus.status === 'reserved' && (
-                    <div className="mt-2 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
-                        <span className="text-sm font-bold text-yellow-400">Reserved</span>
-                      </div>
-                      
-                      <div className="space-y-1 text-xs text-slate-400 pt-2 border-t border-slate-800">
-                        <p className="font-semibold text-slate-200">{selectedTableStatus.guestName || 'Guest'}</p>
-                        <p>{selectedTableStatus.partySize || selectedTable.capacity} guests</p>
-                        <p className="text-yellow-400/90 font-medium mt-1">
-                          Reservation Time: {new Date(selectedTableStatus.reservationTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedTableStatus.status === 'available' && (
-                    <div className="mt-2 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                        <span className="text-sm font-bold text-green-400">Available</span>
-                      </div>
-                      
-                      {/* Guest Picker for starting a new order */}
-                      <div className="pt-2 border-t border-slate-800 space-y-2">
-                        <label className="text-xs font-semibold text-slate-400 block">Number of Guests</label>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            disabled={localGuestsCount <= 1}
-                            onClick={() => setLocalGuestsCount(p => Math.max(1, p - 1))}
-                            className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition disabled:opacity-50"
-                          >
-                            -
-                          </button>
-                          <span className="w-12 text-center text-sm font-semibold">{localGuestsCount}</span>
-                          <button
-                            type="button"
-                            disabled={localGuestsCount >= 20}
-                            onClick={() => setLocalGuestsCount(p => Math.min(20, p + 1))}
-                            className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleStartOrder(selectedTable._id, selectedTable.label, localGuestsCount)}
+                        className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"
+                      >
+                        <UserPlus size={16} />
+                        <span>Start Dine-In Order</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
-
-                {/* Operations Buttons */}
-                <div className="space-y-2 pt-2">
-                  {selectedTableStatus.status === 'occupied' ? (
-                    <button
-                      onClick={() => handleOpenOrder(selectedTableStatus.orderId)}
-                      disabled={loadingOrder}
-                      className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2"
-                    >
-                      {loadingOrder ? (
-                        <span>Loading...</span>
-                      ) : (
-                        <>
-                          <span>View / Edit Order</span>
-                          <ChevronRight size={16} />
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleStartOrder(selectedTable._id, selectedTable.label, localGuestsCount)}
-                      className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"
-                    >
-                      <UserPlus size={16} />
-                      <span>Start Dine-In Order</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-48 text-center text-slate-500">
-                <Utensils size={32} className="opacity-30 mb-2" />
-                <p className="text-xs">Click on any table to view options and seat guests</p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Order details Slide-Over */}

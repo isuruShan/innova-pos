@@ -112,6 +112,22 @@ router.put(
         { new: true, upsert: true, runValidators: true }
       );
 
+      // Sync updated table capacity/shape back to CafeTable collection
+      if (tables && Array.isArray(tables)) {
+        for (const t of tables) {
+          const updateObj = {};
+          if (t.capacity !== undefined) updateObj.capacity = Math.min(20, Math.max(1, Number(t.capacity) || 4));
+          if (t.shape !== undefined) updateObj.shape = String(t.shape).trim();
+          
+          if (Object.keys(updateObj).length > 0) {
+            await CafeTable.updateOne(
+              { _id: t.tableId, tenantId: req.tenantId, storeId },
+              { $set: updateObj }
+            );
+          }
+        }
+      }
+
       res.json(plan);
     } catch (err) {
       sendRouteError(res, err, { req });

@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { getQrOrderWebOrigin } from '@innovapos/app-urls';
+import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 
 const STATUS_STYLES = {
   available: {
@@ -220,6 +221,8 @@ export default function FloorPlanViewPage() {
   const selectedStore = stores.find((s) => String(s._id) === String(selectedStoreId));
   const qc = useQueryClient();
   const { user } = useAuth();
+  const { data: paidAddons } = useTenantPaidAddons();
+  const qrOrderEnabled = paidAddons?.qrOrdering === true;
 
   const [showTableList, setShowTableList] = useState(false);
   const [editingTableId, setEditingTableId] = useState(null);
@@ -452,12 +455,13 @@ export default function FloorPlanViewPage() {
         isOpen={!!editingTableId}
         onClose={() => setEditingTableId(null)}
         table={tables.find(t => t._id === editingTableId)}
-        qrOrderEnabled={selectedStore?.qrOrderingEnabled}
+        qrOrderEnabled={qrOrderEnabled}
         tenantId={user?.tenantId}
         storeId={selectedStoreId}
         onSave={async (data) => {
           await api.put(`/tables/${editingTableId}`, data);
           qc.invalidateQueries({ queryKey: ['pos-tables'] });
+          qc.invalidateQueries({ queryKey: ['floor-plan'] });
           setEditingTableId(null);
           setErrorMessage('Table updated successfully');
           setTimeout(() => setErrorMessage(null), 3000);

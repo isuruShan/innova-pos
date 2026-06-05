@@ -8,9 +8,10 @@ import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { getQrOrderWebOrigin } from '@innovapos/app-urls';
+import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 
 const SHAPES = [
   { id: 'rectangle', icon: Square, label: 'Rectangle' },
@@ -308,6 +309,9 @@ function Zone({ zone, zoom = 1 }) {
 
 export default function FloorPlanEditorPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { data: paidAddons } = useTenantPaidAddons();
+  const qrOrderEnabled = paidAddons?.qrOrdering === true;
   const { selectedStoreId, isStoreReady, stores } = useStoreContext();
   const { user } = useAuth();
   const selectedStore = stores.find((s) => String(s._id) === String(selectedStoreId));
@@ -413,6 +417,7 @@ export default function FloorPlanEditorPage() {
       qc.invalidateQueries({ queryKey: ['floor-plan'] });
       setIsDirty(false);
       setErrorMessage(null);
+      navigate('/manager/floor-plan');
     },
     onError: (err) => {
       const message = err.response?.data?.message || 'Failed to save floor plan';
@@ -1123,7 +1128,17 @@ export default function FloorPlanEditorPage() {
             <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4 space-y-4">
               <h3 className="font-semibold text-[var(--pos-text-primary)] flex items-center justify-between">
                 Table Properties
-                <div className="flex gap-1">
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      setSelectedTable(null);
+                      setSelectedTables([]);
+                    }}
+                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-350 hover:bg-slate-800 transition"
+                    title="Close properties panel"
+                  >
+                    <X size={14} />
+                  </button>
                   <button
                     onClick={handleDeleteSelected}
                     className="p-1.5 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30"
@@ -1338,17 +1353,28 @@ export default function FloorPlanEditorPage() {
         </div>
       )}
 
-      {/* Table Edit Modal */}
+       {/* Table Edit Modal */}
       <TableEditModal
         isOpen={!!editingTableId}
         onClose={() => setEditingTableId(null)}
         table={tables.find(t => t._id === editingTableId)}
-        qrOrderEnabled={selectedStore?.qrOrderingEnabled}
+        qrOrderEnabled={qrOrderEnabled}
         tenantId={user?.tenantId}
         storeId={selectedStoreId}
         onSave={async (data) => {
           await api.put(`/tables/${editingTableId}`, data);
           qc.invalidateQueries({ queryKey: ['pos-tables'] });
+          qc.invalidateQueries({ queryKey: ['floor-plan'] });
+          if (localPlan && localPlan.tables) {
+            const updatedTables = localPlan.tables.map(t => {
+              if (String(t.tableId) === String(editingTableId)) {
+                return { ...t, label: data.label, capacity: Number(data.capacity) || 4 };
+              }
+              return t;
+            });
+            setLocalPlan({ ...localPlan, tables: updatedTables });
+            setIsDirty(true);
+          }
           setEditingTableId(null);
           setErrorMessage('Table updated successfully');
           setTimeout(() => setErrorMessage(null), 3000);

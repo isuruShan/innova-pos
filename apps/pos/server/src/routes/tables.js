@@ -63,7 +63,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
   try {
     const storeId = await resolveWriteStoreId(req);
     if (!storeId) return res.status(400).json({ message: 'Store required' });
-    const { label, sortOrder = 0, active = true, capacity } = req.body;
+    const { label, sortOrder = 0, active = true, capacity, shape } = req.body;
     if (!label || !String(label).trim()) return res.status(400).json({ message: 'label is required' });
     const doc = await CafeTable.create({
       tenantId: req.tenantId,
@@ -72,6 +72,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
       sortOrder: Number(sortOrder) || 0,
       active: active !== false,
       capacity: capacity !== undefined ? Math.min(20, Math.max(1, Number(capacity) || 4)) : 4,
+      shape: shape !== undefined ? String(shape).trim() : 'rectangle',
       createdBy: req.user.id,
     });
     res.status(201).json(doc);
@@ -87,13 +88,29 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ message: 'Invalid id' });
     const doc = await CafeTable.findOne({ _id: req.params.id, tenantId: req.tenantId, storeId });
     if (!doc) return res.status(404).json({ message: 'Table not found' });
-    const { label, sortOrder, active, capacity } = req.body;
+    const { label, sortOrder, active, capacity, shape } = req.body;
     if (label !== undefined) doc.label = String(label).trim();
     if (sortOrder !== undefined) doc.sortOrder = Number(sortOrder) || 0;
     if (active !== undefined) doc.active = !!active;
     if (capacity !== undefined) doc.capacity = Math.min(20, Math.max(1, Number(capacity) || 4));
+    if (shape !== undefined) doc.shape = String(shape).trim();
     doc.updatedBy = req.user.id;
     await doc.save();
+
+    // Sync FloorPlan document if table is updated
+    const FloorPlan = require('../models/FloorPlan');
+    const updateFields = {};
+    if (label !== undefined) updateFields['tables.$.label'] = String(label).trim();
+    if (capacity !== undefined) updateFields['tables.$.capacity'] = Math.min(20, Math.max(1, Number(capacity) || 4));
+    if (shape !== undefined) updateFields['tables.$.shape'] = String(shape).trim();
+    
+    if (Object.keys(updateFields).length > 0) {
+      await FloorPlan.updateMany(
+        { tenantId: req.tenantId, storeId, 'tables.tableId': doc._id },
+        { $set: updateFields }
+      );
+    }
+
     res.json(doc);
   } catch (err) {
     handleWriteError(err, res, 'Could not update table');
