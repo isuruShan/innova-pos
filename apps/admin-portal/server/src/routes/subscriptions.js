@@ -1213,4 +1213,114 @@ router.post('/dismiss-expiry-warning', authenticateJWT, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/subscriptions/superadmin/trial-merchants
+ * Returns a list of all trialing merchants with their usage statistics, contact details, and a conversion likelihood score.
+ */
+router.get('/superadmin/trial-merchants', authenticateJWT, authorize('superadmin'), async (req, res) => {
+  try {
+    const Store = require('../models/Store');
+    const Order = require('../models/Order');
+    const CafeTable = require('../models/CafeTable');
+    const FloorPlan = require('../models/FloorPlan');
+    const TenantSettings = require('../models/TenantSettings');
+
+    // Find all tenants with subscriptionStatus === 'trial'
+    const trialingTenants = await Tenant.find({ subscriptionStatus: 'trial' });
+
+    const results = [];
+
+    for (const tenant of trialingTenants) {
+      // 1. Gather usage metrics
+      const storeCount = await Store.countDocuments({ tenantId: tenant._id });
+      const userCount = await User.countDocuments({ tenantId: tenant._id });
+      const orderCount = await Order.countDocuments({ tenantId: tenant._id });
+      const cafeTableCount = await CafeTable.countDocuments({ tenantId: tenant._id });
+      const floorPlanCount = await FloorPlan.countDocuments({ tenantId: tenant._id });
+
+      // 2. Fetch admin contacts
+      const admins = await User.find({ tenantId: tenant._id, role: 'merchant_admin', isActive: true }, 'name email');
+      const settings = await TenantSettings.findOne({ tenantId: tenant._id }, 'phone email');
+
+      const contact = {
+        phone: settings?.phone || '',
+        email: settings?.email || (admins[0]?.email || ''),
+        admins: admins.map(a => ({ name: a.name, email: a.email }))
+      };
+
+      // 3. Compute score
+      let storeScore = 0;
+      if (storeCount === 1) storeScore = 10;
+      else if (storeCount > 1) storeScore = 20;
+
+      let userScore = 0;
+      if (userCount === 1) userScore = 5;
+      else if (userCount >= 2 && userCount <= 3) userScore = 10;
+      else if (userCount > 3) userScore = 15;
+
+      let orderScore = 0;
+      if (orderCount >= 1 && orderCount <= 9) orderScore = 10;
+      else if (orderCount >= 10 && orderCount <= 49) orderScore = 20;
+      else if (orderCount >= 50) orderScore = 30;
+
+      let tableScore = 0;
+      if (cafeTableCount >= 1) {
+        tableScore += 10;
+        if (floorPlanCount >= 1) {
+          tableScore += 5;
+        }
+      }
+
+      let hasAddon = false;
+      if (tenant.paidAddons) {
+        for (const addonKey of ['qrOrdering', 'loyalty', 'tableManagement', 'uberEats']) {
+          const addon = tenant.paidAddons[addonKey];
+          if (addon && (addon.active || addon.trialActivatedAt)) {
+            hasAddon = true;
+            break;
+          }
+        }
+      }
+      let addonScore = hasAddon ? 10 : 0;
+
+      let urgencyScore = 2;
+      const trialDaysLeft = tenant.trialEndsAt
+        ? Math.max(0, Math.ceil((new Date(tenant.trialEndsAt) - Date.now()) / (1000 * 60 * 60 * 24)))
+        : null;
+      if (trialDaysLeft !== null) {
+        if (trialDaysLeft <= 3) urgencyScore = 10;
+        else if (trialDaysLeft <= 7) urgencyScore = 5;
+      }
+
+      const score = storeScore + userScore + orderScore + tableScore + addonScore + urgencyScore;
+
+      results.push({
+        tenant: {
+          _id: tenant._id,
+          businessName: tenant.businessName,
+          createdAt: tenant.createdAt,
+          trialEndsAt: tenant.trialEndsAt,
+          trialDaysLeft,
+        },
+        metrics: {
+          stores: storeCount,
+          users: userCount,
+          orders: orderCount,
+          cafeTables: cafeTableCount,
+          floorPlans: floorPlanCount,
+        },
+        contact,
+        score,
+      });
+    }
+
+    // Sort results by score descending
+    results.sort((a, b) => b.score - a.score);
+
+    res.json(results);
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 module.exports = router;

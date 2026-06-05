@@ -610,8 +610,8 @@ export default function SubscriptionPage() {
           <Link to="/addons" className="text-brand-orange font-semibold hover:underline">Add-ons</Link>
         )}{' '}page.
       </p>
-
-      {activeTab === 'overview' && (ce-y-6">
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
           {/* Current status */}
           {!data ? (
             <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4 animate-pulse">

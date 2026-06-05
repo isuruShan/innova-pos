@@ -24,6 +24,7 @@ const SUPERADMIN_NAV_GROUPS = [
       { label: 'Applications', icon: ClipboardList, to: '/applications' },
       { label: 'Suspended Activities', icon: ClipboardList, to: '/superadmin/suspended-activities' },
       { label: 'Trial Banners', icon: Palette, to: '/superadmin/banners' },
+      { label: 'Trial Conversion', icon: Percent, to: '/superadmin/trial-merchants' },
     ],
   },
   {
