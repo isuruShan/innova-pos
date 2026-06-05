@@ -23,11 +23,27 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
   const [qty, setQty] = useState(1);
   const [variantPickerItem, setVariantPickerItem] = useState(null);
   const [pendingQty, setPendingQty] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
 
   const addedKeys = new Set(comboItems.map((c) => `${c.menuItem}:${c.variantId || ''}`));
   const available = allItems.filter(
     (i) => i._id !== currentItemId && !i.isCombo,
   );
+
+  const filteredAvailable = useMemo(() => {
+    if (!searchQuery.trim()) return available;
+    const q = searchQuery.toLowerCase();
+    return available.filter((item) => item.name?.toLowerCase().includes(q));
+  }, [available, searchQuery]);
+
+  const ITEMS_PER_PAGE = 10;
+  const totalPages = Math.ceil(filteredAvailable.length / ITEMS_PER_PAGE);
+
+  const paginatedAvailable = useMemo(() => {
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    return filteredAvailable.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredAvailable, page]);
 
   const handleAddClick = () => {
     if (!selectedId) return;
@@ -148,26 +164,64 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
         </div>
       )}
       {available.length > 0 ? (
-        <div className="flex gap-2">
-          <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}
-            className="flex-1 min-w-0 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
-            <option value="">— Select item —</option>
-            {available.map((i) => {
-              const { price, prefix, hasVariants } = getItemDisplayPrice(i);
-              const label = `${i.name} (${prefix}${formatCurrency(price)})${hasVariants ? ' 🔸' : ''}`;
-              return (
-                <option key={i._id} value={i._id} title={label}>
-                  {label.length > 60 ? `${label.slice(0, 57)}…` : label}
-                </option>
-              );
-            })}
-          </select>
-          <input type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)}
-            className="w-16 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500" />
-          <button type="button" onClick={handleAddClick} disabled={!selectedId}
-            className="bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white px-3 py-2 rounded-xl transition text-sm font-semibold shrink-0">
-            Add
-          </button>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <div className="flex-1 flex flex-col gap-1 min-w-0">
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                  setSelectedId('');
+                }}
+                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
+              <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}
+                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                <option value="">— Select item —</option>
+                {paginatedAvailable.map((i) => {
+                  const { price, prefix, hasVariants } = getItemDisplayPrice(i);
+                  const label = `${i.name} (${prefix}${formatCurrency(price)})${hasVariants ? ' 🔸' : ''}`;
+                  return (
+                    <option key={i._id} value={i._id} title={label}>
+                      {label.length > 60 ? `${label.slice(0, 57)}…` : label}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <input type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)}
+              className="w-16 h-[38px] mt-6 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500" />
+            <button type="button" onClick={handleAddClick} disabled={!selectedId}
+              className="mt-6 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white px-3 py-2 rounded-xl transition text-sm font-semibold shrink-0 h-[38px]">
+              Add
+            </button>
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between text-xs text-slate-400 bg-slate-800/40 px-3 py-1.5 rounded-lg border border-slate-800">
+              <span>Page {page} of {totalPages} ({filteredAvailable.length} matching)</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                  className="px-2 py-1 bg-slate-750 hover:bg-slate-700 rounded disabled:opacity-40 text-[10px] font-semibold"
+                >
+                  Prev
+                </button>
+                <button
+                  type="button"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="px-2 py-1 bg-slate-750 hover:bg-slate-700 rounded disabled:opacity-40 text-[10px] font-semibold"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <p className="text-xs text-slate-600 italic">No more items available to add.</p>

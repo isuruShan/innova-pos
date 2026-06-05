@@ -171,6 +171,11 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
                 <DetailRow label="Payment method">{receipt.paymentMethod || '—'}</DetailRow>
                 <DetailRow label="Bank reference">{receipt.bankReference || '—'}</DetailRow>
                 <DetailRow label="Submitted">{new Date(receipt.paymentDate || receipt.createdAt).toLocaleString()}</DetailRow>
+                {receipt.billingPeriodStart && receipt.billingPeriodEnd ? (
+                  <DetailRow label="Billing Period">
+                    {new Date(receipt.billingPeriodStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} to {new Date(receipt.billingPeriodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </DetailRow>
+                ) : null}
                 {receipt.notes ? <DetailRow label="Notes">{receipt.notes}</DetailRow> : null}
                 {receipt.verifiedAt ? (
                   <DetailRow label="Verified">

@@ -426,20 +426,6 @@ export default function FloorPlanEditorPage() {
     },
   });
 
-  // Sync tables mutation
-  const syncMutation = useMutation({
-    mutationFn: () => api.post('/floor-plan/sync-tables'),
-    onSuccess: (data) => {
-      setLocalPlan(data.data?.plan || data.plan);
-      qc.invalidateQueries({ queryKey: ['floor-plan'] });
-      setErrorMessage(null);
-    },
-    onError: (err) => {
-      const message = err.response?.data?.message || 'Failed to sync tables';
-      setErrorMessage(message);
-      setTimeout(() => setErrorMessage(null), 5000);
-    },
-  });
 
   // Create new table mutation
   const createTableMutation = useMutation({
@@ -982,14 +968,6 @@ export default function FloorPlanEditorPage() {
               Tables ({tables.length})
             </button>
 
-            <button
-              onClick={() => syncMutation.mutate()}
-              disabled={syncMutation.isPending}
-              className="px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 text-sm flex items-center gap-2 transition"
-            >
-              <Layers size={14} />
-              Sync Tables
-            </button>
 
             <Link
               to="/manager/floor-plan"
@@ -1019,10 +997,8 @@ export default function FloorPlanEditorPage() {
                 ref={canvasRef}
                 className={`relative transition-all ${isDragOver ? 'ring-2 ring-amber-400 ring-inset bg-amber-500/5' : ''}`}
                 style={{
-                  width: '100%',
-                  height: '100%',
-                  minWidth: `${(plan.gridWidth || 20) * 50 * zoom}px`,
-                  minHeight: `${(plan.gridHeight || 15) * 50 * zoom}px`,
+                  width: `${(localPlan?.gridWidth || plan.gridWidth || 20) * 50 * zoom}px`,
+                  height: `${(localPlan?.gridHeight || plan.gridHeight || 15) * 50 * zoom}px`,
                   backgroundImage: showGrid
                     ? 'linear-gradient(to right, var(--pos-grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--pos-grid-line) 1px, transparent 1px)'
                     : 'none',

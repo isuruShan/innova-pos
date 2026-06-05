@@ -823,6 +823,12 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       return res.status(500).json({ message: 'Failed to upload receipt file' });
     }
 
+    const { getLatestSubscriptionEnd, resolveTenantPeriodEnd } = require('../lib/subscriptionDates');
+    const latestSubEnd = await getLatestSubscriptionEnd(req.tenantId);
+    const billingPeriodStart = resolveTenantPeriodEnd(tenant, latestSubEnd) || new Date();
+    const durationDays = Number(requestedPlan.durationDays) || 30;
+    const billingPeriodEnd = new Date(billingPeriodStart.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
     const receipt = await PaymentReceipt.create({
       tenantId: req.tenantId,
       receiptKind: 'subscription',
@@ -841,6 +847,8 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       receiptFileKey,
       notes: (notes || '').trim(),
       paymentBreakdown: renewal,
+      billingPeriodStart,
+      billingPeriodEnd,
       createdBy: req.user.id,
     });
 
@@ -1134,13 +1142,18 @@ router.get('/my', authenticateJWT, authorize('merchant_admin'), async (req, res)
       status: 'pending',
     });
 
+    const latestReceipt = await PaymentReceipt.findOne({
+      tenantId: req.tenantId,
+      receiptKind: 'subscription',
+    }).sort({ createdAt: -1 }).populate('requestedPlanId', 'name');
+
     const includeBreakdown = req.query.includeBreakdown === '1' || req.query.includeBreakdown === 'true';
     let billingBreakdown = null;
     if (includeBreakdown) {
       billingBreakdown = await computeSubscriptionRenewalExpected(tenant);
     }
 
-    res.json({ tenant, subscriptions, pendingReceiptsCount, billingBreakdown });
+    res.json({ tenant, subscriptions, pendingReceiptsCount, billingBreakdown, latestReceipt });
   } catch (err) {
     sendRouteError(res, err, { req });
   }

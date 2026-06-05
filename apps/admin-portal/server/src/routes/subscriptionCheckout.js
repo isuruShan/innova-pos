@@ -79,6 +79,12 @@ router.post('/stripe', authenticateJWT, authorize('merchant_admin'), async (req,
       amount: expectedAmount,
     });
 
+    const { getLatestSubscriptionEnd, resolveTenantPeriodEnd } = require('../lib/subscriptionDates');
+    const latestSubEnd = await getLatestSubscriptionEnd(tenant._id);
+    const billingPeriodStart = resolveTenantPeriodEnd(tenant, latestSubEnd) || new Date();
+    const durationDays = Number(plan.durationDays) || 30;
+    const billingPeriodEnd = new Date(billingPeriodStart.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
     await PaymentReceipt.create({
       tenantId: tenant._id,
       paymentMethod: 'stripe',
@@ -94,6 +100,8 @@ router.post('/stripe', authenticateJWT, authorize('merchant_admin'), async (req,
       stripeSessionId: session.id,
       status: 'pending',
       paymentBreakdown: renewal,
+      billingPeriodStart,
+      billingPeriodEnd,
       createdBy: req.user.id,
     });
 
@@ -124,6 +132,12 @@ router.post('/paypal/create-order', authenticateJWT, authorize('merchant_admin')
 
     const { orderId } = await createOrder({ tenant, plan, amount: expectedAmount });
 
+    const { getLatestSubscriptionEnd, resolveTenantPeriodEnd } = require('../lib/subscriptionDates');
+    const latestSubEnd = await getLatestSubscriptionEnd(tenant._id);
+    const billingPeriodStart = resolveTenantPeriodEnd(tenant, latestSubEnd) || new Date();
+    const durationDays = Number(plan.durationDays) || 30;
+    const billingPeriodEnd = new Date(billingPeriodStart.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
     await PaymentReceipt.create({
       tenantId: tenant._id,
       paymentMethod: 'paypal',
@@ -139,6 +153,8 @@ router.post('/paypal/create-order', authenticateJWT, authorize('merchant_admin')
       paypalOrderId: orderId,
       status: 'pending',
       paymentBreakdown: renewal,
+      billingPeriodStart,
+      billingPeriodEnd,
       createdBy: req.user.id,
     });
 

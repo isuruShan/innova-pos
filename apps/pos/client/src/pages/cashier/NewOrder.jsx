@@ -296,11 +296,11 @@ function computeLoyaltyRewardDiscount(reward, cart, remainingOrderCap) {
 }
 
 
-function MenuCard({ item, onAdd, compact = false }) {
+function MenuCard({ item, onAdd, compact = false, orderType, partners, getItemPrice }) {
   const imageUrl = item.images?.[0]?.url || item.image;
   
   // Get display price: use default variant price if set, otherwise show "from" lowest price
-  let displayPrice = item.price;
+  let displayPrice = getItemPrice ? getItemPrice(item, null, orderType, partners) : item.price;
   let hasMultipleVariants = false;
   let pricePrefix = '';
   
@@ -314,10 +314,10 @@ function MenuCard({ item, onAdd, compact = false }) {
         : null;
       
       if (defaultVariant) {
-        displayPrice = defaultVariant.price;
+        displayPrice = getItemPrice ? getItemPrice(item, defaultVariant, orderType, partners) : defaultVariant.price;
       } else {
         // Show lowest price with "from" prefix
-        const prices = availableVariants.map(v => Number(v.price)).filter(p => !isNaN(p));
+        const prices = availableVariants.map(v => Number(getItemPrice ? getItemPrice(item, v, orderType, partners) : v.price)).filter(p => !isNaN(p));
         displayPrice = Math.min(...prices);
         pricePrefix = 'from ';
       }
@@ -449,7 +449,7 @@ function CartItem({ item, onChangeQty, showImage = false, isWarning = false }) {
   );
 }
 
-function VariantSelectorModal({ item, onClose, onConfirm }) {
+function VariantSelectorModal({ item, onClose, onConfirm, orderType, partners, getItemPrice }) {
   const [selections, setSelections] = useState({});
 
   useEffect(() => {
@@ -531,7 +531,7 @@ function VariantSelectorModal({ item, onClose, onConfirm }) {
               <p className="text-xs text-slate-500 truncate">{selectedVariant.description || item.description || 'No description'}</p>
             </div>
             <span className="text-sm font-bold text-amber-400 shrink-0">
-              {formatPrice(selectedVariant.price)}
+              {formatPrice(getItemPrice ? getItemPrice(item, selectedVariant, orderType, partners) : selectedVariant.price)}
             </span>
           </div>
         ) : (
@@ -1479,7 +1479,7 @@ export default function NewOrder() {
                 : 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-4 gap-3'
               }>
                 {filtered.map(item => (
-                  <MenuCard key={item._id} item={item} onAdd={addToCart} compact={isCompact} />
+                  <MenuCard key={item._id} item={item} onAdd={addToCart} compact={isCompact} orderType={orderType} partners={partners} getItemPrice={getItemPrice} />
                 ))}
               </div>
             )}
@@ -1960,11 +1960,14 @@ export default function NewOrder() {
       <VariantSelectorModal
         item={variantSelectionItem}
         onClose={() => setVariantSelectionItem(null)}
-        onConfirm={addToCart}
-      />
-
-      {/* Order Type Picker Modal */}
-      <OptionPickerModal
+        onConfirm={(variant) => {
+          addToCart(variantSelectionItem, variant);
+          setVariantSelectionItem(null);
+        }}
+        orderType={orderType}
+        partners={partners}
+        getItemPrice={getItemPrice}
+      /><OptionPickerModal
         open={showOrderTypePicker}
         onClose={() => setShowOrderTypePicker(false)}
         title="Order Type"

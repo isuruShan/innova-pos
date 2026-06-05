@@ -304,8 +304,8 @@ export default function TablesView() {
               <div
                 className="relative"
                 style={{
-                  minWidth: `${floorPlan.gridWidth * 50}px`,
-                  minHeight: `${floorPlan.gridHeight * 50}px`,
+                  width: `${floorPlan.gridWidth * 50}px`,
+                  height: `${floorPlan.gridHeight * 50}px`,
                   backgroundImage:
                     'linear-gradient(to right, var(--pos-grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--pos-grid-line) 1px, transparent 1px)',
                   backgroundSize: '50px 50px',

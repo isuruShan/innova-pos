@@ -96,6 +96,11 @@ export default function MerchantPaymentDrawer({ tenantId, tenantName, onClose, o
                         </span>
                       </div>
                       <p className="text-sm font-semibold text-gray-900">{r.purchasedItemLabel || '—'}</p>
+                      {r.billingPeriodStart && r.billingPeriodEnd && (
+                        <p className="text-xs text-brand-orange font-medium mt-0.5">
+                          Period: {new Date(r.billingPeriodStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} to {new Date(r.billingPeriodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                      )}
                       <p className="text-xs text-gray-400 mt-0.5">
                         {new Date(r.paymentDate || r.createdAt).toLocaleDateString('en-GB', {
                           day: 'numeric', month: 'short', year: 'numeric',

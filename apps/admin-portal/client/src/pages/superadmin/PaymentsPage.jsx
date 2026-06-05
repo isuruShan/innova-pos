@@ -350,6 +350,7 @@ export default function PaymentsPage() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Merchant</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Item purchased</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Type</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Billing Period</th>
                     <SortableTh label="Amount" field="amount" currentSort={sort} currentOrder={order} onSort={toggleSort} className="whitespace-nowrap" />
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Method</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Reference</th>
@@ -384,6 +385,12 @@ export default function PaymentsPage() {
                           <span className={`px-2 py-0.5 rounded text-xs font-medium capitalize ${KIND_BADGE[kind] || 'bg-gray-100 text-gray-700'}`}>
                             {kind.replace('_', ' ')}
                           </span>
+                        </td>
+                        {/* Billing Period */}
+                        <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                          {r.billingPeriodStart && r.billingPeriodEnd ? (
+                            `${new Date(r.billingPeriodStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${new Date(r.billingPeriodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                          ) : '—'}
                         </td>
                         {/* Amount */}
                         <td className="px-4 py-3 font-semibold tabular-nums text-gray-900 whitespace-nowrap">
