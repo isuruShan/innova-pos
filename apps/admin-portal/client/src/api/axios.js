@@ -29,12 +29,43 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
-    const reqUrl = err.config?.url || '';
+  async (err) => {
+    const cfg = err.config;
+    const reqUrl = cfg?.url || '';
     const isLoginCall = reqUrl.includes('/auth/login');
-    // Let login page handle invalid credentials (toast/message) instead of hard redirect.
-    if (err.response?.status === 401 && !isLoginCall) {
+    const isRefreshCall = reqUrl.includes('/auth/refresh');
+
+    if (err.response?.status === 401 && !isLoginCall && !isRefreshCall && cfg && !cfg._retry) {
+      cfg._retry = true;
+      const refreshToken = localStorage.getItem('admin_refresh_token');
+      if (refreshToken) {
+        try {
+          const response = await axios.post('/api/auth/refresh', { refreshToken });
+          const { token, refreshToken: newRefreshToken, user } = response.data;
+
+          localStorage.setItem('admin_token', token);
+          if (newRefreshToken) localStorage.setItem('admin_refresh_token', newRefreshToken);
+          localStorage.setItem('admin_user', JSON.stringify(user));
+
+          cfg.headers.Authorization = `Bearer ${token}`;
+          return api(cfg);
+        } catch (refreshErr) {
+          localStorage.removeItem('admin_token');
+          localStorage.removeItem('admin_refresh_token');
+          localStorage.removeItem('admin_user');
+          window.location.href = '/login';
+          return Promise.reject(err);
+        }
+      }
+
       localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_refresh_token');
+      localStorage.removeItem('admin_user');
+      window.location.href = '/login';
+      return Promise.reject(err);
+    } else if (err.response?.status === 401) {
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_refresh_token');
       localStorage.removeItem('admin_user');
       window.location.href = '/login';
     }

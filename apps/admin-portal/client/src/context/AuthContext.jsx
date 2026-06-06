@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback(async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
     localStorage.setItem('admin_token', data.token);
+    if (data.refreshToken) localStorage.setItem('admin_refresh_token', data.refreshToken);
     localStorage.setItem('admin_user', JSON.stringify(data.user));
     // Commit before navigation so PrivateRoute sees user (avoids bounce back to /login)
     flushSync(() => {
@@ -25,12 +26,14 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(() => {
     localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_refresh_token');
     localStorage.removeItem('admin_user');
     setUser(null);
   }, []);
 
-  const updateUser = useCallback((updatedUser, newToken) => {
+  const updateUser = useCallback((updatedUser, newToken, newRefreshToken) => {
     if (newToken) localStorage.setItem('admin_token', newToken);
+    if (newRefreshToken) localStorage.setItem('admin_refresh_token', newRefreshToken);
     localStorage.setItem('admin_user', JSON.stringify(updatedUser));
     setUser(updatedUser);
   }, []);

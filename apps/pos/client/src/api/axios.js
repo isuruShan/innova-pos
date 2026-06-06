@@ -61,8 +61,38 @@ api.interceptors.response.use(
       return Promise.reject(err);
     }
 
-    if (err.response?.status === 401 && !isLoginCall) {
+    const isRefreshCall = reqUrl.includes('/auth/refresh');
+    if (err.response?.status === 401 && !isLoginCall && !isRefreshCall && cfg && !cfg._retry) {
+      cfg._retry = true;
+      const refreshToken = localStorage.getItem('pos_refresh_token');
+      if (refreshToken) {
+        try {
+          const response = await axios.post('/api/auth/refresh', { refreshToken });
+          const { token, refreshToken: newRefreshToken, user } = response.data;
+
+          localStorage.setItem('pos_token', token);
+          if (newRefreshToken) localStorage.setItem('pos_refresh_token', newRefreshToken);
+          localStorage.setItem('pos_user', JSON.stringify(user));
+
+          cfg.headers.Authorization = `Bearer ${token}`;
+          return api(cfg);
+        } catch (refreshErr) {
+          localStorage.removeItem('pos_token');
+          localStorage.removeItem('pos_refresh_token');
+          localStorage.removeItem('pos_user');
+          window.location.href = '/login';
+          return Promise.reject(err);
+        }
+      }
+
       localStorage.removeItem('pos_token');
+      localStorage.removeItem('pos_refresh_token');
+      localStorage.removeItem('pos_user');
+      window.location.href = '/login';
+      return Promise.reject(err);
+    } else if (err.response?.status === 401) {
+      localStorage.removeItem('pos_token');
+      localStorage.removeItem('pos_refresh_token');
       localStorage.removeItem('pos_user');
       window.location.href = '/login';
       return Promise.reject(err);

@@ -159,10 +159,38 @@ router.put('/me', authenticateJWT, async (req, res) => {
     const subscriptionActive = await isSubscriptionActive(user.tenantId);
     let payload = buildPayload(user, subscriptionActive);
     payload = await withFreshProfileImage(payload, user);
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
-    res.json({ user: payload, token });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    res.json({ user: payload, token, refreshToken });
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+});
+
+router.post('/refresh', async (req, res) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) return res.status(400).json({ message: 'Refresh token is required' });
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user || !user.isActive) {
+      return res.status(401).json({ message: 'User not found or deactivated' });
+    }
+
+    if (!['merchant_admin', 'superadmin'].includes(user.role)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const subscriptionActive = await isSubscriptionActive(user.tenantId);
+    let payload = buildPayload(user, subscriptionActive);
+    payload = await withFreshProfileImage(payload, user);
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const newRefreshToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+    res.json({ token, refreshToken: newRefreshToken, user: payload });
+  } catch (err) {
+    res.status(401).json({ message: 'Invalid or expired refresh token' });
   }
 });
 

@@ -38,6 +38,7 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback(async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
     localStorage.setItem('pos_token', data.token);
+    if (data.refreshToken) localStorage.setItem('pos_refresh_token', data.refreshToken);
     const normalized = normalizeStoredUser(data.user);
     localStorage.setItem('pos_user', JSON.stringify(normalized));
     flushSync(() => {
@@ -49,12 +50,14 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(() => {
     localStorage.removeItem('pos_token');
+    localStorage.removeItem('pos_refresh_token');
     localStorage.removeItem('pos_user');
     setUser(null);
   }, []);
 
-  const updateUser = useCallback((updatedUser, newToken) => {
+  const updateUser = useCallback((updatedUser, newToken, newRefreshToken) => {
     if (newToken) localStorage.setItem('pos_token', newToken);
+    if (newRefreshToken) localStorage.setItem('pos_refresh_token', newRefreshToken);
     const normalized = normalizeStoredUser(updatedUser);
     localStorage.setItem('pos_user', JSON.stringify(normalized));
     setUser(normalized);
