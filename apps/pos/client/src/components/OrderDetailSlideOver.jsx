@@ -36,7 +36,7 @@ function VariantSelectorModal({ item, onClose, onConfirm, orderType, partners, g
   };
 
   const selectedVariant = variants.find((v) => {
-    if (!v.available) return false;
+    if (v.available === false) return false;
     return options.every((opt) => selections[opt.name] === v.attributes?.find((a) => a.name === opt.name)?.value);
   });
 
