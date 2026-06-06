@@ -330,6 +330,39 @@ export default function TablesView() {
                   </div>
                 ))}
 
+                {/* SVG Lines */}
+                <svg className="absolute inset-0 pointer-events-none w-full h-full" style={{ zIndex: 4 }}>
+                  {(floorPlan.lines || []).map((line, idx) => (
+                    <line
+                      key={`line-${idx}`}
+                      x1={line.x1 * 50}
+                      y1={line.y1 * 50}
+                      x2={line.x2 * 50}
+                      y2={line.y2 * 50}
+                      stroke={line.color || '#94a3b8'}
+                      strokeWidth={line.thickness || 2}
+                    />
+                  ))}
+                </svg>
+
+                {/* Text Labels */}
+                {(floorPlan.texts || []).map((t, idx) => (
+                  <div
+                    key={`text-${idx}`}
+                    className="absolute select-none font-semibold whitespace-nowrap text-center pointer-events-none"
+                    style={{
+                      left: `${t.x * 50}px`,
+                      top: `${t.y * 50}px`,
+                      color: t.color || '#f8fafc',
+                      fontSize: `${t.fontSize || 14}px`,
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: 6,
+                    }}
+                  >
+                    {t.text}
+                  </div>
+                ))}
+
                 {/* Render Tables */}
                 {planTables.map((table) => {
                   const id = String(table.tableId);

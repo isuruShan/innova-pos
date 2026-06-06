@@ -83,7 +83,7 @@ router.put(
         return res.status(400).json({ message: 'Store required' });
       }
 
-      const { gridWidth, gridHeight, cellSizePx, tables, zones, name } = req.body;
+      const { gridWidth, gridHeight, cellSizePx, tables, zones, name, lines, texts } = req.body;
 
       // Validate table positions don't overlap
       if (tables && Array.isArray(tables)) {
@@ -105,6 +105,8 @@ router.put(
       if (cellSizePx !== undefined) updateData.cellSizePx = Math.min(100, Math.max(30, Number(cellSizePx) || 50));
       if (tables !== undefined) updateData.tables = tables;
       if (zones !== undefined) updateData.zones = zones;
+      if (lines !== undefined) updateData.lines = lines;
+      if (texts !== undefined) updateData.texts = texts;
 
       const plan = await FloorPlan.findOneAndUpdate(
         { tenantId: req.tenantId, storeId },

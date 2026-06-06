@@ -25,6 +25,23 @@ const zoneSchema = new mongoose.Schema({
   availableUntil: { type: String, default: null },
 }, { _id: true });
 
+const lineSchema = new mongoose.Schema({
+  x1: { type: Number, required: true },
+  y1: { type: Number, required: true },
+  x2: { type: Number, required: true },
+  y2: { type: Number, required: true },
+  color: { type: String, default: '#94a3b8' },
+  thickness: { type: Number, default: 2 },
+}, { _id: true });
+
+const textSchema = new mongoose.Schema({
+  x: { type: Number, required: true },
+  y: { type: Number, required: true },
+  text: { type: String, required: true, trim: true },
+  color: { type: String, default: '#f8fafc' },
+  fontSize: { type: Number, default: 14 },
+}, { _id: true });
+
 const floorPlanSchema = new mongoose.Schema({
   tenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', required: true, index: true },
   storeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', required: true, index: true },
@@ -34,6 +51,8 @@ const floorPlanSchema = new mongoose.Schema({
   cellSizePx: { type: Number, default: 50, min: 30, max: 100 },
   tables: [tablePositionSchema],
   zones: [zoneSchema],
+  lines: [lineSchema],
+  texts: [textSchema],
   isDefault: { type: Boolean, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

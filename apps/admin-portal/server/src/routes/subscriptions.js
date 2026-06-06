@@ -1272,16 +1272,20 @@ router.get('/superadmin/trial-merchants', authenticateJWT, authorize('superadmin
       }
 
       let hasAddon = false;
+      let trialingAddonCount = 0;
       if (tenant.paidAddons) {
         for (const addonKey of ['qrOrdering', 'loyalty', 'tableManagement', 'uberEats']) {
           const addon = tenant.paidAddons[addonKey];
-          if (addon && (addon.active || addon.trialActivatedAt)) {
-            hasAddon = true;
-            break;
+          if (addon) {
+            if (addon.active) {
+              hasAddon = true;
+            } else if (addon.trialActivatedAt) {
+              trialingAddonCount++;
+            }
           }
         }
       }
-      let addonScore = hasAddon ? 10 : 0;
+      let addonScore = (hasAddon ? 10 : 0) + (trialingAddonCount * 10);
 
       let urgencyScore = 2;
       const trialDaysLeft = tenant.trialEndsAt

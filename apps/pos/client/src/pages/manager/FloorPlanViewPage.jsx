@@ -35,15 +35,17 @@ const SHAPE_RADIUS = {
   bar: 'rounded-full',
 };
 
-function TableCard({ table, status }) {
-  const { bg, ring, text } = STATUS_STYLES[status?.status] || STATUS_STYLES.available;
+function TableCard({ table, status, onClick }) {
+  const { bg, ring } = STATUS_STYLES[status?.status] || STATUS_STYLES.available;
   const shapeClass = SHAPE_RADIUS[table.shape] || SHAPE_RADIUS.rectangle;
 
   return (
-    <div
+    <button
+      onClick={onClick}
       className={`
         absolute flex flex-col items-center justify-center text-white font-semibold text-sm
         shadow-lg transition-all duration-200 select-none ${bg} ${shapeClass} ring-2 ${ring}
+        cursor-pointer hover:scale-[1.03] active:scale-95
       `}
       style={{
         left: `${table.x * 50}px`,
@@ -58,17 +60,17 @@ function TableCard({ table, status }) {
         <Users size={10} /> {table.capacity}
       </span>
       {status?.status === 'occupied' && (
-        <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] px-1.5 py-0.5 rounded bg-slate-800/90">
+        <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] px-1.5 py-0.5 rounded bg-slate-800/90 pointer-events-none">
           <Clock size={10} className="inline mr-0.5" />
           {status.seatedMinutes}m
         </span>
       )}
       {status?.status === 'reserved' && status.reservationTime && (
-        <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] px-1.5 py-0.5 rounded bg-slate-800/90">
+        <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] px-1.5 py-0.5 rounded bg-slate-800/90 pointer-events-none">
           {new Date(status.reservationTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </span>
       )}
-    </div>
+    </button>
   );
 }
 
@@ -371,12 +373,46 @@ export default function FloorPlanViewPage() {
                 <Zone key={zone._id || zone.name} zone={zone} />
               ))}
 
+              {/* SVG Lines */}
+              <svg className="absolute inset-0 pointer-events-none w-full h-full" style={{ zIndex: 4 }}>
+                {(floorPlan.lines || []).map((line, idx) => (
+                  <line
+                    key={`line-${idx}`}
+                    x1={line.x1 * 50}
+                    y1={line.y1 * 50}
+                    x2={line.x2 * 50}
+                    y2={line.y2 * 50}
+                    stroke={line.color || '#94a3b8'}
+                    strokeWidth={line.thickness || 2}
+                  />
+                ))}
+              </svg>
+
+              {/* Text Labels */}
+              {(floorPlan.texts || []).map((t, idx) => (
+                <div
+                  key={`text-${idx}`}
+                  className="absolute select-none font-semibold whitespace-nowrap text-center pointer-events-none"
+                  style={{
+                    left: `${t.x * 50}px`,
+                    top: `${t.y * 50}px`,
+                    color: t.color || '#f8fafc',
+                    fontSize: `${t.fontSize || 14}px`,
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 6,
+                  }}
+                >
+                  {t.text}
+                </div>
+              ))}
+
               {/* Tables */}
               {planTables.map((table) => (
                 <TableCard
                   key={String(table.tableId)}
                   table={table}
                   status={tableStatus[String(table.tableId)]}
+                  onClick={() => setEditingTableId(String(table.tableId))}
                 />
               ))}
             </div>

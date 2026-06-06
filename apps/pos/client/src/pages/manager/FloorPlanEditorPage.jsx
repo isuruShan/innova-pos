@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Grid3X3, Save, RotateCcw, Plus, Trash2, Square, Circle, 
   Sofa, Wine, ZoomIn, ZoomOut, Move, Users, Layers, List, X, QrCode, Edit2,
+  Slash, Type, Map,
 } from 'lucide-react';
 import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
@@ -332,6 +333,8 @@ export default function FloorPlanEditorPage() {
   const [isSelecting, setIsSelecting] = useState(false);
   const [showTableList, setShowTableList] = useState(false);
   const [editingTableId, setEditingTableId] = useState(null);
+  const [drawingLine, setDrawingLine] = useState(null);
+  const [drawingHall, setDrawingHall] = useState(null);
 
   // Fetch floor plan
   const { data: floorPlan, isLoading } = useQuery({
@@ -363,6 +366,8 @@ export default function FloorPlanEditorPage() {
         ...floorPlan,
         tables: floorPlan.tables || [],
         zones: floorPlan.zones || [],
+        lines: floorPlan.lines || [],
+        texts: floorPlan.texts || [],
       });
     }
   }, [floorPlan, localPlan]);
@@ -377,6 +382,8 @@ export default function FloorPlanEditorPage() {
         gridHeight: 15,
         tables: [],
         zones: [],
+        lines: [],
+        texts: [],
       });
     }
   }, [isLoading, floorPlan, isStoreReady, localPlan]);
@@ -538,6 +545,8 @@ export default function FloorPlanEditorPage() {
       gridHeight: localPlan.gridHeight,
       tables: localPlan.tables,
       zones: localPlan.zones,
+      lines: localPlan.lines || [],
+      texts: localPlan.texts || [],
     });
   }, [localPlan, saveMutation]);
 
@@ -702,6 +711,31 @@ export default function FloorPlanEditorPage() {
         
         // If in Select/Move mode (no shape selected), do not create table
         if (!selectedShape) return;
+
+        if (selectedShape === 'text') {
+          const rect = canvasRef.current?.getBoundingClientRect();
+          if (!rect) return;
+          const cellSize = 50 * zoom;
+          const gridX = Math.round((e.clientX - rect.left) / cellSize);
+          const gridY = Math.round((e.clientY - rect.top) / cellSize);
+
+          const textVal = prompt("Enter text label:");
+          if (textVal && textVal.trim()) {
+            const newText = {
+              x: gridX,
+              y: gridY,
+              text: textVal.trim(),
+              color: '#f8fafc',
+              fontSize: 14,
+            };
+            setLocalPlan(prev => ({
+              ...prev,
+              texts: [...(prev.texts || []), newText]
+            }));
+            setIsDirty(true);
+          }
+          return;
+        }
         
         // Create a new table at click position
         const rect = canvasRef.current?.getBoundingClientRect();
@@ -785,37 +819,104 @@ export default function FloorPlanEditorPage() {
     }
   }, [selectedTable, selectedTables, deleteTableMutation, bulkDeleteMutation, localPlan]);
 
-  // Selection box handlers
+  // Selection box and drawing handlers
   const handleMouseDown = useCallback((e) => {
-    // Only start selection if clicking on canvas background and not dragging a table
-    if (e.target === canvasRef.current || e.target.classList.contains('zone-overlay')) {
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      
-      setIsSelecting(true);
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const cellSize = 50 * zoom;
+
+    if (selectedShape === 'line') {
+      const gridX = Math.round((e.clientX - rect.left) / cellSize);
+      const gridY = Math.round((e.clientY - rect.top) / cellSize);
+      setDrawingLine({ x1: gridX, y1: gridY, x2: gridX, y2: gridY });
+    } else if (selectedShape === 'hall') {
+      const gridX = Math.floor((e.clientX - rect.left) / cellSize);
+      const gridY = Math.floor((e.clientY - rect.top) / cellSize);
+      setDrawingHall({ x1: gridX, y1: gridY, x2: gridX + 1, y2: gridY + 1 });
+    } else {
+      // Only start selection if clicking on canvas background and not dragging a table
+      if (e.target === canvasRef.current || e.target.classList.contains('zone-overlay') || e.target.tagName === 'svg' || e.target.tagName === 'line') {
+        setIsSelecting(true);
+        setSelectionBox({
+          startX: e.clientX - rect.left,
+          startY: e.clientY - rect.top,
+          currentX: e.clientX - rect.left,
+          currentY: e.clientY - rect.top,
+        });
+      }
+    }
+  }, [selectedShape, zoom]);
+
+  const handleMouseMove = useCallback((e) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const cellSize = 50 * zoom;
+
+    if (selectedShape === 'line' && drawingLine) {
+      const gridX = Math.round((e.clientX - rect.left) / cellSize);
+      const gridY = Math.round((e.clientY - rect.top) / cellSize);
+      setDrawingLine({ ...drawingLine, x2: gridX, y2: gridY });
+    } else if (selectedShape === 'hall' && drawingHall) {
+      const gridX = Math.floor((e.clientX - rect.left) / cellSize);
+      const gridY = Math.floor((e.clientY - rect.top) / cellSize);
+      setDrawingHall({ ...drawingHall, x2: gridX + 1, y2: gridY + 1 });
+    } else if (isSelecting && selectionBox) {
       setSelectionBox({
-        startX: e.clientX - rect.left,
-        startY: e.clientY - rect.top,
+        ...selectionBox,
         currentX: e.clientX - rect.left,
         currentY: e.clientY - rect.top,
       });
     }
-  }, []);
-
-  const handleMouseMove = useCallback((e) => {
-    if (!isSelecting || !selectionBox) return;
-    
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    
-    setSelectionBox({
-      ...selectionBox,
-      currentX: e.clientX - rect.left,
-      currentY: e.clientY - rect.top,
-    });
-  }, [isSelecting, selectionBox]);
+  }, [isSelecting, selectionBox, selectedShape, zoom, drawingLine, drawingHall]);
 
   const handleMouseUp = useCallback(() => {
+    if (selectedShape === 'line' && drawingLine) {
+      if (drawingLine.x1 !== drawingLine.x2 || drawingLine.y1 !== drawingLine.y2) {
+        const newLine = {
+          x1: drawingLine.x1,
+          y1: drawingLine.y1,
+          x2: drawingLine.x2,
+          y2: drawingLine.y2,
+          color: '#94a3b8',
+          thickness: 2,
+        };
+        setLocalPlan(prev => ({
+          ...prev,
+          lines: [...(prev.lines || []), newLine]
+        }));
+        setIsDirty(true);
+      }
+      setDrawingLine(null);
+      return;
+    }
+
+    if (selectedShape === 'hall' && drawingHall) {
+      const x = Math.min(drawingHall.x1, drawingHall.x2);
+      const y = Math.min(drawingHall.y1, drawingHall.y2);
+      const w = Math.abs(drawingHall.x2 - drawingHall.x1);
+      const h = Math.abs(drawingHall.y2 - drawingHall.y1);
+      if (w > 0 && h > 0) {
+        const name = prompt("Enter Hall/Area name:", "Main Hall");
+        if (name && name.trim()) {
+          const newZone = {
+            name: name.trim(),
+            x,
+            y,
+            width: w,
+            height: h,
+            color: '#3b82f6',
+          };
+          setLocalPlan(prev => ({
+            ...prev,
+            zones: [...(prev.zones || []), newZone]
+          }));
+          setIsDirty(true);
+        }
+      }
+      setDrawingHall(null);
+      return;
+    }
+
     if (!isSelecting || !selectionBox || !localPlan) {
       setIsSelecting(false);
       setSelectionBox(null);
@@ -846,7 +947,7 @@ export default function FloorPlanEditorPage() {
     setSelectedTable(null);
     setIsSelecting(false);
     setSelectionBox(null);
-  }, [isSelecting, selectionBox, localPlan, zoom]);
+  }, [isSelecting, selectionBox, localPlan, zoom, selectedShape, drawingLine, drawingHall]);
 
   const handleUpdateSelectedProperty = useCallback(
     (prop, value) => {
@@ -931,6 +1032,35 @@ export default function FloorPlanEditorPage() {
                   <shape.icon size={16} />
                 </button>
               ))}
+              <div className="h-6 w-px bg-slate-700 mx-1" />
+              <span className="text-xs text-slate-400 font-medium">Design:</span>
+              <button
+                onClick={() => setSelectedShape('line')}
+                className={`p-2 rounded-lg transition-colors ${
+                  selectedShape === 'line' ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+                title="Draw Straight Line"
+              >
+                <Slash size={16} />
+              </button>
+              <button
+                onClick={() => setSelectedShape('text')}
+                className={`p-2 rounded-lg transition-colors ${
+                  selectedShape === 'text' ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+                title="Add Text Label"
+              >
+                <Type size={16} />
+              </button>
+              <button
+                onClick={() => setSelectedShape('hall')}
+                className={`p-2 rounded-lg transition-colors ${
+                  selectedShape === 'hall' ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+                title="Define Hall / Area"
+              >
+                <Map size={16} />
+              </button>
             </div>
 
             <div className="h-6 w-px bg-slate-700" />
@@ -1037,6 +1167,64 @@ export default function FloorPlanEditorPage() {
                 {plan.zones?.map((zone) => (
                   <Zone key={zone._id || zone.name} zone={zone} zoom={zoom} />
                 ))}
+
+                {/* SVG Lines */}
+                <svg className="absolute inset-0 pointer-events-none w-full h-full" style={{ zIndex: 4 }}>
+                  {(plan.lines || []).map((line, idx) => (
+                    <line
+                      key={`line-${idx}`}
+                      x1={line.x1 * 50 * zoom}
+                      y1={line.y1 * 50 * zoom}
+                      x2={line.x2 * 50 * zoom}
+                      y2={line.y2 * 50 * zoom}
+                      stroke={line.color || '#94a3b8'}
+                      strokeWidth={(line.thickness || 2) * zoom}
+                    />
+                  ))}
+                  {drawingLine && (
+                    <line
+                      x1={drawingLine.x1 * 50 * zoom}
+                      y1={drawingLine.y1 * 50 * zoom}
+                      x2={drawingLine.x2 * 50 * zoom}
+                      y2={drawingLine.y2 * 50 * zoom}
+                      stroke="#f59e0b"
+                      strokeWidth={2 * zoom}
+                      strokeDasharray="4,4"
+                    />
+                  )}
+                </svg>
+
+                {/* Text Labels */}
+                {(plan.texts || []).map((t, idx) => (
+                  <div
+                    key={`text-${idx}`}
+                    className="absolute select-none font-semibold whitespace-nowrap text-center pointer-events-none"
+                    style={{
+                      left: `${t.x * 50 * zoom}px`,
+                      top: `${t.y * 50 * zoom}px`,
+                      color: t.color || '#f8fafc',
+                      fontSize: `${(t.fontSize || 14) * zoom}px`,
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: 6,
+                    }}
+                  >
+                    {t.text}
+                  </div>
+                ))}
+
+                {/* Hall / Zone drawing preview */}
+                {drawingHall && (
+                  <div
+                    className="absolute border border-dashed border-amber-500 bg-amber-500/10 pointer-events-none"
+                    style={{
+                      left: `${Math.min(drawingHall.x1, drawingHall.x2) * 50 * zoom}px`,
+                      top: `${Math.min(drawingHall.y1, drawingHall.y2) * 50 * zoom}px`,
+                      width: `${Math.abs(drawingHall.x2 - drawingHall.x1) * 50 * zoom}px`,
+                      height: `${Math.abs(drawingHall.y2 - drawingHall.y1) * 50 * zoom}px`,
+                      zIndex: 3,
+                    }}
+                  />
+                )}
 
                 {/* Empty state helper */}
                 {planTablesWithLabels.length === 0 && !isDragOver && (
@@ -1253,6 +1441,76 @@ export default function FloorPlanEditorPage() {
               </div>
             )}
           </div>
+
+          {/* Halls & Areas Manager */}
+          {localPlan?.zones && localPlan.zones.length > 0 && (
+            <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4 space-y-3">
+              <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm">
+                Halls & Areas
+              </h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {localPlan.zones.map((zone, i) => (
+                  <div key={`zone-${i}`} className="flex items-center justify-between bg-[var(--pos-surface-inset)] p-2 rounded-lg text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: zone.color || '#3b82f6' }} />
+                      <span className="truncate text-slate-350 font-medium">{zone.name}</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const updated = localPlan.zones.filter((_, idx) => idx !== i);
+                        setLocalPlan({ ...localPlan, zones: updated });
+                        setIsDirty(true);
+                      }}
+                      className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/10 transition"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Decorations Panel */}
+          {((localPlan?.lines && localPlan.lines.length > 0) || (localPlan?.texts && localPlan.texts.length > 0)) && (
+            <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4 space-y-3">
+              <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm">
+                Floor Decorations
+              </h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {localPlan.texts?.map((t, i) => (
+                  <div key={`text-${i}`} className="flex items-center justify-between bg-[var(--pos-surface-inset)] p-2 rounded-lg text-xs">
+                    <span className="truncate flex-1 text-slate-350">Text: "{t.text}" ({t.x}, {t.y})</span>
+                    <button
+                      onClick={() => {
+                        const updated = localPlan.texts.filter((_, idx) => idx !== i);
+                        setLocalPlan({ ...localPlan, texts: updated });
+                        setIsDirty(true);
+                      }}
+                      className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/10 transition"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+                {localPlan.lines?.map((line, i) => (
+                  <div key={`line-${i}`} className="flex items-center justify-between bg-[var(--pos-surface-inset)] p-2 rounded-lg text-xs">
+                    <span className="truncate flex-1 text-slate-350">Line: ({line.x1},{line.y1}) to ({line.x2},{line.y2})</span>
+                    <button
+                      onClick={() => {
+                        const updated = localPlan.lines.filter((_, idx) => idx !== i);
+                        setLocalPlan({ ...localPlan, lines: updated });
+                        setIsDirty(true);
+                      }}
+                      className="text-red-405 hover:text-red-300 p-1 rounded hover:bg-red-500/10 transition"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Legend */}
           <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4">
