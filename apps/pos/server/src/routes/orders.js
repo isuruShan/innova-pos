@@ -572,7 +572,17 @@ router.put('/:id', protect, authorize('cashier', 'manager', 'merchant_admin'), t
     const tableMgmt = storeDoc?.tableManagementEnabled === true;
     const nextType = orderType || order.orderType;
 
-    if (orderType) order.orderType = orderType;
+    if (orderType) {
+      order.orderType = orderType;
+      const FoodmarketPartner = require('../models/FoodmarketPartner');
+      let partner = null;
+      if (orderType === 'uber-eats') {
+        partner = await FoodmarketPartner.findOne({ tenantId: req.tenantId, isActive: true, name: { $regex: /uber/i } });
+      } else if (orderType === 'pickme') {
+        partner = await FoodmarketPartner.findOne({ tenantId: req.tenantId, isActive: true, name: { $regex: /pick(\s)?me/i } });
+      }
+      order.foodmarketPartnerId = partner ? partner._id : null;
+    }
 
     if (nextType === 'dine-in' && tableMgmt) {
       const tid =
@@ -615,7 +625,7 @@ router.put('/:id', protect, authorize('cashier', 'manager', 'merchant_admin'), t
 
     if (items && items.length > 0) {
       const sigBefore = itemKitchenAddsSignature(order.items);
-      const merged = await mergeItemsForUpdate(order.items, items, req.tenantId, order.storeId, order.status);
+      const merged = await mergeItemsForUpdate(order.items, items, req.tenantId, order.storeId, order.status, order.foodmarketPartnerId);
       order.items = merged;
       await recalculateOrderMoney(order);
       syncKitchenAddsStatusAfterItemChange(order, sigBefore);

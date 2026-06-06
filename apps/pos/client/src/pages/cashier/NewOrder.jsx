@@ -832,7 +832,8 @@ export default function NewOrder() {
       const override = channelPrices[partner._id];
       if (override) {
         if (variant) {
-          const vOverride = override.variants?.[variant._id];
+          const vId = variant._id ? String(variant._id) : variant.id ? String(variant.id) : null;
+          const vOverride = vId ? override.variants?.[vId] : null;
           if (vOverride != null && vOverride !== '') {
             return Math.round(Number(vOverride) * 100) / 100;
           }
@@ -1989,9 +1990,9 @@ export default function NewOrder() {
           setSelectedTableId('');
           setCart((prevCart) =>
             prevCart.map((c) => {
-              const mItem = menuItems.find((m) => m._id === c.menuItem);
+              const mItem = menuItems.find((m) => String(m._id) === String(c.menuItem));
               if (!mItem) return c;
-              const variant = c.variantId ? mItem.variants?.find((varObj) => varObj._id === c.variantId) : null;
+              const variant = c.variantId ? mItem.variants?.find((varObj) => String(varObj._id) === String(c.variantId)) : null;
               const newPrice = getItemPrice(mItem, variant, v, partners);
               return { ...c, price: newPrice };
             })
