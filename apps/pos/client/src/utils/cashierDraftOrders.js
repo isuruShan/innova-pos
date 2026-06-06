@@ -17,12 +17,13 @@ export function createEmptyDraft() {
     selectedPromoIds: [],
     autoApply: true,
     selectedLoyaltyRewardId: '',
+    updatedAt: Date.now(),
   };
 }
 
 export function createDefaultStoreDrafts() {
   const draft = createEmptyDraft();
-  return { activeDraftId: draft.id, drafts: [draft] };
+  return { activeDraftId: draft.id, drafts: [draft], updatedAt: Date.now() };
 }
 
 export function readDraftStorage() {
@@ -55,7 +56,11 @@ export function normalizeStoreDrafts(storeState) {
   const activeDraftId = drafts.some((d) => d.id === storeState.activeDraftId)
     ? storeState.activeDraftId
     : drafts[0].id;
-  return { activeDraftId, drafts };
+  return { 
+    activeDraftId, 
+    drafts, 
+    updatedAt: storeState.updatedAt || Date.now() 
+  };
 }
 
 export function draftItemCount(draft) {

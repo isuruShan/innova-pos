@@ -816,6 +816,14 @@ export default function NewOrder() {
   });
 
   const getPartnerForOrderType = (type, partnerList) => {
+    if (!type || !partnerList) return null;
+    // 1. Try exact formatted name match
+    let partner = partnerList.find(p => p.isActive && p.name?.toLowerCase().replace(/\s+/g, '-') === type);
+    if (partner) return partner;
+    // 2. Try ID match
+    partner = partnerList.find(p => p.isActive && String(p._id) === type);
+    if (partner) return partner;
+    // 3. Fallback to legacy name-based matching
     if (type === 'uber-eats') {
       return partnerList.find(p => p.isActive && p.name?.toLowerCase().includes('uber'));
     }
@@ -823,6 +831,20 @@ export default function NewOrder() {
       return partnerList.find(p => p.isActive && (p.name?.toLowerCase().includes('pickme') || p.name?.toLowerCase().includes('pick me')));
     }
     return null;
+  };
+
+  const calcCommissionPrice = (basePrice, partner) => {
+    const base = Number(basePrice) || 0;
+    if (!partner || base <= 0) return '';
+    let suggested = base;
+    const type = partner.commissionType || 'percentage';
+    if (type === 'percentage' || type === 'both') {
+      suggested += base * ((Number(partner.commissionPercentage) || 0) / 100);
+    }
+    if (type === 'flat' || type === 'both') {
+      suggested += Number(partner.commissionFlat) || 0;
+    }
+    return Math.round(suggested * 100) / 100;
   };
 
   const getItemPrice = (menuItem, variant, type, partnerList) => {
@@ -833,16 +855,20 @@ export default function NewOrder() {
         // Variant-level channel price lives on the variant itself: variant.channelPrices[partnerId]
         const vChannelPrices = variant.channelPrices || {};
         const vPrice = vChannelPrices[partnerId];
-        if (vPrice != null && vPrice !== '') {
+        if (vPrice != null && vPrice !== '' && Number(vPrice) > 0) {
           return Math.round(Number(vPrice) * 100) / 100;
         }
+        const fallback = calcCommissionPrice(variant.price, partner);
+        if (fallback !== '') return fallback;
       } else {
         // Root-item channel price: channelPrices is a flat { partnerId: price } map
         const channelPrices = menuItem.channelPrices || {};
         const rootPrice = channelPrices[partnerId];
-        if (rootPrice != null && rootPrice !== '') {
+        if (rootPrice != null && rootPrice !== '' && Number(rootPrice) > 0) {
           return Math.round(Number(rootPrice) * 100) / 100;
         }
+        const fallback = calcCommissionPrice(menuItem.price, partner);
+        if (fallback !== '') return fallback;
       }
     }
     return variant
@@ -857,11 +883,11 @@ export default function NewOrder() {
     if (variant) {
       const vChannelPrices = variant.channelPrices || {};
       const vPrice = vChannelPrices[partnerId];
-      return vPrice == null || vPrice === '';
+      return vPrice == null || vPrice === '' || Number(vPrice) <= 0;
     }
     const channelPrices = menuItem.channelPrices || {};
     const rootPrice = channelPrices[partnerId];
-    return rootPrice == null || rootPrice === '';
+    return rootPrice == null || rootPrice === '' || Number(rootPrice) <= 0;
   };
 
   const promoTierLevel =
@@ -1032,7 +1058,7 @@ export default function NewOrder() {
     setCart(prevCart => {
       return prevCart.map(cartItem => {
         // Find the full menu item
-        const menuItem = menuItems.find(m => m._id === cartItem.menuItem);
+        const menuItem = menuItems.find(m => String(m._id) === String(cartItem.menuItem));
         if (!menuItem) return cartItem;
         
         // Find the variant if applicable
@@ -1721,7 +1747,7 @@ export default function NewOrder() {
                   </div>
                 ) : (
                   cart.map(item => {
-                    const mItem = menuItems.find(m => m._id === item.menuItem);
+                    const mItem = menuItems.find(m => String(m._id) === String(item.menuItem));
                     const variant = item.variantId && mItem ? mItem.variants?.find(v => String(v._id) === String(item.variantId)) : null;
                     const isWarning = mItem ? isMissingPartnerPrice(mItem, variant, orderType, partners) : false;
                     return (

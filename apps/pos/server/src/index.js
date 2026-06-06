@@ -111,6 +111,7 @@ app.use('/api/tenant', require('./routes/tenantAddons'));
 app.use('/api/loyalty', require('./routes/loyalty'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/foodmarket-partners', require('./routes/foodmarketPartners'));
+app.use('/api/cashier-drafts', require('./routes/cashierDrafts'));
 app.use('/api/uber', require('./routes/uber'));
 app.use('/api/uber', require('./routes/uberWebhook'));
 app.use('/api/webhooks/whatsapp', require('./routes/whatsappWebhook'));

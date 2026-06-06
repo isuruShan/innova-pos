@@ -8,10 +8,33 @@ function roundMoney2(n) {
   return Math.round(x * 100) / 100;
 }
 
+function getCommissionPrice(basePrice, partner) {
+  const base = Number(basePrice) || 0;
+  if (!partner || base <= 0) return base;
+  let suggested = base;
+  const type = partner.commissionType || 'percentage';
+  // Step 1: percentage commission on the base price
+  if (type === 'percentage' || type === 'both') {
+    suggested += base * ((Number(partner.commissionPercentage) || 0) / 100);
+  }
+  // Step 2: flat commission added on top
+  if (type === 'flat' || type === 'both') {
+    suggested += Number(partner.commissionFlat) || 0;
+  }
+  return Math.round(suggested * 100) / 100;
+}
+
 async function enrichItems(items, tenantId, storeId, foodmarketPartnerId = null) {
   const menuIds = items.map((i) => i.menuItem);
   const menuDocs = await MenuItem.find({ _id: { $in: menuIds }, tenantId, storeId }).lean();
   const menuMap = Object.fromEntries(menuDocs.map((m) => [m._id.toString(), m]));
+
+  let partner = null;
+  if (foodmarketPartnerId) {
+    const FoodmarketPartner = require('../models/FoodmarketPartner');
+    partner = await FoodmarketPartner.findOne({ _id: foodmarketPartnerId, tenantId }).lean();
+  }
+
   return items.map((i) => {
     const doc = menuMap[i.menuItem?.toString()];
     const qty = Math.max(1, Number(i.qty) || 1);
@@ -25,21 +48,31 @@ async function enrichItems(items, tenantId, storeId, foodmarketPartnerId = null)
       const variant = doc.variants?.find(v => String(v._id) === String(variantId));
       if (variant) {
         price = variant.price;
+        let hasExplicitChannelPrice = false;
         if (foodmarketPartnerId && variant.channelPrices) {
           const partnerPrice = variant.channelPrices instanceof Map ? variant.channelPrices.get(String(foodmarketPartnerId)) : variant.channelPrices[String(foodmarketPartnerId)];
-          if (partnerPrice !== undefined && partnerPrice !== null) {
+          if (partnerPrice !== undefined && partnerPrice !== null && partnerPrice !== '' && Number(partnerPrice) > 0) {
             price = partnerPrice;
+            hasExplicitChannelPrice = true;
           }
+        }
+        if (!hasExplicitChannelPrice && partner) {
+          price = getCommissionPrice(variant.price, partner);
         }
         variantName = variant.name;
         variantAttributes = variant.attributes || [];
       }
     } else if (doc) {
+      let hasExplicitChannelPrice = false;
       if (foodmarketPartnerId && doc.channelPrices) {
         const partnerPrice = doc.channelPrices instanceof Map ? doc.channelPrices.get(String(foodmarketPartnerId)) : doc.channelPrices[String(foodmarketPartnerId)];
-        if (partnerPrice !== undefined && partnerPrice !== null) {
+        if (partnerPrice !== undefined && partnerPrice !== null && partnerPrice !== '' && Number(partnerPrice) > 0) {
           price = partnerPrice;
+          hasExplicitChannelPrice = true;
         }
+      }
+      if (!hasExplicitChannelPrice && partner) {
+        price = getCommissionPrice(doc.price, partner);
       }
     }
 
@@ -74,6 +107,12 @@ async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId, order
   const menuDocs = await MenuItem.find({ _id: { $in: menuIds }, tenantId, storeId }).lean();
   const menuMap = Object.fromEntries(menuDocs.map((m) => [m._id.toString(), m]));
   const trackKitchenQtyBump = ['preparing', 'ready'].includes(orderStatus || '');
+
+  let partner = null;
+  if (foodmarketPartnerId) {
+    const FoodmarketPartner = require('../models/FoodmarketPartner');
+    partner = await FoodmarketPartner.findOne({ _id: foodmarketPartnerId, tenantId }).lean();
+  }
 
   return incoming.map((raw) => {
     const mid = raw.menuItem?.toString();
@@ -115,21 +154,31 @@ async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId, order
       const variant = doc.variants?.find(v => String(v._id) === String(variantId));
       if (variant) {
         price = variant.price;
+        let hasExplicitChannelPrice = false;
         if (foodmarketPartnerId && variant.channelPrices) {
           const partnerPrice = variant.channelPrices instanceof Map ? variant.channelPrices.get(String(foodmarketPartnerId)) : variant.channelPrices[String(foodmarketPartnerId)];
-          if (partnerPrice !== undefined && partnerPrice !== null) {
+          if (partnerPrice !== undefined && partnerPrice !== null && partnerPrice !== '' && Number(partnerPrice) > 0) {
             price = partnerPrice;
+            hasExplicitChannelPrice = true;
           }
+        }
+        if (!hasExplicitChannelPrice && partner) {
+          price = getCommissionPrice(variant.price, partner);
         }
         variantName = variant.name;
         variantAttributes = variant.attributes || [];
       }
     } else if (doc) {
+      let hasExplicitChannelPrice = false;
       if (foodmarketPartnerId && doc.channelPrices) {
         const partnerPrice = doc.channelPrices instanceof Map ? doc.channelPrices.get(String(foodmarketPartnerId)) : doc.channelPrices[String(foodmarketPartnerId)];
-        if (partnerPrice !== undefined && partnerPrice !== null) {
+        if (partnerPrice !== undefined && partnerPrice !== null && partnerPrice !== '' && Number(partnerPrice) > 0) {
           price = partnerPrice;
+          hasExplicitChannelPrice = true;
         }
+      }
+      if (!hasExplicitChannelPrice && partner) {
+        price = getCommissionPrice(doc.price, partner);
       }
     }
 
