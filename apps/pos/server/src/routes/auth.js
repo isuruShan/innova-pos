@@ -74,12 +74,13 @@ router.post('/login', async (req, res) => {
 
     let payload = buildPayload(user, subscriptionActive);
     payload = await withFreshProfileImage(payload, user);
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '12h' });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
     user.lastLoginAt = new Date();
     await user.save();
 
-    res.json({ token, user: payload });
+    res.json({ token, refreshToken, user: payload });
   } catch (err) {
     sendRouteError(res, err, { req });
   }
@@ -179,10 +180,54 @@ router.put('/me', protect, async (req, res) => {
 
     let payload = buildPayload(user, req.user.subscriptionActive ?? true);
     payload = await withFreshProfileImage(payload, user);
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '12h' });
-    res.json({ user: payload, token });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    res.json({ user: payload, token, refreshToken });
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+});
+
+router.post('/refresh', async (req, res) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) return res.status(400).json({ message: 'Refresh token is required' });
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).populate('storeIds', '_id');
+    if (!user || !user.isActive) {
+      return res.status(401).json({ message: 'User not found or deactivated' });
+    }
+
+    let subscriptionActive = true;
+    if (user.tenantId && user.role !== 'superadmin') {
+      const mongoose = require('mongoose');
+      const Tenant = mongoose.models.Tenant || require('../models/Tenant');
+      const tenant = await Tenant.findById(user.tenantId).select('status subscriptionStatus trialEndsAt temporaryActivationUntil');
+      if (tenant) {
+        if (tenant.status === 'suspended' && !(tenant.temporaryActivationUntil && new Date() <= tenant.temporaryActivationUntil)) {
+          return res.status(403).json({ message: 'Merchant account suspended' });
+        }
+        if (tenant.temporaryActivationUntil && new Date() <= tenant.temporaryActivationUntil) {
+          subscriptionActive = true;
+        } else if (tenant.status !== 'active') {
+          subscriptionActive = false;
+        } else if (tenant.subscriptionStatus === 'expired') {
+          subscriptionActive = false;
+        } else if (tenant.subscriptionStatus === 'trial' && tenant.trialEndsAt && new Date() > tenant.trialEndsAt) {
+          subscriptionActive = false;
+        }
+      }
+    }
+
+    let payload = buildPayload(user, subscriptionActive);
+    payload = await withFreshProfileImage(payload, user);
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const newRefreshToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+    res.json({ token, refreshToken: newRefreshToken, user: payload });
+  } catch (err) {
+    res.status(401).json({ message: 'Invalid or expired refresh token' });
   }
 });
 

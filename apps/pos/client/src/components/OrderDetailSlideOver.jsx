@@ -19,7 +19,7 @@ const EDITABLE_STATUSES = ['pending', 'preparing', 'ready'];
 const formatPrice = formatCurrency;
 const formatDateTime = fmtDT;
 
-function VariantSelectorModal({ item, onClose, onConfirm }) {
+function VariantSelectorModal({ item, onClose, onConfirm, orderType, partners, getItemPrice }) {
   const [selections, setSelections] = useState({});
 
   useEffect(() => {
@@ -101,7 +101,7 @@ function VariantSelectorModal({ item, onClose, onConfirm }) {
               <p className="text-xs text-slate-500 truncate">{selectedVariant.description || item.description || 'No description'}</p>
             </div>
             <span className="text-sm font-bold text-amber-400 shrink-0">
-              {formatPrice(selectedVariant.price)}
+              {formatPrice(getItemPrice ? getItemPrice(item, selectedVariant, orderType, partners) : selectedVariant.price)}
             </span>
           </div>
         ) : (
@@ -218,7 +218,7 @@ function ItemRow({
   );
 }
 
-function AddItemRow({ menuItems, existingIds, onAdd }) {
+function AddItemRow({ menuItems, existingIds, onAdd, orderType, partners, getItemPrice }) {
   const [showPicker, setShowPicker] = useState(false);
   const available = menuItems.filter(m => m.available && !existingIds.has(m._id));
 
@@ -241,6 +241,9 @@ function AddItemRow({ menuItems, existingIds, onAdd }) {
         existingIds={existingIds}
         onSelect={onAdd}
         formatPrice={formatPrice}
+        orderType={orderType}
+        partners={partners}
+        getItemPrice={getItemPrice}
       />
     </>
   );
@@ -264,6 +267,42 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
   const [error, setError] = useState('');
   const [variantSelectionItem, setVariantSelectionItem] = useState(null);
   const waiterDismissPostedRef = useRef(new Set());
+
+  const { data: partners = [] } = useQuery({
+    queryKey: ['foodmarket-partners'],
+    queryFn: () => api.get('/foodmarket-partners').then((r) => r.data),
+    enabled: isStoreReady,
+  });
+
+  const getPartnerForOrderType = (type, partnerList) => {
+    if (type === 'uber-eats') {
+      return partnerList.find(p => p.isActive && p.name?.toLowerCase().includes('uber'));
+    }
+    if (type === 'pickme') {
+      return partnerList.find(p => p.isActive && (p.name?.toLowerCase().includes('pickme') || p.name?.toLowerCase().includes('pick me')));
+    }
+    return null;
+  };
+
+  const getItemPrice = (menuItem, variant, type, partnerList) => {
+    const partner = getPartnerForOrderType(type, partnerList);
+    if (partner) {
+      const channelPrices = menuItem.channelPrices || {};
+      const override = channelPrices[partner._id];
+      if (override) {
+        if (variant) {
+          const vOverride = override.variants?.[variant._id];
+          if (vOverride != null && vOverride !== '') {
+            return Math.round(Number(vOverride) * 100) / 100;
+          }
+        } else if (override.price != null && override.price !== '') {
+          return Math.round(Number(override.price) * 100) / 100;
+        }
+      }
+    }
+    return variant ? Math.round(Number(variant.price) * 100) / 100 : Math.round(Number(menuItem.price) * 100) / 100;
+  };
+
 
   // Uber Eats actions state
   const [showUberDeny, setShowUberDeny] = useState(false);
@@ -440,7 +479,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
       return;
     }
 
-    const price = selectedVariant ? selectedVariant.price : menuItem.price;
+    const price = getItemPrice(menuItem, selectedVariant, orderType, partners);
     const variantId = selectedVariant ? selectedVariant._id : null;
     const variantName = selectedVariant ? selectedVariant.name : '';
     const variantAttributes = selectedVariant ? selectedVariant.attributes || [] : [];
@@ -574,7 +613,22 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
               <button
                 key={type.id}
                 disabled={!isEditable}
-                onClick={() => { setOrderType(type.id); setTableNumber(''); setReference(''); setDirty(true); }}
+                onClick={() => {
+                  const newType = type.id;
+                  setOrderType(newType);
+                  setTableNumber('');
+                  setReference('');
+                  setDirty(true);
+                  setItems((prevItems) =>
+                    prevItems.map((c) => {
+                      const mItem = menuItems.find((m) => m._id === c.menuItem);
+                      if (!mItem) return c;
+                      const variant = c.variantId ? mItem.variants?.find((varObj) => varObj._id === c.variantId) : null;
+                      const newPrice = getItemPrice(mItem, variant, newType, partners);
+                      return { ...c, price: newPrice };
+                    })
+                  );
+                }}
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition ${
                   orderType === type.id
                     ? `${type.activeBg} text-[var(--pos-selection-text)] border-transparent`
@@ -662,7 +716,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
           </div>
 
           {isEditable && (
-            <AddItemRow menuItems={sortedMenuItems} existingIds={existingIds} onAdd={addItem} />
+            <AddItemRow menuItems={sortedMenuItems} existingIds={existingIds} onAdd={addItem} orderType={orderType} partners={partners} getItemPrice={getItemPrice} />
           )}
         </div>
 
@@ -890,6 +944,9 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
         item={variantSelectionItem}
         onClose={() => setVariantSelectionItem(null)}
         onConfirm={addItem}
+        orderType={orderType}
+        partners={partners}
+        getItemPrice={getItemPrice}
       />
 
       {/* Prep Time Picker Modal */}

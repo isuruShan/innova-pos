@@ -160,6 +160,9 @@ export function MenuItemPickerModal({
   existingIds = new Set(),
   onSelect,
   formatPrice,
+  orderType,
+  partners,
+  getItemPrice,
 }) {
   const [search, setSearch] = useState('');
 
@@ -241,48 +244,51 @@ export function MenuItemPickerModal({
             </p>
           ) : (
             <div className="space-y-2">
-              {filtered.map((item) => (
-                <button
-                  key={item._id}
-                  type="button"
-                  onClick={() => {
-                    onSelect(item);
-                    onClose();
-                  }}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-700 bg-[var(--pos-surface-inset)] hover:border-slate-600 hover:bg-slate-800/60 transition active:scale-[0.99] text-left"
-                >
-                  {/* Item image */}
-                  <div className="w-12 h-12 rounded-lg bg-slate-800 border border-slate-700 overflow-hidden shrink-0">
-                    {item.images?.[0]?.url || item.image ? (
-                      <img
-                        src={item.images?.[0]?.url || item.image}
-                        alt=""
-                        className="w-full h-full object-cover"
-                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80'; }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-lg">🍽️</div>
-                    )}
-                  </div>
+              {filtered.map((item) => {
+                const price = getItemPrice ? getItemPrice(item, null, orderType, partners) : item.price;
+                return (
+                  <button
+                    key={item._id}
+                    type="button"
+                    onClick={() => {
+                      onSelect(item);
+                      onClose();
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-700 bg-[var(--pos-surface-inset)] hover:border-slate-600 hover:bg-slate-800/60 transition active:scale-[0.99] text-left"
+                  >
+                    {/* Item image */}
+                    <div className="w-12 h-12 rounded-lg bg-slate-800 border border-slate-700 overflow-hidden shrink-0">
+                      {item.images?.[0]?.url || item.image ? (
+                        <img
+                          src={item.images?.[0]?.url || item.image}
+                          alt=""
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80'; }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-lg">🍽️</div>
+                      )}
+                    </div>
 
-                  {/* Item details */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--pos-text-primary)] truncate">
-                      {item.name}
-                    </p>
-                    {item.description && (
-                      <p className="text-xs text-slate-500 truncate mt-0.5">
-                        {item.description}
+                    {/* Item details */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[var(--pos-text-primary)] truncate">
+                        {item.name}
                       </p>
-                    )}
-                  </div>
+                      {item.description && (
+                        <p className="text-xs text-slate-500 truncate mt-0.5">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
 
-                  {/* Price */}
-                  <span className="text-sm font-bold text-amber-400 shrink-0">
-                    {formatPrice?.(item.price) || item.price}
-                  </span>
-                </button>
-              ))}
+                    {/* Price */}
+                    <span className="text-sm font-bold text-amber-400 shrink-0">
+                      {formatPrice?.(price) || price}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

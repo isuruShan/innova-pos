@@ -65,14 +65,15 @@ router.post('/login', async (req, res) => {
     const subscriptionActive = await isSubscriptionActive(user.tenantId);
     let payload = buildPayload(user, subscriptionActive);
     payload = await withFreshProfileImage(payload, user);
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
     user.lastLoginAt = new Date();
     await user.save();
 
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     res.set('Pragma', 'no-cache');
-    res.json({ token, user: payload });
+    res.json({ token, refreshToken, user: payload });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
