@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Upload, Loader, CheckCircle, AlertTriangle, ExternalLink, ImageIcon, X, Search, Copy, Check, FileText, Eye, ChevronDown, ChevronUp } from 'lucide-react';
+import { Upload, Loader, CheckCircle, AlertTriangle, ExternalLink, ImageIcon, X, Search, Copy, Check, FileText, Eye, ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { validateImageFile } from '../../components/billing/BankReceiptFields';
 import api from '../../api/axios';
 import PlanChangeModal from '../../components/subscription/PlanChangeModal';
@@ -693,7 +693,16 @@ export default function SubscriptionPage() {
                 </div>
               ) : (
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
-                  <h3 className="font-semibold text-gray-900 mb-4 text-sm">Current Plan</h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-semibold text-gray-900 text-sm">Current Plan</h3>
+                    <button
+                      type="button"
+                      onClick={() => setPlanModalOpen(true)}
+                      className="px-3 py-1.5 border border-gray-300 hover:border-gray-400 text-gray-700 text-xs font-semibold rounded-lg shadow-sm transition cursor-pointer"
+                    >
+                      Change Plan
+                    </button>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                     <div>
                       <p className="text-xs text-gray-400">Status</p>
@@ -923,19 +932,28 @@ export default function SubscriptionPage() {
                   )}
 
                   {latestReceipt?.status === 'verified' && (
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-5 space-y-2">
-                      <p className="font-semibold text-green-800 flex items-center gap-2">
-                        <CheckCircle size={16} className="text-green-600" /> Subscription All Set
-                      </p>
-                      <p className="text-xs text-green-700 leading-relaxed">
-                        You are all set for the next billing cycle:{' '}
-                        <strong>
-                          {latestReceipt.billingPeriodStart ? new Date(latestReceipt.billingPeriodStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                          {' to '}
-                          {latestReceipt.billingPeriodEnd ? new Date(latestReceipt.billingPeriodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                        </strong>
-                        .
-                      </p>
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-2">
+                        <p className="font-semibold text-green-800 flex items-center gap-2">
+                          <CheckCircle size={16} className="text-green-600" /> Subscription All Set
+                        </p>
+                        <p className="text-xs text-green-700 leading-relaxed">
+                          You are all set for the next billing cycle:{' '}
+                          <strong>
+                            {latestReceipt.billingPeriodStart ? new Date(latestReceipt.billingPeriodStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                            {' to '}
+                            {latestReceipt.billingPeriodEnd ? new Date(latestReceipt.billingPeriodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                          </strong>
+                          .
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowSubPaymentForm(!showSubPaymentForm)}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg shadow-sm transition whitespace-nowrap cursor-pointer"
+                      >
+                        {showSubPaymentForm ? 'Hide Payment Details' : 'Pay for Next Billing Cycle'}
+                      </button>
                     </div>
                   )}
 
@@ -967,18 +985,18 @@ export default function SubscriptionPage() {
                         <button
                           type="button"
                           onClick={() => setShowSubPaymentForm(!showSubPaymentForm)}
-                          className="px-6 py-2.5 bg-brand-orange hover:bg-brand-orange-hover text-white text-xs font-semibold rounded-lg shadow-sm transition"
+                          className="px-6 py-2.5 bg-brand-orange hover:bg-brand-orange-hover text-white text-xs font-semibold rounded-lg shadow-sm transition cursor-pointer"
                         >
                           {showSubPaymentForm ? 'Hide Payment Details' : 'Pay Now'}
                         </button>
                       </div>
+                    </div>
+                  )}
 
-                      {showSubPaymentForm && (
-                        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-xs space-y-4 animate-fade-in">
-                          <h4 className="font-bold text-gray-900 text-sm">Submit Payment Details</h4>
-                          {renderPaymentFormsContent()}
-                        </div>
-                      )}
+                  {showSubPaymentForm && (
+                    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-xs space-y-4 animate-fade-in">
+                      <h4 className="font-bold text-gray-900 text-sm">Submit Payment Details</h4>
+                      {renderPaymentFormsContent()}
                     </div>
                   )}
                 </div>
@@ -1297,6 +1315,16 @@ export default function SubscriptionPage() {
           showTenantContext={false}
         />
       )}
+
+      {/* Plan Change Modal */}
+      <PlanChangeModal
+        open={planModalOpen}
+        onClose={() => setPlanModalOpen(false)}
+        plans={plans}
+        currentPlanId={tenant?.assignedPlanId?._id}
+        onSelect={(planId) => schedulePlanMutation.mutate(planId)}
+        isPending={schedulePlanMutation.isPending}
+      />
     </div>
   );
 }

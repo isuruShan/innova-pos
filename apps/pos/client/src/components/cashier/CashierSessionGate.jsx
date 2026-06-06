@@ -434,8 +434,8 @@ export default function CashierSessionGate({ children, requireSession = false })
                   type="button"
                   className="w-full mb-2 flex items-center justify-between gap-2 text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 rounded-lg px-3 py-2 hover:bg-emerald-500/15 transition text-left"
                   onClick={() => {
-                    const input = document.getElementById('opening-cash');
-                    if (input) { input.value = suggestedOpeningData.suggestedOpening || 0; }
+                    setOpeningCashInput(String(suggestedOpeningData.suggestedOpening || 0));
+                    setOpeningNoteError('');
                   }}
                 >
                   <span>

@@ -406,11 +406,7 @@ export default function Navbar({ links = [], groups: groupsProp }) {
           if (!active) return null;
         }
         
-        // Hide Table Management group if table management is disabled in store settings
-        // unless the user is a manager or merchant_admin (so they can configure/enable it)
-        if (group.addon === 'tableManagement' && !tableMgmtEnabled && !isManagerOrAdmin) {
-          return null;
-        }
+
 
         const filteredItems = group.items.filter(item => {
           // Filter out items where item.addon is unsubscribed
@@ -418,11 +414,7 @@ export default function Navbar({ links = [], groups: groupsProp }) {
             const active = activePaidAddons[item.addon] === true || activePaidAddons[item.addon]?.active === true;
             if (!active) return false;
           }
-          // Hide individual table management links if store table management is disabled
-          // unless the user is a manager or merchant_admin
-          if (item.addon === 'tableManagement' && !tableMgmtEnabled && !isManagerOrAdmin) {
-            return false;
-          }
+
           return true;
         });
 

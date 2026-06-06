@@ -21,9 +21,9 @@ function remainingQtyForLine(order, item) {
 }
 
 async function loadReturnPolicy(tenantId) {
-  const s = await TenantSettings.findOne({ tenantId }).select('returnsEnabled returnsRequireManagerApproval').lean();
+  const s = await TenantSettings.findOne({ tenantId }).select('returnsRequireManagerApproval').lean();
   return {
-    returnsEnabled: Boolean(s?.returnsEnabled),
+    returnsEnabled: true,
     returnsRequireManagerApproval: s?.returnsRequireManagerApproval !== false,
   };
 }

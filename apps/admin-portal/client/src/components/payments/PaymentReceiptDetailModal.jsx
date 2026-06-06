@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, ExternalLink, Loader, XCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 import api from '../../api/axios';
@@ -102,6 +102,30 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
 
   const receipt = data?.receipt;
   const kind = data?.receiptKindLabel || 'Payment';
+
+  const actualBillingCycle = useMemo(() => {
+    if (!receipt) return 'monthly';
+    if (receipt.paymentBreakdown?.plan?.billingCycle) {
+      return receipt.paymentBreakdown.plan.billingCycle;
+    }
+    if (receipt.paymentBreakdown?.plan?.durationDays === 365) {
+      return 'yearly';
+    }
+    if (receipt.extensionDays === 365 || receipt.extensionDays === 366) {
+      return 'yearly';
+    }
+    if (receipt.billingPeriodStart && receipt.billingPeriodEnd) {
+      const diffDays = Math.ceil(
+        (new Date(receipt.billingPeriodEnd) - new Date(receipt.billingPeriodStart)) / (1000 * 60 * 60 * 24)
+      );
+      if (diffDays >= 360) return 'yearly';
+      if (diffDays >= 28 && diffDays <= 32) return 'monthly';
+    }
+    if (receipt.requestedPlanId?.billingCycle) {
+      return receipt.requestedPlanId.billingCycle;
+    }
+    return 'monthly';
+  }, [receipt]);
 
   useEffect(() => {
     setSlipUrl(null);
@@ -218,14 +242,14 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
                     {formatMoney(
                       receipt.requestedPlanId.currency,
                       receipt.requestedPlanId.amount ?? 
-                      (receipt.paymentBreakdown?.plan?.billingCycle === 'yearly' || receipt.requestedPlanId?.billingCycle === 'yearly'
+                      (actualBillingCycle === 'yearly'
                         ? receipt.requestedPlanId.yearlyPrice
                         : receipt.requestedPlanId.monthlyPrice) ??
                       0
                     )}
                     {' · '}
-                    {receipt.requestedPlanId.durationDays} days
-                    {receipt.requestedPlanId.billingCycle ? ` · ${receipt.requestedPlanId.billingCycle}` : ''}
+                    {actualBillingCycle === 'yearly' ? 365 : 30} days
+                    {` · ${actualBillingCycle}`}
                   </p>
                   {receipt.extensionDays ? (
                     <p className="text-xs text-green-700 mt-2">Extended {receipt.extensionDays} days on verify</p>

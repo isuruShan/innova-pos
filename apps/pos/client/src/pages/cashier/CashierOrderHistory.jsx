@@ -82,7 +82,7 @@ export default function CashierOrderHistory() {
     onError: (e) => setMsg(e.response?.data?.message || 'Return failed'),
   });
 
-  const returnsEnabled = Boolean(tenantSettings?.returnsEnabled);
+  const returnsEnabled = true;
   const requireApproval = tenantSettings?.returnsRequireManagerApproval !== false && user?.role !== 'merchant_admin';
 
   const openReturn = (order) => {
@@ -154,12 +154,6 @@ export default function CashierOrderHistory() {
             <p className="text-sm text-center py-2 rounded-lg bg-slate-800 text-amber-200 border border-slate-600">{msg}</p>
           )}
 
-          {!returnsEnabled && (
-            <p className="text-sm text-amber-300/90 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3">
-              Returns are disabled. Enable them in the admin portal under branding / operations settings.
-            </p>
-          )}
-
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -224,7 +218,7 @@ export default function CashierOrderHistory() {
                     >
                       <Eye size={14} /> View
                     </button>
-                    {returnsEnabled && o.status === 'completed' && (
+                    {o.status === 'completed' && (
                       <button
                         type="button"
                         onClick={() => openReturn(o)}
