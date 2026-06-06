@@ -1997,8 +1997,8 @@ export default function NewOrder() {
       <VariantSelectorModal
         item={variantSelectionItem}
         onClose={() => setVariantSelectionItem(null)}
-        onConfirm={(variant) => {
-          addToCart(variantSelectionItem, variant);
+        onConfirm={(item, variant) => {
+          addToCart(item, variant);
           setVariantSelectionItem(null);
         }}
         orderType={orderType}

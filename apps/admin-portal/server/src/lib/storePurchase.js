@@ -26,12 +26,12 @@ async function nextStoreCode(tenantId) {
 /**
  * Create a store with platform defaults after payment (or first included store).
  */
-async function createDefaultStoreForTenant(tenantId, createdBy) {
+async function createDefaultStoreForTenant(tenantId, createdBy, name = 'New store') {
   const code = await nextStoreCode(tenantId);
   const hasDefault = await Store.exists({ tenantId, isDefault: true, isActive: true });
   const store = await Store.create({
     tenantId,
-    name: 'New store',
+    name: String(name || '').trim() || 'New store',
     code,
     address: '',
     phone: '',

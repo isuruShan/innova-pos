@@ -959,7 +959,7 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
     if (receipt.receiptKind === 'store') {
       const tenantId = receipt.tenantId?._id || receipt.tenantId;
       await endTenantTrialOnPaidPurchase(tenantId, { activatedBy: req.user.id });
-      const store = await createDefaultStoreForTenant(tenantId, req.user.id);
+      const store = await createDefaultStoreForTenant(tenantId, req.user.id, receipt.userLicensePayload?.name);
       const now = new Date();
       receipt.status = 'verified';
       receipt.verifiedBy = req.user.id;

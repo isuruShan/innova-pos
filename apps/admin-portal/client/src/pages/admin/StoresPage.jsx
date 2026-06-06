@@ -446,7 +446,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
   });
 
   const createIncludedStore = useMutation({
-    mutationFn: () => api.post('/stores/create-included').then((r) => r.data),
+    mutationFn: (payload) => api.post('/stores/create-included', payload).then((r) => r.data),
     onSuccess: (created) => {
       toast.success(`Store ${created?.code || ''} created. Edit name and settings below.`);
       queryClient.invalidateQueries({ queryKey: ['admin-stores'] });
@@ -506,11 +506,6 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
         setError(quote.error);
         return;
       }
-      if (!quote.requiresPayment) {
-        createIncludedStore.mutate();
-        setStartCreateLoading(false);
-        return;
-      }
       setPurchaseQuote(quote);
       setPurchaseOpen(true);
       setPurchaseStep('review');
@@ -568,7 +563,9 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
     el.innerHTML = '';
     const buttons = window.paypal.Buttons({
       createOrder: async () => {
-        const { data } = await api.post('/subscriptions/checkout/paypal/create-store-order');
+        const { data } = await api.post('/subscriptions/checkout/paypal/create-store-order', {
+          storeLocationName: bankForm.storeName.trim()
+        });
         return data.orderId;
       },
       onApprove: async (data) => {
@@ -1062,7 +1059,19 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                   fullCycle={purchaseQuote.fullCycle}
                   merchantSymbol={merchantSymbol}
                 />
-                {methodOptions.length === 0 ? (
+                {!purchaseQuote.requiresPayment ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      createIncludedStore.mutate({ name: bankForm.storeName.trim() });
+                    }}
+                    disabled={createIncludedStore.isPending}
+                    className="w-full py-3 rounded-xl bg-brand-orange text-white text-sm font-semibold flex justify-center items-center gap-2"
+                  >
+                    {createIncludedStore.isPending && <Loader size={14} className="animate-spin" />}
+                    Create store
+                  </button>
+                ) : methodOptions.length === 0 ? (
                   <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">No payment methods configured. Contact support.</p>
                 ) : (
                   <button

@@ -119,11 +119,12 @@ router.post(
   tenantScope,
   async (req, res) => {
     try {
+      const { name } = req.body;
       const quote = await getStoreCreateQuote(req.tenantId);
       if (quote.requiresPayment) {
         return res.status(400).json({ message: 'Payment is required for this store. Use the purchase flow.' });
       }
-      const store = await createDefaultStoreForTenant(req.tenantId, req.user.id);
+      const store = await createDefaultStoreForTenant(req.tenantId, req.user.id, name);
       await emitAudit({ req, action: 'STORE_CREATED', resource: 'Store', resourceId: store._id });
       res.status(201).json(serializeStore(store));
     } catch (err) {

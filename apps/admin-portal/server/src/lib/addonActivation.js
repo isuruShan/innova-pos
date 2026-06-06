@@ -195,7 +195,7 @@ async function recordVerifiedStoreReceipt({
     await receipt.save();
   }
 
-  const store = await createDefaultStoreForTenant(tenantId, createdBy);
+  const store = await createDefaultStoreForTenant(tenantId, createdBy, receipt.userLicensePayload?.name);
   return { receipt, store, duplicate: false };
 }
 

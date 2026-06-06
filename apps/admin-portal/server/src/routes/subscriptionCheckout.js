@@ -314,6 +314,7 @@ router.post('/paypal/create-user-license-order', authenticateJWT, authorize('mer
 
 router.post('/paypal/create-store-order', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
   try {
+    const { storeLocationName } = req.body;
     const settings = await loadPaymentSettings();
     if (!settings.paypal?.enabled) {
       return res.status(400).json({ message: 'PayPal is not enabled' });
@@ -358,6 +359,7 @@ router.post('/paypal/create-store-order', authenticateJWT, authorize('merchant_a
       paypalOrderId: orderId,
       status: 'pending',
       paymentBreakdown: quote,
+      userLicensePayload: storeLocationName ? { name: String(storeLocationName).trim().slice(0, 100) } : null,
       createdBy: req.user.id,
     });
 
