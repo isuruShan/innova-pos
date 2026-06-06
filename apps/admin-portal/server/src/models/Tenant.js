@@ -24,6 +24,7 @@ const tenantSchema = new mongoose.Schema(
     pendingPlanPaymentReceived: { type: Boolean, default: false },
     assignedPlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', default: null, index: true },
     planLocked: { type: Boolean, default: false },
+    billingCycle: { type: String, enum: ['monthly', 'yearly'], default: 'monthly' },
     assignedAt: { type: Date, default: null },
     assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     trialEndsAt: { type: Date, default: null },

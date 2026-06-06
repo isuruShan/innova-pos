@@ -167,7 +167,7 @@ export function MenuItemPickerModal({
   const [search, setSearch] = useState('');
 
   const available = useMemo(
-    () => menuItems.filter((m) => m.available && !existingIds.has(m._id)),
+    () => menuItems.filter((m) => m.available && (!existingIds.has(String(m._id)) || m.hasVariants)),
     [menuItems, existingIds],
   );
 

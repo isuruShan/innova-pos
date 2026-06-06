@@ -11,10 +11,9 @@ import { buildPlanCardBackground, buildPlanTagBackground, planUsesLightText } fr
 const INITIAL_FORM = {
   name: '',
   code: '',
-  billingCycle: 'monthly',
-  amount: '',
+  monthlyPrice: '',
+  yearlyPrice: '',
   currency: 'LKR',
-  durationDays: '30',
   planAudience: 'local',
   featureLines: [''],
   isPublic: true,
@@ -107,10 +106,9 @@ export default function PlansPage() {
     setForm({
       name: plan.name || '',
       code: plan.code || '',
-      billingCycle: plan.billingCycle || 'monthly',
-      amount: String(plan.amount ?? ''),
+      monthlyPrice: String(plan.monthlyPrice ?? ''),
+      yearlyPrice: String(plan.yearlyPrice ?? ''),
       currency: plan.currency || 'LKR',
-      durationDays: String(plan.durationDays ?? ''),
       featureLines:
         Array.isArray(plan.featureLines) && plan.featureLines.length > 0
           ? [...plan.featureLines]
@@ -147,8 +145,8 @@ export default function PlansPage() {
     const lines = (form.featureLines || []).map((s) => String(s).trim()).filter(Boolean);
     return {
       ...form,
-      amount: Number(form.amount),
-      durationDays: Number(form.durationDays),
+      monthlyPrice: Number(form.monthlyPrice),
+      yearlyPrice: Number(form.yearlyPrice),
       featureLines: lines,
       description: lines.join('\n'),
       planTagGradAngle: Number(form.planTagGradAngle) || 135,
@@ -189,8 +187,8 @@ export default function PlansPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.code.trim() || !form.amount || !form.durationDays) {
-      setError('Name, code, amount, and duration are required');
+    if (!form.name.trim() || !form.code.trim() || form.monthlyPrice === '' || form.yearlyPrice === '') {
+      setError('Name, code, monthly price, and yearly price are required');
       return;
     }
     saveMutation.mutate(payload);
@@ -242,36 +240,24 @@ export default function PlansPage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Billing Cycle</label>
-              <select
-                value={form.billingCycle}
-                onChange={(e) => setForm((f) => ({ ...f, billingCycle: e.target.value }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              >
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-                <option value="custom">Custom</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Amount</label>
+              <label className="block text-xs text-gray-500 mb-1">Monthly Price</label>
               <input
                 type="number"
                 min="0"
-                value={form.amount}
-                onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-                placeholder="Amount"
+                value={form.monthlyPrice}
+                onChange={(e) => setForm((f) => ({ ...f, monthlyPrice: e.target.value }))}
+                placeholder="Monthly Price"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Duration (Days)</label>
+              <label className="block text-xs text-gray-500 mb-1">Yearly Price</label>
               <input
                 type="number"
-                min="1"
-                value={form.durationDays}
-                onChange={(e) => setForm((f) => ({ ...f, durationDays: e.target.value }))}
-                placeholder="Duration (days)"
+                min="0"
+                value={form.yearlyPrice}
+                onChange={(e) => setForm((f) => ({ ...f, yearlyPrice: e.target.value }))}
+                placeholder="Yearly Price"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
               />
             </div>
@@ -534,7 +520,7 @@ export default function PlansPage() {
                   Plan name
                 </span>
                 <span className={`relative text-lg font-extrabold ${planUsesLightText(previewPlan) ? 'text-white' : 'text-gray-900'}`}>
-                  LKR 9,999
+                  {form.currency} {Number(form.monthlyPrice || 0).toLocaleString()}
                 </span>
               </div>
             </div>
@@ -650,12 +636,14 @@ export default function PlansPage() {
                   {!p.isActive && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">Disabled</span>}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  {p.code} · {p.billingCycle} · {p.durationDays} days ·{' '}
+                  {p.code} ·{' '}
                   <span className={p.planAudience === 'international' ? 'text-blue-700' : 'text-teal-700'}>
                     {p.planAudience === 'international' ? 'International' : 'Sri Lanka'}
                   </span>
                 </p>
-                <p className="text-sm text-gray-800 mt-2">{p.currency} {Number(p.amount).toLocaleString()}</p>
+                <p className="text-sm text-gray-800 mt-2">
+                  Monthly: {p.currency} {Number(p.monthlyPrice ?? 0).toLocaleString()} · Yearly: {p.currency} {Number(p.yearlyPrice ?? 0).toLocaleString()}
+                </p>
                 <div className="flex flex-wrap gap-2 mt-4">
                   <button onClick={() => { startEdit(p); setPlanDrawerOpen(true); }} className="px-3 py-1.5 text-xs rounded-lg border border-gray-300 text-gray-700">
                     Edit
@@ -689,7 +677,7 @@ export default function PlansPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  {['Name', 'Code', 'Cycle', 'Amount', 'Duration', 'Region', 'Enabled', 'Actions'].map((h) => (
+                  {['Name', 'Code', 'Monthly Price', 'Yearly Price', 'Region', 'Enabled', 'Actions'].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -699,9 +687,8 @@ export default function PlansPage() {
                   <tr key={p._id}>
                     <td className="px-4 py-3 font-medium text-gray-900">{p.name}</td>
                     <td className="px-4 py-3 text-gray-600">{p.code}</td>
-                    <td className="px-4 py-3 text-gray-600 capitalize">{p.billingCycle}</td>
-                    <td className="px-4 py-3 text-gray-600">{p.currency} {Number(p.amount).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-gray-600">{p.durationDays} days</td>
+                    <td className="px-4 py-3 text-gray-600">{p.currency} {Number(p.monthlyPrice ?? 0).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-gray-600">{p.currency} {Number(p.yearlyPrice ?? 0).toLocaleString()}</td>
                     <td className="px-4 py-3 text-gray-600 capitalize">
                       {p.planAudience === 'international' ? 'International' : 'Sri Lanka'}
                     </td>

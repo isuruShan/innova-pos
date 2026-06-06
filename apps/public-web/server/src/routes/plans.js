@@ -8,7 +8,7 @@ const router = express.Router();
 const PLAN_SELECT =
   'name code billingCycle amount currency durationDays description featureLines isDefault planAudience ' +
   'planTagShow planTagText planTagTextColor planTagBgMode planTagSolidColor planTagGradFrom planTagGradTo planTagGradAngle ' +
-  'planCardBgMode planCardSolidColor planCardGradFrom planCardGradTo planCardGradAngle planCardUseLightText';
+  'planCardBgMode planCardSolidColor planCardGradFrom planCardGradTo planCardGradAngle planCardUseLightText monthlyPrice yearlyPrice';
 
 // GET /plans/public/audience — detect local vs international from visitor IP (VPN-friendly)
 router.get('/public/audience', async (req, res) => {
@@ -26,7 +26,7 @@ router.get('/public', async (req, res) => {
     const { audience } = planAudienceFromRequest(req, req.query.audience);
     const filter = { isActive: true, isPublic: true, planAudience: audience };
     const plans = await SubscriptionPlan.find(filter)
-      .sort({ isDefault: -1, durationDays: 1, createdAt: 1 })
+      .sort({ isDefault: -1, monthlyPrice: 1, createdAt: 1 })
       .select(PLAN_SELECT)
       .lean();
     res.json(plans);

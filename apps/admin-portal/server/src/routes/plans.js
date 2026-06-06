@@ -79,7 +79,7 @@ router.get('/for-subscription', authenticateJWT, authorize('merchant_admin'), as
     const tenant = await Tenant.findById(req.tenantId).select('countryIso').lean();
     const audience = tenantPlanAudience(tenant?.countryIso);
     const plans = await SubscriptionPlan.find({ isActive: true, isPublic: true, planAudience: audience })
-      .sort({ isDefault: -1, durationDays: 1, createdAt: 1 })
+      .sort({ isDefault: -1, monthlyPrice: 1, createdAt: 1 })
       .lean();
     res.json(plans);
   } catch (err) {
@@ -94,7 +94,7 @@ router.get('/public', async (req, res) => {
     const a = req.query.audience;
     if (a === 'local' || a === 'international') filter.planAudience = a;
     const plans = await SubscriptionPlan.find(filter)
-      .sort({ isDefault: -1, durationDays: 1, createdAt: 1 })
+      .sort({ isDefault: -1, monthlyPrice: 1, createdAt: 1 })
       .lean();
     res.json(plans);
   } catch (err) {
@@ -125,9 +125,9 @@ router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
 // POST /plans — create plan
 router.post('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {
-    const { name, code, billingCycle, amount, currency, durationDays, description, isPublic, isActive, isDefault, planAudience } = req.body;
-    if (!name?.trim() || !code?.trim() || !billingCycle || amount === undefined || !durationDays) {
-      return res.status(400).json({ message: 'name, code, billingCycle, amount, and durationDays are required' });
+    const { name, code, monthlyPrice, yearlyPrice, currency, description, isPublic, isActive, isDefault, planAudience } = req.body;
+    if (!name?.trim() || !code?.trim() || monthlyPrice === undefined || yearlyPrice === undefined) {
+      return res.status(400).json({ message: 'name, code, monthlyPrice, and yearlyPrice are required' });
     }
     const normalizedCode = code.trim().toUpperCase();
     const exists = await SubscriptionPlan.findOne({ code: normalizedCode });
@@ -148,10 +148,12 @@ router.post('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
     const plan = await SubscriptionPlan.create({
       name: name.trim(),
       code: normalizedCode,
-      billingCycle,
-      amount: Number(amount),
+      billingCycle: 'monthly',
+      amount: Number(monthlyPrice),
+      monthlyPrice: Number(monthlyPrice),
+      yearlyPrice: Number(yearlyPrice),
       currency: (currency || 'LKR').toUpperCase().trim(),
-      durationDays: Number(durationDays),
+      durationDays: 30,
       description: resolvedLines.join('\n'),
       featureLines: resolvedLines,
       planAudience: audience,
@@ -183,16 +185,20 @@ router.put('/:id', authenticateJWT, authorize('superadmin'), async (req, res) =>
     const plan = await SubscriptionPlan.findById(req.params.id);
     if (!plan) return res.status(404).json({ message: 'Plan not found' });
 
-    const fields = ['name', 'billingCycle', 'amount', 'currency', 'durationDays', 'description', 'isPublic', 'isActive', 'isDefault', 'code'];
+    const fields = ['name', 'currency', 'description', 'isPublic', 'isActive', 'isDefault', 'code', 'monthlyPrice', 'yearlyPrice'];
     fields.forEach((f) => {
       if (req.body[f] !== undefined) {
         if (f === 'name' || f === 'description') plan[f] = String(req.body[f]).trim();
         else if (f === 'code') plan[f] = String(req.body[f]).trim().toUpperCase();
         else if (f === 'currency') plan[f] = String(req.body[f]).trim().toUpperCase();
-        else if (f === 'amount' || f === 'durationDays') plan[f] = Number(req.body[f]);
+        else if (f === 'monthlyPrice' || f === 'yearlyPrice') plan[f] = Number(req.body[f]);
         else plan[f] = req.body[f];
       }
     });
+
+    if (req.body.monthlyPrice !== undefined) {
+      plan.amount = Number(req.body.monthlyPrice);
+    }
 
     const linesOpt = normalizeFeatureLines(req.body);
     if (linesOpt !== undefined) {

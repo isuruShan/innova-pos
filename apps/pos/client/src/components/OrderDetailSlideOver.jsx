@@ -220,7 +220,7 @@ function ItemRow({
 
 function AddItemRow({ menuItems, existingIds, onAdd, orderType, partners, getItemPrice }) {
   const [showPicker, setShowPicker] = useState(false);
-  const available = menuItems.filter(m => m.available && !existingIds.has(m._id));
+  const available = menuItems.filter(m => m.available && (!existingIds.has(String(m._id)) || m.hasVariants));
 
   if (!available.length) return null;
 
@@ -317,8 +317,6 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
         if (vPrice != null && vPrice !== '' && Number(vPrice) > 0) {
           return Math.round(Number(vPrice) * 100) / 100;
         }
-        const fallback = calcCommissionPrice(variant.price, partner);
-        if (fallback !== '') return fallback;
       } else {
         // Root-item channel price: channelPrices is a flat { partnerId: price } map
         const channelPrices = menuItem.channelPrices || {};
@@ -326,8 +324,6 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
         if (rootPrice != null && rootPrice !== '' && Number(rootPrice) > 0) {
           return Math.round(Number(rootPrice) * 100) / 100;
         }
-        const fallback = calcCommissionPrice(menuItem.price, partner);
-        if (fallback !== '') return fallback;
       }
     }
     return variant
@@ -516,17 +512,27 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
     const variantName = selectedVariant ? selectedVariant.name : '';
     const variantAttributes = selectedVariant ? selectedVariant.attributes || [] : [];
 
-    setItems(prev => [...prev, {
-      menuItem: menuItem._id,
-      name: menuItem.name,
-      price,
-      qty: 1,
-      isCombo: menuItem.isCombo || false,
-      comboItems: menuItem.comboItems || [],
-      variantId,
-      variantName,
-      variantAttributes,
-    }]);
+    setItems(prev => {
+      const existingIndex = prev.findIndex(
+        (i) => String(i.menuItem) === String(menuItem._id) && String(i.variantId || '') === String(variantId || '')
+      );
+      if (existingIndex !== -1) {
+        return prev.map((item, idx) =>
+          idx === existingIndex ? { ...item, qty: item.qty + 1 } : item
+        );
+      }
+      return [...prev, {
+        menuItem: menuItem._id,
+        name: menuItem.name,
+        price,
+        qty: 1,
+        isCombo: menuItem.isCombo || false,
+        comboItems: menuItem.comboItems || [],
+        variantId,
+        variantName,
+        variantAttributes,
+      }];
+    });
     setDirty(true);
     setVariantSelectionItem(null);
   };
@@ -555,7 +561,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
   };
 
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const existingIds = new Set(items.map(i => i.menuItem));
+  const existingIds = new Set(items.map(i => String(i.menuItem)));
   const activeType = ORDER_TYPE_MAP[orderType] || ORDER_TYPE_MAP['dine-in'];
 
   if (!order) return null;

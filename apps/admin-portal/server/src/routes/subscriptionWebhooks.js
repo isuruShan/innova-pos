@@ -37,16 +37,28 @@ async function fulfillOnlinePayment({ tenantId, planId, paymentMethod, externalI
     status: 'pending',
   });
 
+  const cycle = pending?.paymentBreakdown?.plan?.billingCycle || 'monthly';
+  const planObj = plan.toObject ? plan.toObject() : plan;
+  const planAmount = cycle === 'yearly' ? (planObj.yearlyPrice || 0) : (planObj.monthlyPrice || 0);
+  const durationDays = cycle === 'yearly' ? 365 : 30;
+
+  const decoratedPlan = {
+    ...planObj,
+    billingCycle: cycle,
+    amount: planAmount,
+    durationDays,
+  };
+
   let receipt = pending;
   if (!receipt) {
     receipt = await PaymentReceipt.create({
       tenantId,
       paymentMethod,
-      amount: amount ?? plan.amount,
-      currency: currency || plan.currency || 'LKR',
-      requestedPlanId: plan._id,
-      requestedPlanCode: plan.code,
-      expectedAmount: plan.amount,
+      amount: amount ?? decoratedPlan.amount,
+      currency: currency || decoratedPlan.currency || 'LKR',
+      requestedPlanId: decoratedPlan._id,
+      requestedPlanCode: decoratedPlan.code,
+      expectedAmount: decoratedPlan.amount,
       amountMatchesExpected: true,
       bankReference: sessionId || externalId || `online-${Date.now()}`,
       bankName: paymentMethod === 'stripe' ? 'Stripe' : 'PayPal',
@@ -57,16 +69,18 @@ async function fulfillOnlinePayment({ tenantId, planId, paymentMethod, externalI
       status: 'verified',
       verifiedAt: new Date(),
       subscriptionExtended: true,
+      extensionDays: decoratedPlan.durationDays,
     });
   } else {
     receipt.status = 'verified';
     receipt.verifiedAt = new Date();
     receipt.subscriptionExtended = true;
+    receipt.extensionDays = decoratedPlan.durationDays;
     await receipt.save();
   }
 
   const { tenant: updated, subscription, newEnd, pendingMatch, convertedFromTrial } =
-    await activateSubscriptionForTenant(tenantId, plan, {
+    await activateSubscriptionForTenant(tenantId, decoratedPlan, {
       paymentNote: `${paymentMethod} payment confirmed`,
       activatedBy: null,
     });

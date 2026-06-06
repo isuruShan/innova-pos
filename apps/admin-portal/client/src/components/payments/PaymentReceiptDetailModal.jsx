@@ -280,7 +280,7 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
               {/* Show breakdown if present on the receipt itself, or fallback to data.billingBreakdown */}
               {receipt.paymentBreakdown ? (
                 receipt.paymentBreakdown.plan ? (
-                  <BillingBreakdownPanel breakdown={receipt.paymentBreakdown} />
+                  <BillingBreakdownPanel breakdown={receipt.paymentBreakdown} hideOverview={true} />
                 ) : receipt.paymentBreakdown.lineItems ? (
                   <div className="space-y-2">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">License Breakdown</p>
@@ -304,7 +304,7 @@ export default function PaymentReceiptDetailModal({ receiptId, onClose, onVerify
                   </div>
                 )
               ) : data?.billingBreakdown?.plan ? (
-                <BillingBreakdownPanel breakdown={data.billingBreakdown} />
+                <BillingBreakdownPanel breakdown={data.billingBreakdown} hideOverview={true} />
               ) : (
                 /* Fallback simple summary */
                 <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">

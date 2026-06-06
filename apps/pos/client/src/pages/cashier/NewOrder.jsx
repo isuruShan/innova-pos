@@ -858,8 +858,6 @@ export default function NewOrder() {
         if (vPrice != null && vPrice !== '' && Number(vPrice) > 0) {
           return Math.round(Number(vPrice) * 100) / 100;
         }
-        const fallback = calcCommissionPrice(variant.price, partner);
-        if (fallback !== '') return fallback;
       } else {
         // Root-item channel price: channelPrices is a flat { partnerId: price } map
         const channelPrices = menuItem.channelPrices || {};
@@ -867,8 +865,6 @@ export default function NewOrder() {
         if (rootPrice != null && rootPrice !== '' && Number(rootPrice) > 0) {
           return Math.round(Number(rootPrice) * 100) / 100;
         }
-        const fallback = calcCommissionPrice(menuItem.price, partner);
-        if (fallback !== '') return fallback;
       }
     }
     return variant

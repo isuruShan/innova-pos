@@ -234,6 +234,8 @@ export default function LandingPage() {
   const [catalogAudience, setCatalogAudience] = useState('international');
   const [countryCode, setCountryCode] = useState(null);
   const [exchangeRates, setExchangeRates] = useState(null);
+  const [selectedCycle, setSelectedCycle] = useState('monthly');
+  const [showCycleBanner, setShowCycleBanner] = useState(false);
   
   const pricingCarouselRef = useRef(null);
   const [pricingSlide, setPricingSlide] = useState(0);
@@ -347,8 +349,8 @@ export default function LandingPage() {
   }, [catalogAudience]);
 
   // Dynamic price display helper (Professional layout)
-  const getFormattedPriceInfo = (plan) => {
-    const amount = Number(plan.amount);
+  const getFormattedPriceInfo = (plan, cycle = selectedCycle) => {
+    const amount = Number(cycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice) || 0;
     if (catalogAudience === 'local' || !countryCode || countryCode === 'US' || !exchangeRates) {
       return {
         displayPrice: `${plan.currency} ${amount.toLocaleString()}`,
@@ -838,11 +840,60 @@ export default function LandingPage() {
         <div className="max-w-[1400px] mx-auto flex flex-col items-center">
           <div className="text-center mb-16 w-full">
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">Transparent billing, zero hidden fees</h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+            <p className="text-slate-400 text-lg max-w-2xl mx-auto mb-8">
               {catalogAudience === 'local'
                 ? 'LKR pricing specifically for Sri Lankan venues. 14 days of full feature access on us.'
                 : 'International plans automatically localized for your local currency. Sri Lankan venues are billed natively in LKR.'}
             </p>
+
+            {/* Billing Toggle */}
+            <div className="flex flex-col items-center gap-4">
+              <div className="inline-flex rounded-xl border border-slate-800 p-1 bg-slate-900/50 backdrop-blur-md">
+                <button
+                  type="button"
+                  onClick={() => { setSelectedCycle('monthly'); setShowCycleBanner(true); }}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer border-0 ${
+                    selectedCycle === 'monthly'
+                      ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20'
+                      : 'text-slate-400 hover:text-slate-200 bg-transparent'
+                  }`}
+                >
+                  Monthly billing (30 days)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedCycle('yearly'); setShowCycleBanner(true); }}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer border-0 ${
+                    selectedCycle === 'yearly'
+                      ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20'
+                      : 'text-slate-400 hover:text-slate-200 bg-transparent'
+                  }`}
+                >
+                  Yearly billing (365 days)
+                </button>
+              </div>
+
+              {showCycleBanner && (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 max-w-xl text-center text-xs text-slate-300 animate-fade-in relative mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCycleBanner(false)}
+                    className="absolute right-3 top-3 text-slate-500 hover:text-slate-300 border-0 bg-transparent cursor-pointer"
+                    aria-label="Dismiss"
+                  >
+                    <X size={14} />
+                  </button>
+                  <p className="font-semibold text-white mb-1">
+                    {selectedCycle === 'yearly' ? 'Yearly Plan Option: 365 days validity' : 'Monthly Plan Option: 30 days validity'}
+                  </p>
+                  <p>
+                    {selectedCycle === 'yearly'
+                      ? 'Yearly subscriptions run on a strict 365-day billing period, offering a massive discount over the monthly rate.'
+                      : 'Monthly subscriptions run on a strict 30-day billing period, offering max flexibility to add or remove venues as you grow.'}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="relative w-full">
@@ -924,11 +975,7 @@ export default function LandingPage() {
                       </div>
                     )}
                     <div className="text-xs text-slate-500 mb-6 uppercase tracking-wider">
-                      {plan.billingCycle === 'monthly'
-                        ? 'per month'
-                        : plan.billingCycle === 'yearly'
-                          ? 'per year'
-                          : `${plan.durationDays} day cycle`}
+                      {selectedCycle === 'yearly' ? 'per 365 days' : 'per 30 days'}
                     </div>
 
                     <ul className="space-y-3 mb-8 flex-1">

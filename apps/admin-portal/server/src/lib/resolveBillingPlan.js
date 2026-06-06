@@ -24,17 +24,30 @@ async function resolveNextBillingPlan(tenant) {
   const regionFilter = { isActive: true, planAudience: audience };
 
   const pickId = tenant.pendingPlanId || tenant.assignedPlanId;
+  let planDoc;
   if (!pickId) {
-    return SubscriptionPlan.findOne({ isActive: true, isDefault: true, ...regionFilter })
+    planDoc = await SubscriptionPlan.findOne({ isActive: true, isDefault: true, ...regionFilter })
       .sort({ createdAt: 1 })
       .lean();
+  } else if (typeof pickId === 'object' && pickId._id && pickId.isActive !== false) {
+    planDoc = pickId;
+  } else {
+    planDoc = await SubscriptionPlan.findOne({ _id: pickId, ...regionFilter }).lean();
   }
 
-  if (typeof pickId === 'object' && pickId._id && pickId.isActive !== false) {
-    return pickId;
-  }
+  if (!planDoc) return null;
 
-  return SubscriptionPlan.findOne({ _id: pickId, ...regionFilter }).lean();
+  const planObj = planDoc.toObject ? planDoc.toObject() : planDoc;
+  const cycle = tenant.billingCycle === 'yearly' ? 'yearly' : 'monthly';
+  const amount = cycle === 'yearly' ? (planObj.yearlyPrice || 0) : (planObj.monthlyPrice || 0);
+  const durationDays = cycle === 'yearly' ? 365 : 30;
+
+  return {
+    ...planObj,
+    billingCycle: cycle,
+    amount,
+    durationDays,
+  };
 }
 
 /**

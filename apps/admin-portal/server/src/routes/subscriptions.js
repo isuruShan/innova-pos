@@ -805,11 +805,24 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       });
     }
 
-    const renewal = await computeSubscriptionRenewalExpected(tenant);
-    const expectedTotal = renewal.total > 0 ? renewal.total : Number(requestedPlan.amount) || 0;
+    const { billingCycle = 'monthly' } = req.body;
+    const cycle = billingCycle === 'yearly' ? 'yearly' : 'monthly';
+    const planObj = requestedPlan.toObject ? requestedPlan.toObject() : requestedPlan;
+    const planAmount = cycle === 'yearly' ? (planObj.yearlyPrice || 0) : (planObj.monthlyPrice || 0);
+    const durationDays = cycle === 'yearly' ? 365 : 30;
+
+    const decoratedPlan = {
+      ...planObj,
+      billingCycle: cycle,
+      amount: planAmount,
+      durationDays,
+    };
+
+    const renewal = await computeSubscriptionRenewalExpected(tenant, decoratedPlan);
+    const expectedTotal = renewal.total > 0 ? renewal.total : Number(decoratedPlan.amount) || 0;
     if (!amountsEqual(amountValue, expectedTotal)) {
       return res.status(400).json({
-        message: `Amount must exactly match the expected renewal total (${requestedPlan.currency} ${Number(expectedTotal).toLocaleString()}) including any active paid add-ons.`,
+        message: `Amount must exactly match the expected renewal total (${decoratedPlan.currency} ${Number(expectedTotal).toLocaleString()}) including any active paid add-ons.`,
       });
     }
 
@@ -826,8 +839,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
     const { getLatestSubscriptionEnd, resolveTenantPeriodEnd } = require('../lib/subscriptionDates');
     const latestSubEnd = await getLatestSubscriptionEnd(req.tenantId);
     const billingPeriodStart = resolveTenantPeriodEnd(tenant, latestSubEnd) || new Date();
-    const durationDays = Number(requestedPlan.durationDays) || 30;
-    const billingPeriodEnd = new Date(billingPeriodStart.getTime() + durationDays * 24 * 60 * 60 * 1000);
+    const billingPeriodEnd = new Date(billingPeriodStart.getTime() + decoratedPlan.durationDays * 24 * 60 * 60 * 1000);
 
     const receipt = await PaymentReceipt.create({
       tenantId: req.tenantId,
@@ -835,9 +847,9 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       addonCode: '',
       paymentMethod: method,
       amount: amountValue,
-      currency: requestedPlan.currency || 'LKR',
-      requestedPlanId: requestedPlan._id,
-      requestedPlanCode: requestedPlan.code,
+      currency: decoratedPlan.currency || 'LKR',
+      requestedPlanId: decoratedPlan._id,
+      requestedPlanCode: decoratedPlan.code,
       expectedAmount: expectedTotal,
       amountMatchesExpected: true,
       bankReference: bankReference.trim(),
@@ -1026,14 +1038,25 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
       return res.status(400).json({ message: 'Cannot verify receipt: requested plan no longer active' });
     }
 
+    const cycle = receipt.paymentBreakdown?.plan?.billingCycle || 'monthly';
+    const planObj = plan.toObject ? plan.toObject() : plan;
+    const planAmount = cycle === 'yearly' ? (planObj.yearlyPrice || 0) : (planObj.monthlyPrice || 0);
+    const durationDays = cycle === 'yearly' ? 365 : 30;
+
+    const decoratedPlan = {
+      ...planObj,
+      billingCycle: cycle,
+      amount: planAmount,
+      durationDays,
+    };
+
     const tenantId = receipt.tenantId?._id || receipt.tenantId;
     const now = new Date();
-    const planAmount = Number(plan.amount) || 0;
     const addonPortion = Math.max(0, Number(receipt.amount) - planAmount);
 
     const { tenant, subscription, newEnd, pendingMatch, convertedFromTrial } =
-      await activateSubscriptionForTenant(tenantId, plan, {
-        paymentNote: `Payment receipt verified. ${plan.name}`,
+      await activateSubscriptionForTenant(tenantId, decoratedPlan, {
+        paymentNote: `Payment receipt verified. ${decoratedPlan.name}`,
         activatedBy: req.user.id,
       });
 
@@ -1047,7 +1070,7 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
     receipt.verifiedBy = req.user.id;
     receipt.verifiedAt = now;
     receipt.subscriptionExtended = true;
-    receipt.extensionDays = plan.durationDays;
+    receipt.extensionDays = decoratedPlan.durationDays;
     receipt.amountMatchesExpected = amountsEqual(receipt.amount, receipt.expectedAmount);
     receipt.subscriptionId = subscription._id;
     if (subscription) {
@@ -1059,14 +1082,14 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
 
     // Fire-and-forget audit + notifications — do not block the response
     const receiptLean = receipt.toObject ? receipt.toObject() : receipt;
-    receiptLean.extensionDays = plan.durationDays;
+    receiptLean.extensionDays = decoratedPlan.durationDays;
     Promise.all([
       emitAudit({
         req,
         action: 'PAYMENT_VERIFIED',
         resource: 'PaymentReceipt',
         resourceId: receipt._id,
-        changes: { after: { subscriptionExtendedTo: newEnd, extensionDays: plan.durationDays, convertedFromTrial } },
+        changes: { after: { subscriptionExtendedTo: newEnd, extensionDays: decoratedPlan.durationDays, convertedFromTrial } },
       }),
       notifySubscriptionActivated(tenant, newEnd, { pendingMatch, convertedFromTrial }),
       notifyPaymentVerified(receiptLean, tenant),
@@ -1074,7 +1097,7 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
 
     const message = convertedFromTrial
       ? `Trial ended — subscription active until ${newEnd.toDateString()}`
-      : `Subscription extended by ${plan.durationDays} days (until ${newEnd.toDateString()})`;
+      : `Subscription extended by ${decoratedPlan.durationDays} days (until ${newEnd.toDateString()})`;
 
     res.json({ message, receipt, subscription });
   } catch (err) {
@@ -1150,7 +1173,25 @@ router.get('/my', authenticateJWT, authorize('merchant_admin'), async (req, res)
     const includeBreakdown = req.query.includeBreakdown === '1' || req.query.includeBreakdown === 'true';
     let billingBreakdown = null;
     if (includeBreakdown) {
-      billingBreakdown = await computeSubscriptionRenewalExpected(tenant);
+      const { planId, billingCycle } = req.query;
+      if (planId && billingCycle) {
+        const planDoc = await SubscriptionPlan.findOne({ _id: planId, isActive: true }).lean();
+        if (planDoc) {
+          const cycle = billingCycle === 'yearly' ? 'yearly' : 'monthly';
+          const amount = cycle === 'yearly' ? (planDoc.yearlyPrice || 0) : (planDoc.monthlyPrice || 0);
+          const durationDays = cycle === 'yearly' ? 365 : 30;
+          const planOverride = {
+            ...planDoc,
+            billingCycle: cycle,
+            amount,
+            durationDays,
+          };
+          billingBreakdown = await computeSubscriptionRenewalExpected(tenant, planOverride);
+        }
+      }
+      if (!billingBreakdown) {
+        billingBreakdown = await computeSubscriptionRenewalExpected(tenant);
+      }
     }
 
     res.json({ tenant, subscriptions, pendingReceiptsCount, billingBreakdown, latestReceipt });

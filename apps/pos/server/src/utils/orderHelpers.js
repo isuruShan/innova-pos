@@ -56,9 +56,6 @@ async function enrichItems(items, tenantId, storeId, foodmarketPartnerId = null)
             hasExplicitChannelPrice = true;
           }
         }
-        if (!hasExplicitChannelPrice && partner) {
-          price = getCommissionPrice(variant.price, partner);
-        }
         variantName = variant.name;
         variantAttributes = variant.attributes || [];
       }
@@ -70,9 +67,6 @@ async function enrichItems(items, tenantId, storeId, foodmarketPartnerId = null)
           price = partnerPrice;
           hasExplicitChannelPrice = true;
         }
-      }
-      if (!hasExplicitChannelPrice && partner) {
-        price = getCommissionPrice(doc.price, partner);
       }
     }
 
@@ -162,9 +156,6 @@ async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId, order
             hasExplicitChannelPrice = true;
           }
         }
-        if (!hasExplicitChannelPrice && partner) {
-          price = getCommissionPrice(variant.price, partner);
-        }
         variantName = variant.name;
         variantAttributes = variant.attributes || [];
       }
@@ -176,9 +167,6 @@ async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId, order
           price = partnerPrice;
           hasExplicitChannelPrice = true;
         }
-      }
-      if (!hasExplicitChannelPrice && partner) {
-        price = getCommissionPrice(doc.price, partner);
       }
     }
 

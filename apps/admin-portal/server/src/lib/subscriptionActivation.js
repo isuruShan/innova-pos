@@ -90,6 +90,7 @@ async function activateSubscriptionForTenant(tenantId, plan, options = {}) {
     tenant.subscriptionStatus = 'active';
     tenant.status = 'active';
     tenant.assignedPlanId = plan._id;
+    tenant.billingCycle = plan.billingCycle || 'monthly';
     tenant.assignedAt = now;
     if (activatedBy) tenant.assignedBy = activatedBy;
     tenant.trialEndsAt = now;
@@ -171,6 +172,7 @@ async function activateSubscriptionForTenant(tenantId, plan, options = {}) {
     tenant.subscriptionStatus = 'active';
     tenant.status = 'active';
     tenant.assignedPlanId = plan._id;
+    tenant.billingCycle = plan.billingCycle || 'monthly';
     tenant.assignedAt = now;
     if (activatedBy) tenant.assignedBy = activatedBy;
     tenant.pendingPlanId = null;
@@ -253,6 +255,7 @@ async function applyDuePendingPlanSwitches() {
     if (!plan || !plan.isActive) continue;
 
     tenant.assignedPlanId = plan._id;
+    tenant.billingCycle = plan.billingCycle || 'monthly';
     tenant.assignedAt = now;
     tenant.subscriptionStatus = 'active';
     tenant.status = 'active';

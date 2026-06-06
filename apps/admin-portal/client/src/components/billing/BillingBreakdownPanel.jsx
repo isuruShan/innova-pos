@@ -5,7 +5,7 @@ import { ChevronDown, ChevronUp, Users, Store, User, CreditCard, Layers } from '
  * Line-item breakdown for subscription renewal totals.
  * @param {{ plan?: { name: string, amount: number }, addons?: Array<{ code?: string, label: string, amount: number, quantity?: number }>, storesDetail?: Array<{ name: string, code: string, cost: number, isFree: boolean }>, usersDetail?: Array<{ name: string, email: string, role: string, cost: number, isFree: boolean }>, total: number, currency: string }} breakdown
  */
-export default function BillingBreakdownPanel({ breakdown }) {
+export default function BillingBreakdownPanel({ breakdown, hideOverview = false }) {
   if (!breakdown?.plan) return null;
   const { plan, addons = [], total, currency, storesDetail = [], usersDetail = [] } = breakdown;
 
@@ -42,7 +42,8 @@ export default function BillingBreakdownPanel({ breakdown }) {
   return (
     <div className="space-y-6">
       {/* Overview Card */}
-      <div className="bg-gradient-to-br from-gray-900 to-slate-800 text-white rounded-2xl p-6 shadow-md relative overflow-hidden">
+      {!hideOverview && (
+        <div className="bg-gradient-to-br from-gray-900 to-slate-800 text-white rounded-2xl p-6 shadow-md relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-40 h-40 bg-white/5 rounded-full blur-2xl" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -69,6 +70,7 @@ export default function BillingBreakdownPanel({ breakdown }) {
           </div>
         </div>
       </div>
+      )}
 
       {/* Break Down Details */}
       <div className="grid grid-cols-1 gap-6">

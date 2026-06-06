@@ -84,6 +84,7 @@ export default function SubscriptionPage() {
   const [submitted, setSubmitted] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [paypalReady, setPaypalReady] = useState(false);
+  const [selectedCycle, setSelectedCycle] = useState('monthly');
   
   const { data } = useQuery({
     queryKey: ['my-subscription'],
@@ -92,9 +93,15 @@ export default function SubscriptionPage() {
 
   const needsBreakdown = activeTab === 'overview' || activeTab === 'breakdown';
   const { data: breakdownData } = useQuery({
-    queryKey: ['my-subscription-breakdown'],
+    queryKey: ['my-subscription-breakdown', form.planId, selectedCycle],
     queryFn: async () => {
-      const { data } = await api.get('/subscriptions/my', { params: { includeBreakdown: '1' } });
+      const { data } = await api.get('/subscriptions/my', {
+        params: {
+          includeBreakdown: '1',
+          planId: form.planId,
+          billingCycle: selectedCycle,
+        },
+      });
       return data;
     },
     enabled: needsBreakdown,
@@ -170,7 +177,7 @@ export default function SubscriptionPage() {
   });
 
   const stripeCheckoutMutation = useMutation({
-    mutationFn: () => api.post('/subscriptions/checkout/stripe', { planId: form.planId }),
+    mutationFn: () => api.post('/subscriptions/checkout/stripe', { planId: form.planId, billingCycle: selectedCycle }),
     onSuccess: ({ data }) => {
       if (data?.url) window.location.href = data.url;
     },
@@ -234,6 +241,7 @@ export default function SubscriptionPage() {
     if (Object.keys(errs).length) { setErrors(errs); return; }
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => v && fd.append(k, v));
+    fd.append('billingCycle', selectedCycle);
     if (file) fd.append('receipt', file);
     uploadMutation.mutate(fd);
   };
@@ -314,9 +322,9 @@ export default function SubscriptionPage() {
     const total =
       billingBreakdown?.total > 0
         ? billingBreakdown.total
-        : selectedPlan?.amount;
+        : (selectedCycle === 'yearly' ? selectedPlan?.yearlyPrice : selectedPlan?.monthlyPrice);
     if (total != null) setForm((f) => ({ ...f, amount: String(total) }));
-  }, [selectedPlan?._id, selectedPlan?.amount, billingBreakdown?.total]);
+  }, [selectedPlan?._id, selectedPlan?.monthlyPrice, selectedPlan?.yearlyPrice, billingBreakdown?.total, selectedCycle]);
 
   useEffect(() => {
     const wantPaypal =
@@ -345,7 +353,7 @@ export default function SubscriptionPage() {
     paypalContainerRef.current.innerHTML = '';
     window.paypal.Buttons({
       createOrder: async () => {
-        const { data } = await api.post('/subscriptions/checkout/paypal/create-order', { planId: form.planId });
+        const { data } = await api.post('/subscriptions/checkout/paypal/create-order', { planId: form.planId, billingCycle: selectedCycle });
         return data.orderId;
       },
       onApprove: async (data) => {
@@ -459,6 +467,38 @@ export default function SubscriptionPage() {
             ))}
           </div>
         )}
+        {/* Cycle Toggle */}
+        <div className="flex items-center justify-between border border-gray-200 rounded-xl p-4 bg-gray-50/50">
+          <div>
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide block">Billing Cycle</span>
+            <span className="text-[11px] text-gray-400 mt-0.5 block">Select monthly (30 days) or yearly (365 days) billing.</span>
+          </div>
+          <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50 shrink-0">
+            <button
+              type="button"
+              onClick={() => setSelectedCycle('monthly')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer border-0 ${
+                selectedCycle === 'monthly'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-550 hover:text-gray-900 bg-transparent'
+              }`}
+            >
+              Monthly (30 days)
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedCycle('yearly')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer border-0 ${
+                selectedCycle === 'yearly'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-550 hover:text-gray-900 bg-transparent'
+              }`}
+            >
+              Yearly (365 days)
+            </button>
+          </div>
+        </div>
+
         {!isInternational && paymentMethod === 'bank_transfer' && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -478,8 +518,7 @@ export default function SubscriptionPage() {
                   {payPlans.length === 0 && <option value="">Select plan</option>}
                   {payPlans.map((p) => (
                     <option key={p._id} value={p._id}>
-                      {p.name} ({p.currency} {Number(p.amount).toLocaleString()}
-                      {p.billingCycle ? ` / ${p.billingCycle}` : ''})
+                      {p.name} ({p.currency} {Number(selectedCycle === 'yearly' ? p.yearlyPrice : p.monthlyPrice).toLocaleString()} / {selectedCycle === 'yearly' ? '365 days' : '30 days'})
                     </option>
                   ))}
                 </select>
@@ -745,13 +784,40 @@ export default function SubscriptionPage() {
 
                   {trialSubscribeStep === 'plan_select' && (
                     <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-                      <h4 className="font-bold text-gray-900 text-sm">Step 1: Select a Subscription Plan</h4>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-3 gap-3">
+                        <h4 className="font-bold text-gray-900 text-sm">Step 1: Select a Subscription Plan</h4>
+                        <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCycle('monthly')}
+                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer border-0 ${
+                              selectedCycle === 'monthly'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-550 hover:text-gray-900 bg-transparent'
+                            }`}
+                          >
+                            Monthly (30 days)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCycle('yearly')}
+                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer border-0 ${
+                              selectedCycle === 'yearly'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-550 hover:text-gray-900 bg-transparent'
+                            }`}
+                          >
+                            Yearly (365 days)
+                          </button>
+                        </div>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {plans.map((p) => (
                           <div
                             key={p._id}
                             onClick={() => {
-                              setForm(f => ({ ...f, planId: p._id, amount: String(p.amount) }));
+                              const price = selectedCycle === 'yearly' ? p.yearlyPrice : p.monthlyPrice;
+                              setForm(f => ({ ...f, planId: p._id, amount: String(price || 0) }));
                               setTrialSubscribeStep('payment_select');
                             }}
                             className={`border rounded-xl p-4 cursor-pointer hover:border-brand-orange transition-all duration-200 ${
@@ -761,7 +827,7 @@ export default function SubscriptionPage() {
                             <h5 className="font-bold text-gray-900">{p.name}</h5>
                             <p className="text-xs text-gray-500 mt-1">{p.description || p.code}</p>
                             <p className="text-lg font-extrabold text-brand-orange mt-2">
-                              {p.currency} {Number(p.amount).toLocaleString()}{p.billingCycle ? ` / ${p.billingCycle}` : ''}
+                              {p.currency} {Number(selectedCycle === 'yearly' ? p.yearlyPrice : p.monthlyPrice).toLocaleString()} / {selectedCycle === 'yearly' ? '365 days' : '30 days'}
                             </p>
                           </div>
                         ))}

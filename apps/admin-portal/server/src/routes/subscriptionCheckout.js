@@ -26,22 +26,45 @@ const router = express.Router();
 const { resolveNextBillingPlan } = require('../lib/resolveBillingPlan');
 const SubscriptionPlan = require('../models/SubscriptionPlan');
 
-async function resolvePlanForTenant(tenant, planId) {
+async function resolvePlanForTenant(tenant, planId, billingCycle = 'monthly') {
   const audience = tenantPlanAudience(tenant.countryIso);
 
   if (tenant.planLocked) {
     if (!tenant.assignedPlanId) return null;
-    return SubscriptionPlan.findOne({ _id: tenant.assignedPlanId, isActive: true, planAudience: audience });
+    const planDoc = await SubscriptionPlan.findOne({ _id: tenant.assignedPlanId, isActive: true, planAudience: audience }).lean();
+    if (!planDoc) return null;
+    const cycle = billingCycle === 'yearly' ? 'yearly' : 'monthly';
+    const amount = cycle === 'yearly' ? (planDoc.yearlyPrice || 0) : (planDoc.monthlyPrice || 0);
+    const durationDays = cycle === 'yearly' ? 365 : 30;
+    return {
+      ...planDoc,
+      billingCycle: cycle,
+      amount,
+      durationDays,
+    };
   }
 
-  const nextBilling = await resolveNextBillingPlan(tenant);
+  const tempTenant = {
+    ...(tenant.toObject ? tenant.toObject() : tenant),
+    billingCycle
+  };
+  const nextBilling = await resolveNextBillingPlan(tempTenant);
   const nextId = nextBilling?._id ? String(nextBilling._id) : null;
 
   if (planId) {
-    const selected = await SubscriptionPlan.findOne({ _id: planId, isActive: true, planAudience: audience });
+    const selected = await SubscriptionPlan.findOne({ _id: planId, isActive: true, planAudience: audience }).lean();
     if (!selected) return null;
     if (nextId && String(selected._id) !== nextId) return null;
-    return selected;
+    
+    const cycle = billingCycle === 'yearly' ? 'yearly' : 'monthly';
+    const amount = cycle === 'yearly' ? (selected.yearlyPrice || 0) : (selected.monthlyPrice || 0);
+    const durationDays = cycle === 'yearly' ? 365 : 30;
+    return {
+      ...selected,
+      billingCycle: cycle,
+      amount,
+      durationDays,
+    };
   }
 
   return nextBilling;
@@ -49,7 +72,7 @@ async function resolvePlanForTenant(tenant, planId) {
 
 router.post('/stripe', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
   try {
-    const { planId } = req.body;
+    const { planId, billingCycle = 'monthly' } = req.body;
     const settings = await loadPaymentSettings();
     if (!settings.stripe?.enabled) {
       return res.status(400).json({ message: 'Stripe payments are not enabled' });
@@ -66,10 +89,10 @@ router.post('/stripe', authenticateJWT, authorize('merchant_admin'), async (req,
       });
     }
 
-    const plan = await resolvePlanForTenant(tenant, planId);
+    const plan = await resolvePlanForTenant(tenant, planId, billingCycle);
     if (!plan) return res.status(400).json({ message: 'No valid plan selected' });
 
-    const renewal = await computeSubscriptionRenewalExpected(tenant);
+    const renewal = await computeSubscriptionRenewalExpected(tenant, plan);
     const expectedAmount = renewal.total > 0 ? renewal.total : Number(plan.amount) || 0;
 
     const session = await createCheckoutSession({
@@ -113,7 +136,7 @@ router.post('/stripe', authenticateJWT, authorize('merchant_admin'), async (req,
 
 router.post('/paypal/create-order', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
   try {
-    const { planId } = req.body;
+    const { planId, billingCycle = 'monthly' } = req.body;
     const settings = await loadPaymentSettings();
     if (!settings.paypal?.enabled) {
       return res.status(400).json({ message: 'PayPal is not enabled' });
@@ -124,10 +147,10 @@ router.post('/paypal/create-order', authenticateJWT, authorize('merchant_admin')
       .populate('pendingPlanId');
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
 
-    const plan = await resolvePlanForTenant(tenant, planId);
+    const plan = await resolvePlanForTenant(tenant, planId, billingCycle);
     if (!plan) return res.status(400).json({ message: 'No valid plan selected' });
 
-    const renewal = await computeSubscriptionRenewalExpected(tenant);
+    const renewal = await computeSubscriptionRenewalExpected(tenant, plan);
     const expectedAmount = renewal.total > 0 ? renewal.total : Number(plan.amount) || 0;
 
     const { orderId } = await createOrder({ tenant, plan, amount: expectedAmount });
