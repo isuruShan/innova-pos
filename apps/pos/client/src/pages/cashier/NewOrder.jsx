@@ -828,35 +828,40 @@ export default function NewOrder() {
   const getItemPrice = (menuItem, variant, type, partnerList) => {
     const partner = getPartnerForOrderType(type, partnerList);
     if (partner) {
-      const channelPrices = menuItem.channelPrices || {};
       const partnerId = String(partner._id);
-      const override = channelPrices[partnerId];
-      if (override) {
-        if (variant) {
-          const vId = variant._id ? String(variant._id) : variant.id ? String(variant.id) : null;
-          const vOverride = vId ? override.variants?.[vId] : null;
-          if (vOverride != null && vOverride !== '') {
-            return Math.round(Number(vOverride) * 100) / 100;
-          }
-        } else if (override.price != null && override.price !== '') {
-          return Math.round(Number(override.price) * 100) / 100;
+      if (variant) {
+        // Variant-level channel price lives on the variant itself: variant.channelPrices[partnerId]
+        const vChannelPrices = variant.channelPrices || {};
+        const vPrice = vChannelPrices[partnerId];
+        if (vPrice != null && vPrice !== '') {
+          return Math.round(Number(vPrice) * 100) / 100;
+        }
+      } else {
+        // Root-item channel price: channelPrices is a flat { partnerId: price } map
+        const channelPrices = menuItem.channelPrices || {};
+        const rootPrice = channelPrices[partnerId];
+        if (rootPrice != null && rootPrice !== '') {
+          return Math.round(Number(rootPrice) * 100) / 100;
         }
       }
     }
-    return variant ? Math.round(Number(variant.price) * 100) / 100 : Math.round(Number(menuItem.price) * 100) / 100;
+    return variant
+      ? Math.round(Number(variant.price) * 100) / 100
+      : Math.round(Number(menuItem.price) * 100) / 100;
   };
 
   const isMissingPartnerPrice = (menuItem, variant, type, partnerList) => {
     const partner = getPartnerForOrderType(type, partnerList);
     if (!partner) return false;
-    const channelPrices = menuItem.channelPrices || {};
-    const override = channelPrices[String(partner._id)];
-    if (!override) return true;
+    const partnerId = String(partner._id);
     if (variant) {
-      const vOverride = override.variants?.[String(variant._id)];
-      return vOverride == null || vOverride === '';
+      const vChannelPrices = variant.channelPrices || {};
+      const vPrice = vChannelPrices[partnerId];
+      return vPrice == null || vPrice === '';
     }
-    return override.price == null || override.price === '';
+    const channelPrices = menuItem.channelPrices || {};
+    const rootPrice = channelPrices[partnerId];
+    return rootPrice == null || rootPrice === '';
   };
 
   const promoTierLevel =
@@ -1015,7 +1020,7 @@ export default function NewOrder() {
 
   const changeQty = (id, variantId, delta) => {
     setCart(prev => prev
-      .map(c => (c.menuItem === id && c.variantId === variantId) ? { ...c, qty: c.qty + delta } : c)
+      .map(c => (String(c.menuItem) === String(id) && String(c.variantId || '') === String(variantId || '')) ? { ...c, qty: c.qty + delta } : c)
       .filter(c => c.qty > 0)
     );
   };
@@ -1187,6 +1192,9 @@ export default function NewOrder() {
           color: currentType.color || '',
         }
       : undefined;
+
+    // Resolve the foodmarket partner ID so the server can apply channel pricing
+    const activePartner = getPartnerForOrderType(orderType, partners);
     
     mutation.mutate({
       orderType,
@@ -1199,6 +1207,7 @@ export default function NewOrder() {
       paymentType,
       paymentAmount,
       cashTender,
+      ...(activePartner ? { foodmarketPartnerId: activePartner._id } : {}),
       ...(selectedCustomer?._id ? { customerId: selectedCustomer._id } : {}),
       ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0 && !deferPayment
         ? { loyaltyRewardId: selectedLoyaltyRewardId }
@@ -1220,6 +1229,9 @@ export default function NewOrder() {
           color: currentType.color || '',
         }
       : undefined;
+
+    // Resolve the foodmarket partner ID so the server can apply channel pricing
+    const activePartner = getPartnerForOrderType(orderType, partners);
     
     mutation.mutate({
       orderType,
@@ -1229,6 +1241,7 @@ export default function NewOrder() {
       reference: orderType !== 'dine-in' ? nonDineInReference : '',
       items: cart,
       guestsCount: activeDraft.guestsCount || null,
+      ...(activePartner ? { foodmarketPartnerId: activePartner._id } : {}),
       ...(selectedCustomer?._id ? { customerId: selectedCustomer._id } : {}),
       ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0 && !deferPayment
         ? { loyaltyRewardId: selectedLoyaltyRewardId }

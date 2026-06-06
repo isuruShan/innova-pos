@@ -287,22 +287,26 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
   const getItemPrice = (menuItem, variant, type, partnerList) => {
     const partner = getPartnerForOrderType(type, partnerList);
     if (partner) {
-      const channelPrices = menuItem.channelPrices || {};
       const partnerId = String(partner._id);
-      const override = channelPrices[partnerId];
-      if (override) {
-        if (variant) {
-          const vId = variant._id ? String(variant._id) : variant.id ? String(variant.id) : null;
-          const vOverride = vId ? override.variants?.[vId] : null;
-          if (vOverride != null && vOverride !== '') {
-            return Math.round(Number(vOverride) * 100) / 100;
-          }
-        } else if (override.price != null && override.price !== '') {
-          return Math.round(Number(override.price) * 100) / 100;
+      if (variant) {
+        // Variant-level channel price lives on the variant itself
+        const vChannelPrices = variant.channelPrices || {};
+        const vPrice = vChannelPrices[partnerId];
+        if (vPrice != null && vPrice !== '') {
+          return Math.round(Number(vPrice) * 100) / 100;
+        }
+      } else {
+        // Root-item channel price: flat { partnerId: price } map
+        const channelPrices = menuItem.channelPrices || {};
+        const rootPrice = channelPrices[partnerId];
+        if (rootPrice != null && rootPrice !== '') {
+          return Math.round(Number(rootPrice) * 100) / 100;
         }
       }
     }
-    return variant ? Math.round(Number(variant.price) * 100) / 100 : Math.round(Number(menuItem.price) * 100) / 100;
+    return variant
+      ? Math.round(Number(variant.price) * 100) / 100
+      : Math.round(Number(menuItem.price) * 100) / 100;
   };
 
 

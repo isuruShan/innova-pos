@@ -414,6 +414,21 @@ function VariantImagePicker({ images, onChange }) {
   );
 }
 
+/** Compute suggested channel price by adding commission to a base price. */
+function calcCommissionPrice(basePrice, partner) {
+  const base = Number(basePrice) || 0;
+  if (!partner || base <= 0) return '';
+  let suggested = base;
+  const type = partner.commissionType || 'percentage';
+  if (type === 'flat' || type === 'both') {
+    suggested += Number(partner.commissionFlat) || 0;
+  }
+  if (type === 'percentage' || type === 'both') {
+    suggested += base * ((Number(partner.commissionPercentage) || 0) / 100);
+  }
+  return Math.round(suggested * 100) / 100;
+}
+
 function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, priceLabel, activePartners }) {
   const [newValueInput, setNewValueInput] = useState({});
   const [customVariantType, setCustomVariantType] = useState('');
@@ -638,9 +653,36 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
 
       {form.variants.length > 0 && (
         <div className="space-y-2 border-t border-slate-800 pt-3">
-          <p className="text-xs font-semibold text-slate-400">
-            Pricing ({form.variants.length} variant{form.variants.length !== 1 ? 's' : ''})
-          </p>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <p className="text-xs font-semibold text-slate-400">
+              Pricing ({form.variants.length} variant{form.variants.length !== 1 ? 's' : ''})
+            </p>
+            {activePartners?.length > 0 && (
+              <button
+                type="button"
+                title="Auto-fill all empty channel price fields using each partner's commission rate"
+                onClick={() => {
+                  const nextVariants = form.variants.map((v) => {
+                    if (!v.available) return v;
+                    const base = Number(v.price) || 0;
+                    const newChannelPrices = { ...(v.channelPrices || {}) };
+                    activePartners.forEach((partner) => {
+                      const existing = newChannelPrices[partner._id];
+                      if (existing == null || existing === '' || existing === undefined) {
+                        const suggested = calcCommissionPrice(base, partner);
+                        if (suggested !== '') newChannelPrices[partner._id] = suggested;
+                      }
+                    });
+                    return { ...v, channelPrices: newChannelPrices };
+                  });
+                  setForm((f) => ({ ...f, variants: nextVariants }));
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-sky-500/15 border border-sky-500/30 text-sky-400 hover:bg-sky-500/25 hover:border-sky-500/50 transition"
+              >
+                ✦ Auto-fill from commission
+              </button>
+            )}
+          </div>
 
           {showMatrix ? (
             <div className="overflow-x-auto">
@@ -679,14 +721,14 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                                 />
                                 {available && activePartners?.map((partner) => (
                                   <div key={partner._id} className="flex items-center gap-1 mt-1">
-                                    <span className="text-[9px] text-slate-500 w-8 truncate" title={partner.name}>
-                                      {partner.name.slice(0, 3)}:
+                                    <span className="text-[9px] text-sky-400 font-semibold w-8 truncate shrink-0" title={partner.name}>
+                                      {partner.name.slice(0, 4)}
                                     </span>
                                     <input
                                       type="number"
                                       step="0.01"
                                       min="0"
-                                      value={v.channelPrices?.[partner._id] || ''}
+                                      value={v.channelPrices?.[partner._id] ?? ''}
                                       onChange={(e) => {
                                         const val = e.target.value;
                                         const newChannelPrices = {
@@ -698,8 +740,11 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                                           patchVariant(vIdx, { channelPrices: newChannelPrices });
                                         }
                                       }}
-                                      placeholder="base"
-                                      className="w-full bg-slate-950 border border-slate-900 text-[var(--pos-text-primary)] rounded px-1 py-0.5 text-[10px] focus:outline-none"
+                                      placeholder={(() => {
+                                        const s = calcCommissionPrice(v.price, partner);
+                                        return s ? String(s) : 'base';
+                                      })()}
+                                      className="w-full bg-slate-950 border border-sky-900/60 text-[var(--pos-text-primary)] rounded px-1 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-sky-500/50 placeholder-sky-900"
                                     />
                                   </div>
                                 ))}
@@ -802,28 +847,37 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                         </div>
                       </div>
                       {v.available !== false && activePartners?.length > 0 && (
-                        <div className="flex flex-wrap gap-2 pt-1.5 border-t border-slate-800/60">
-                          {activePartners.map((partner) => (
-                            <div key={partner._id} className="w-24">
-                              <label className="text-[9px] text-slate-500 block mb-0.5">{partner.name} Price</label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={v.channelPrices?.[partner._id] || ''}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  const newChannelPrices = {
-                                    ...(v.channelPrices || {}),
-                                    [partner._id]: val === '' ? undefined : Number(val),
-                                  };
-                                  patchVariant(idx, { channelPrices: newChannelPrices });
-                                }}
-                                placeholder="Use base"
-                                className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none placeholder-slate-600"
-                              />
-                            </div>
-                          ))}
+                        <div className="space-y-1.5 pt-1.5 border-t border-slate-800/60">
+                          <p className="text-[9px] font-semibold text-sky-400/80 uppercase tracking-wide">Channel prices</p>
+                          <div className="flex flex-wrap gap-2">
+                            {activePartners.map((partner) => (
+                              <div key={partner._id} className="w-24">
+                                <label className="text-[9px] text-slate-400 block mb-0.5 flex items-center gap-1">
+                                  {partner.icon && <span>{partner.icon}</span>}
+                                  {partner.name}
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={v.channelPrices?.[partner._id] ?? ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const newChannelPrices = {
+                                      ...(v.channelPrices || {}),
+                                      [partner._id]: val === '' ? undefined : Number(val),
+                                    };
+                                    patchVariant(idx, { channelPrices: newChannelPrices });
+                                  }}
+                                  placeholder={(() => {
+                                    const s = calcCommissionPrice(v.price, partner);
+                                    return s ? String(s) : 'base price';
+                                  })()}
+                                  className="w-full bg-slate-950 border border-sky-900/50 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500/40 placeholder-sky-900/70"
+                                />
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1136,17 +1190,44 @@ export default function MenuItemFormModal({
             )}
 
             {!form.hasVariants && activePartners.length > 0 && (
-              <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-slate-800/60 space-y-3">
-                <p className="text-xs font-semibold text-slate-400">Foodmarket Partner Price Overrides</p>
+              <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-sky-900/40 space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <p className="text-xs font-semibold text-sky-400">Channel Prices</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Leave blank to use the base price. Placeholder shows commission-suggested price.</p>
+                  </div>
+                  <button
+                    type="button"
+                    title="Fill all empty channel prices using each partner's commission rate"
+                    onClick={() => {
+                      const base = Number(form.price) || 0;
+                      const newChannelPrices = { ...(form.channelPrices || {}) };
+                      activePartners.forEach((partner) => {
+                        const existing = newChannelPrices[partner._id];
+                        if (existing == null || existing === '' || existing === undefined) {
+                          const suggested = calcCommissionPrice(base, partner);
+                          if (suggested !== '') newChannelPrices[partner._id] = suggested;
+                        }
+                      });
+                      setForm((f) => ({ ...f, channelPrices: newChannelPrices }));
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-sky-500/15 border border-sky-500/30 text-sky-400 hover:bg-sky-500/25 hover:border-sky-500/50 transition"
+                  >
+                    ✦ Auto-fill from commission
+                  </button>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   {activePartners.map((partner) => (
                     <div key={partner._id}>
-                      <label className="block text-xs font-medium text-slate-400 mb-1">{partner.name} Price</label>
+                      <label className="flex items-center gap-1 text-xs font-medium text-slate-400 mb-1">
+                        {partner.icon && <span>{partner.icon}</span>}
+                        {partner.name}
+                      </label>
                       <input
                         type="number"
                         step="0.01"
                         min="0"
-                        value={form.channelPrices?.[partner._id] || ''}
+                        value={form.channelPrices?.[partner._id] ?? ''}
                         onChange={(e) => {
                           const val = e.target.value;
                           setForm((f) => ({
@@ -1157,8 +1238,11 @@ export default function MenuItemFormModal({
                             },
                           }));
                         }}
-                        placeholder="Use base price"
-                        className="w-full bg-slate-900 border border-slate-800 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-600"
+                        placeholder={(() => {
+                          const s = calcCommissionPrice(form.price, partner);
+                          return s ? String(s) : 'Use base price';
+                        })()}
+                        className="w-full bg-slate-900 border border-sky-900/50 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500/40 placeholder-sky-900/70"
                       />
                     </div>
                   ))}
