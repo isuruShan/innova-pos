@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react';
 import { ShieldAlert, RefreshCw, Clock, Ban } from 'lucide-react';
 import api from '../../api/axios';
+import ViewModeToggle from '../../components/common/ViewModeToggle';
 
 export default function SuspendedActivitiesPage() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_superadmin_suspended_activities');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
 
   const fetchData = async () => {
     try {
@@ -36,14 +42,17 @@ export default function SuspendedActivitiesPage() {
             Monitor activity and active POS sessions in merchant stores after their subscription or trial has ended.
           </p>
         </div>
-        <button
-          onClick={fetchData}
-          disabled={refreshing}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition active:scale-[0.98] disabled:opacity-50"
-        >
-          <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2 self-start shrink-0">
+          <ViewModeToggle mode={viewMode} setMode={(m) => { setViewMode(m); localStorage.setItem('view_mode_superadmin_suspended_activities', m); }} />
+          <button
+            onClick={fetchData}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition active:scale-[0.98] disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -59,6 +68,56 @@ export default function SuspendedActivitiesPage() {
           <p className="text-sm text-gray-500">
             There are currently no merchants who have gone out of their subscription or trial plans.
           </p>
+        </div>
+      ) : viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {data.map((item) => {
+            const hasActivity = item.activity.hasActivity;
+            return (
+              <div key={item._id} className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex justify-between items-start gap-2">
+                    <div>
+                      <h3 className="font-bold text-gray-900 text-base">{item.businessName}</h3>
+                      <span className="text-xs text-gray-400 font-mono mt-0.5 block">{item.slug}</span>
+                    </div>
+                    {hasActivity ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-red-105 text-red-800 border border-red-200 animate-pulse shrink-0">
+                        Active
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-700 border border-green-200 shrink-0">
+                        Inactive
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="mt-3 space-y-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Status / Reason:</span>
+                      <span className="font-medium text-gray-700 capitalize">{item.status} ({item.suspensionReason || 'expired'})</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Deactivation Date:</span>
+                      <span className="font-mono text-gray-750">{item.deactivationDate ? new Date(item.deactivationDate).toLocaleDateString() : 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Current Plan:</span>
+                      <span className="font-medium text-gray-700">{item.assignedPlan}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Post-Expiry Orders:</span>
+                      <span className={`font-semibold ${item.activity.ordersCount > 0 ? 'text-red-650' : 'text-gray-700'}`}>{item.activity.ordersCount}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Post-Expiry Sessions:</span>
+                      <span className={`font-semibold ${item.activity.sessionsCount > 0 ? 'text-red-655' : 'text-gray-700'}`}>{item.activity.sessionsCount}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">

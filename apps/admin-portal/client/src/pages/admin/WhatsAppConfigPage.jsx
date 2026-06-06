@@ -301,7 +301,11 @@ export default function WhatsAppConfigPage() {
   const { stores, selectedStoreId, selectStore } = useStoreContext();
 
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState('table');
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_admin_whatsapp_sync');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
   const [activeCategory, setActiveCategory] = useState('All');
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
@@ -638,14 +642,14 @@ export default function WhatsAppConfigPage() {
                 <div className="flex gap-0.5 bg-gray-100 border border-gray-200 rounded-lg p-0.5 shrink-0">
                   <button
                     type="button"
-                    onClick={() => setViewMode('table')}
+                    onClick={() => { setViewMode('table'); localStorage.setItem('view_mode_admin_whatsapp_sync', 'table'); }}
                     className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[10px] font-bold transition-all ${viewMode === 'table' ? 'bg-white text-gray-900 shadow-sm border border-gray-200/40' : 'text-gray-400 hover:text-gray-900'}`}
                   >
                     <List size={12} /> Table
                   </button>
                   <button
                     type="button"
-                    onClick={() => setViewMode('grid')}
+                    onClick={() => { setViewMode('grid'); localStorage.setItem('view_mode_admin_whatsapp_sync', 'grid'); }}
                     className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[10px] font-bold transition-all ${viewMode === 'grid' ? 'bg-white text-gray-900 shadow-sm border border-gray-200/40' : 'text-gray-400 hover:text-gray-900'}`}
                   >
                     <LayoutGrid size={12} /> Grid

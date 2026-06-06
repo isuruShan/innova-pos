@@ -17,6 +17,7 @@ import PosPhoneField, { validatePosPhoneField, phoneDisplayFromParts, parseStore
 import PageHeader from '../../components/PageHeader';
 import Badge from '../../components/Badge';
 import ResponsiveTable from '../../components/ResponsiveTable';
+import ViewModeToggle from '../../components/ViewModeToggle';
 
 const SUPPLIER_SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -194,7 +195,17 @@ export default function SupplierManagement() {
   const [expandedId, setExpandedId] = useState(null);
   const [expandedItems, setExpandedItems] = useState({});
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState('table');
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_supplier_management');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('view_mode_supplier_management', mode);
+  };
+
   const [hasLinkedFilter, setHasLinkedFilter] = useState('all'); // 'all', 'linked', 'not_linked'
   const [showFilters, setShowFilters] = useState(false);
   const qc = useQueryClient();
@@ -356,22 +367,7 @@ export default function SupplierManagement() {
 
           <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
             {/* View toggle */}
-            <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-705 rounded-lg p-0.5">
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-semibold transition ${viewMode === 'table' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
-              >
-                <List size={12} /> Table
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('grid')}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-semibold transition ${viewMode === 'grid' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
-              >
-                <LayoutGrid size={12} /> Grid
-              </button>
-            </div>
+            <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
 
             <div className="relative">
               <button

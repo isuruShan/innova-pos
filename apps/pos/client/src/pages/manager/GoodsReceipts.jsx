@@ -18,6 +18,7 @@ import { formatCurrency } from '../../utils/format';
 import PosDateField from '../../components/PosDateField';
 import Badge from '../../components/Badge';
 import ResponsiveTable from '../../components/ResponsiveTable';
+import ViewModeToggle from '../../components/ViewModeToggle';
 
 const TYPE_COLORS = {
   receipt: 'text-green-400 bg-green-500/10',
@@ -51,7 +52,16 @@ export default function GoodsReceipts() {
   const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState('receiptDate');
   const [order, setOrder] = useState('desc');
-  const [viewMode, setViewMode] = useState('table');
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_goods_receipts');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('view_mode_goods_receipts', mode);
+  };
 
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
@@ -316,22 +326,7 @@ export default function GoodsReceipts() {
 
           <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
             {/* View toggle */}
-            <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-705 rounded-lg p-0.5">
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-semibold transition ${viewMode === 'table' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
-              >
-                <List size={12} /> Table
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('grid')}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-semibold transition ${viewMode === 'grid' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
-              >
-                <LayoutGrid size={12} /> Grid
-              </button>
-            </div>
+            <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
 
             <div className="relative">
               <button

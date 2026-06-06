@@ -13,6 +13,7 @@ import ConsumptionReport from '../../components/inventory/ConsumptionReport';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { useStoreContext } from '../../context/StoreContext';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
+import ViewModeToggle from '../../components/ViewModeToggle';
 
 export default function StockAudit() {
   const { selectedStoreId, isStoreReady } = useStoreContext();
@@ -22,6 +23,16 @@ export default function StockAudit() {
   const [activeTab, setActiveTab] = useState('audit');
   const [searchTerm, setSearchTerm] = useState('');
   const [physicalCounts, setPhysicalCounts] = useState({}); // inventoryItemId -> countString
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_stock_audit');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('view_mode_stock_audit', mode);
+  };
 
   const { sort, order, toggleSort } = useListSort('itemName', 'asc');
 
@@ -187,6 +198,7 @@ export default function StockAudit() {
                   className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500"
                 />
               </div>
+              <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
               <button
                 onClick={() => refetch()}
                 className="p-2 rounded-lg border border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)] hover:bg-slate-800 transition"
@@ -216,7 +228,7 @@ export default function StockAudit() {
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={32} className="animate-spin text-amber-400" />
               </div>
-            ) : (
+            ) : viewMode === 'table' ? (
               <ResponsiveTable
                 rows={sortedItems}
                 rowKey={(item) => item._id}
@@ -302,6 +314,68 @@ export default function StockAudit() {
                   },
                 ]}
               />
+            ) : (
+              sortedItems.length === 0 ? (
+                <div className="text-center py-16 bg-[var(--pos-panel)] rounded-xl border border-slate-700">
+                  <Package size={36} className="mx-auto opacity-30 mb-2 text-slate-400" />
+                  <p className="text-sm text-slate-500">No inventory items found</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {sortedItems.map((item) => {
+                    const val = physicalCounts[item._id] !== undefined ? physicalCounts[item._id] : '';
+                    let varianceContent = <span className="text-slate-500">—</span>;
+                    if (val !== undefined && val !== '') {
+                      const variance = parseFloat(val) - item.quantity;
+                      const color = variance === 0 ? 'text-slate-400' : variance > 0 ? 'text-green-400' : 'text-red-400';
+                      varianceContent = (
+                        <span className={`font-semibold ${color}`}>
+                          {variance > 0 ? '+' : ''}{Math.round(variance * 100) / 100}
+                        </span>
+                      );
+                    }
+                    return (
+                      <div key={item._id} className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-3.5 flex flex-col justify-between hover:border-slate-600 transition">
+                        <div>
+                          <h4 className="text-[var(--pos-text-primary)] font-semibold text-sm truncate">{item.itemName}</h4>
+                          <p className="text-slate-550 text-xs mt-0.5">Unit: {item.unit}</p>
+                          <div className="grid grid-cols-2 gap-2 mt-3 bg-[var(--pos-surface-inset)] rounded-lg p-2 text-xs border border-slate-800/60">
+                            <div>
+                              <p className="text-[10px] text-slate-500">System Qty</p>
+                              <p className="font-semibold text-slate-300">{item.quantity}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-500">Variance</p>
+                              <p className="font-semibold">{varianceContent}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 pt-3 border-t border-slate-850/60 flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="Enter count"
+                            value={val}
+                            onChange={(e) => handleCountChange(item._id, e.target.value)}
+                            className="flex-1 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-right"
+                          />
+                          {val !== '' && (
+                            <button
+                              onClick={() => handleClearRow(item._id)}
+                              className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-500 hover:text-slate-350 rounded-lg transition"
+                              title="Clear Count"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
             )}
           </>
         )}

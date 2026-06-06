@@ -5,11 +5,22 @@ import {
   TrendingUp, TrendingDown, FileText, Eye,
 } from 'lucide-react';
 import api from '../../api/axios';
+import ViewModeToggle from '../../components/common/ViewModeToggle';
 
 export default function SessionReviewPage() {
   const [selectedSession, setSelectedSession] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [storeFilter, setStoreFilter] = useState('all');
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_admin_sessions');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
+  const [detailViewMode, setDetailViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_admin_session_movements');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
   const qc = useQueryClient();
 
   const { data: sessions = [], isPending: sessionsPending } = useQuery({
@@ -186,16 +197,65 @@ export default function SessionReviewPage() {
 
         {/* Movements List */}
         <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-4">
             <h3 className="text-lg font-semibold text-gray-900">
               Stock Movements ({movements.length})
             </h3>
+            <ViewModeToggle mode={detailViewMode} setMode={(m) => { setDetailViewMode(m); localStorage.setItem('view_mode_admin_session_movements', m); }} />
           </div>
           
           {detailPending ? (
             <div className="p-8 text-center text-gray-500">Loading movements...</div>
           ) : movements.length === 0 ? (
             <div className="p-8 text-center text-gray-500">No movements recorded</div>
+          ) : detailViewMode === 'grid' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-6 bg-gray-50/50">
+              {movements.map((movement) => (
+                <div key={movement._id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-[10px] text-gray-400 font-medium">
+                        {new Date(movement.createdAt).toLocaleTimeString('en-GB', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                      <span
+                        className={`flex items-center gap-0.5 text-xs font-semibold ${
+                          movement.quantity > 0 ? 'text-green-600' : 'text-red-600'
+                        }`}
+                      >
+                        {movement.quantity > 0 ? (
+                          <TrendingUp size={12} />
+                        ) : (
+                          <TrendingDown size={12} />
+                        )}
+                        {movement.quantity > 0 ? '+' : ''}{movement.quantity}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-semibold text-gray-900 mb-2 truncate">
+                      {movement.inventoryItemId?.name || 'Unknown Item'}
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 mb-3 bg-gray-50 p-2 rounded-lg border border-gray-100">
+                      <div>
+                        <p className="text-[10px] text-gray-400">Before</p>
+                        <p className="font-semibold text-gray-800">{movement.previousQty}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400">After</p>
+                        <p className="font-semibold text-gray-800">{movement.newQty}</p>
+                      </div>
+                    </div>
+                    {movement.reason && (
+                      <div className="text-xs text-gray-600 border-t border-gray-100 pt-2 mt-2">
+                        <p className="font-medium">Reason: <span className="text-gray-900 font-semibold">{movement.reason.replace(/_/g, ' ')}</span></p>
+                        {movement.notes && <p className="text-[11px] text-gray-400 mt-0.5 italic">"{movement.notes}"</p>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -263,9 +323,14 @@ export default function SessionReviewPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Inventory Adjustment Sessions</h1>
-        <p className="text-gray-600">Review stock adjustments made by store managers</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Inventory Adjustment Sessions</h1>
+          <p className="text-gray-600">Review stock adjustments made by store managers</p>
+        </div>
+        <div className="flex items-center shrink-0">
+          <ViewModeToggle mode={viewMode} setMode={(m) => { setViewMode(m); localStorage.setItem('view_mode_admin_sessions', m); }} />
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -346,12 +411,60 @@ export default function SessionReviewPage() {
       </div>
 
       {/* Sessions List */}
-      <div className="bg-white rounded-lg shadow">
+      <div className={viewMode === 'grid' ? '' : 'bg-white rounded-lg shadow'}>
         {sessionsPending ? (
-          <div className="p-8 text-center text-gray-500">Loading sessions...</div>
+          <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">Loading sessions...</div>
         ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
             No sessions found matching your filters
+          </div>
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {filtered.map((session) => (
+              <div key={session._id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <User size={15} className="text-gray-400 shrink-0" />
+                      <span className="text-sm font-semibold text-gray-900 truncate">
+                        {session.userId?.name || 'Unknown'}
+                      </span>
+                    </div>
+                    {session.reviewedBy ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-800 text-[10px] font-medium rounded shrink-0">
+                        <CheckCircle size={10} />
+                        Reviewed
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-orange-100 text-orange-800 text-[10px] font-medium rounded shrink-0">
+                        <Clock size={10} />
+                        Pending
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-1.5 text-xs text-gray-600 mb-4">
+                    <p className="flex items-center gap-1.5 truncate"><Package size={13} className="text-gray-400 shrink-0" /> {session.storeId?.name || 'Unknown'}</p>
+                    <p className="flex items-center gap-1.5"><Calendar size={13} className="text-gray-400 shrink-0" /> {formatDate(session.startedAt)}</p>
+                    <p className="flex items-center gap-1.5"><Clock size={13} className="text-gray-400 shrink-0" /> Duration: {formatDuration(session.startedAt, session.endedAt)}</p>
+                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-4 text-[11px]">
+                      <span>Adjustments: <strong className="text-gray-900">{session.adjustmentCount || 0}</strong></span>
+                      <span>Qty: <strong className={session.totalQuantityChanged < 0 ? 'text-red-600' : 'text-green-600'}>
+                        {session.totalQuantityChanged > 0 ? '+' : ''}{session.totalQuantityChanged || 0}
+                      </strong></span>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-gray-100 flex justify-end">
+                  <button
+                    onClick={() => setSelectedSession(session)}
+                    className="inline-flex items-center gap-1 text-xs text-orange-600 hover:text-orange-855 font-semibold py-1.5 px-3 rounded-lg hover:bg-orange-50 transition"
+                  >
+                    <Eye size={12} />
+                    View Details
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="overflow-x-auto">

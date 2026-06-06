@@ -9,6 +9,7 @@ import { unwrapPagedList } from '../../utils/unwrapPagedList';
 import { useListSort } from '../../hooks/useListSort';
 import { useStoreContext } from '../../context/StoreContext';
 import { formatCurrency } from '../../utils/format';
+import ViewModeToggle from '../../components/common/ViewModeToggle';
 
 const money = formatCurrency;
 
@@ -56,6 +57,11 @@ export default function CashierSessionsPage() {
   const [nameSearch, setNameSearch] = useState('');
   const [page, setPage] = useState(1);
   const { sort, order, toggleSort, sortParams } = useListSort('openedAt', 'desc');
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_admin_cashier_sessions');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
 
   const { fromDate, toDate } = useMemo(() => {
     const today = todayStr();
@@ -123,15 +129,18 @@ export default function CashierSessionsPage() {
             Review drawer openings, closings, and variance notes from POS (store: {selectedStoreLabel}).
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="inline-flex items-center gap-2 self-start px-3 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-        >
-          <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2 self-start">
+          <ViewModeToggle mode={viewMode} setMode={(m) => { setViewMode(m); localStorage.setItem('view_mode_admin_cashier_sessions', m); }} />
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 bg-white"
+          >
+            <RefreshCw size={16} className={isFetching ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-wrap items-start gap-4">
@@ -226,6 +235,78 @@ export default function CashierSessionsPage() {
       ) : sessions.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500 text-sm">
           No sessions in this range.
+        </div>
+      ) : viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {sessions.map((row) => {
+            const cashier = row.cashierId;
+            const store = row.storeId;
+            const cashierName = typeof cashier === 'object' && cashier?.name ? cashier.name : '—';
+            const storeName = typeof store === 'object' && store?.name ? store.name : '—';
+            return (
+              <div key={row._id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="min-w-0">
+                      <span className="text-sm font-semibold text-gray-900 block truncate">{cashierName}</span>
+                      <span className="text-xs text-gray-500 block truncate">{storeName}</span>
+                    </div>
+                    <span
+                      className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize shrink-0 ${
+                        row.status === 'open' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {row.status}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 text-xs text-gray-600 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <div className="flex justify-between">
+                      <span>Opened:</span>
+                      <span className="text-gray-900 font-medium">{formatDt(row.openedAt)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Closed:</span>
+                      <span className="text-gray-900 font-medium">{row.closedAt ? formatDt(row.closedAt) : '—'}</span>
+                    </div>
+                    <div className="border-t border-gray-200 my-1 pt-1" />
+                    <div className="flex justify-between">
+                      <span>Opening Cash:</span>
+                      <span className="text-gray-900 font-semibold">{money(row.openingCashBalance)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Cash Sales:</span>
+                      <span className="text-gray-900 font-semibold">{row.cashSalesDuringSession != null ? money(row.cashSalesDuringSession) : '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Expected:</span>
+                      <span className="text-gray-900 font-semibold">{row.expectedCashInDrawer != null ? money(row.expectedCashInDrawer) : '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Counted:</span>
+                      <span className="text-gray-900 font-semibold">{row.closingCountedCash != null ? money(row.closingCountedCash) : '—'}</span>
+                    </div>
+                    <div className="border-t border-gray-200 my-1 pt-1" />
+                    <div className="flex justify-between">
+                      <span>Variance:</span>
+                      <span className="tabular-nums font-bold">
+                        {row.varianceAmount != null ? (
+                          <span className={Math.abs(row.varianceAmount) < 0.005 ? 'text-green-700' : 'text-amber-700'}>
+                            {money(row.varianceAmount)}
+                          </span>
+                        ) : '—'}
+                      </span>
+                    </div>
+                  </div>
+                  {(row.openingNotes || row.varianceNotes) && (
+                    <div className="text-[11px] text-gray-500 bg-amber-50/30 border border-amber-100 rounded-lg p-2 space-y-1">
+                      {row.openingNotes && <p><span className="font-semibold text-amber-700">Start:</span> {row.openingNotes}</p>}
+                      {row.varianceNotes && <p><span className="font-semibold text-gray-700">Close:</span> {row.varianceNotes}</p>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">

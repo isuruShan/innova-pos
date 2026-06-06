@@ -15,6 +15,7 @@ import PaymentAnalyticsDashboard from '../../components/payments/PaymentAnalytic
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
 import { useListSort } from '../../hooks/useListSort';
 import { formatMoney } from '../../components/billing/ProrationBreakdown';
+import ViewModeToggle from '../../components/common/ViewModeToggle';
 
 const STATUS_STYLES = {
   pending:  'bg-yellow-100 text-yellow-700',
@@ -84,6 +85,11 @@ export default function PaymentsPage() {
   const [page, setPage]                 = useState(1);
   const [showFilters, setShowFilters]   = useState(false);
   const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_superadmin_payments');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
 
   // Detail modal / actions
   const [detailReceiptId, setDetailReceiptId] = useState(null);
@@ -227,6 +233,7 @@ export default function PaymentsPage() {
               </div>
 
               <div className="ml-auto flex items-center gap-2">
+                <ViewModeToggle mode={viewMode} setMode={(m) => { setViewMode(m); localStorage.setItem('view_mode_superadmin_payments', m); }} />
                 <button
                   type="button"
                   onClick={() => setShowFilters((f) => !f)}
@@ -303,7 +310,7 @@ export default function PaymentsPage() {
                     />
                     {(dateFrom || dateTo) && (
                       <button type="button" onClick={() => { setDateFrom(''); setDateTo(''); }}
-                        className="p-1 text-gray-400 hover:text-gray-600"><X size={14} /></button>
+                        className="p-1 text-gray-400 hover:text-gray-650"><X size={14} /></button>
                     )}
                   </div>
                 </div>
@@ -327,7 +334,7 @@ export default function PaymentsPage() {
             <p className="text-xs text-gray-400 px-0.5">
               {receiptList.total} receipt{receiptList.total !== 1 ? 's' : ''} found
               {statusFilter && ` · ${statusFilter}`}
-              {kindFilter && ` · ${KIND_LABELS[kindFilter]}`}
+              {kindFilter && ` · ${KIND_BADGE[kindFilter] || KIND_LABELS[kindFilter]}`}
               {methodFilter && ` · ${METHOD_LABELS[methodFilter]}`}
             </p>
           )}
@@ -341,6 +348,72 @@ export default function PaymentsPage() {
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
               <Receipt size={32} className="text-gray-300 mx-auto mb-3" />
               <p className="text-gray-400">No receipts found</p>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {receipts.map((r) => {
+                const kind = receiptKindKey(r);
+                return (
+                  <div key={r._id} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm flex flex-col justify-between space-y-3 cursor-pointer hover:border-gray-300" onClick={() => openDetail(r._id)}>
+                    <div>
+                      <div className="flex justify-between items-start gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setMerchantDrawer({ tenantId: r.tenantId?._id, name: r.tenantId?.businessName || 'Unknown' }); }}
+                          className="text-brand-orange hover:underline font-bold text-sm text-left truncate"
+                          title="View merchant payment history"
+                        >
+                          {r.tenantId?.businessName || 'Unknown'}
+                        </button>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-medium capitalize shrink-0 ${KIND_BADGE[kind] || 'bg-gray-100 text-gray-700'}`}>
+                          {kind.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-800 mt-1 font-medium truncate" title={r.purchasedItemLabel}>{r.purchasedItemLabel || '—'}</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        {r.billingPeriodStart && r.billingPeriodEnd ? (
+                          `${new Date(r.billingPeriodStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${new Date(r.billingPeriodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                        ) : '—'}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2 text-[10px]">
+                        <span className="bg-gray-105 text-gray-700 px-2 py-0.5 rounded font-mono">
+                          Ref: {r.bankReference || '—'}
+                        </span>
+                        <span className="bg-gray-105 text-gray-700 px-2 py-0.5 rounded">
+                          Method: {METHOD_LABELS[r.paymentMethod] || r.paymentMethod || '—'}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium capitalize ${STATUS_STYLES[r.status]}`}>
+                          {r.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="border-t border-gray-100 pt-3 flex items-center justify-between">
+                      <span className="text-sm font-extrabold text-gray-900 tabular-nums">
+                        {formatMoney(r.currency, r.amount)}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {r.receiptFileKey && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleViewReceipt(r._id, r.receiptFileUrl); }}
+                            className="inline-flex items-center gap-1 px-2 py-1 border border-gray-300 rounded text-xs text-gray-600 hover:bg-gray-50 cursor-pointer"
+                            title="View receipt file"
+                          >
+                            <ExternalLink size={11} /> File
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); openDetail(r._id); }}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold ${r.status === 'pending' ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-sm' : 'border border-gray-300 text-gray-700 hover:bg-gray-50 bg-white'}`}
+                        >
+                          <Eye size={11} /> {r.status === 'pending' ? 'Verify' : 'View'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">

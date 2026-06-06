@@ -14,6 +14,7 @@ import { useToast } from '../../context/ToastContext';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
 import { formatMoney, BillingQuotePanel, LicenseQuoteBreakdown } from '../../components/billing/ProrationBreakdown';
 import { useAuth } from '../../context/AuthContext';
+import ViewModeToggle from '../../components/common/ViewModeToggle';
 
 const METHOD_LABELS = {
   bank_transfer: 'Bank transfer',
@@ -65,6 +66,11 @@ export default function SubscriptionPage() {
   const [sortBy, setSortBy] = useState('newest');
   const [receiptPage, setReceiptPage] = useState(1);
   const [detailReceiptId, setDetailReceiptId] = useState(null);
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_admin_subscription_history');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
 
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [trialSubscribeStep, setTrialSubscribeStep] = useState('none');
@@ -936,8 +942,15 @@ export default function SubscriptionPage() {
       {activeTab === 'payments' && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-xs animate-fade-in overflow-hidden">
           <div className="p-5 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900 text-sm">Payment & Receipt History</h3>
-            <p className="text-xs text-gray-500 mt-1">Review the status and history of bank transfers and online checkout receipts.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-gray-900 text-sm">Payment & Receipt History</h3>
+                <p className="text-xs text-gray-500 mt-1">Review the status and history of bank transfers and online checkout receipts.</p>
+              </div>
+              <div>
+                <ViewModeToggle mode={viewMode} setMode={(m) => { setViewMode(m); localStorage.setItem('view_mode_admin_subscription_history', m); }} />
+              </div>
+            </div>
 
             {/* Filters Row */}
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
@@ -1028,6 +1041,76 @@ export default function SubscriptionPage() {
               ) : (
                 <p className="text-xs text-gray-400 mt-1">Your payment receipt history will appear here once submitted.</p>
               )}
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-5">
+              {receipts.map((r) => {
+                const type = getReceiptType(r);
+                const itemLabel = getItemLabel(r);
+                const typeBadge = {
+                  subscription: { bg: 'bg-blue-50 text-blue-700 border-blue-100', label: 'Subscription' },
+                  addon: { bg: 'bg-violet-50 text-violet-700 border-violet-100', label: 'Add-on' },
+                  store: { bg: 'bg-emerald-50 text-emerald-700 border-emerald-100', label: 'Store' },
+                  license: { bg: 'bg-orange-50 text-orange-700 border-orange-100', label: 'User License' },
+                }[type] || { bg: 'bg-gray-50 text-gray-700 border-gray-100', label: 'Payment' };
+
+                return (
+                  <div key={r._id} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex flex-col justify-between space-y-3 cursor-pointer hover:border-gray-300" onClick={() => setDetailReceiptId(r._id)}>
+                    <div>
+                      <div className="flex justify-between items-start gap-2">
+                        <h3 className="font-semibold text-gray-900 text-sm truncate" title={itemLabel}>{itemLabel}</h3>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-medium border shrink-0 ${typeBadge.bg}`}>
+                          {typeBadge.label}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {r.billingPeriodStart && r.billingPeriodEnd ? (
+                          `${new Date(r.billingPeriodStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${new Date(r.billingPeriodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                        ) : 'No billing period'}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                        <span className="bg-gray-105 text-gray-700 px-2 py-0.5 rounded font-mono">
+                          Ref: {r.bankReference || '—'}
+                        </span>
+                        <span className="bg-gray-105 text-gray-700 px-2 py-0.5 rounded">
+                          Method: {METHOD_LABELS[r.paymentMethod] || r.paymentMethod || '—'}
+                        </span>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold capitalize border ${
+                          r.status === 'verified' ? 'bg-green-50 text-green-700 border-green-100' :
+                          r.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' :
+                          'bg-amber-50 text-amber-700 border-amber-100'
+                        }`}>
+                          {r.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="border-t border-gray-100 pt-3 flex items-center justify-between">
+                      <span className="text-sm font-extrabold text-gray-900 tabular-nums">
+                        {formatMoney(r.currency || 'LKR', r.amount)}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {r.receiptFileKey && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleViewReceipt(r._id, r.receiptFileUrl); }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 border border-gray-300 rounded text-xs text-gray-600 hover:bg-gray-50 cursor-pointer"
+                            title="View receipt file"
+                          >
+                            <ExternalLink size={11} /> File
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setDetailReceiptId(r._id); }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 border border-gray-300 rounded text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                        >
+                          <Eye size={11} /> View
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="overflow-x-auto">

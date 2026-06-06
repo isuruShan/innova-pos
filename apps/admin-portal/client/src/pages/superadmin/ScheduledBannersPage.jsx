@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Calendar, Plus, Edit2, Trash2, CheckCircle2, AlertCircle, RefreshCw, X, Monitor, Users } from 'lucide-react';
 import api from '../../api/axios';
+import ViewModeToggle from '../../components/common/ViewModeToggle';
 
 const ROLE_OPTIONS = [
   { value: 'cashier', label: 'Cashier' },
@@ -19,6 +20,11 @@ export default function ScheduledBannersPage() {
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBanner, setEditingBanner] = useState(null);
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_superadmin_banners');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
 
   // Form states
   const [title, setTitle] = useState('');
@@ -140,13 +146,16 @@ export default function ScheduledBannersPage() {
             Schedule notifications and messages to display to active trial merchant users across the platform.
           </p>
         </div>
-        <button
-          onClick={openCreateModal}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-teal hover:bg-brand-teal/95 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98]"
-        >
-          <Plus size={16} />
-          Create Scheduled Banner
-        </button>
+        <div className="flex items-center gap-2 self-start shrink-0">
+          <ViewModeToggle mode={viewMode} setMode={(m) => { setViewMode(m); localStorage.setItem('view_mode_superadmin_banners', m); }} />
+          <button
+            onClick={openCreateModal}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-teal hover:bg-brand-teal/95 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98]"
+          >
+            <Plus size={16} />
+            Create Scheduled Banner
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -169,6 +178,84 @@ export default function ScheduledBannersPage() {
           <p className="text-sm text-gray-500">
             Create a scheduled banner to display announcements to trial users.
           </p>
+        </div>
+      ) : viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {banners.map((banner) => {
+            const now = new Date();
+            const isCurrent = banner.isActive && new Date(banner.startDate) <= now && new Date(banner.endDate) >= now;
+            return (
+              <div key={banner._id} className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col justify-between space-y-4">
+                <div>
+                  <div className="flex justify-between items-start gap-2">
+                    <h3 className="font-bold text-gray-900 text-base truncate" title={banner.title}>{banner.title}</h3>
+                    {isCurrent ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200 shrink-0">
+                        Active
+                      </span>
+                    ) : banner.isActive ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
+                        Scheduled
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-100 shrink-0">
+                        Disabled
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1 line-clamp-3">{banner.content}</p>
+                  
+                  <div className="mt-3 space-y-2">
+                    <div>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Target Platforms</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {banner.platforms?.map((p) => (
+                          <span key={p} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-medium border border-slate-200">
+                            <Monitor size={9} />
+                            {p === 'pos_portal' ? 'POS' : 'Admin'}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Target Roles</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {banner.userTypes?.map((r) => (
+                          <span key={r} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-medium border border-blue-100 capitalize">
+                            <Users size={9} />
+                            {r.replace('_', ' ')}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-150 pt-3 flex items-center justify-between">
+                  <span className="font-mono text-[10px] text-gray-500">
+                    {new Date(banner.startDate).toLocaleDateString()} - {new Date(banner.endDate).toLocaleDateString()}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openEditModal(banner)}
+                      className="p-1.5 text-gray-500 hover:text-brand-teal transition hover:bg-gray-100 rounded-lg"
+                      title="Edit"
+                    >
+                      <Edit2 size={15} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(banner._id)}
+                      className="p-1.5 text-gray-500 hover:text-red-600 transition hover:bg-red-50 rounded-lg"
+                      title="Delete"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
@@ -223,7 +310,7 @@ export default function ScheduledBannersPage() {
                             Currently Active
                           </span>
                         ) : banner.isActive ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-650 border border-slate-200">
                             Scheduled
                           </span>
                         ) : (

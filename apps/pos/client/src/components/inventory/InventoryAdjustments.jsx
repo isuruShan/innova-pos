@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import Badge from '../Badge';
 import Toast from '../Toast';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
+import ViewModeToggle from '../ViewModeToggle';
 
 const REASON_OPTIONS = [
   { value: 'count_correction', label: 'Count Correction' },
@@ -24,6 +25,16 @@ export default function InventoryAdjustments() {
   const { user } = useAuth();
   const [closingNotes, setClosingNotes] = useState('');
   const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_inventory_adjustments');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('view_mode_inventory_adjustments', mode);
+  };
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
 
@@ -168,19 +179,35 @@ export default function InventoryAdjustments() {
       {/* Inventory Items List */}
       {activeSession && (
         <div className="bg-[var(--pos-panel)] rounded-xl border border-slate-700/50 overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-700/50 bg-[var(--pos-surface-inset)]/50">
+          <div className="px-4 py-3 border-b border-slate-700/50 bg-[var(--pos-surface-inset)]/50 flex justify-between items-center">
             <h3 className="text-sm font-semibold text-slate-300">Adjust Stock Levels</h3>
+            <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
           </div>
-          <div className="divide-y divide-slate-800/80 max-h-[500px] overflow-y-auto">
-            {items.map((item) => (
-              <InventoryAdjustRow
-                key={item._id}
-                item={item}
-                onAdjust={handleAdjust}
-                isPending={adjustMutation.isPending}
-              />
-            ))}
-          </div>
+          {viewMode === 'table' ? (
+            <div className="divide-y divide-slate-800/80 max-h-[500px] overflow-y-auto">
+              {items.map((item) => (
+                <InventoryAdjustRow
+                  key={item._id}
+                  item={item}
+                  onAdjust={handleAdjust}
+                  isPending={adjustMutation.isPending}
+                  viewMode="table"
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4 max-h-[600px] overflow-y-auto bg-[var(--pos-surface-inset)]/25">
+              {items.map((item) => (
+                <InventoryAdjustRow
+                  key={item._id}
+                  item={item}
+                  onAdjust={handleAdjust}
+                  isPending={adjustMutation.isPending}
+                  viewMode="grid"
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -246,13 +273,12 @@ export default function InventoryAdjustments() {
           </div>
         </div>
       )}
-      
       {toast && <Toast message={toast.message} variant={toast.variant} onClose={clearToast} />}
     </div>
   );
 }
 
-function InventoryAdjustRow({ item, onAdjust, isPending }) {
+function InventoryAdjustRow({ item, onAdjust, isPending, viewMode }) {
   const [showAdjustForm, setShowAdjustForm] = useState(false);
   const [adjustQty, setAdjustQty] = useState('');
   const [reason, setReason] = useState('count_correction');
@@ -269,6 +295,91 @@ function InventoryAdjustRow({ item, onAdjust, isPending }) {
   };
 
   const stockStatus = item.quantity < item.minThreshold ? 'low' : 'ok';
+
+  if (viewMode === 'grid') {
+    return (
+      <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-3.5 flex flex-col justify-between hover:border-slate-600 transition h-full shadow-md">
+        <div>
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <span className="text-sm font-semibold text-slate-200 truncate" title={item.itemName}>{item.itemName}</span>
+            {stockStatus === 'low' && (
+              <span className="flex items-center gap-1 text-[10px] text-yellow-400 shrink-0 bg-yellow-500/10 px-1.5 py-0.5 rounded">
+                <AlertTriangle size={10} /> Low
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-2 bg-slate-900/60 rounded-lg p-2 text-xs border border-slate-800/60">
+            <div>
+              <p className="text-[10px] text-slate-500">Stock</p>
+              <p className="font-semibold text-slate-300">{item.quantity} {item.unit}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-500">Min</p>
+              <p className="font-semibold text-slate-300">{item.minThreshold} {item.unit}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 pt-3 border-t border-slate-800/60">
+          {!showAdjustForm ? (
+            <button
+              onClick={() => setShowAdjustForm(true)}
+              className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-semibold py-1.5 rounded-lg text-xs transition"
+            >
+              Adjust Qty
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step="0.01"
+                  value={adjustQty}
+                  onChange={(e) => setAdjustQty(e.target.value)}
+                  placeholder="±Qty"
+                  className="w-20 bg-slate-900 border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-right"
+                  autoFocus
+                />
+                <select
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  className="flex-1 bg-slate-900 border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-amber-500"
+                >
+                  {REASON_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <input
+                type="text"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Notes (optional)"
+                className="w-full bg-slate-900 border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
+              <div className="flex gap-1.5 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAdjustForm(false)}
+                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-400 py-1 rounded text-[10px] transition font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isPending || !adjustQty || adjustQty === '0'}
+                  className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-white font-semibold py-1 rounded text-[10px] transition"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 py-3">
@@ -317,7 +428,7 @@ function InventoryAdjustRow({ item, onAdjust, isPending }) {
               value={adjustQty}
               onChange={(e) => setAdjustQty(e.target.value)}
               placeholder="±Quantity"
-              className="w-24 bg-slate-900 border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="w-24 bg-slate-900 border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
               autoFocus
             />
             <select

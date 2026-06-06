@@ -16,6 +16,7 @@ import { useStoreContext } from '../../context/StoreContext';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import Badge from '../../components/Badge';
 import ResponsiveTable from '../../components/ResponsiveTable';
+import ViewModeToggle from '../../components/ViewModeToggle';
 
 const REASON_LABELS = {
   expiry: 'Expired Product',
@@ -37,7 +38,16 @@ export default function WastageManagement() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [activeReport, setActiveReport] = useState(null);
-  const [viewMode, setViewMode] = useState('table');
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_wastage_management');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('view_mode_wastage_management', mode);
+  };
   const [typeFilter, setTypeFilter] = useState('all'); // 'all', 'end_of_day', 'spill_expiry_damage'
 
   // New Wastage Report Form State
@@ -192,22 +202,7 @@ export default function WastageManagement() {
 
           <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
             {/* View toggle */}
-            <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-705 rounded-lg p-0.5">
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-semibold transition ${viewMode === 'table' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
-              >
-                <List size={12} /> Table
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('grid')}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-[11px] font-semibold transition ${viewMode === 'grid' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
-              >
-                <LayoutGrid size={12} /> Grid
-              </button>
-            </div>
+            <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
 
             <div className="relative">
               <button

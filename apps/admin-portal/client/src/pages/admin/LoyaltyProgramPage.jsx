@@ -9,6 +9,7 @@ import LoyaltyAddonSubscribeBanner from '../../components/addons/LoyaltyAddonSub
 import ListPagination from '../../components/common/ListPagination';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import ViewModeToggle from '../../components/common/ViewModeToggle';
 
 const emptyTier = { name: '', level: '1', minLifetimePoints: '0', description: '' };
 
@@ -28,6 +29,11 @@ export default function LoyaltyProgramPage() {
   const [tierModal, setTierModal] = useState(null);
   const [tierForm, setTierForm] = useState(emptyTier);
   const [confirmDeleteTier, setConfirmDeleteTier] = useState(null);
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_admin_loyalty_tiers');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
   const { data: addonCatalog = [] } = useQuery({
     queryKey: ['merchant-addon-catalog'],
     queryFn: () => api.get('/paid-addons/merchant-catalog').then((r) => r.data),
@@ -214,34 +220,40 @@ export default function LoyaltyProgramPage() {
               The same thresholds apply to every store in your organization.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setTierModal({});
-              setTierForm(emptyTier);
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand-orange text-white text-sm font-medium shrink-0"
-          >
-            <Plus size={16} /> Add tier
-          </button>
+          <div className="flex items-center gap-2">
+            <ViewModeToggle mode={viewMode} setMode={(m) => { setViewMode(m); localStorage.setItem('view_mode_admin_loyalty_tiers', m); }} />
+            <button
+              type="button"
+              onClick={() => {
+                setTierModal({});
+                setTierForm(emptyTier);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand-orange text-white text-sm font-medium shrink-0"
+            >
+              <Plus size={16} /> Add tier
+            </button>
+          </div>
         </div>
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 text-gray-700 text-left">
-              <tr>
-                <th className="px-3 py-2 font-medium">Name</th>
-                <th className="px-3 py-2 font-medium">Level</th>
-                <th className="px-3 py-2 font-medium">Min lifetime points</th>
-                <th className="px-3 py-2 font-medium w-24" />
-              </tr>
-            </thead>
-            <tbody>
-              {sortedTiers.map((t) => (
-                <tr key={t._id} className="border-t border-gray-100">
-                  <td className="px-3 py-2 font-medium text-gray-900">{t.name}</td>
-                  <td className="px-3 py-2">{t.level}</td>
-                  <td className="px-3 py-2 tabular-nums">{t.minLifetimePoints}</td>
-                  <td className="px-3 py-2 text-right space-x-2">
+
+        {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {sortedTiers.map((t) => (
+              <div key={t._id} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-semibold text-gray-900 text-base">{t.name}</h3>
+                    <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                      Level {t.level}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1 line-clamp-2">{t.description || 'No description'}</p>
+                </div>
+                <div className="border-t border-gray-100 pt-3 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-gray-400 block font-medium uppercase tracking-wider">Min Points</span>
+                    <span className="text-sm font-semibold text-gray-900 tabular-nums">{t.minLifetimePoints}</span>
+                  </div>
+                  <div className="space-x-3">
                     <button
                       type="button"
                       className="text-brand-teal text-xs font-semibold"
@@ -259,17 +271,63 @@ export default function LoyaltyProgramPage() {
                     </button>
                     <button
                       type="button"
-                      className="text-red-600 text-xs"
+                      className="text-red-600 text-xs font-semibold hover:underline"
                       onClick={() => setConfirmDeleteTier(t)}
                     >
-                      <Trash2 size={14} className="inline" />
+                      Delete
                     </button>
-                  </td>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50 text-gray-700 text-left">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Name</th>
+                  <th className="px-3 py-2 font-medium">Level</th>
+                  <th className="px-3 py-2 font-medium">Min lifetime points</th>
+                  <th className="px-3 py-2 font-medium w-24" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {sortedTiers.map((t) => (
+                  <tr key={t._id} className="border-t border-gray-100">
+                    <td className="px-3 py-2 font-medium text-gray-900">{t.name}</td>
+                    <td className="px-3 py-2">{t.level}</td>
+                    <td className="px-3 py-2 tabular-nums">{t.minLifetimePoints}</td>
+                    <td className="px-3 py-2 text-right space-x-2">
+                      <button
+                        type="button"
+                        className="text-brand-teal text-xs font-semibold"
+                        onClick={() => {
+                          setTierModal(t);
+                          setTierForm({
+                            name: t.name || '',
+                            level: String(t.level ?? 1),
+                            minLifetimePoints: String(t.minLifetimePoints ?? 0),
+                            description: t.description || '',
+                          });
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="text-red-600 text-xs"
+                        onClick={() => setConfirmDeleteTier(t)}
+                      >
+                        <Trash2 size={14} className="inline" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
 

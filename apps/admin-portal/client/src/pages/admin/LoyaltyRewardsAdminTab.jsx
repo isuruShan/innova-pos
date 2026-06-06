@@ -12,6 +12,7 @@ import SideDrawer from '../../components/common/SideDrawer';
 import FormField, { inputClass } from '../../components/common/FormField';
 import { useToast } from '../../context/ToastContext';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import ViewModeToggle from '../../components/common/ViewModeToggle';
 
 const emptyForm = {
   name: '',
@@ -50,6 +51,11 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
   const [rejectReason, setRejectReason] = useState('');
   const [listPage, setListPage] = useState(1);
   const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_admin_loyalty_rewards');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
 
   useEffect(() => {
     setListPage(1);
@@ -343,13 +349,16 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
             className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm"
           />
         </div>
-        <button
-          type="button"
-          onClick={openNew}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-medium shrink-0"
-        >
-          <Plus size={16} /> New reward
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <ViewModeToggle mode={viewMode} setMode={(m) => { setViewMode(m); localStorage.setItem('view_mode_admin_loyalty_rewards', m); }} />
+          <button
+            type="button"
+            onClick={openNew}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-orange text-white text-sm font-medium shrink-0"
+          >
+            <Plus size={16} /> New reward
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -357,6 +366,67 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
           <p className="p-8 text-center text-gray-500 text-sm">Loading…</p>
         ) : rows.length === 0 ? (
           <p className="p-8 text-center text-gray-500 text-sm">No rewards match your filters.</p>
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4">
+            {rows.map((r) => (
+              <div key={r._id} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex justify-between items-start gap-2">
+                    <h3 className="font-semibold text-gray-900 text-base">{r.name}</h3>
+                    <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                      {storeLabel(r.storeId)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1 line-clamp-2">{r.description || 'No description'}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span className="inline-flex items-center rounded-md bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
+                      Pts: {r.pointsCost}
+                    </span>
+                    <span className="inline-flex items-center rounded-md bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
+                      Approval: {r.approvalStatus}
+                    </span>
+                    <span className="inline-flex items-center rounded-md bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
+                      Active: {r.active ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+                </div>
+                <div className="border-t border-gray-100 pt-3 flex items-center justify-end gap-2 whitespace-nowrap">
+                  {r.approvalStatus === 'pending' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => approve.mutate({ id: r._id, active: true })}
+                        className="text-brand-teal text-xs font-semibold hover:underline"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRejectFor(r)}
+                        className="text-red-600 text-xs hover:underline"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => openEdit(r)}
+                    className="text-brand-teal text-xs font-semibold inline-flex items-center gap-0.5 hover:underline"
+                  >
+                    <Pencil size={11} /> Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteReward(r)}
+                    className="text-red-600 text-xs inline-flex items-center gap-0.5 hover:underline"
+                  >
+                    <Trash2 size={11} /> Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">

@@ -23,6 +23,7 @@ import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import InventoryAdjustments from '../../components/inventory/InventoryAdjustments';
 import PageHeader from '../../components/PageHeader';
 import ResponsiveTable from '../../components/ResponsiveTable';
+import ViewModeToggle from '../../components/ViewModeToggle';
 
 const EMPTY_FORM = { itemName: '', unit: 'pcs', quantity: '', minThreshold: '', suppliers: [] };
 
@@ -107,13 +108,34 @@ export default function InventoryManagement() {
   const [showFilters, setShowFilters] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState('');
   const [customUnit, setCustomUnit] = useState('');
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_inventory_management');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('view_mode_inventory_management', mode);
+  };
+
   const qc = useQueryClient();
   const { sort, order, toggleSort, sortParams } = useListSort('name', 'asc');
   const { toast, showToast, clearToast } = useToast();
 
   // Adjustment History States
   const [sessionStatus, setSessionStatus] = useState('all');
-  const [sessionViewMode, setSessionViewMode] = useState('table');
+  const [sessionViewMode, setSessionViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_inventory_adjustment_sessions');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
+
+  const handleSetSessionViewMode = (mode) => {
+    setSessionViewMode(mode);
+    localStorage.setItem('view_mode_inventory_adjustment_sessions', mode);
+  };
+
   const [activeSessionDetails, setActiveSessionDetails] = useState(null);
   const [sessionSearch, setSessionSearch] = useState('');
   const [showSessionFilters, setShowSessionFilters] = useState(false);
@@ -385,6 +407,8 @@ export default function InventoryManagement() {
                 )}
               </div>
               
+              <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
+              
               <div className="relative self-end sm:self-auto">
                 <button
                   onClick={() => setShowFilters(f => !f)}
@@ -438,7 +462,7 @@ export default function InventoryManagement() {
 
             {pageLoading ? (
               <InventoryTableSkeleton />
-            ) : (
+            ) : viewMode === 'table' ? (
               <ResponsiveTable
                 rows={filtered}
                 rowKey={(item) => item._id}
@@ -518,6 +542,61 @@ export default function InventoryManagement() {
                   },
                 ]}
               />
+            ) : (
+              filtered.length === 0 ? (
+                <div className="text-center py-16 bg-[var(--pos-panel)] rounded-xl border border-slate-700">
+                  <Package size={36} className="mx-auto opacity-30 mb-2 text-slate-400" />
+                  <p className="text-sm text-slate-500">No inventory items found</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {filtered.map((item) => {
+                    const status = getStockStatus(item.quantity, item.minThreshold);
+                    return (
+                      <div key={item._id} className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-3.5 flex flex-col justify-between hover:border-slate-600 transition shadow-lg">
+                        <div>
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <h4 className="text-[var(--pos-text-primary)] font-bold text-sm truncate">{item.itemName}</h4>
+                            <Badge label={status.label} variant={status.variant} className="text-[10px] px-1.5 py-0.5" />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 mt-3 bg-[var(--pos-surface-inset)] rounded-lg p-2.5 text-xs border border-slate-800/60">
+                            <div>
+                              <p className="text-[10px] text-slate-500">Quantity</p>
+                              <p className="font-semibold text-slate-300">{item.quantity} {item.unit}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-500">Min Threshold</p>
+                              <p className="font-semibold text-slate-300">{item.minThreshold} {item.unit}</p>
+                            </div>
+                          </div>
+                          <div className="mt-3">
+                            <p className="text-[10px] text-slate-500 mb-1">Suppliers</p>
+                            <SupplierPills suppliers={item.suppliers} />
+                          </div>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-slate-850/60 flex items-center justify-between">
+                          <span className="text-[10px] text-slate-500">
+                            Updated: {new Date(item.lastUpdated || item.updatedAt).toLocaleDateString()}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => setGraphItem(item)}
+                              className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-amber-400 hover:bg-slate-700 transition"
+                              title="View Stock Movements & Graph">
+                              <LineChartIcon size={13} />
+                            </button>
+                            <button onClick={() => openEdit(item)}
+                              className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition"
+                              title="Edit Item Details">
+                              <Edit2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
             )}
           </>
         )}
@@ -547,22 +626,7 @@ export default function InventoryManagement() {
               
               <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
                 {/* View toggle */}
-                <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setSessionViewMode('table')}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition ${sessionViewMode === 'table' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    <List size={12} /> Table
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSessionViewMode('grid')}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition ${sessionViewMode === 'grid' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
-                  >
-                    <LayoutGrid size={12} /> Grid
-                  </button>
-                </div>
+                <ViewModeToggle mode={sessionViewMode} setMode={handleSetSessionViewMode} />
 
                 <div className="relative">
                   <button

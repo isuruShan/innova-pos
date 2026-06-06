@@ -15,6 +15,9 @@ import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { formatCurrency } from '../../utils/format';
 import PosDateField from '../../components/PosDateField';
+import ResponsiveTable from '../../components/ResponsiveTable';
+import ViewModeToggle from '../../components/ViewModeToggle';
+import Badge from '../../components/Badge';
 
 const STATUS_COLORS = {
   draft: 'text-slate-400 bg-slate-500/10',
@@ -53,6 +56,16 @@ export default function PurchaseOrders() {
   const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState('createdAt');
   const [order, setOrder] = useState('desc');
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_purchase_orders');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('view_mode_purchase_orders', mode);
+  };
 
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
@@ -297,6 +310,7 @@ export default function PurchaseOrders() {
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+            <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
             <div className="relative">
               <button
                 onClick={() => setShowFilters(f => !f)}
@@ -404,147 +418,225 @@ export default function PurchaseOrders() {
             <p className="text-slate-600 text-sm mb-6">Try adjusting your search terms or date range</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {sortedAndFiltered.map((order) => {
-
-              const StatusIcon = STATUS_ICONS[order.status];
-              const receivedCount = order.items.reduce((sum, i) => sum + i.receivedQty, 0);
-              const orderedCount = order.items.reduce((sum, i) => sum + i.orderedQty, 0);
-              const isFullyReceived = receivedCount >= orderedCount && orderedCount > 0;
-
-              return (
-                <div
-                  key={order._id}
-                  className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-4 hover:border-slate-600 transition"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-[var(--pos-text-primary)]">
-                          {order.orderNumber}
-                        </h3>
-                        <span
-                          className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            STATUS_COLORS[order.status]
-                          }`}
-                        >
+          <div>
+            {viewMode === 'table' ? (
+              <ResponsiveTable
+                rows={sortedAndFiltered}
+                rowKey={(o) => o._id}
+                loading={false}
+                columns={[
+                  {
+                    key: 'orderNumber', header: 'PO Number',
+                    mobilePrimary: true,
+                    render: (o) => <span className="font-semibold text-[var(--pos-text-primary)]">{o.orderNumber}</span>,
+                  },
+                  {
+                    key: 'status', header: 'Status',
+                    render: (o) => {
+                      const StatusIcon = STATUS_ICONS[o.status];
+                      return (
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[o.status]}`}>
                           <StatusIcon size={12} />
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                          <span className="capitalize">{o.status}</span>
                         </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
-                        <span className="flex items-center gap-1">
-                          <Package size={14} />
-                          {order.supplierId?.name || 'Unknown Supplier'}
+                      );
+                    },
+                  },
+                  {
+                    key: 'supplier', header: 'Supplier',
+                    mobileSecondary: true,
+                    render: (o) => <span className="text-slate-350">{o.supplierId?.name || 'Unknown Supplier'}</span>,
+                  },
+                  {
+                    key: 'date', header: 'Date Created',
+                    render: (o) => <span className="text-slate-400">{formatDate(o.createdAt)}</span>,
+                  },
+                  {
+                    key: 'expected', header: 'Expected Date',
+                    render: (o) => <span className="text-slate-400">{formatDate(o.expectedDate)}</span>,
+                  },
+                  {
+                    key: 'items', header: 'Items / Qty',
+                    render: (o) => {
+                      const totalQty = o.items.reduce((sum, item) => sum + item.orderedQty, 0);
+                      return (
+                        <span className="text-slate-400 text-xs">
+                          {o.items.length} items ({totalQty} units)
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar size={14} />
-                          {formatDate(order.createdAt)}
-                        </span>
-                        {order.expectedDate && (
-                          <span className="flex items-center gap-1">
-                            <Clock size={14} />
-                            Expected: {formatDate(order.expectedDate)}
-                          </span>
+                      );
+                    },
+                  },
+                  {
+                    key: 'amount', header: 'Total Amount',
+                    className: 'text-right',
+                    headerClassName: 'text-right',
+                    render: (o) => <span className="text-amber-450 font-bold">{formatCurrency(o.totalAmount)}</span>,
+                  },
+                  {
+                    key: 'actions', header: '',
+                    render: (o) => (
+                      <div className="flex items-center gap-1.5 justify-end">
+                        {o.status === 'draft' && (
+                          <button
+                            type="button"
+                            onClick={() => setSendTarget(o)}
+                            className="flex items-center gap-1 px-2.5 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/20 rounded-lg text-xs font-semibold transition"
+                          >
+                            Send
+                          </button>
+                        )}
+                        {['draft', 'sent'].includes(o.status) && (
+                          <button
+                            type="button"
+                            onClick={() => openEdit(o)}
+                            className="p-1.5 bg-slate-805 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                        )}
+                        {o.status === 'draft' && (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(o)}
+                            className="p-1.5 bg-slate-805 hover:bg-red-500/10 rounded-lg text-slate-400 hover:text-red-400 transition"
+                          >
+                            <Trash2 size={13} />
+                          </button>
                         )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {order.status === 'draft' && (
-                        <button
-                          type="button"
-                          onClick={() => setSendTarget(order)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 rounded-lg text-xs font-medium transition"
-                        >
-                          <Send size={13} />
-                          Send
-                        </button>
-                      )}
-                      {['draft', 'sent'].includes(order.status) && (
-                        <button
-                          type="button"
-                          onClick={() => openEdit(order)}
-                          className="w-8 h-8 bg-slate-700/50 hover:bg-slate-600 rounded-lg flex items-center justify-center text-slate-300 hover:text-white transition"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                      )}
-                      {order.status === 'draft' && (
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget(order)}
-                          className="w-8 h-8 bg-slate-700/50 hover:bg-red-500/20 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-400 transition"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                    ),
+                  },
+                ]}
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {sortedAndFiltered.map((order) => {
+                  const StatusIcon = STATUS_ICONS[order.status];
+                  const receivedCount = order.items.reduce((sum, i) => sum + i.receivedQty, 0);
+                  const orderedCount = order.items.reduce((sum, i) => sum + i.orderedQty, 0);
+                  const isFullyReceived = receivedCount >= orderedCount && orderedCount > 0;
 
-                  {/* Items Summary */}
-                  <div className="bg-[var(--pos-surface-inset)] rounded-lg p-3 mb-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                  return (
+                    <div
+                      key={order._id}
+                      className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-4 hover:border-slate-600 transition flex flex-col justify-between"
+                    >
                       <div>
-                        <p className="text-xs text-slate-500 mb-1">Items</p>
-                        <p className="text-sm font-medium text-[var(--pos-text-primary)]">
-                          {order.items.length} item{order.items.length !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500 mb-1">Total Ordered</p>
-                        <p className="text-sm font-medium text-[var(--pos-text-primary)]">
-                          {orderedCount} units
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500 mb-1">Total Amount</p>
-                        <p className="text-sm font-medium text-amber-400 flex items-center gap-1">
-                          <DollarSign size={14} />
-                          {formatCurrency(order.totalAmount)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Items List (collapsed) */}
-                    <details className="group">
-                      <summary className="text-xs text-amber-400 hover:text-amber-300 cursor-pointer font-medium list-none flex items-center gap-1">
-                        <span className="group-open:rotate-90 transition">▶</span>
-                        View {order.items.length} item{order.items.length !== 1 ? 's' : ''}
-                      </summary>
-                      <div className="mt-2 space-y-1.5">
-                        {order.items.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center justify-between text-xs bg-slate-800/50 rounded px-2 py-1.5"
-                          >
-                            <span className="text-slate-300">{item.itemName}</span>
-                            <div className="flex items-center gap-3">
-                              <span className="text-slate-500">
-                                {item.orderedQty} {item.unit}
-                              </span>
-                              {item.receivedQty > 0 && (
-                                <span className="text-green-400">
-                                  ✓ {item.receivedQty} received
-                                </span>
-                              )}
-                              <span className="text-amber-400 font-medium">
-                                {formatCurrency(item.unitPrice * item.orderedQty)}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-base font-semibold text-[var(--pos-text-primary)]">
+                                {order.orderNumber}
+                              </h3>
+                              <span
+                                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                  STATUS_COLORS[order.status]
+                                }`}
+                              >
+                                <StatusIcon size={10} />
+                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                               </span>
                             </div>
+                            <div className="space-y-1.5 text-xs text-slate-400">
+                              <p className="flex items-center gap-1.5 font-medium text-slate-350">
+                                <Package size={13} className="text-purple-400 shrink-0" />
+                                {order.supplierId?.name || 'Unknown Supplier'}
+                              </p>
+                              <p className="flex items-center gap-1.5">
+                                <Calendar size={13} className="text-slate-500 shrink-0" />
+                                {formatDate(order.createdAt)}
+                              </p>
+                              {order.expectedDate && (
+                                <p className="flex items-center gap-1.5 text-[11px]">
+                                  <Clock size={13} className="text-slate-500 shrink-0" />
+                                  Expected: {formatDate(order.expectedDate)}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    </details>
-                  </div>
+                          <div className="flex items-center gap-1.5">
+                            {order.status === 'draft' && (
+                              <button
+                                type="button"
+                                onClick={() => setSendTarget(order)}
+                                className="flex items-center gap-1 px-2 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 rounded-lg text-[10px] font-semibold transition"
+                              >
+                                <Send size={11} />
+                                Send
+                              </button>
+                            )}
+                            {['draft', 'sent'].includes(order.status) && (
+                              <button
+                                type="button"
+                                onClick={() => openEdit(order)}
+                                className="p-1 bg-slate-700/50 hover:bg-slate-650 rounded-lg text-slate-300 hover:text-white transition"
+                              >
+                                <Edit2 size={12} />
+                              </button>
+                            )}
+                            {order.status === 'draft' && (
+                              <button
+                                type="button"
+                                onClick={() => setDeleteTarget(order)}
+                                className="p-1 bg-slate-700/50 hover:bg-red-500/20 rounded-lg text-slate-300 hover:text-red-400 transition"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
 
-                  {order.notes && (
-                    <div className="text-xs text-slate-500 bg-slate-800/30 rounded px-3 py-2">
-                      <span className="font-medium">Notes:</span> {order.notes}
+                        {/* Items Summary */}
+                        <div className="bg-[var(--pos-surface-inset)] rounded-lg p-2.5 mt-2">
+                          <div className="grid grid-cols-3 gap-2 text-[11px] mb-2">
+                            <div>
+                              <p className="text-slate-500">Items</p>
+                              <p className="font-semibold text-slate-300">{order.items.length}</p>
+                            </div>
+                            <div>
+                              <p className="text-slate-500">Quantity</p>
+                              <p className="font-semibold text-slate-300">{orderedCount}</p>
+                            </div>
+                            <div>
+                              <p className="text-slate-500">Total</p>
+                              <p className="font-bold text-amber-455">{formatCurrency(order.totalAmount)}</p>
+                            </div>
+                          </div>
+
+                          {/* Items List (collapsed) */}
+                          <details className="group border-t border-slate-800/40 pt-1.5">
+                            <summary className="text-[10px] text-amber-450 hover:text-amber-400 cursor-pointer font-medium list-none flex items-center gap-1 justify-between">
+                              <span>Details ({order.items.length} items)</span>
+                              <span className="group-open:rotate-90 transition">▶</span>
+                            </summary>
+                            <div className="mt-1.5 space-y-1 max-h-32 overflow-y-auto pr-1">
+                              {order.items.map((item, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center justify-between text-[10px] bg-slate-800/40 rounded px-1.5 py-1"
+                                >
+                                  <span className="text-slate-350 truncate max-w-[120px]">{item.itemName}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-slate-500">{item.orderedQty} {item.unit}</span>
+                                    {item.receivedQty > 0 && <span className="text-green-455 font-bold">✓ {item.receivedQty}</span>}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        </div>
+                      </div>
+
+                      {order.notes && (
+                        <div className="text-[11px] text-slate-500 bg-slate-800/30 rounded px-2.5 py-1.5 mt-3 italic line-clamp-1">
+                          {order.notes}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>

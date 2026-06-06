@@ -4,6 +4,7 @@ import { Plus, Edit2, Trash2, Shield, Percent, DollarSign, Check, X, RefreshCw, 
 import { useToast } from '../../context/ToastContext';
 import api from '../../api/axios';
 import SideDrawer from '../../components/common/SideDrawer';
+import ViewModeToggle from '../../components/common/ViewModeToggle';
 
 const DEFAULT_COLORS = [
   { name: 'Green', value: '#10b981' },
@@ -21,6 +22,11 @@ export default function FoodmarketPartnersPage() {
   const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPartner, setEditingPartner] = useState(null);
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_admin_foodmarket_partners');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
 
   // Form states
   const [name, setName] = useState('');
@@ -181,6 +187,7 @@ export default function FoodmarketPartnersPage() {
           <p className="text-gray-500 mt-1">Configure integrations, commissions, and specific pricing overlays for Uber, PickMe, etc.</p>
         </div>
         <div className="flex items-center gap-3">
+          <ViewModeToggle mode={viewMode} setMode={(m) => { setViewMode(m); localStorage.setItem('view_mode_admin_foodmarket_partners', m); }} />
           <button
             onClick={() => refetch()}
             className="p-2.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 transition-colors"
@@ -219,7 +226,7 @@ export default function FoodmarketPartnersPage() {
             Create first partner
           </button>
         </div>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {partners.map((partner) => (
             <div
@@ -266,7 +273,7 @@ export default function FoodmarketPartnersPage() {
                     </button>
                     <button
                       onClick={() => handleDelete(partner._id)}
-                      className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-1.5 text-red-500 hover:text-red-750 hover:bg-red-50 rounded-lg transition-colors"
                       title="Delete partner"
                     >
                       <Trash2 size={16} />
@@ -301,6 +308,71 @@ export default function FoodmarketPartnersPage() {
               </div>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200 shadow-sm">
+          <table className="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-200">
+                <th className="px-6 py-3">Partner</th>
+                <th className="px-6 py-3">Commission Type</th>
+                <th className="px-6 py-3">Rate/Fee</th>
+                <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-150">
+              {partners.map((partner) => (
+                <tr key={partner._id} className="hover:bg-gray-50/70 transition-colors">
+                  <td className="px-6 py-4 flex items-center gap-3">
+                    <div
+                      className="w-8 h-8 rounded flex items-center justify-center border shrink-0"
+                      style={{
+                        borderColor: partner.color + '40' || '#10b98140',
+                        backgroundColor: partner.color + '10' || '#10b98110',
+                      }}
+                    >
+                      {partner.logoUrl ? (
+                        <img src={partner.logoUrl} alt={partner.name} className="w-full h-full object-contain rounded" />
+                      ) : (
+                        <span className="text-lg">{partner.icon || '🛵'}</span>
+                      )}
+                    </div>
+                    <span className="font-semibold text-gray-900">{partner.name}</span>
+                  </td>
+                  <td className="px-6 py-4 capitalize">{partner.commissionType}</td>
+                  <td className="px-6 py-4 font-semibold text-gray-900">
+                    {partner.commissionType === 'percentage' && `${partner.commissionPercentage}%`}
+                    {partner.commissionType === 'flat' && partner.commissionFlat}
+                    {partner.commissionType === 'both' && `${partner.commissionPercentage}% + ${partner.commissionFlat}`}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        partner.isActive ? 'bg-green-50 text-green-800' : 'bg-gray-100 text-gray-500'
+                      }`}
+                    >
+                      {partner.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right space-x-3 whitespace-nowrap">
+                    <button
+                      onClick={() => openEditModal(partner)}
+                      className="text-gray-500 hover:text-gray-950 font-semibold text-xs transition"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(partner._id)}
+                      className="text-red-500 hover:text-red-700 font-semibold text-xs transition"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
