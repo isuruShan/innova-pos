@@ -30,12 +30,7 @@ export default function Navbar() {
               </a>
             ))}
             <span className="h-5 w-px bg-white/20 shrink-0" aria-hidden />
-            <Link
-              to="/merchant-guide"
-              className="text-sm font-semibold text-brand-orange hover:text-orange-200 transition-colors"
-            >
-              Merchant guide
-            </Link>
+  
           </div>
 
           <div className="hidden md:flex items-center gap-3">
@@ -78,13 +73,6 @@ export default function Navbar() {
             </a>
           ))}
           <div className="border-t border-white/10 pt-3 mt-1">
-            <Link
-              to="/merchant-guide"
-              onClick={() => setOpen(false)}
-              className="block text-sm font-semibold text-brand-orange py-2 hover:text-orange-200"
-            >
-              Merchant guide
-            </Link>
           </div>
           <button
             type="button"

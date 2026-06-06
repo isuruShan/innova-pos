@@ -42,7 +42,7 @@ function getPlatformContactModel(mongoose) {
 const DEFAULT_CONTACT = {
   _id: SINGLETON_ID,
   brandName: 'Cafinity POS',
-  publicWebsiteUrl: 'https://cafinity.com',
+  publicWebsiteUrl: 'https://cafinity.io',
   supportEmail: process.env.EMAIL_FROM || '',
 };
 

@@ -56,16 +56,16 @@ export const GUIDE_SECTIONS = [
       {
         heading: 'Sign in to the admin portal',
         body:
-          'Use Sign in → Admin portal on the website (typically https://admin.cafinity.com) with the email and password from your approval email. The dashboard shows trial days remaining (for example, "12 days left in trial") or active subscription status if you have already paid.\n\n' +
-          'Example: The owner of Green Leaf Café visits https://admin.cafinity.com, enters owner@greenleafcafe.lk and their password, and lands on the Admin Dashboard. A banner at the top reads "Trial: 14 days remaining. Complete payment to activate full subscription." The left sidebar shows all admin tools: Dashboard, Subscription, Branding & Settings, Stores, Users, Add-ons, Analytics, Customers, and Notifications.\n\n' +
+          'Use Sign in → Admin portal on the website (typically https://admin.cafinity.io) with the email and password from your approval email. The dashboard shows trial days remaining (for example, "12 days left in trial") or active subscription status if you have already paid.\n\n' +
+          'Example: The owner of Green Leaf Café visits https://admin.cafinity.io, enters owner@greenleafcafe.lk and their password, and lands on the Admin Dashboard. A banner at the top reads "Trial: 14 days remaining. Complete payment to activate full subscription." The left sidebar shows all admin tools: Dashboard, Subscription, Branding & Settings, Stores, Users, Add-ons, Analytics, Customers, and Notifications.\n\n' +
           'From here, complete subscription payment (to secure uninterrupted access after trial), set up branding (logo, colors, currency), configure your default store details, and invite staff users before opening the POS for live service.',
-        tip: 'Bookmark the admin portal URL (https://admin.cafinity.com) in your browser for quick access to billing and configuration tasks. Only merchant admins and owners should have this link—cashiers and kitchen staff do not need admin portal access and should only use the POS application.',
+        tip: 'Bookmark the admin portal URL (https://admin.cafinity.io) in your browser for quick access to billing and configuration tasks. Only merchant admins and owners should have this link—cashiers and kitchen staff do not need admin portal access and should only use the POS application.',
       },
       {
         heading: 'Open the POS for staff',
         body:
-          'Use Open POS from the admin sidebar, or navigate directly to Sign in → POS on the public website (typically https://pos.cafinity.com). Cashiers and kitchen staff sign in with individual accounts you create under Admin → Users—never share login credentials.\n\n' +
-          'Example: Green Leaf Café creates three staff accounts: sarah@greenleafcafe.lk (Cashier role), ravi@greenleafcafe.lk (Kitchen role), and priya@greenleafcafe.lk (Manager role). Sarah logs into https://pos.cafinity.com with her credentials and sees only Register, Order Board, and Cashier Session tools. Ravi sees Kitchen Display. Priya (Manager) sees everything including Menu, Inventory, Promotions, Dashboard, and Reports.\n\n' +
+          'Use Open POS from the admin sidebar, or navigate directly to Sign in → POS on the public website (typically https://pos.cafinity.io). Cashiers and kitchen staff sign in with individual accounts you create under Admin → Users—never share login credentials.\n\n' +
+          'Example: Green Leaf Café creates three staff accounts: sarah@greenleafcafe.lk (Cashier role), ravi@greenleafcafe.lk (Kitchen role), and priya@greenleafcafe.lk (Manager role). Sarah logs into https://pos.cafinity.io with her credentials and sees only Register, Order Board, and Cashier Session tools. Ravi sees Kitchen Display. Priya (Manager) sees everything including Menu, Inventory, Promotions, Dashboard, and Reports.\n\n' +
           'Managers use the POS for operational tasks like menu updates, inventory tracking, promotion creation, and viewing the manager dashboard; merchant admins retain full control in the admin portal for billing, branding, user management, and subscription configuration.',
         tip: 'Test each role after creating accounts—have a cashier, kitchen staff, and manager log in on separate devices to verify they see only the tools appropriate for their role. This prevents access issues during your first live service shift.',
       },
@@ -618,7 +618,7 @@ export const GUIDE_SECTIONS = [
           '- Outdoor Patio: Patio A, Patio B, Patio C\n' +
           '- Bar Seating: Bar-1, Bar-2, Bar-3\n' +
           'Total: 12 tables\n\n' +
-          'For each table, the system generates a unique QR code linked to that table\'s guest ordering URL (for example, https://order.cafinity.com/urbanbistro/table/1 for Table 1, https://order.cafinity.com/urbanbistro/patio-a for Patio A). When scanned, this QR code opens the guest-facing menu on the customer\'s smartphone, pre-filled with the table identifier so orders automatically attach to the correct table.\n\n' +
+          'For each table, the system generates a unique QR code linked to that table\'s guest ordering URL (for example, https://order.cafinity.io/urbanbistro/table/1 for Table 1, https://order.cafinity.io/urbanbistro/patio-a for Patio A). When scanned, this QR code opens the guest-facing menu on the customer\'s smartphone, pre-filled with the table identifier so orders automatically attach to the correct table.\n\n' +
           'Download or print QR codes directly from the table management interface (usually a "Download QR" or "Print QR" button next to each table). Options typically include:\n' +
           '- Download as PNG/SVG image (for custom signage design in Photoshop, Canva, etc.)\n' +
           '- Print individual QR code sheets (one table per page, ready to laminate)\n' +
@@ -1072,8 +1072,8 @@ export const GUIDE_SECTIONS = [
         body:
           'When you encounter platform defects, billing disputes, or technical issues you cannot resolve with the steps in this guide, contact Cafinity support through the official channels. Proper documentation and clear communication speeds up resolution:\n\n' +
           '**How to Contact Support:**\n' +
-          '• Use the website contact form (typically https://cafinity.com/contact or https://cafinity.com/support)\n' +
-          '• Email support: support@cafinity.com (if email address is provided on the website)\n' +
+          '• Use the website contact form (typically https://cafinity.io/contact or https://cafinity.io/support)\n' +
+          '• Email support: support@cafinity.io (if email address is provided on the website)\n' +
           '• In-app support: Click "Help" or "Support" link in admin portal or POS navigation (if available)\n' +
           '• Emergency hotline: Use the phone number provided in your approval email (for critical outages only: payment processor down, POS completely inaccessible, data loss)\n\n' +
           '**What to Include in Support Requests:**\n' +

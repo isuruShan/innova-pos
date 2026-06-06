@@ -171,11 +171,11 @@ Complete list of environment variables for all applications in the monorepo.
 
 **Example production build:**
 ```bash
-VITE_API_URL=https://pos.cafinity.com/api \
-VITE_ADMIN_URL=https://admin.cafinity.com \
-VITE_QR_ORDER_WEB_ORIGIN=https://order.cafinity.com \
-VITE_PUBLIC_WEB_URL=https://www.cafinity.com \
-VITE_POS_URL=https://pos.cafinity.com \
+VITE_API_URL=https://pos.cafinity.io/api \
+VITE_ADMIN_URL=https://admin.cafinity.io \
+VITE_QR_ORDER_WEB_ORIGIN=https://order.cafinity.io \
+VITE_PUBLIC_WEB_URL=https://www.cafinity.io \
+VITE_POS_URL=https://pos.cafinity.io \
 pnpm run build
 ```
 
@@ -238,10 +238,10 @@ Set in `deploy.env` or `apps/pos/client/.env.production` before `pnpm --filter @
 
 **Example production build:**
 ```bash
-VITE_API_URL=https://admin.cafinity.com/api \
-VITE_POS_URL=https://pos.cafinity.com \
-VITE_PUBLIC_WEB_URL=https://www.cafinity.com \
-VITE_QR_ORDER_WEB_ORIGIN=https://order.cafinity.com \
+VITE_API_URL=https://admin.cafinity.io/api \
+VITE_POS_URL=https://pos.cafinity.io \
+VITE_PUBLIC_WEB_URL=https://www.cafinity.io \
+VITE_QR_ORDER_WEB_ORIGIN=https://order.cafinity.io \
 pnpm run build
 ```
 
@@ -281,11 +281,11 @@ pnpm run build
 
 **Example production build:**
 ```bash
-VITE_PUBLIC_WEB_API_URL=https://www.cafinity.com/api \
-VITE_ADMIN_URL=https://admin.cafinity.com \
-VITE_POS_URL=https://pos.cafinity.com \
-VITE_QR_ORDER_WEB_ORIGIN=https://order.cafinity.com \
-VITE_PUBLIC_WEB_URL=https://www.cafinity.com \
+VITE_PUBLIC_WEB_API_URL=https://www.cafinity.io/api \
+VITE_ADMIN_URL=https://admin.cafinity.io \
+VITE_POS_URL=https://pos.cafinity.io \
+VITE_QR_ORDER_WEB_ORIGIN=https://order.cafinity.io \
+VITE_PUBLIC_WEB_URL=https://www.cafinity.io \
 pnpm run build
 ```
 
@@ -322,10 +322,10 @@ pnpm run build
 
 **Example production build:**
 ```bash
-VITE_QR_ORDER_API_URL=https://order.cafinity.com/api \
-VITE_POS_URL=https://pos.cafinity.com \
-VITE_ADMIN_URL=https://admin.cafinity.com \
-VITE_PUBLIC_WEB_URL=https://www.cafinity.com \
+VITE_QR_ORDER_API_URL=https://order.cafinity.io/api \
+VITE_POS_URL=https://pos.cafinity.io \
+VITE_ADMIN_URL=https://admin.cafinity.io \
+VITE_PUBLIC_WEB_URL=https://www.cafinity.io \
 pnpm run build
 ```
 
