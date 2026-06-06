@@ -414,17 +414,21 @@ function VariantImagePicker({ images, onChange }) {
   );
 }
 
-/** Compute suggested channel price by adding commission to a base price. */
+/** Compute suggested channel price by adding commission to a base price.
+ *  Order: percentage applied first (base + base × %), then flat added on top.
+ */
 function calcCommissionPrice(basePrice, partner) {
   const base = Number(basePrice) || 0;
   if (!partner || base <= 0) return '';
   let suggested = base;
   const type = partner.commissionType || 'percentage';
-  if (type === 'flat' || type === 'both') {
-    suggested += Number(partner.commissionFlat) || 0;
-  }
+  // Step 1: percentage commission on the base price
   if (type === 'percentage' || type === 'both') {
     suggested += base * ((Number(partner.commissionPercentage) || 0) / 100);
+  }
+  // Step 2: flat commission added on top
+  if (type === 'flat' || type === 'both') {
+    suggested += Number(partner.commissionFlat) || 0;
   }
   return Math.round(suggested * 100) / 100;
 }
