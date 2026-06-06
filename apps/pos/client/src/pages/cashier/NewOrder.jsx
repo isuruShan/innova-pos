@@ -829,7 +829,8 @@ export default function NewOrder() {
     const partner = getPartnerForOrderType(type, partnerList);
     if (partner) {
       const channelPrices = menuItem.channelPrices || {};
-      const override = channelPrices[partner._id];
+      const partnerId = String(partner._id);
+      const override = channelPrices[partnerId];
       if (override) {
         if (variant) {
           const vId = variant._id ? String(variant._id) : variant.id ? String(variant.id) : null;
@@ -849,10 +850,10 @@ export default function NewOrder() {
     const partner = getPartnerForOrderType(type, partnerList);
     if (!partner) return false;
     const channelPrices = menuItem.channelPrices || {};
-    const override = channelPrices[partner._id];
+    const override = channelPrices[String(partner._id)];
     if (!override) return true;
     if (variant) {
-      const vOverride = override.variants?.[variant._id];
+      const vOverride = override.variants?.[String(variant._id)];
       return vOverride == null || vOverride === '';
     }
     return override.price == null || override.price === '';
@@ -990,9 +991,9 @@ export default function NewOrder() {
     const image = selectedVariant?.image || item.image || '';
 
     setCart(prev => {
-      const existing = prev.find(c => c.menuItem === item._id && c.variantId === variantId);
+      const existing = prev.find(c => String(c.menuItem) === String(item._id) && String(c.variantId || '') === String(variantId || ''));
       if (existing) {
-        return prev.map(c => (c.menuItem === item._id && c.variantId === variantId) ? { ...c, qty: c.qty + 1 } : c);
+        return prev.map(c => (String(c.menuItem) === String(item._id) && String(c.variantId || '') === String(variantId || '')) ? { ...c, qty: c.qty + 1 } : c);
       }
       return [...prev, {
         menuItem: item._id,
@@ -1031,7 +1032,7 @@ export default function NewOrder() {
         
         // Find the variant if applicable
         const variant = cartItem.variantId 
-          ? menuItem.variants?.find(v => v._id === cartItem.variantId)
+          ? menuItem.variants?.find(v => String(v._id) === String(cartItem.variantId))
           : null;
         
         // Recalculate price with current orderType and partners
@@ -1708,7 +1709,7 @@ export default function NewOrder() {
                 ) : (
                   cart.map(item => {
                     const mItem = menuItems.find(m => m._id === item.menuItem);
-                    const variant = item.variantId && mItem ? mItem.variants?.find(v => v._id === item.variantId) : null;
+                    const variant = item.variantId && mItem ? mItem.variants?.find(v => String(v._id) === String(item.variantId)) : null;
                     const isWarning = mItem ? isMissingPartnerPrice(mItem, variant, orderType, partners) : false;
                     return (
                       <CartItem key={`${item.menuItem}-${item.variantId || 'base'}`} item={item} onChangeQty={changeQty} showImage={isCompact} isWarning={isWarning} />

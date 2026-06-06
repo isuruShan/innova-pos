@@ -288,7 +288,8 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
     const partner = getPartnerForOrderType(type, partnerList);
     if (partner) {
       const channelPrices = menuItem.channelPrices || {};
-      const override = channelPrices[partner._id];
+      const partnerId = String(partner._id);
+      const override = channelPrices[partnerId];
       if (override) {
         if (variant) {
           const vId = variant._id ? String(variant._id) : variant.id ? String(variant.id) : null;
