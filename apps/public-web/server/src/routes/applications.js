@@ -108,6 +108,7 @@ router.post('/', upload.single('brFile'), async (req, res) => {
       businessName, ownerName,
       street1, street2, zipCode, city, state, businessCountry,
       isRegistered, registrationNumber,
+      requestedPlanId, requestedBillingCycle,
     } = body;
 
     const mobileE164 = buildMobileE164(countryDialCode, mobileNational);
@@ -267,6 +268,8 @@ router.post('/', upload.single('brFile'), async (req, res) => {
         brDocumentKey,
         brDocumentMimeType,
       },
+      requestedPlanId: requestedPlanId ? String(requestedPlanId).trim() : '',
+      requestedBillingCycle: requestedBillingCycle ? String(requestedBillingCycle).trim() : 'monthly',
     });
 
     logger.info('Merchant application submitted', { applicationId: application._id, email: emailLower });

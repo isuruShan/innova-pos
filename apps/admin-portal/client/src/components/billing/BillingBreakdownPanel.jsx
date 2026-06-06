@@ -54,6 +54,11 @@ export default function BillingBreakdownPanel({ breakdown, hideOverview = false 
               <span className="text-3xl font-extrabold tracking-tight">{currency} {Number(total).toLocaleString()}</span>
               <span className="text-sm text-gray-300">/ month</span>
             </div>
+            {breakdown.billingPeriodStart && breakdown.billingPeriodEnd && (
+              <p className="text-xs text-gray-400 mt-2 font-medium">
+                Period: {new Date(breakdown.billingPeriodStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} to {new Date(breakdown.billingPeriodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </p>
+            )}
             {plan.isScheduledChange && (
               <p className="text-xs text-brand-orange mt-2 bg-brand-orange/10 border border-brand-orange/20 rounded-lg py-1.5 px-3 inline-flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-brand-orange animate-ping" />
@@ -70,6 +75,15 @@ export default function BillingBreakdownPanel({ breakdown, hideOverview = false 
           </div>
         </div>
       </div>
+      )}
+
+      {breakdown.billingPeriodStart && breakdown.billingPeriodEnd && hideOverview && (
+        <div className="text-xs text-gray-500 font-medium bg-gray-50 border border-gray-250 rounded-xl p-3 flex items-center justify-between">
+          <span>Billing Period:</span>
+          <span className="font-semibold text-gray-900">
+            {new Date(breakdown.billingPeriodStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} to {new Date(breakdown.billingPeriodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </span>
+        </div>
       )}
 
       {/* Break Down Details */}

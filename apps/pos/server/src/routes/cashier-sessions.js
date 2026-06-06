@@ -185,7 +185,6 @@ router.get(
       const lastSession = await CashierSession.findOne({
         tenantId: req.tenantId,
         storeId: req.storeId,
-        cashierId: req.user.id,
         status: 'closed',
       })
         .sort({ closedAt: -1 })

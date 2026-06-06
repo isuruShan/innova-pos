@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Upload, Loader, CheckCircle, AlertTriangle, ExternalLink, ImageIcon, X, Search, Copy, Check, FileText, Eye, ChevronDown, ChevronUp, Clock } from 'lucide-react';
+import { Upload, Loader, CheckCircle, AlertTriangle, ExternalLink, ImageIcon, X, Search, Copy, Check, FileText, Eye, ChevronDown, ChevronUp, Clock, Sparkles } from 'lucide-react';
 import { validateImageFile } from '../../components/billing/BankReceiptFields';
 import api from '../../api/axios';
 import PlanChangeModal from '../../components/subscription/PlanChangeModal';
 import BillingBreakdownPanel from '../../components/billing/BillingBreakdownPanel';
 import PaymentMethodLogo from '../../components/subscription/PaymentMethodLogo';
+import { buildPlanCardBackground, buildPlanTagBackground, planUsesLightText } from '../../utils/planAppearance';
 import PaymentReceiptDetailModal from '../../components/payments/PaymentReceiptDetailModal';
 import ListPagination from '../../components/common/ListPagination';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
@@ -20,6 +21,38 @@ const METHOD_LABELS = {
   bank_transfer: 'Bank transfer',
   stripe: 'Stripe',
   paypal: 'PayPal',
+};
+
+const ENTERPRISE_DISPLAY = {
+  name: 'Custom',
+  priceLabel: 'Tailored',
+  cycle: 'custom pricing',
+  lines: [
+    'Custom registers limit',
+    'Unlimited KDS screens',
+    'Multi-branch HQ analytics',
+    'Dedicated support manager',
+    'API access integrations',
+  ]
+};
+
+const pricingLinesForPlan = (plan) => {
+  if (plan.featureLines?.length) return plan.featureLines;
+  if (plan.code?.includes('standard')) {
+    return [
+      'Counter & Table POS registers',
+      'Barista & Kitchen KDS screens',
+      'Inventory cost mix insights',
+      'Multi-terminal syncing',
+    ];
+  }
+  return [
+    'Counter & Table POS registers',
+    'Barista & Kitchen KDS screens',
+    'Inventory cost mix insights',
+    'Multi-terminal syncing',
+    'Premium features included',
+  ];
 };
 
 function CopyableRef({ text }) {
@@ -148,7 +181,7 @@ export default function SubscriptionPage() {
   });
 
   const schedulePlanMutation = useMutation({
-    mutationFn: (planId) => api.post('/subscriptions/schedule-plan', { planId }),
+    mutationFn: ({ planId, billingCycle }) => api.post('/subscriptions/schedule-plan', { planId, billingCycle }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
@@ -264,6 +297,13 @@ export default function SubscriptionPage() {
   };
 
   const tenant = data?.tenant;
+
+  useEffect(() => {
+    if (tenant?.billingCycle) {
+      setSelectedCycle(tenant.billingCycle);
+    }
+  }, [tenant?.billingCycle]);
+
   const billingBreakdown = breakdownData?.billingBreakdown;
   const receipts = receiptList.items || [];
   const subscriptions = data?.subscriptions || [];
@@ -467,63 +507,17 @@ export default function SubscriptionPage() {
             ))}
           </div>
         )}
-        {/* Cycle Toggle */}
-        <div className="flex items-center justify-between border border-gray-200 rounded-xl p-4 bg-gray-50/50">
-          <div>
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide block">Billing Cycle</span>
-            <span className="text-[11px] text-gray-400 mt-0.5 block">Select monthly (30 days) or yearly (365 days) billing.</span>
-          </div>
-          <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50 shrink-0">
-            <button
-              type="button"
-              onClick={() => setSelectedCycle('monthly')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer border-0 ${
-                selectedCycle === 'monthly'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-550 hover:text-gray-900 bg-transparent'
-              }`}
-            >
-              Monthly (30 days)
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedCycle('yearly')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors cursor-pointer border-0 ${
-                selectedCycle === 'yearly'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-550 hover:text-gray-900 bg-transparent'
-              }`}
-            >
-              Yearly (365 days)
-            </button>
-          </div>
-        </div>
 
         {!isInternational && paymentMethod === 'bank_transfer' && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Plan *</label>
-                <select
-                  value={form.planId}
-                  disabled={tenant?.planLocked || payPlans.length <= 1}
-                  onChange={(e) => {
-                    setForm((f) => ({ ...f, planId: e.target.value }));
-                    setErrors((e2) => ({ ...e2, planId: '' }));
-                  }}
-                  className={`w-full border rounded-lg px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-600 ${
-                    errors.planId ? 'border-red-400' : 'border-gray-300'
-                  }`}
-                >
-                  {payPlans.length === 0 && <option value="">Select plan</option>}
-                  {payPlans.map((p) => (
-                    <option key={p._id} value={p._id}>
-                      {p.name} ({p.currency} {Number(selectedCycle === 'yearly' ? p.yearlyPrice : p.monthlyPrice).toLocaleString()} / {selectedCycle === 'yearly' ? '365 days' : '30 days'})
-                    </option>
-                  ))}
-                </select>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Selected Plan</label>
+                <div className="w-full border border-gray-250 bg-gray-55/10 rounded-lg px-3 py-2 text-sm text-gray-800 font-medium">
+                  {selectedPlan?.name || '—'} ({selectedPlan?.currency || 'LKR'} {Number(selectedCycle === 'yearly' ? selectedPlan?.yearlyPrice : selectedPlan?.monthlyPrice).toLocaleString()} / {selectedCycle === 'yearly' ? '365 days' : '30 days'})
+                </div>
                 {tenant?.pendingPlanId && (
-                  <p className="text-xs text-blue-700 mt-1">
+                  <p className="text-xs text-blue-750 mt-1">
                     Paying for your upcoming plan: <strong>{tenant.pendingPlanId.name}</strong>
                     {tenant.pendingPlanEffectiveAt
                       ? ` (effective ${new Date(tenant.pendingPlanEffectiveAt).toLocaleDateString()})`
@@ -772,144 +766,21 @@ export default function SubscriptionPage() {
                   )}
                 </div>
               )}
-
               {/* Conditionally Render Content based on Trial Status */}
               {tenant.subscriptionStatus === 'trial' ? (
                 /* Trial Mode Subscribe workflow */
                 <div className="space-y-6">
-                  {trialSubscribeStep === 'none' && (
-                    <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center justify-center text-center gap-4">
-                      <h4 className="font-bold text-gray-900 text-base">Select Subscription Plan</h4>
-                      <p className="text-sm text-gray-500 max-w-md">Your trial is active. You can subscribe to a premium plan at any time to ensure uninterrupted service when your trial ends.</p>
-                      <button
-                        type="button"
-                        onClick={() => setTrialSubscribeStep('plan_select')}
-                        className="px-6 py-3 bg-brand-orange hover:bg-brand-orange-hover text-white font-bold rounded-xl shadow-lg transition duration-200 cursor-pointer"
-                      >
-                        Subscribe
-                      </button>
-                    </div>
-                  )}
-
-                  {trialSubscribeStep === 'plan_select' && (
-                    <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-3 gap-3">
-                        <h4 className="font-bold text-gray-900 text-sm">Step 1: Select a Subscription Plan</h4>
-                        <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedCycle('monthly')}
-                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer border-0 ${
-                              selectedCycle === 'monthly'
-                                ? 'bg-white text-gray-900 shadow-sm'
-                                : 'text-gray-550 hover:text-gray-900 bg-transparent'
-                            }`}
-                          >
-                            Monthly (30 days)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedCycle('yearly')}
-                            className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer border-0 ${
-                              selectedCycle === 'yearly'
-                                ? 'bg-white text-gray-900 shadow-sm'
-                                : 'text-gray-550 hover:text-gray-900 bg-transparent'
-                            }`}
-                          >
-                            Yearly (365 days)
-                          </button>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {plans.map((p) => (
-                          <div
-                            key={p._id}
-                            onClick={() => {
-                              const price = selectedCycle === 'yearly' ? p.yearlyPrice : p.monthlyPrice;
-                              setForm(f => ({ ...f, planId: p._id, amount: String(price || 0) }));
-                              setTrialSubscribeStep('payment_select');
-                            }}
-                            className={`border rounded-xl p-4 cursor-pointer hover:border-brand-orange transition-all duration-200 ${
-                              form.planId === p._id ? 'border-brand-orange bg-brand-orange/5 shadow-md' : 'border-gray-200 hover:shadow-sm'
-                            }`}
-                          >
-                            <h5 className="font-bold text-gray-900">{p.name}</h5>
-                            <p className="text-xs text-gray-500 mt-1">{p.description || p.code}</p>
-                            <p className="text-lg font-extrabold text-brand-orange mt-2">
-                              {p.currency} {Number(selectedCycle === 'yearly' ? p.yearlyPrice : p.monthlyPrice).toLocaleString()} / {selectedCycle === 'yearly' ? '365 days' : '30 days'}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                      <button onClick={() => setTrialSubscribeStep('none')} className="text-xs text-gray-500 hover:text-gray-700 underline block mt-2">
-                        Cancel
-                      </button>
-                    </div>
-                  )}
-
-                  {trialSubscribeStep === 'payment_select' && (
-                    <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-                      <h4 className="font-bold text-gray-900 text-sm">Step 2: Choose Payment Method</h4>
-                      <div className="flex flex-wrap gap-3">
-                        {paymentOptions?.stripe?.enabled && !isInternational && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPaymentMethod('stripe');
-                              setTrialSubscribeStep('pay_form');
-                            }}
-                            className="px-5 py-4 border border-gray-300 rounded-xl hover:border-brand-orange transition flex flex-col items-center gap-2"
-                          >
-                            <PaymentMethodLogo method="stripe" imageUrl={paymentOptions?.stripe?.imageUrl} />
-                            <span className="text-xs font-semibold text-gray-700 font-medium">Pay with Card</span>
-                          </button>
-                        )}
-                        {paymentOptions?.paypal?.enabled && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPaymentMethod('paypal');
-                              setTrialSubscribeStep('pay_form');
-                            }}
-                            className="px-5 py-4 border border-gray-300 rounded-xl hover:border-brand-orange transition flex flex-col items-center gap-2"
-                          >
-                            <PaymentMethodLogo method="paypal" imageUrl={paymentOptions?.paypal?.imageUrl} />
-                            <span className="text-xs font-semibold text-gray-700 font-medium">Pay with PayPal</span>
-                          </button>
-                        )}
-                        {paymentOptions?.bankAccounts?.length > 0 && !isInternational && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPaymentMethod('bank_transfer');
-                              setTrialSubscribeStep('pay_form');
-                            }}
-                            className="px-5 py-4 border border-gray-300 rounded-xl hover:border-brand-orange transition flex flex-col items-center gap-2"
-                          >
-                            <PaymentMethodLogo method="bank_transfer" />
-                            <span className="text-xs font-semibold text-gray-700 font-medium">Bank Transfer</span>
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => setTrialSubscribeStep('plan_select')} className="text-xs text-gray-500 hover:text-gray-700 underline block">
-                          Back to plans
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {trialSubscribeStep === 'pay_form' && (
-                    <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-                      <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-                        <h4 className="font-bold text-gray-900 text-sm">Step 3: Complete Payment</h4>
-                        <button onClick={() => setTrialSubscribeStep('payment_select')} className="text-xs text-brand-orange hover:underline">
-                          Change Payment Method
-                        </button>
-                      </div>
-                      {renderPaymentFormsContent()}
-                    </div>
-                  )}
+                  <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center justify-center text-center gap-4">
+                    <h4 className="font-bold text-gray-900 text-base">Select Subscription Plan</h4>
+                    <p className="text-sm text-gray-500 max-w-md">Your trial is active. You can subscribe to a premium plan at any time to ensure uninterrupted service when your trial ends.</p>
+                    <button
+                      type="button"
+                      onClick={() => setTrialSubscribeStep('plan_select')}
+                      className="px-6 py-3 bg-brand-orange hover:bg-brand-orange-hover text-white font-bold rounded-xl shadow-lg transition duration-200 cursor-pointer"
+                    >
+                      Subscribe
+                    </button>
+                  </div>
                 </div>
               ) : (
                 /* Subscribed Mode details and toggleable Payment block */
@@ -949,10 +820,20 @@ export default function SubscriptionPage() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => setShowSubPaymentForm(!showSubPaymentForm)}
+                        onClick={() => {
+                          const defaultPlanId =
+                            (tenant.planLocked && tenant.assignedPlanId?._id) ||
+                            nextBillingPlanId ||
+                            payPlans[0]?._id ||
+                            '';
+                          const defaultPlan = payPlans.find((p) => p._id === defaultPlanId) || payPlans[0];
+                          const price = selectedCycle === 'yearly' ? defaultPlan?.yearlyPrice : defaultPlan?.monthlyPrice;
+                          setForm((f) => ({ ...f, planId: defaultPlanId, amount: String(price || 0) }));
+                          setTrialSubscribeStep('payment_select');
+                        }}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg shadow-sm transition whitespace-nowrap cursor-pointer"
                       >
-                        {showSubPaymentForm ? 'Hide Payment Details' : 'Pay for Next Billing Cycle'}
+                        Pay for Next Billing Cycle
                       </button>
                     </div>
                   )}
@@ -984,19 +865,22 @@ export default function SubscriptionPage() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => setShowSubPaymentForm(!showSubPaymentForm)}
+                          onClick={() => {
+                            const defaultPlanId =
+                              (tenant.planLocked && tenant.assignedPlanId?._id) ||
+                              nextBillingPlanId ||
+                              payPlans[0]?._id ||
+                              '';
+                            const defaultPlan = payPlans.find((p) => p._id === defaultPlanId) || payPlans[0];
+                            const price = selectedCycle === 'yearly' ? defaultPlan?.yearlyPrice : defaultPlan?.monthlyPrice;
+                            setForm((f) => ({ ...f, planId: defaultPlanId, amount: String(price || 0) }));
+                            setTrialSubscribeStep('payment_select');
+                          }}
                           className="px-6 py-2.5 bg-brand-orange hover:bg-brand-orange-hover text-white text-xs font-semibold rounded-lg shadow-sm transition cursor-pointer"
                         >
-                          {showSubPaymentForm ? 'Hide Payment Details' : 'Pay Now'}
+                          Pay Now
                         </button>
                       </div>
-                    </div>
-                  )}
-
-                  {showSubPaymentForm && (
-                    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-xs space-y-4 animate-fade-in">
-                      <h4 className="font-bold text-gray-900 text-sm">Submit Payment Details</h4>
-                      {renderPaymentFormsContent()}
                     </div>
                   )}
                 </div>
@@ -1322,9 +1206,277 @@ export default function SubscriptionPage() {
         onClose={() => setPlanModalOpen(false)}
         plans={plans}
         currentPlanId={tenant?.assignedPlanId?._id}
-        onSelect={(planId) => schedulePlanMutation.mutate(planId)}
+        currentBillingCycle={tenant?.billingCycle}
+        onSelect={({ planId, billingCycle }) => schedulePlanMutation.mutate({ planId, billingCycle })}
         isPending={schedulePlanMutation.isPending}
       />
+
+      {/* Checkout Wizard Modal */}
+      {trialSubscribeStep !== 'none' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/50 cursor-default border-0"
+            onClick={() => { setTrialSubscribeStep('none'); setSubmitted(false); }}
+            aria-label="Close"
+          />
+          <div className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl shadow-xl flex flex-col z-10 overflow-hidden animate-fade-in">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-gray-200">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Sparkles size={20} className="text-brand-orange animate-pulse" />
+                  {trialSubscribeStep === 'plan_select' && 'Select Subscription Plan'}
+                  {trialSubscribeStep === 'payment_select' && 'Choose Payment Method'}
+                  {trialSubscribeStep === 'pay_form' && 'Complete Payment'}
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  {trialSubscribeStep === 'plan_select' && 'Choose the plan that best fits your business. (Step 1 of 3)'}
+                  {trialSubscribeStep === 'payment_select' && 'Select how you would like to submit payment. (Step 2 of 3)'}
+                  {trialSubscribeStep === 'pay_form' && `Submit details for your payment via ${METHOD_LABELS[paymentMethod] || paymentMethod}. (Step 3 of 3)`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setTrialSubscribeStep('none'); setSubmitted(false); }}
+                className="p-1.5 rounded-lg hover:bg-gray-100 border-0 bg-transparent cursor-pointer"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {trialSubscribeStep === 'plan_select' && (
+                <div className="space-y-6">
+                  {/* Billing cycle toggle */}
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="inline-flex rounded-xl border border-gray-250 p-1 bg-gray-50">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCycle('monthly')}
+                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer border-0 ${
+                          selectedCycle === 'monthly'
+                            ? 'bg-brand-orange text-white shadow-md'
+                            : 'text-gray-550 hover:text-gray-700 bg-transparent'
+                        }`}
+                      >
+                        Monthly billing
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCycle('yearly')}
+                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer border-0 ${
+                          selectedCycle === 'yearly'
+                            ? 'bg-brand-orange text-white shadow-md'
+                            : 'text-gray-550 hover:text-gray-700 bg-transparent'
+                        }`}
+                      >
+                        Yearly billing (Save)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+                    {plans.map((plan) => {
+                      const bulletLines = pricingLinesForPlan(plan);
+                      const customCardBg = buildPlanCardBackground(plan);
+                      const lightOnCard = planUsesLightText(plan);
+                      const showRibbon = plan.planTagShow && String(plan.planTagText || '').trim();
+                      const ribbonBg = showRibbon ? buildPlanTagBackground(plan) : null;
+
+                      const price = selectedCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
+                      const displayPrice = `${plan.currency} ${price.toLocaleString()}`;
+
+                      const isSelected = form.planId === plan._id;
+
+                      let cardClass = `relative rounded-2xl p-6 border flex flex-col min-h-[350px] transition-all cursor-pointer hover:shadow-md ${
+                        isSelected
+                          ? 'ring-2 ring-brand-orange border-transparent scale-[1.01]'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`;
+
+                      return (
+                        <div
+                          key={plan._id}
+                          className={cardClass}
+                          style={customCardBg ? { background: customCardBg } : undefined}
+                          onClick={() => {
+                            setForm((f) => ({ ...f, planId: plan._id, amount: String(price || 0) }));
+                          }}
+                        >
+                          {showRibbon && ribbonBg && (
+                            <div
+                              className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-bold shadow-sm max-w-[90%] truncate text-white"
+                              style={{ background: ribbonBg }}
+                            >
+                              {plan.planTagText}
+                            </div>
+                          )}
+
+                          <div className="flex justify-between items-start gap-2 mb-2">
+                            <span className={`text-xs font-bold uppercase tracking-wider ${lightOnCard ? 'text-white/80' : 'text-gray-450'}`}>
+                              {plan.name}
+                            </span>
+                          </div>
+                          <div className={`text-2xl font-extrabold tracking-tight ${lightOnCard ? 'text-white' : 'text-gray-900'}`}>
+                            {displayPrice}
+                          </div>
+                          <div className={`text-[10px] uppercase tracking-wider mb-6 ${lightOnCard ? 'text-white/60' : 'text-gray-400'}`}>
+                            {selectedCycle === 'yearly' ? 'per year' : 'per month'}
+                          </div>
+
+                          <ul className="space-y-2 mb-6 flex-1">
+                            {bulletLines.map((line, i) => (
+                              <li key={i} className="flex items-start gap-2 text-xs">
+                                <CheckCircle size={14} className="shrink-0 mt-0.5 text-brand-orange" />
+                                <span className={lightOnCard ? 'text-white/90' : 'text-gray-650'}>{line}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })}
+
+                    {/* Custom plan card */}
+                    <div
+                      className={`relative rounded-2xl p-6 border flex flex-col min-h-[350px] transition-all cursor-pointer hover:shadow-md ${
+                        form.planId === 'custom'
+                          ? 'ring-2 ring-brand-orange border-transparent scale-[1.01]'
+                          : 'border-gray-200 bg-white hover:border-gray-350 hover:border-gray-300'
+                      }`}
+                      onClick={() => setForm((f) => ({ ...f, planId: 'custom' }))}
+                    >
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] font-bold bg-brand-orange text-white">
+                        Tailor-made
+                      </div>
+                      <div className="text-xs font-bold uppercase tracking-wider mb-2 text-gray-450">
+                        {ENTERPRISE_DISPLAY.name}
+                      </div>
+                      <div className="text-2xl font-extrabold tracking-tight text-gray-900">
+                        {ENTERPRISE_DISPLAY.priceLabel}
+                      </div>
+                      <div className="text-[10px] uppercase tracking-wider mb-6 text-gray-400">
+                        {ENTERPRISE_DISPLAY.cycle}
+                      </div>
+
+                      <ul className="space-y-2 mb-6 flex-1">
+                        {ENTERPRISE_DISPLAY.lines.map((line, i) => (
+                          <li key={i} className="flex items-start gap-2 text-xs">
+                            <CheckCircle size={14} className="shrink-0 mt-0.5 text-brand-orange" />
+                            <span className="text-gray-650">{line}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {trialSubscribeStep === 'payment_select' && (
+                <div className="space-y-6">
+                  <p className="text-sm text-gray-650">
+                    Select a payment option below to subscribe to the <strong className="text-gray-900">{selectedPlan?.name || 'selected'} plan</strong> ({selectedPlan?.currency || 'LKR'} {Number(selectedCycle === 'yearly' ? selectedPlan?.yearlyPrice : selectedPlan?.monthlyPrice).toLocaleString()} / {selectedCycle === 'yearly' ? 'year' : 'month'}).
+                  </p>
+                  <div className="flex flex-wrap gap-4 justify-center py-4">
+                    {paymentOptions?.stripe?.enabled && !isInternational && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentMethod('stripe');
+                          setTrialSubscribeStep('pay_form');
+                        }}
+                        className="px-6 py-5 border border-gray-350 bg-white rounded-xl hover:border-brand-orange hover:shadow-md transition flex flex-col items-center gap-3 w-40 cursor-pointer"
+                      >
+                        <PaymentMethodLogo method="stripe" imageUrl={paymentOptions?.stripe?.imageUrl} />
+                        <span className="text-xs font-semibold text-gray-700">Pay with Card</span>
+                      </button>
+                    )}
+                    {paymentOptions?.paypal?.enabled && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentMethod('paypal');
+                          setTrialSubscribeStep('pay_form');
+                        }}
+                        className="px-6 py-5 border border-gray-350 bg-white rounded-xl hover:border-brand-orange hover:shadow-md transition flex flex-col items-center gap-3 w-40 cursor-pointer"
+                      >
+                        <PaymentMethodLogo method="paypal" imageUrl={paymentOptions?.paypal?.imageUrl} />
+                        <span className="text-xs font-semibold text-gray-700">Pay with PayPal</span>
+                      </button>
+                    )}
+                    {paymentOptions?.bankAccounts?.length > 0 && !isInternational && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentMethod('bank_transfer');
+                          setTrialSubscribeStep('pay_form');
+                        }}
+                        className="px-6 py-5 border border-gray-350 bg-white rounded-xl hover:border-brand-orange hover:shadow-md transition flex flex-col items-center gap-3 w-40 cursor-pointer"
+                      >
+                        <PaymentMethodLogo method="bank_transfer" />
+                        <span className="text-xs font-semibold text-gray-700">Bank Transfer</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {trialSubscribeStep === 'pay_form' && (
+                <div className="space-y-4">
+                  {renderPaymentFormsContent()}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div>
+                {(trialSubscribeStep === 'pay_form' || (trialSubscribeStep === 'payment_select' && tenant?.subscriptionStatus === 'trial')) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (trialSubscribeStep === 'pay_form') {
+                        setTrialSubscribeStep('payment_select');
+                      } else if (trialSubscribeStep === 'payment_select') {
+                        setTrialSubscribeStep('plan_select');
+                      }
+                    }}
+                    className="px-4 py-2 text-sm font-semibold text-gray-650 hover:text-gray-900 border border-gray-300 hover:bg-white bg-transparent rounded-lg cursor-pointer transition-colors"
+                  >
+                    Back
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setTrialSubscribeStep('none'); setSubmitted(false); }}
+                  className="px-4 py-2 text-sm font-semibold text-gray-650 hover:text-gray-900 border border-gray-300 hover:bg-white bg-transparent rounded-lg cursor-pointer transition-colors"
+                >
+                  Cancel
+                </button>
+                {trialSubscribeStep === 'plan_select' && (
+                  <button
+                    type="button"
+                    disabled={!form.planId || form.planId === 'custom'}
+                    onClick={() => {
+                      const p = plans.find(p => p._id === form.planId);
+                      const price = selectedCycle === 'yearly' ? p?.yearlyPrice : p?.monthlyPrice;
+                      setForm((f) => ({ ...f, amount: String(price || 0) }));
+                      setTrialSubscribeStep('payment_select');
+                    }}
+                    className="px-5 py-2 text-sm font-bold text-white bg-brand-orange hover:bg-brand-orange-hover rounded-lg shadow-md transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    Next: Payment Method
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

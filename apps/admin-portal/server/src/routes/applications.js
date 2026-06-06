@@ -320,6 +320,14 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
         assignedPlanId = trialPlan._id;
       }
 
+      let pendingPlanId = null;
+      let pendingPlanEffectiveAt = null;
+      if (application.requestedPlanId && mongoose.Types.ObjectId.isValid(application.requestedPlanId)) {
+        pendingPlanId = application.requestedPlanId;
+        pendingPlanEffectiveAt = trialEndsAt;
+      }
+      const billingCycle = application.requestedBillingCycle === 'yearly' ? 'yearly' : 'monthly';
+
       // Create tenant
       const tenant = await Tenant.create({
         slug,
@@ -329,6 +337,9 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
         subscriptionStatus: subStatus,
         trialEndsAt,
         assignedPlanId,
+        pendingPlanId,
+        pendingPlanEffectiveAt,
+        billingCycle,
         adminCount: 1,
         createdBy: req.user.id,
       });

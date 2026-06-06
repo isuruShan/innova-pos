@@ -31,7 +31,7 @@ const cashierSessionSchema = new mongoose.Schema(
     },
     closedAt: { type: Date },
     closingCountedCash: { type: Number },
-    floatAmount: { type: Number, min: 0, default: 0 },
+    floatAmount: { type: Number, min: 0 },
     expectedCashInDrawer: { type: Number },
     cashSalesDuringSession: { type: Number },
     varianceAmount: { type: Number },

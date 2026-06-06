@@ -1108,7 +1108,7 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
 // POST /subscriptions/schedule-plan — change plan at end of current period
 router.post('/schedule-plan', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
   try {
-    const { planId } = req.body;
+    const { planId, billingCycle } = req.body;
     if (!planId) return res.status(400).json({ message: 'planId is required' });
 
     const tenant = await Tenant.findById(req.tenantId);
@@ -1123,6 +1123,9 @@ router.post('/schedule-plan', authenticateJWT, authorize('merchant_admin'), asyn
 
     tenant.pendingPlanId = plan._id;
     tenant.pendingPlanEffectiveAt = effectiveAt;
+    if (billingCycle && ['monthly', 'yearly'].includes(billingCycle)) {
+      tenant.billingCycle = billingCycle;
+    }
     tenant.updatedBy = req.user.id;
     await tenant.save();
 
@@ -1191,6 +1194,17 @@ router.get('/my', authenticateJWT, authorize('merchant_admin'), async (req, res)
       }
       if (!billingBreakdown) {
         billingBreakdown = await computeSubscriptionRenewalExpected(tenant);
+      }
+
+      if (billingBreakdown) {
+        const { getLatestSubscriptionEnd, resolveTenantPeriodEnd } = require('../lib/subscriptionDates');
+        const latestSubEnd = await getLatestSubscriptionEnd(req.tenantId);
+        const billingPeriodStart = resolveTenantPeriodEnd(tenant, latestSubEnd) || new Date();
+        const durationDays = billingBreakdown?.plan?.durationDays || (billingBreakdown?.plan?.billingCycle === 'yearly' ? 365 : 30);
+        const billingPeriodEnd = new Date(billingPeriodStart.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
+        billingBreakdown.billingPeriodStart = billingPeriodStart;
+        billingBreakdown.billingPeriodEnd = billingPeriodEnd;
       }
     }
 

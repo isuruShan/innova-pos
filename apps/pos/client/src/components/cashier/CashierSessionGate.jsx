@@ -331,6 +331,7 @@ export default function CashierSessionGate({ children, requireSession = false })
     closeMutation.mutate({
       id: session._id,
       closingCountedCash: rounded,
+      floatAmount: floatInput.trim() ? parseFloat(floatInput) : undefined,
       varianceNotes: notesInput.trim(),
     });
   };

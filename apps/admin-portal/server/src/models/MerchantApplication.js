@@ -44,6 +44,8 @@ const merchantApplicationSchema = new mongoose.Schema(
     rejectionReason: { type: String, default: '' },
     tenantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tenant', default: null },
     notes: { type: String, default: '' },
+    requestedPlanId: { type: String, default: '' },
+    requestedBillingCycle: { type: String, enum: ['monthly', 'yearly', 'custom', ''], default: '' },
   },
   { timestamps: true }
 );
