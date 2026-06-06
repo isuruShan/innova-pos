@@ -28,8 +28,8 @@ const sendWelcomeEmail = async ({ to, name, tempPassword, loginUrl, role = 'merc
   const roleLabel = role === 'manager' ? 'Manager' : role === 'cashier' ? 'Cashier' : role === 'kitchen_staff' ? 'Kitchen Staff' : role;
   
   const subject = isMerchantAdmin
-    ? '🎉 Welcome to Cafinity — Your Account is Ready!'
-    : `🎒 Welcome to the Team — Your Cafinity ${roleLabel} Account is Ready!`;
+    ? '🎉 Welcome to Cafinity, Your Account is Ready!'
+    : `🎒 Welcome to the Team, Your Cafinity ${roleLabel} Account is Ready!`;
 
   const heading = isMerchantAdmin
     ? emailHeading('Welcome to Cafinity! 🎉', 'Your merchant account is active')

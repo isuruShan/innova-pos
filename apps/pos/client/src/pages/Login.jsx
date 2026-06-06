@@ -56,7 +56,7 @@ export default function Login() {
         <div className="bg-[var(--pos-panel)] rounded-2xl p-8 shadow-2xl border border-slate-700/50">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-[var(--pos-text-primary)] tracking-tight">Cafinity POS</h1>
-            <p className="text-slate-400 mt-1 text-sm">Cafe point of sale — sign in to open your shift</p>
+            <p className="text-slate-400 mt-1 text-sm">Cafe point of sale, sign in to open your shift</p>
           </div>
 
           {suspended && (

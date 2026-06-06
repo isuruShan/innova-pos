@@ -389,7 +389,7 @@ export default function LandingPage() {
         <div className="relative z-10 max-w-5xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-slate-800/80 border border-slate-700/80 rounded-full px-4 py-1.5 text-xs sm:text-sm mb-8 text-slate-300 backdrop-blur-md">
             <Star size={12} className="text-brand-orange fill-brand-orange animate-pulse" />
-            <span>14-day free trial — self-service setup in minutes</span>
+            <span>14-day free trial, self-service setup in minutes</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight mb-6 bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">
