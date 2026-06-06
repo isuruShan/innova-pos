@@ -15,7 +15,7 @@ router.get('/unread-count', protect, tenantScope, async (req, res) => {
       tenantId: req.tenantId,
       userId: req.user.id,
       readAt: null,
-      type: 'order_status_changed',
+      type: { $in: ['order_status_changed', 'promotion_approval_requested', 'reward_approval_requested', 'loyalty_retention_review'] },
     });
     res.json({ count: n });
   } catch (err) {
@@ -91,7 +91,7 @@ router.get('/', protect, tenantScope, async (req, res) => {
     const base = {
       tenantId: req.tenantId,
       userId: req.user.id,
-      type: { $in: ['order_status_changed', 'table_waiter_call', 'qr_order_updated'] },
+      type: { $in: ['order_status_changed', 'table_waiter_call', 'qr_order_updated', 'promotion_approval_requested', 'reward_approval_requested', 'loyalty_retention_review'] },
     };
     const parts = [];
 

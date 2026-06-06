@@ -42,10 +42,28 @@ function isInTrialPeriod(entitlement) {
 }
 
 /**
- * @param {object|null|undefined} paidAddons — tenant.paidAddons
+ * @param {object|null|undefined} tenantOrPaidAddons — tenant or tenant.paidAddons
  * @param {'qrOrdering'|'loyalty'|string} entitlementKey
  */
-function isPaidAddonEffective(paidAddons, entitlementKey) {
+function isPaidAddonEffective(tenantOrPaidAddons, entitlementKey) {
+  let paidAddons = tenantOrPaidAddons;
+  let includedAddons = [];
+
+  if (tenantOrPaidAddons && typeof tenantOrPaidAddons === 'object') {
+    if ('paidAddons' in tenantOrPaidAddons) {
+      paidAddons = tenantOrPaidAddons.paidAddons;
+      const plan = tenantOrPaidAddons.assignedPlanId;
+      if (plan && typeof plan === 'object' && Array.isArray(plan.includedAddons)) {
+        includedAddons = plan.includedAddons;
+      }
+    }
+  }
+
+  const code = Object.keys(ENTITLEMENT_BY_CODE).find(k => ENTITLEMENT_BY_CODE[k] === entitlementKey);
+  if (code && includedAddons.includes(code)) {
+    return true;
+  }
+
   const row = paidAddons?.[entitlementKey];
   if (!row?.active) return false;
   

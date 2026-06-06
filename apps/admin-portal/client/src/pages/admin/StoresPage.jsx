@@ -922,11 +922,11 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                 <table className="w-full text-left text-sm text-gray-600 border-collapse">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
-                      <th className="px-4 py-3"><SortableTh label="Store Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
+                      <SortableTh label="Store Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                       <th className="px-4 py-3">City</th>
                       <th className="px-4 py-3 text-gray-500 font-semibold select-none">Phone</th>
-                      <th className="px-4 py-3"><SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
-                      <th className="px-4 py-3"><SortableTh label="Created" field="createdAt" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
+                      <SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                      <SortableTh label="Created" field="createdAt" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                       <th className="px-4 py-3 text-gray-500 font-semibold select-none">Actions</th>
                     </tr>
                   </thead>

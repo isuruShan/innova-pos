@@ -35,7 +35,7 @@ async function getAddonMerchantState(tenant, code) {
   }
 
   const row = tenant.paidAddons?.[entitlementKey] || {};
-  const active = isPaidAddonEffective(tenant.paidAddons, entitlementKey);
+  const active = isPaidAddonEffective(tenant, entitlementKey);
   const inTrial = isInTrialPeriod(row);
   const cancelScheduled = Boolean(row.cancelAtPeriodEnd && active);
   

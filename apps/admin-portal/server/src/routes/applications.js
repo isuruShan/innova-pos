@@ -301,14 +301,34 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
       const existing = await Tenant.findOne({ slug });
       if (existing) slug = `${slug}-${Date.now()}`;
 
+      const SubscriptionPlan = require('../models/SubscriptionPlan');
+      const countryIso = deriveCountryIsoFromApplication(application);
+      const planAudience = countryIso === 'LK' ? 'local' : 'international';
+      const trialPlan = await SubscriptionPlan.findOne({
+        isTrialPlan: true,
+        planAudience,
+        isActive: true,
+      });
+
+      let subStatus = 'expired';
+      let trialEndsAt = null;
+      let assignedPlanId = null;
+
+      if (trialPlan) {
+        subStatus = 'trial';
+        trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+        assignedPlanId = trialPlan._id;
+      }
+
       // Create tenant
       const tenant = await Tenant.create({
         slug,
         businessName: application.business.name,
-        countryIso: deriveCountryIsoFromApplication(application),
+        countryIso,
         status: 'active',
-        subscriptionStatus: 'trial',
-        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        subscriptionStatus: subStatus,
+        trialEndsAt,
+        assignedPlanId,
         adminCount: 1,
         createdBy: req.user.id,
       });

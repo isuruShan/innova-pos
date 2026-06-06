@@ -614,11 +614,11 @@ export default function UsersPage() {
                 <table className="w-full text-left text-sm text-gray-600 border-collapse">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500 uppercase">
-                      <th className="px-4 py-3"><SortableTh label="Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
-                      <th className="px-4 py-3"><SortableTh label="Email" field="email" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
-                      <th className="px-4 py-3"><SortableTh label="Role" field="role" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
+                      <SortableTh label="Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                      <SortableTh label="Email" field="email" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                      <SortableTh label="Role" field="role" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                       <th className="px-4 py-3 text-gray-500 font-semibold select-none">Store access</th>
-                      <th className="px-4 py-3"><SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} /></th>
+                      <SortableTh label="Status" field="status" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                       <th className="px-4 py-3 text-gray-500 font-semibold select-none">Actions</th>
                     </tr>
                   </thead>

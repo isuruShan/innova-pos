@@ -27,6 +27,7 @@ import ScheduledBannersPage from './pages/superadmin/ScheduledBannersPage';
 import MigrationsPage from './pages/superadmin/MigrationsPage';
 import MerchantSubscriptionGate from './components/MerchantSubscriptionGate';
 import TrialMerchantsPage from './pages/superadmin/TrialMerchantsPage';
+import ProspectsPage from './pages/superadmin/ProspectsPage';
 
 // Merchant admin pages
 import UberConfigPanel from './pages/admin/UberConfigPanel';
@@ -115,6 +116,11 @@ export default function App() {
           <Route path="/payments" element={
             <PrivateRoute roles={['superadmin']}>
               <Layout><PaymentsPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/prospects" element={
+            <PrivateRoute roles={['superadmin']}>
+              <Layout><ProspectsPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/plans" element={

@@ -21,7 +21,7 @@ export function notificationPathForPos(n, userRole) {
     return `/manager/loyalty/rewards?reward=${encodeURIComponent(resourceId)}`;
   }
 
-  if (type === 'promotion_pending' || type === 'reward_pending') {
+  if (type === 'promotion_approval_requested' || type === 'reward_approval_requested' || type === 'promotion_pending' || type === 'reward_pending') {
     if (role === 'merchant_admin') return '/manager/approvals';
     return '/manager/notifications';
   }

@@ -451,7 +451,7 @@ export default function MerchantAddonsPage() {
       )}
 
       <AddonCatalogTiles
-        catalog={catalog.filter((a) => a.code !== 'qr_ordering' && a.code !== 'table_management')}
+        catalog={catalog.filter((a) => a.code !== 'qr_ordering' && a.code !== 'table_management' && !a.includedInPlan)}
         isLoading={catalogPending}
         variant="list"
         onReview={openAddon}
@@ -464,10 +464,10 @@ export default function MerchantAddonsPage() {
       />
 
       {/* Table Management Suite — groups table_management + qr_ordering */}
-      {catalog.some((a) => a.code === 'table_management' || a.code === 'qr_ordering') && (() => {
+      {catalog.some((a) => (a.code === 'table_management' || a.code === 'qr_ordering') && !a.includedInPlan) && (() => {
         const tableRow = catalog.find((a) => a.code === 'table_management');
         const qrRow = catalog.find((a) => a.code === 'qr_ordering');
-        const tableActive = tableRow?.alreadyActive || tableRow?.isInTrial;
+        const tableActive = tableRow?.alreadyActive || tableRow?.isInTrial || tableRow?.includedInPlan;
         return (
           <div className="rounded-2xl border-2 border-brand-orange/20 bg-brand-orange/5 p-5 space-y-4">
             <div className="flex items-center gap-2 mb-1">

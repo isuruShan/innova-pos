@@ -35,6 +35,8 @@ const subscriptionPlanSchema = new mongoose.Schema(
     planCardGradAngle: { type: Number, default: 145, min: 0, max: 360 },
     /** When card uses custom solid/gradient: true = light text (dark backgrounds) */
     planCardUseLightText: { type: Boolean, default: false },
+    isTrialPlan: { type: Boolean, default: false },
+    includedAddons: { type: [String], default: [] },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },

@@ -130,7 +130,7 @@ async function loadReceiptDetail(receiptId, { includeAdminContext = false } = {}
   const PaidAddonDefinition = require('../models/PaidAddonDefinition');
   let receipt = await PaymentReceipt.findById(receiptId)
     .populate('tenantId', 'businessName slug subscriptionStatus trialEndsAt countryIso')
-    .populate('requestedPlanId', 'name code amount currency billingCycle durationDays')
+    .populate('requestedPlanId', 'name code amount currency billingCycle durationDays monthlyPrice yearlyPrice')
     .populate('verifiedBy', 'name email')
     .populate('createdBy', 'name email')
     .lean();
@@ -271,7 +271,7 @@ router.get('/receipts', authenticateJWT, async (req, res) => {
       .limit(limit)
       .populate('tenantId', 'businessName slug')
       .populate('verifiedBy', 'name')
-      .populate('requestedPlanId', 'name code amount currency billingCycle durationDays')
+      .populate('requestedPlanId', 'name code amount currency billingCycle durationDays monthlyPrice yearlyPrice')
       .lean();
 
     // Attach a human-readable label for what was purchased

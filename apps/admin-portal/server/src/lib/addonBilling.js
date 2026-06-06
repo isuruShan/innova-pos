@@ -270,7 +270,10 @@ async function computeSubscriptionRenewalExpected(tenant, planOverride = null) {
     { code: 'whatsapp_integration', label: 'WhatsApp Business Integration', key: 'whatsapp', check: isWhatsappEffective },
   ];
   for (const row of renewalRows) {
-    if (!row.check(t.paidAddons)) continue;
+    if (plan && Array.isArray(plan.includedAddons) && plan.includedAddons.includes(row.code)) {
+      continue;
+    }
+    if (!row.check(t)) continue;
     const addonDef = await getAddonByCode(row.code);
     const priced =
       addonDef && addonDef.isActive ? priceAddonForPlan(addonDef, plan, t.countryIso) : { amount: 0 };

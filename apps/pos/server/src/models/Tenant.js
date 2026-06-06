@@ -14,6 +14,9 @@ const tenantSchema = new mongoose.Schema(
       enum: ['trial', 'active', 'expired', 'cancelled'],
       default: 'trial',
     },
+    pendingPlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', default: null },
+    assignedPlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', default: null, index: true },
+    billingCycle: { type: String, enum: ['monthly', 'yearly'], default: 'monthly' },
     trialEndsAt: { type: Date, default: null },
 
     /** One-day activation override after subscription expiry (set by superadmin). */

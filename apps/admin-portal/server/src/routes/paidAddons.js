@@ -59,6 +59,7 @@ async function buildCatalogRow(tenant, addon, plan, billingLabel) {
   const priced = priceAddonForPlan(addon, plan, tenant.countryIso);
   const state = await getAddonMerchantState(tenant, addon.code);
   const screenshotUrls = await resolveMediaUrls(addon.screenshotUrls || []);
+  const includedInPlan = plan && Array.isArray(plan.includedAddons) && plan.includedAddons.includes(addon.code);
   return {
     code: addon.code,
     name: addon.name,
@@ -77,6 +78,13 @@ async function buildCatalogRow(tenant, addon, plan, billingLabel) {
     billingLabel,
     plan: plan ? { name: plan.name, billingCycle: plan.billingCycle, code: plan.code } : null,
     ...state,
+    ...(includedInPlan ? {
+      includedInPlan: true,
+      alreadyActive: true,
+      canSubscribe: false,
+      canUnsubscribe: false,
+      canStartTrial: false,
+    } : { includedInPlan: false }),
   };
 }
 

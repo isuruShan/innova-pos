@@ -19,6 +19,8 @@ const INITIAL_FORM = {
   isPublic: true,
   isActive: true,
   isDefault: false,
+  isTrialPlan: false,
+  includedAddons: [],
   planTagShow: false,
   planTagText: '',
   planTagTextColor: '#ffffff',
@@ -121,6 +123,8 @@ export default function PlansPage() {
       isPublic: Boolean(plan.isPublic),
       isActive: Boolean(plan.isActive),
       isDefault: Boolean(plan.isDefault),
+      isTrialPlan: Boolean(plan.isTrialPlan),
+      includedAddons: Array.isArray(plan.includedAddons) ? [...plan.includedAddons] : [],
       planAudience: plan.planAudience === 'international' ? 'international' : 'local',
       planTagShow: Boolean(plan.planTagShow),
       planTagText: plan.planTagText || '',
@@ -570,6 +574,39 @@ export default function PlansPage() {
               + Add line
             </button>
           </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-gray-700">Included Add-ons</label>
+            <p className="text-xs text-gray-405">Select which paid add-ons are included for free in this plan</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+              {[
+                { code: 'qr_ordering', label: 'QR Ordering' },
+                { code: 'loyalty', label: 'Loyalty Program' },
+                { code: 'table_management', label: 'Table Management' },
+                { code: 'uber_eats', label: 'Uber Eats Integration' },
+                { code: 'accounting', label: 'Accounting Integration' },
+                { code: 'dual_screen', label: 'Dual Screen Customer' },
+                { code: 'whatsapp_integration', label: 'WhatsApp Integration' }
+              ].map((addon) => {
+                const checked = form.includedAddons?.includes(addon.code);
+                return (
+                  <label key={addon.code} className="text-xs text-gray-700 flex items-center gap-2 border border-gray-200 rounded p-2 hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        const newAddons = e.target.checked
+                          ? [...(form.includedAddons || []), addon.code]
+                          : (form.includedAddons || []).filter((c) => c !== addon.code);
+                        setForm((f) => ({ ...f, includedAddons: newAddons }));
+                      }}
+                    />
+                    <span>{addon.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="flex flex-wrap items-center gap-4">
             <label className="text-sm text-gray-700 flex items-center gap-2">
               <input type="checkbox" checked={form.isPublic} onChange={(e) => setForm((f) => ({ ...f, isPublic: e.target.checked }))} />
@@ -582,6 +619,10 @@ export default function PlansPage() {
             <label className="text-sm text-gray-700 flex items-center gap-2">
               <input type="checkbox" checked={form.isDefault} onChange={(e) => setForm((f) => ({ ...f, isDefault: e.target.checked }))} />
               Default
+            </label>
+            <label className="text-sm text-gray-700 flex items-center gap-2">
+              <input type="checkbox" checked={form.isTrialPlan} onChange={(e) => setForm((f) => ({ ...f, isTrialPlan: e.target.checked }))} />
+              Base 14-Day Trial Plan
             </label>
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -632,6 +673,7 @@ export default function PlansPage() {
               <div key={p._id} className="rounded-xl border border-gray-200 p-4">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-semibold text-gray-900">{p.name}</p>
+                  {p.isTrialPlan && <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">Trial Base</span>}
                   {p.isDefault && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Default</span>}
                   {!p.isActive && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">Disabled</span>}
                 </div>
@@ -685,7 +727,21 @@ export default function PlansPage() {
               <tbody className="divide-y divide-gray-100">
                 {plans.map((p) => (
                   <tr key={p._id}>
-                    <td className="px-4 py-3 font-medium text-gray-900">{p.name}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      <div className="flex items-center gap-1.5">
+                        <span>{p.name}</span>
+                        {p.isTrialPlan && (
+                          <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded">
+                            Trial Base
+                          </span>
+                        )}
+                        {p.isDefault && (
+                          <span className="text-[10px] bg-green-100 text-green-700 font-bold px-1.5 py-0.5 rounded">
+                            Default
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-gray-600">{p.code}</td>
                     <td className="px-4 py-3 text-gray-600">{p.currency} {Number(p.monthlyPrice ?? 0).toLocaleString()}</td>
                     <td className="px-4 py-3 text-gray-600">{p.currency} {Number(p.yearlyPrice ?? 0).toLocaleString()}</td>

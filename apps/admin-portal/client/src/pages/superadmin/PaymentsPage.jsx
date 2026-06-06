@@ -122,7 +122,6 @@ export default function PaymentsPage() {
     const highlight = searchParams.get('highlight');
     if (highlight) {
       setDetailReceiptId(highlight);
-      setStatusFilter('pending');
     }
   }, [searchParams]);
 

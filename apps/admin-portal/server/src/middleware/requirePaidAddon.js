@@ -27,9 +27,12 @@ function requirePaidAddon(addonCode) {
       if (!req.tenantId) {
         return res.status(403).json({ message: 'Tenant context required' });
       }
-      const tenant = await Tenant.findById(req.tenantId).select('paidAddons').lean();
+      const tenant = await Tenant.findById(req.tenantId)
+        .select('paidAddons assignedPlanId')
+        .populate('assignedPlanId')
+        .lean();
       if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
-      if (!isPaidAddonEffective(tenant.paidAddons, entitlementKey)) {
+      if (!isPaidAddonEffective(tenant, entitlementKey)) {
         return res.status(402).json({ message, code: `${addonCode}_addon_required` });
       }
       next();

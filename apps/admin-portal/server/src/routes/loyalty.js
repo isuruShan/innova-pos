@@ -225,7 +225,7 @@ router.delete('/tiers/:id', authorize('merchant_admin'), async (req, res) => {
   }
 });
 
-router.get('/rewards', authorize('merchant_admin'), async (req, res) => {
+router.get('/rewards', authorize('merchant_admin', 'manager'), async (req, res) => {
   try {
     const filter = { tenantId: req.tenantId };
     if (req.query.pending === 'true') {
@@ -272,7 +272,7 @@ router.get('/rewards', authorize('merchant_admin'), async (req, res) => {
   }
 });
 
-router.post('/rewards', authorize('merchant_admin'), resolveSelectedStore, async (req, res) => {
+router.post('/rewards', authorize('merchant_admin', 'manager'), resolveSelectedStore, async (req, res) => {
   try {
     const body = { ...req.body };
     const scope = body.scope === 'tenant' ? 'tenant' : 'store';
@@ -294,16 +294,26 @@ router.post('/rewards', authorize('merchant_admin'), resolveSelectedStore, async
       if (!storeId) return res.status(400).json({ message: 'Select a store or choose tenant-wide reward' });
     }
 
+    const isManager = req.user.role === 'manager';
     const doc = await LoyaltyReward.create({
       ...body,
       tenantId: req.tenantId,
       storeId,
-      approvalStatus: 'approved',
-      active: body.active !== false,
-      approvedBy: req.user.id,
-      approvedAt: new Date(),
+      approvalStatus: isManager ? 'pending' : 'approved',
+      active: isManager ? false : (body.active !== false),
+      approvedBy: isManager ? null : req.user.id,
+      approvedAt: isManager ? null : new Date(),
       createdBy: req.user.id,
     });
+
+    if (isManager) {
+      await notifyMerchantAdmins(req.tenantId, {
+        type: 'reward_approval_requested',
+        title: 'Reward approval requested',
+        body: `Manager "${req.user.name || 'Manager'}" created a loyalty reward "${doc.name}" that requires your approval.`,
+        meta: { resourceType: 'loyalty_reward', resourceId: String(doc._id) },
+      });
+    }
 
     res.status(201).json(doc);
   } catch (err) {
@@ -311,7 +321,7 @@ router.post('/rewards', authorize('merchant_admin'), resolveSelectedStore, async
   }
 });
 
-router.put('/rewards/:id', authorize('merchant_admin'), async (req, res) => {
+router.put('/rewards/:id', authorize('merchant_admin', 'manager'), async (req, res) => {
   try {
     const existing = await LoyaltyReward.findOne({ _id: req.params.id, tenantId: req.tenantId });
     if (!existing) return res.status(404).json({ message: 'Reward not found' });
@@ -325,7 +335,23 @@ router.put('/rewards/:id', authorize('merchant_admin'), async (req, res) => {
     }
     delete patch.scope;
 
+    const isManager = req.user.role === 'manager';
+    if (isManager) {
+      patch.approvalStatus = 'pending';
+      patch.active = false;
+    }
+
     const doc = await LoyaltyReward.findByIdAndUpdate(existing._id, patch, { new: true, runValidators: true });
+
+    if (isManager) {
+      await notifyMerchantAdmins(req.tenantId, {
+        type: 'reward_approval_requested',
+        title: 'Reward approval requested',
+        body: `Manager "${req.user.name || 'Manager'}" edited loyalty reward "${doc.name}", requiring approval.`,
+        meta: { resourceType: 'loyalty_reward', resourceId: String(doc._id) },
+      });
+    }
+
     res.json(doc);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -393,7 +419,7 @@ router.post('/rewards/:id/reject', authorize('merchant_admin'), async (req, res)
   }
 });
 
-router.delete('/rewards/:id', authorize('merchant_admin'), async (req, res) => {
+router.delete('/rewards/:id', authorize('merchant_admin', 'manager'), async (req, res) => {
   try {
     const doc = await LoyaltyReward.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId });
     if (!doc) return res.status(404).json({ message: 'Reward not found' });

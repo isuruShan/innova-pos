@@ -30,6 +30,8 @@ const subscriptionPlanSchema = new mongoose.Schema(
     planCardGradTo: { type: String, default: '#f1f5f9', trim: true },
     planCardGradAngle: { type: Number, default: 145, min: 0, max: 360 },
     planCardUseLightText: { type: Boolean, default: false },
+    isTrialPlan: { type: Boolean, default: false },
+    includedAddons: { type: [String], default: [] },
   },
   { timestamps: true }
 );

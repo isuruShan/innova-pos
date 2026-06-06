@@ -3,12 +3,12 @@ const mongoose = require('mongoose');
 const Promotion = require('../models/Promotion');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, resolveWriteStoreId } = require('../middleware/storeScope');
-const { createNotification } = require('../lib/notificationHelpers');
+const { createNotification, notifyMerchantAdmins } = require('../lib/notificationHelpers');
 const { parsePageQuery, paginated, parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
 
-router.get('/', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.get('/', protect, authorize('merchant_admin', 'manager'), tenantScope, async (req, res) => {
   try {
     const filter = { tenantId: req.tenantId };
     const now = new Date();
@@ -66,7 +66,7 @@ router.get('/', protect, authorize('merchant_admin'), tenantScope, async (req, r
   }
 });
 
-router.get('/:id', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.get('/:id', protect, authorize('merchant_admin', 'manager'), tenantScope, async (req, res) => {
   try {
     const p = await Promotion.findOne({ _id: req.params.id, tenantId: req.tenantId });
     if (!p) return res.status(404).json({ message: 'Promotion not found' });
@@ -76,7 +76,7 @@ router.get('/:id', protect, authorize('merchant_admin'), tenantScope, async (req
   }
 });
 
-router.post('/', protect, authorize('merchant_admin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/', protect, authorize('merchant_admin', 'manager'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const body = { ...req.body };
     const scope = body.scope === 'tenant' ? 'tenant' : 'store';
@@ -98,16 +98,26 @@ router.post('/', protect, authorize('merchant_admin'), tenantScope, resolveSelec
       if (!storeId) return res.status(400).json({ message: 'Select a store or create a tenant-wide promotion' });
     }
 
+    const isManager = req.user.role === 'manager';
     const promo = await Promotion.create({
       ...body,
       tenantId: req.tenantId,
       storeId,
       createdBy: req.user.id,
-      approvalStatus: 'approved',
-      approvedBy: req.user.id,
-      approvedAt: new Date(),
-      active: body.active !== false,
+      approvalStatus: isManager ? 'pending' : 'approved',
+      approvedBy: isManager ? null : req.user.id,
+      approvedAt: isManager ? null : new Date(),
+      active: isManager ? false : (body.active !== false),
     });
+
+    if (isManager) {
+      await notifyMerchantAdmins(req.tenantId, {
+        type: 'promotion_approval_requested',
+        title: 'Promotion approval requested',
+        body: `Manager "${req.user.name || 'Manager'}" created a promotion "${promo.name}" that requires your approval.`,
+        meta: { resourceType: 'promotion', resourceId: String(promo._id) },
+      });
+    }
 
     res.status(201).json(promo);
   } catch (err) {
@@ -115,7 +125,7 @@ router.post('/', protect, authorize('merchant_admin'), tenantScope, resolveSelec
   }
 });
 
-router.put('/:id', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.put('/:id', protect, authorize('merchant_admin', 'manager'), tenantScope, async (req, res) => {
   try {
     const existing = await Promotion.findOne({ _id: req.params.id, tenantId: req.tenantId });
     if (!existing) return res.status(404).json({ message: 'Promotion not found' });
@@ -131,11 +141,30 @@ router.put('/:id', protect, authorize('merchant_admin'), tenantScope, async (req
     }
     delete body.scope;
 
+    const isManager = req.user.role === 'manager';
+    const updateData = { ...body, updatedBy: req.user.id };
+    if (isManager) {
+      updateData.approvalStatus = 'pending';
+      updateData.active = false;
+      updateData.approvedBy = null;
+      updateData.approvedAt = null;
+    }
+
     const promo = await Promotion.findByIdAndUpdate(
       existing._id,
-      { ...body, updatedBy: req.user.id },
+      updateData,
       { new: true, runValidators: true },
     );
+
+    if (isManager) {
+      await notifyMerchantAdmins(req.tenantId, {
+        type: 'promotion_approval_requested',
+        title: 'Promotion approval requested',
+        body: `Manager "${req.user.name || 'Manager'}" edited promotion "${promo.name}", requiring approval.`,
+        meta: { resourceType: 'promotion', resourceId: String(promo._id) },
+      });
+    }
+
     res.json(promo);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -203,7 +232,7 @@ router.post('/:id/reject', protect, authorize('merchant_admin'), tenantScope, as
   }
 });
 
-router.delete('/:id', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.delete('/:id', protect, authorize('merchant_admin', 'manager'), tenantScope, async (req, res) => {
   try {
     const promo = await Promotion.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId });
     if (!promo) return res.status(404).json({ message: 'Promotion not found' });

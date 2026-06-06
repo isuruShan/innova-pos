@@ -125,7 +125,7 @@ router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
 // POST /plans — create plan
 router.post('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {
-    const { name, code, monthlyPrice, yearlyPrice, currency, description, isPublic, isActive, isDefault, planAudience } = req.body;
+    const { name, code, monthlyPrice, yearlyPrice, currency, description, isPublic, isActive, isDefault, planAudience, isTrialPlan, includedAddons } = req.body;
     if (!name?.trim() || !code?.trim() || monthlyPrice === undefined || yearlyPrice === undefined) {
       return res.status(400).json({ message: 'name, code, monthlyPrice, and yearlyPrice are required' });
     }
@@ -145,6 +145,11 @@ router.post('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
     const audience =
       planAudience === 'international' ? 'international' : 'local';
 
+    const isTrialPlanBool = Boolean(isTrialPlan);
+    if (isTrialPlanBool) {
+      await SubscriptionPlan.updateMany({ planAudience: audience, isTrialPlan: true }, { $set: { isTrialPlan: false, updatedBy: req.user.id } });
+    }
+
     const plan = await SubscriptionPlan.create({
       name: name.trim(),
       code: normalizedCode,
@@ -157,6 +162,8 @@ router.post('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
       description: resolvedLines.join('\n'),
       featureLines: resolvedLines,
       planAudience: audience,
+      isTrialPlan: isTrialPlanBool,
+      includedAddons: Array.isArray(includedAddons) ? includedAddons.map(s => String(s).trim().toLowerCase()).filter(Boolean) : [],
       isPublic: isPublic !== false,
       isActive: isActive !== false,
       isDefault: Boolean(isDefault),
@@ -208,6 +215,23 @@ router.put('/:id', authenticateJWT, authorize('superadmin'), async (req, res) =>
 
     if (req.body.planAudience !== undefined) {
       plan.planAudience = req.body.planAudience === 'international' ? 'international' : 'local';
+    }
+
+    if (req.body.isTrialPlan !== undefined) {
+      const isTrialPlanBool = Boolean(req.body.isTrialPlan);
+      plan.isTrialPlan = isTrialPlanBool;
+      if (isTrialPlanBool) {
+        await SubscriptionPlan.updateMany(
+          { _id: { $ne: plan._id }, planAudience: plan.planAudience, isTrialPlan: true },
+          { $set: { isTrialPlan: false, updatedBy: req.user.id } }
+        );
+      }
+    }
+
+    if (req.body.includedAddons !== undefined) {
+      plan.includedAddons = Array.isArray(req.body.includedAddons)
+        ? req.body.includedAddons.map(s => String(s).trim().toLowerCase()).filter(Boolean)
+        : [];
     }
 
     patchAppearance(plan, req.body);
