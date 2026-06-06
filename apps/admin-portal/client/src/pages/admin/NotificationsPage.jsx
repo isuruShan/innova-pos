@@ -4,10 +4,12 @@ import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell } from 'lucide-react';
 import api from '../../api/axios';
 import { notificationPathForAdmin } from '../../utils/notificationRoutes';
+import { useAuth } from '../../context/AuthContext';
 
 const PAGE_SIZE = 40;
 
 export default function NotificationsPage() {
+  const { isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -37,7 +39,7 @@ export default function NotificationsPage() {
       }
       invalidateLists();
     }
-    navigate(notificationPathForAdmin(n));
+    navigate(notificationPathForAdmin(n, isSuperAdmin));
   };
 
   return (

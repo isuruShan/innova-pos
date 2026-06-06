@@ -5,8 +5,10 @@ import { Bell } from 'lucide-react';
 import api from '../api/axios';
 import { notificationPathForAdmin } from '../utils/notificationRoutes';
 import useSwipeDismiss from '../hooks/useSwipeDismiss';
+import { useAuth } from '../context/AuthContext';
 
 export default function NotificationBell() {
+  const { isSuperAdmin } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -59,7 +61,7 @@ export default function NotificationBell() {
     if (!n.readAt) {
       readOne.mutate(n._id);
     }
-    navigate(notificationPathForAdmin(n));
+    navigate(notificationPathForAdmin(n, isSuperAdmin));
     setOpen(false);
   };
 
