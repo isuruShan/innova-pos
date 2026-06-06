@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Save, Loader, CheckCircle, AlertTriangle } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
-import { fieldAttrs, validatePersonName, validatePassword } from '../../utils/formFields';
+import { fieldAttrs, validatePersonName } from '../../utils/formFields';
 import PlatformContactSection from '../../components/profile/PlatformContactSection';
 
 export default function ProfilePage() {
@@ -11,10 +11,9 @@ export default function ProfilePage() {
   const mustChange = Boolean(user?.isTemporaryPassword);
 
   const [nameForm, setNameForm] = useState({ name: '' });
-  const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [nameError, setNameError] = useState('');
-  const [pwErrors, setPwErrors] = useState({});
-  const [saved, setSaved] = useState({ name: false, password: false });
+  const [saved, setSaved] = useState({ name: false });
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     if (user?.name != null) setNameForm({ name: user.name });
@@ -23,31 +22,41 @@ export default function ProfilePage() {
   const profileMutation = useMutation({
     mutationFn: (payload) => api.put('/auth/me', payload),
     onSuccess: (res) => {
-      updateUser(res.data.user, res.data.token);
+      updateUser(res.data.user, res.data.token, res.data.refreshToken);
       setSaved((s) => ({ ...s, name: true }));
       setTimeout(() => setSaved((s) => ({ ...s, name: false })), 3000);
     },
   });
 
-  const passwordMutation = useMutation({
-    mutationFn: (payload) => api.put('/auth/me', payload),
-    onSuccess: (res) => {
-      updateUser(res.data.user, res.data.token);
-      setPwForm({ currentPassword: '', newPassword: '', confirm: '' });
-      setPwErrors({});
-      setSaved((s) => ({ ...s, password: true }));
-      setTimeout(() => setSaved((s) => ({ ...s, password: false })), 3000);
-    },
-    onError: (err) => setPwErrors({ api: err.response?.data?.message || 'Failed to update password' }),
-  });
+  const handleImageChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    const fd = new FormData();
+    fd.append('profileImage', file);
+    try {
+      const { data } = await api.post('/auth/profile-image', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      updateUser({ ...user, profileImage: data.profileImage, profileImageKey: data.profileImageKey });
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to upload profile image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
-  const validatePasswordForm = () => {
-    const e = {};
-    if (!pwForm.currentPassword) e.currentPassword = 'Current password required';
-    const pwCheck = validatePassword(pwForm.newPassword);
-    if (!pwCheck.ok) e.newPassword = pwCheck.error;
-    if (pwForm.newPassword !== pwForm.confirm) e.confirm = 'Passwords do not match';
-    return e;
+  const handleRemoveImage = async () => {
+    if (!confirm('Remove profile image?')) return;
+    setUploadingImage(true);
+    try {
+      const { data } = await api.put('/auth/me', { profileImage: '', profileImageKey: '' });
+      updateUser(data.user, data.token, data.refreshToken);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to remove profile image');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const nameAttrs = fieldAttrs('personName');
@@ -60,16 +69,6 @@ export default function ProfilePage() {
     }
     setNameError('');
     profileMutation.mutate({ name: nameForm.name.trim() });
-  };
-
-  const handleSavePassword = () => {
-    const errs = validatePasswordForm();
-    if (Object.keys(errs).length) {
-      setPwErrors(errs);
-      return;
-    }
-    setPwErrors({});
-    passwordMutation.mutate({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword });
   };
 
   const inputClass =
@@ -92,6 +91,38 @@ export default function ProfilePage() {
       {/* Profile */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         <h3 className="font-semibold text-gray-900">Account Information</h3>
+
+        {/* Profile Picture Upload Section */}
+        <div className="flex items-center gap-4 border-b border-gray-100 pb-4">
+          <div className="relative w-16 h-16 rounded-full bg-brand-orange flex items-center justify-center text-xl font-bold text-white overflow-hidden shrink-0">
+            {user?.profileImage ? (
+              <img src={user.profileImage} className="w-full h-full object-cover" alt="" />
+            ) : (
+              user?.name?.[0]?.toUpperCase() || 'A'
+            )}
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-gray-950">Profile Picture</p>
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 transition">
+                {uploadingImage ? 'Uploading...' : 'Upload Image'}
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} disabled={uploadingImage} />
+              </label>
+              {user?.profileImage && (
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  disabled={uploadingImage}
+                  className="px-3 py-1.5 rounded-lg border border-red-200 text-xs font-semibold text-red-600 bg-white hover:bg-red-50 transition"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-gray-400">JPG, PNG, or WEBP. Max 2MB.</p>
+          </div>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="profile-full-name">
             Full name
@@ -149,86 +180,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Password change — stable DOM inputs (no component defined inside render) */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h3 className="font-semibold text-gray-900">Change Password</h3>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="profile-current-password">
-            Current password
-          </label>
-          <input
-            id="profile-current-password"
-            type="password"
-            value={pwForm.currentPassword}
-            onChange={(e) => {
-              setPwForm((f) => ({ ...f, currentPassword: e.target.value }));
-              setPwErrors((er) => ({ ...er, currentPassword: '', api: '' }));
-            }}
-            className={`${inputClass} ${pwErrors.currentPassword ? 'border-red-400' : 'border-gray-300'}`}
-            autoComplete="current-password"
-          />
-          {pwErrors.currentPassword && <p className="text-xs text-red-500 mt-0.5">{pwErrors.currentPassword}</p>}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="profile-new-password">
-            New password
-          </label>
-          <input
-            id="profile-new-password"
-            type="password"
-            value={pwForm.newPassword}
-            onChange={(e) => {
-              setPwForm((f) => ({ ...f, newPassword: e.target.value }));
-              setPwErrors((er) => ({ ...er, newPassword: '', api: '' }));
-            }}
-            className={`${inputClass} ${pwErrors.newPassword ? 'border-red-400' : 'border-gray-300'}`}
-            autoComplete="new-password"
-            maxLength={fieldAttrs('password').maxLength}
-          />
-          {pwErrors.newPassword && <p className="text-xs text-red-500 mt-0.5">{pwErrors.newPassword}</p>}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="profile-confirm-password">
-            Confirm new password
-          </label>
-          <input
-            id="profile-confirm-password"
-            type="password"
-            value={pwForm.confirm}
-            onChange={(e) => {
-              setPwForm((f) => ({ ...f, confirm: e.target.value }));
-              setPwErrors((er) => ({ ...er, confirm: '', api: '' }));
-            }}
-            className={`${inputClass} ${pwErrors.confirm ? 'border-red-400' : 'border-gray-300'}`}
-            autoComplete="new-password"
-          />
-          {pwErrors.confirm && <p className="text-xs text-red-500 mt-0.5">{pwErrors.confirm}</p>}
-        </div>
-
-        {pwErrors.api && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{pwErrors.api}</p>
-        )}
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleSavePassword}
-            disabled={passwordMutation.isPending}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60"
-          >
-            {passwordMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Save size={14} />}
-            Update password
-          </button>
-          {saved.password && (
-            <span className="text-sm text-green-600 flex items-center gap-1">
-              <CheckCircle size={13} /> Updated
-            </span>
-          )}
-        </div>
-      </div>
 
       {isSuperAdmin && <PlatformContactSection />}
     </div>

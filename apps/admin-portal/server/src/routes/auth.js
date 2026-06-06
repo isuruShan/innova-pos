@@ -137,14 +137,17 @@ router.get('/me', authenticateJWT, async (req, res) => {
   }
 });
 
-// PUT /auth/me — change own name, password
+// PUT /auth/me — change own name, password, profile image
 router.put('/me', authenticateJWT, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const { name, currentPassword, newPassword } = req.body;
+    const { name, currentPassword, newPassword, profileImage, profileImageKey } = req.body;
     if (name?.trim()) user.name = name.trim();
+    if (profileImage !== undefined) user.profileImage = profileImage;
+    if (profileImageKey !== undefined) user.profileImageKey = profileImageKey;
+    if (profileImageKey !== undefined) user.profileImage = '';
 
     if (newPassword) {
       if (!currentPassword) return res.status(400).json({ message: 'Current password required' });
@@ -164,6 +167,44 @@ router.put('/me', authenticateJWT, async (req, res) => {
     res.json({ user: payload, token, refreshToken });
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+});
+
+// POST /auth/profile-image — upload profile image
+const multer = require('multer');
+const { proxyUploadToService } = require('../lib/uploadProxy');
+const uploadProfileImg = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ok = ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype);
+    cb(ok ? null : new Error('Profile image must be JPEG, PNG, or WebP'), ok);
+  },
+});
+
+router.post('/profile-image', authenticateJWT, uploadProfileImg.single('profileImage'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+  try {
+    const uploaded = await proxyUploadToService({
+      buffer: req.file.buffer,
+      filename: req.file.originalname || 'profile.webp',
+      mimetype: req.file.mimetype,
+      type: 'logo',
+      authorization: req.headers.authorization,
+    });
+    const { key } = uploaded;
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    user.profileImage = '';
+    user.profileImageKey = key;
+    await user.save();
+
+    const freshUrl = await presignObjectKey(key, 86400);
+    res.json({ profileImage: freshUrl, profileImageKey: key });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ message: err.message });
+    sendRouteError(res, err, { req });
   }
 });
 

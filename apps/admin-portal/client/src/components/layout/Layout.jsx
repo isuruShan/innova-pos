@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getPosUrl } from '@innovapos/app-urls';
 import {
   LayoutDashboard, Users, Palette, CreditCard, Building2,
-  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3, Sparkles, Landmark, Package, ShoppingBag, Percent, Search, MessageSquare
+  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3, Sparkles, Landmark, Package, ShoppingBag, Percent, Search, MessageSquare, KeyRound
 } from 'lucide-react';
 import api from '../../api/axios';
 import NotificationBell from '../NotificationBell';
@@ -143,12 +143,46 @@ const ADMIN_NAV_FLAT = ADMIN_NAV_GROUPS.flatMap((g) => g.items);
 const SUPERADMIN_NAV_FLAT = SUPERADMIN_NAV_GROUPS.flatMap((g) => g.items);
 
 export default function Layout({ children }) {
-  const { user, logout, isSuperAdmin } = useAuth();
+  const { user, logout, isSuperAdmin, updateUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [changePasswordDrawerOpen, setChangePasswordDrawerOpen] = useState(false);
   const subscriptionLocked = !isSuperAdmin && user?.subscriptionActive === false;
+
+  const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
+  const [pwErrors, setPwErrors] = useState({});
+  const [pwSaved, setPwSaved] = useState(false);
+  const [pwPending, setPwPending] = useState(false);
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    setPwErrors({});
+    if (!pwForm.currentPassword) return setPwErrors({ currentPassword: 'Current password is required' });
+    if (!pwForm.newPassword || pwForm.newPassword.length < 8) return setPwErrors({ newPassword: 'Password must be at least 8 characters' });
+    if (pwForm.newPassword !== pwForm.confirm) return setPwErrors({ confirm: 'Passwords do not match' });
+
+    setPwPending(true);
+    try {
+      const { data } = await api.put('/auth/me', {
+        currentPassword: pwForm.currentPassword,
+        newPassword: pwForm.newPassword,
+      });
+      updateUser(data.user, data.token, data.refreshToken);
+      setPwForm({ currentPassword: '', newPassword: '', confirm: '' });
+      setPwSaved(true);
+      setTimeout(() => {
+        setPwSaved(false);
+        setChangePasswordDrawerOpen(false);
+      }, 2000);
+    } catch (err) {
+      setPwErrors({ api: err.response?.data?.message || 'Failed to update password' });
+    } finally {
+      setPwPending(false);
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -367,9 +401,51 @@ export default function Layout({ children }) {
                 Change temporary password
               </Link>
             )}
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white bg-brand-orange"
-            >
-              {user?.name?.[0]?.toUpperCase() || 'A'}
+            {/* Avatar Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white bg-brand-orange overflow-hidden border border-gray-250 hover:scale-[1.03] transition-all cursor-pointer focus:outline-none"
+              >
+                {user?.profileImage ? (
+                  <img src={user.profileImage} className="w-full h-full object-cover" alt="" />
+                ) : (
+                  user?.name?.[0]?.toUpperCase() || 'A'
+                )}
+              </button>
+              {profileDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setProfileDropdownOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-250 rounded-xl shadow-xl z-50 py-1 text-sm text-gray-700">
+                    <Link
+                      to="/profile"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-50 transition"
+                    >
+                      <User size={15} className="text-gray-400" />
+                      My Profile
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setChangePasswordDrawerOpen(true);
+                        setProfileDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-gray-50 transition"
+                    >
+                      <KeyRound size={15} className="text-gray-400" />
+                      Change Password
+                    </button>
+                    <div className="border-t border-gray-100 my-1" />
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-red-650 hover:bg-red-50 transition font-semibold"
+                    >
+                      <LogOut size={15} className="text-red-500" />
+                      Sign out
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>
@@ -383,6 +459,67 @@ export default function Layout({ children }) {
         </main>
       </div>
       <GlobalSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+
+      {/* Change Password Side Drawer */}
+      {changePasswordDrawerOpen && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setChangePasswordDrawerOpen(false)} />
+          <aside className="fixed inset-y-0 right-0 z-[60] w-80 bg-white border-l border-gray-200 shadow-2xl p-6 flex flex-col transform transition-transform duration-200">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
+              <h3 className="font-bold text-gray-900 text-base">Change Password</h3>
+              <button onClick={() => setChangePasswordDrawerOpen(false)} className="text-gray-400 hover:text-gray-650">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleUpdatePassword} className="space-y-4 flex-1">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Current Password</label>
+                <input
+                  type="password"
+                  value={pwForm.currentPassword}
+                  onChange={(e) => setPwForm(f => ({ ...f, currentPassword: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
+                  required
+                />
+                {pwErrors.currentPassword && <p className="text-xs text-red-500 mt-1">{pwErrors.currentPassword}</p>}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">New Password</label>
+                <input
+                  type="password"
+                  value={pwForm.newPassword}
+                  onChange={(e) => setPwForm(f => ({ ...f, newPassword: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
+                  required
+                />
+                {pwErrors.newPassword && <p className="text-xs text-red-500 mt-1">{pwErrors.newPassword}</p>}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Confirm New Password</label>
+                <input
+                  type="password"
+                  value={pwForm.confirm}
+                  onChange={(e) => setPwForm(f => ({ ...f, confirm: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
+                  required
+                />
+                {pwErrors.confirm && <p className="text-xs text-red-500 mt-1">{pwErrors.confirm}</p>}
+              </div>
+
+              {pwErrors.api && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{pwErrors.api}</p>}
+              {pwSaved && <p className="text-sm text-green-650 bg-green-50 border border-green-200 rounded-lg p-3">Password changed successfully!</p>}
+
+              <button
+                type="submit"
+                disabled={pwPending || pwSaved}
+                className="w-full py-2.5 bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold text-sm rounded-lg transition disabled:opacity-50"
+              >
+                {pwPending ? 'Updating...' : 'Update Password'}
+              </button>
+            </form>
+          </aside>
+        </>
+      )}
     </div>
   );
 }
