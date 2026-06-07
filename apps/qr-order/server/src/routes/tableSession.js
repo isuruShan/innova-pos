@@ -81,7 +81,7 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
 
     const menuFilter = {
       tenantId: ctx.ids.tenantId,
-      storeId: ctx.ids.storeId,
+      storeId: { $in: [ctx.ids.storeId, null] },
       available: true,
     };
     const menuLimit = Math.min(500, Math.max(1, parseInt(req.query.menuLimit, 10) || 120));
@@ -98,7 +98,7 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
 
     const categoryRows = await Category.find({
       tenantId: ctx.ids.tenantId,
-      storeId: ctx.ids.storeId,
+      storeId: { $in: [ctx.ids.storeId, null] },
       active: { $ne: false },
     })
       .sort({ sortOrder: 1, name: 1 })
