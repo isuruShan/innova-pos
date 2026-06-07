@@ -53,12 +53,28 @@ async function loadTableSession(tenantId, storeId, tableId) {
 
   const tenantRow = await mongoose.connection.collection('tenants').findOne(
     { _id: ids.tenantId },
-    { projection: { paidAddons: 1 } },
+    { projection: { paidAddons: 1, assignedPlanId: 1 } },
   );
-  const qr = tenantRow?.paidAddons?.qrOrdering;
-  const qrAddonActive =
-    Boolean(qr?.active) &&
-    (!qr?.periodEndsAt || new Date() < new Date(qr.periodEndsAt));
+
+  let qrAddonActive = false;
+  if (tenantRow) {
+    if (tenantRow.assignedPlanId) {
+      const planRow = await mongoose.connection.collection('subscriptionplans').findOne(
+        { _id: tenantRow.assignedPlanId },
+        { projection: { includedAddons: 1 } }
+      );
+      if (planRow && Array.isArray(planRow.includedAddons) && planRow.includedAddons.includes('qr_ordering')) {
+        qrAddonActive = true;
+      }
+    }
+    if (!qrAddonActive) {
+      const qr = tenantRow.paidAddons?.qrOrdering;
+      qrAddonActive =
+        Boolean(qr?.active) &&
+        (!qr?.periodEndsAt || new Date() < new Date(qr.periodEndsAt));
+    }
+  }
+
   if (!qrAddonActive) {
     return {
       error: {
