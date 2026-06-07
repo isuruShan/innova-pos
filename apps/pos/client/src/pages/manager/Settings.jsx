@@ -276,11 +276,9 @@ function UsersTab() {
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['staff-users'] });
-  const createMutation = useMutation({ mutationFn: (d) => api.post('/users', d), onSuccess: () => { invalidate(); closeSlide(); }, onError: (e) => setFormError(e.response?.data?.message || 'Failed') });
   const updateMutation = useMutation({ mutationFn: ({ id, d }) => api.put(`/users/${id}`, d), onSuccess: () => { invalidate(); closeSlide(); }, onError: (e) => setFormError(e.response?.data?.message || 'Failed') });
   const deleteMutation = useMutation({ mutationFn: (id) => api.delete(`/users/${id}`), onSuccess: invalidate });
 
-  const openAdd = () => { setEditing(null); setForm(EMPTY_FORM); setFormError(''); setShowPw(false); setSlideOpen(true); };
   const openEdit = (u) => { setEditing(u); setForm({ name: u.name, email: u.email, password: '', role: u.role }); setFormError(''); setShowPw(false); setSlideOpen(true); };
   const closeSlide = () => { setSlideOpen(false); setEditing(null); setForm(EMPTY_FORM); setFormError(''); };
 
@@ -289,16 +287,14 @@ function UsersTab() {
     setFormError('');
     if (!form.name.trim()) return setFormError('Name is required');
     if (!form.email.trim()) return setFormError('Email is required');
-    if (!editing && (!form.password || form.password.length < 6)) return setFormError('Password must be at least 6 characters');
-    if (editing && form.password && form.password.length < 6) return setFormError('Password must be at least 6 characters');
+    if (form.password && form.password.length < 6) return setFormError('Password must be at least 6 characters');
     const payload = { name: form.name, email: form.email, role: form.role };
     if (form.password) payload.password = form.password;
     if (editing) updateMutation.mutate({ id: editing._id, d: payload });
-    else createMutation.mutate(payload);
   };
 
   const filtered = filterRole === 'all' ? users : users.filter(u => u.role === filterRole);
-  const savePending = createMutation.isPending || updateMutation.isPending;
+  const savePending = updateMutation.isPending;
   const cashierCount = users.filter(u => u.role === 'cashier').length;
   const kitchenCount = users.filter(u => u.role === 'kitchen').length;
 
@@ -313,10 +309,6 @@ function UsersTab() {
             {kitchenCount} kitchen
           </span>
         </div>
-        <button onClick={openAdd}
-          className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-4 py-2 rounded-xl transition text-sm">
-          <Plus size={14} /> Add User
-        </button>
       </div>
 
       {/* Filter */}
@@ -361,7 +353,7 @@ function UsersTab() {
         </div>
       )}
 
-      <SlideOver open={slideOpen} onClose={closeSlide} title={editing ? 'Edit User' : 'Add Staff User'}>
+      <SlideOver open={slideOpen} onClose={closeSlide} title="Edit User">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">Role *</label>
@@ -394,7 +386,7 @@ function UsersTab() {
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">
-              {editing ? 'New Password (leave blank to keep)' : 'Password *'}
+              New Password (leave blank to keep)
             </label>
             <div className="relative">
               <input type={showPw ? 'text' : 'password'} value={form.password}
@@ -415,7 +407,7 @@ function UsersTab() {
               className="flex-1 bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-semibold py-2.5 rounded-xl transition text-sm">Cancel</button>
             <button type="submit" disabled={savePending}
               className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl transition text-sm">
-              {savePending ? 'Saving…' : editing ? 'Save Changes' : 'Add User'}
+              {savePending ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         </form>

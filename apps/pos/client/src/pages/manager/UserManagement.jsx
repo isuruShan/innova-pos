@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Plus, Edit2, Trash2, Users, ChefHat, ShoppingCart, Eye, EyeOff, ArrowDown, ArrowUp,
+  Edit2, Trash2, Users, ChefHat, ShoppingCart, Eye, EyeOff, ArrowDown, ArrowUp,
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -103,12 +103,6 @@ export default function UserManagement() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['staff-users'] });
 
-  const createMutation = useMutation({
-    mutationFn: (data) => api.post('/users', data),
-    onSuccess: () => { invalidate(); closeSlide(); },
-    onError: (e) => setFormError(e.response?.data?.message || 'Failed to create user'),
-  });
-
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => api.put(`/users/${id}`, data),
     onSuccess: () => { invalidate(); closeSlide(); },
@@ -120,7 +114,6 @@ export default function UserManagement() {
     onSuccess: invalidate,
   });
 
-  const openAdd = () => { setEditing(null); setForm(EMPTY_FORM); setFormError(''); setShowPw(false); setSlideOpen(true); };
   const openEdit = (user) => {
     setEditing(user);
     setForm({ name: user.name, email: user.email, password: '', role: user.role });
@@ -135,8 +128,6 @@ export default function UserManagement() {
     setFormError('');
     if (!form.name.trim()) return setFormError('Name is required');
     if (!form.email.trim()) return setFormError('Email is required');
-    if (!editing && (!form.password || form.password.length < 6))
-      return setFormError('Password must be at least 6 characters');
     if (editing && form.password && form.password.length < 6)
       return setFormError('Password must be at least 6 characters');
 
@@ -144,7 +135,6 @@ export default function UserManagement() {
     if (form.password) payload.password = form.password;
 
     if (editing) updateMutation.mutate({ id: editing._id, data: payload });
-    else createMutation.mutate(payload);
   };
 
   const handleDelete = (user) => {
@@ -154,7 +144,7 @@ export default function UserManagement() {
   };
 
   const filtered = filterRole === 'all' ? users : users.filter(u => u.role === filterRole);
-  const isPending = createMutation.isPending || updateMutation.isPending;
+  const isPending = updateMutation.isPending;
 
   const cashierCount = users.filter(u => u.role === 'cashier').length;
   const kitchenCount = users.filter(u => u.role === 'kitchen').length;
@@ -180,14 +170,8 @@ export default function UserManagement() {
               </span>
             </div>
           </div>
-          <button onClick={openAdd}
-            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/20 text-sm">
-            <Plus size={16} />
-            Add User
-          </button>
         </div>
 
-        {/* Filter tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             {[
@@ -252,7 +236,7 @@ export default function UserManagement() {
         )}
       </div>
 
-      <SlideOver open={slideOpen} onClose={closeSlide} title={editing ? 'Edit User' : 'Add Staff User'}>
+      <SlideOver open={slideOpen} onClose={closeSlide} title="Edit User">
         <form onSubmit={handleSubmit} className="space-y-4">
 
           {/* Role selector */}
@@ -325,7 +309,7 @@ export default function UserManagement() {
             </button>
             <button type="submit" disabled={isPending}
               className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl transition text-sm">
-              {isPending ? 'Saving…' : (editing ? 'Save Changes' : 'Add User')}
+              {isPending ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         </form>

@@ -76,38 +76,194 @@ const STATUS_LABEL = {
   cancelled: 'Cancelled',
 };
 
+function VariantSelectorModal({ item, currencySymbol, onClose, onAdd }) {
+  const [selections, setSelections] = useState({});
+
+  useEffect(() => {
+    setSelections({});
+  }, [item?._id]);
+
+  if (!item) return null;
+
+  const options = item.variantOptions || [];
+  const variants = item.variants || [];
+
+  const handleSelect = (optionName, val) => {
+    setSelections((p) => ({ ...p, [optionName]: val }));
+  };
+
+  const selectedVariant = variants.find((v) => {
+    if (v.available === false) return false;
+    return options.every((opt) => selections[opt.name] === v.attributes?.find((a) => a.name === opt.name)?.value);
+  });
+
+  const canConfirm = options.every((opt) => selections[opt.name] !== undefined);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-[var(--qr-border)]/80 shadow-2xl flex flex-col min-h-0 bg-[var(--qr-panel)] text-[var(--qr-body)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--qr-border)]/60">
+          <div>
+            <h3 className="text-base font-bold text-slate-100">{item.name}</h3>
+            <p className="text-xs text-[var(--qr-muted)]">Select options to add to order</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-slate-800 text-[var(--qr-muted)] hover:text-slate-100"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {options.map((opt) => (
+            <div key={opt.name} className="space-y-2">
+              <span className="text-xs font-bold text-[var(--qr-muted)] uppercase tracking-wider">{opt.name}</span>
+              <div className="flex flex-wrap gap-2">
+                {opt.values?.map((val) => {
+                  const active = selections[opt.name] === val;
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => handleSelect(opt.name, val)}
+                      className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-all ${
+                        active
+                          ? 'border-transparent shadow-lg text-[var(--qr-on-accent,#fff)] font-bold'
+                          : 'bg-slate-800/80 border-slate-700/80 text-slate-300 hover:border-slate-600'
+                      }`}
+                      style={active ? { backgroundColor: 'var(--qr-accent, #f59e0b)' } : {}}
+                    >
+                      {val}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          {selectedVariant ? (
+            <div className="bg-slate-900/50 rounded-xl p-3 border border-[var(--qr-border)]/60 flex items-center gap-3">
+              <div className="w-12 h-12 bg-slate-800 rounded-lg overflow-hidden border border-slate-750 shrink-0">
+                {selectedVariant.image ? (
+                  <img src={resolveAssetUrl(selectedVariant.image)} alt="" className="w-full h-full object-cover" />
+                ) : itemPhotoUrls(item)[0] ? (
+                  <img src={itemPhotoUrls(item)[0]} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xl">🍔</div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-slate-200 truncate">{selectedVariant.name}</p>
+                <p className="text-xs text-[var(--qr-muted)] truncate">{selectedVariant.description || 'Selected Option'}</p>
+              </div>
+              <span className="text-sm font-extrabold tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
+                {currencySymbol}{Number(selectedVariant.price || 0).toFixed(2)}
+              </span>
+            </div>
+          ) : (
+            canConfirm && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium rounded-xl">
+                This combination is currently unavailable
+              </div>
+            )
+          )}
+        </div>
+
+        <div className="p-4 border-t border-[var(--qr-border)]/60 flex gap-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-3 rounded-xl font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm border border-slate-700 transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onAdd(item, selectedVariant);
+              onClose();
+            }}
+            disabled={!selectedVariant}
+            className="flex-1 py-3 rounded-xl font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed shadow-lg transition"
+            style={{
+              backgroundColor: 'var(--qr-accent, #f59e0b)',
+              color: 'var(--qr-on-accent, #ffffff)',
+            }}
+          >
+            Add to order
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
   const urls = item ? itemPhotoUrls(item) : [];
   const [idx, setIdx] = useState(0);
+  const [selections, setSelections] = useState({});
+
   useEffect(() => {
     setIdx(0);
+    setSelections({});
   }, [item?._id]);
 
   if (!item) return null;
 
   const desc = String(item.description || '').trim();
   const canAdd = !!item.available;
+  const options = item.variantOptions || [];
+  const variants = item.variants || [];
+  const hasVariants = item.hasVariants && variants.length > 0;
+
+  const handleSelect = (optionName, val) => {
+    setSelections((p) => ({ ...p, [optionName]: val }));
+  };
+
+  const selectedVariant = hasVariants
+    ? variants.find((v) => {
+        if (v.available === false) return false;
+        return options.every((opt) => selections[opt.name] === v.attributes?.find((a) => a.name === opt.name)?.value);
+      })
+    : null;
+
+  const canConfirm = hasVariants ? options.every((opt) => selections[opt.name] !== undefined) : true;
+  const displayPrice = selectedVariant
+    ? Number(selectedVariant.price || 0)
+    : hasVariants
+    ? Math.min(...variants.map((v) => Number(v.price || 0)))
+    : Number(item.price || 0);
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="item-detail-title"
       onClick={onClose}
     >
       <div
-        className="w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl bg-white shadow-xl flex flex-col min-h-0"
+        className="w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl bg-[var(--qr-panel)] shadow-2xl flex flex-col min-h-0 border border-[var(--qr-border)]/60"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 shrink-0">
-          <h2 id="item-detail-title" className="text-lg font-bold text-slate-900 pr-2 leading-tight">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--qr-border)]/60 shrink-0">
+          <h2 id="item-detail-title" className="text-lg font-bold text-slate-100 pr-2 leading-tight">
             {item.name}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-slate-100 text-slate-600"
+            className="p-2 rounded-full hover:bg-slate-800 text-[var(--qr-muted)] hover:text-white"
             aria-label="Close"
           >
             <X size={22} />
@@ -116,13 +272,13 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           {urls.length > 0 ? (
-            <div className="relative bg-slate-100 aspect-[4/3] max-h-[45vh] shrink-0">
+            <div className="relative bg-slate-900 aspect-[4/3] max-h-[42vh] shrink-0">
               <img src={urls[idx]} alt="" className="w-full h-full object-contain" />
               {urls.length > 1 && (
                 <>
                   <button
                     type="button"
-                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white disabled:opacity-30"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white disabled:opacity-30"
                     disabled={idx === 0}
                     onClick={() => setIdx((i) => Math.max(0, i - 1))}
                     aria-label="Previous photo"
@@ -131,7 +287,7 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
                   </button>
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 text-white disabled:opacity-30"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 text-white disabled:opacity-30"
                     disabled={idx === urls.length - 1}
                     onClick={() => setIdx((i) => Math.min(urls.length - 1, i + 1))}
                     aria-label="Next photo"
@@ -145,7 +301,7 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
                         type="button"
                         aria-label={`Photo ${i + 1}`}
                         onClick={() => setIdx(i)}
-                        className={`h-2 rounded-full transition-all ${i === idx ? 'w-6 bg-white' : 'w-2 bg-white/50'}`}
+                        className={`h-2 rounded-full transition-all ${i === idx ? 'w-6 bg-white' : 'w-2 bg-white/40'}`}
                       />
                     ))}
                   </div>
@@ -153,38 +309,113 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
               )}
             </div>
           ) : (
-            <div className="aspect-[4/3] bg-slate-100 flex items-center justify-center text-5xl">🍽️</div>
+            <div className="aspect-[4/3] bg-slate-900 flex items-center justify-center text-5xl">🍽️</div>
           )}
 
-          <div className="px-4 py-4 space-y-3">
-            <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
-              {currencySymbol}
-              {Number(item.price || 0).toFixed(2)}
-            </p>
-            {item.category && <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{item.category}</p>}
+          <div className="px-4 py-4 space-y-4">
+            {/* Price display — updates dynamically with selected variant */}
+            <div className="flex items-center gap-3">
+              <p className="text-2xl font-extrabold tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
+                {hasVariants && !selectedVariant ? 'From ' : ''}
+                {currencySymbol}{displayPrice.toFixed(2)}
+              </p>
+              {item.category && <p className="text-xs font-semibold uppercase tracking-wider text-[var(--qr-muted)] bg-slate-800/60 px-2 py-0.5 rounded-full">{item.category}</p>}
+            </div>
+
             {desc ? (
-              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{desc}</p>
-            ) : (
-              <p className="text-sm text-slate-400 italic">No description for this item.</p>
+              <p className="text-sm text-[var(--qr-muted)] whitespace-pre-wrap leading-relaxed">{desc}</p>
+            ) : null}
+
+            {/* Variant Options */}
+            {hasVariants && (
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-[var(--qr-muted)] uppercase tracking-wider">Choose options</p>
+                {options.map((opt) => (
+                  <div key={opt.name} className="space-y-1.5">
+                    <span className="text-xs font-semibold text-slate-400">{opt.name}</span>
+                    <div className="flex flex-wrap gap-2">
+                      {opt.values?.map((val) => {
+                        const active = selections[opt.name] === val;
+                        return (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => handleSelect(opt.name, val)}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${active ? 'border-transparent shadow-md' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:border-slate-500'}`}
+                            style={active ? { backgroundColor: 'var(--qr-accent, #f59e0b)', color: 'var(--qr-on-accent, #fff)' } : {}}
+                          >
+                            {val}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Selected variant preview */}
+                {selectedVariant ? (
+                  <div className="bg-slate-900/50 rounded-xl p-3 border border-[var(--qr-border)]/50 flex items-center gap-3">
+                    <div className="w-10 h-10 bg-slate-800 rounded-lg overflow-hidden shrink-0">
+                      {selectedVariant.image ? (
+                        <img src={resolveAssetUrl(selectedVariant.image)} alt="" className="w-full h-full object-cover" />
+                      ) : urls[0] ? (
+                        <img src={urls[0]} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-lg">🍔</div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-200 truncate">{selectedVariant.name}</p>
+                      <p className="text-xs text-[var(--qr-muted)] truncate">{selectedVariant.description || 'Selected option'}</p>
+                    </div>
+                  </div>
+                ) : (
+                  canConfirm && (
+                    <div className="p-2.5 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl">
+                      This combination is unavailable
+                    </div>
+                  )
+                )}
+
+                {/* All variants comparison */}
+                <div className="pt-1">
+                  <p className="text-xs font-bold text-[var(--qr-muted)] uppercase tracking-wider mb-2">Compare all options</p>
+                  <div className="space-y-1.5">
+                    {variants.map((v) => (
+                      <div
+                        key={v._id}
+                        className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs border transition ${
+                          v.available === false ? 'opacity-40 border-slate-800 bg-transparent' : 'border-slate-700/70 bg-slate-800/50 hover:border-slate-600'
+                        }`}
+                      >
+                        <span className="font-medium text-slate-200 truncate">{v.name}</span>
+                        <span className="font-bold tabular-nums shrink-0" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
+                          {currencySymbol}{Number(v.price || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
 
-        <div className="p-4 border-t border-slate-200 shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="p-4 border-t border-[var(--qr-border)]/60 shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
-            disabled={!canAdd}
+            disabled={!canAdd || (hasVariants && !selectedVariant)}
             onClick={() => {
-              onAdd(item);
+              onAdd(item, selectedVariant || null);
               onClose();
             }}
-            className="w-full py-3.5 rounded-xl font-bold text-base disabled:opacity-45 disabled:cursor-not-allowed shadow-lg"
+            className="w-full py-3.5 rounded-xl font-bold text-base disabled:opacity-40 disabled:cursor-not-allowed shadow-lg transition"
             style={{
               backgroundColor: 'var(--qr-accent, #f59e0b)',
               color: 'var(--qr-on-accent, #ffffff)',
             }}
           >
-            {canAdd ? 'Add to order' : 'Currently unavailable'}
+            {!canAdd ? 'Currently unavailable' : hasVariants && !selectedVariant ? 'Select options above' : 'Add to order'}
           </button>
         </div>
       </div>
@@ -207,6 +438,7 @@ export default function TableOrderApp() {
   const [waiterBlockedUntil, setWaiterBlockedUntil] = useState(null);
   const [waiterTick, setWaiterTick] = useState(0);
   const [detailItem, setDetailItem] = useState(null);
+  const [variantSelectionItem, setVariantSelectionItem] = useState(null);
   const [menuLoadingMore, setMenuLoadingMore] = useState(false);
   const menuLenRef = useRef(0);
 
@@ -375,28 +607,40 @@ export default function TableOrderApp() {
     return () => clearTimeout(t);
   };
 
-  const addOne = (item) => {
+  const addOne = (item, variant = null) => {
     setCart((prev) => {
       const id = String(item._id);
-      const found = prev.find((x) => x.menuItem === id);
+      const varId = variant ? String(variant._id) : null;
+      const cartKey = varId ? `${id}::${varId}` : id;
+      const found = prev.find((x) => x.cartKey === cartKey);
+      const price = variant ? Number(variant.price || 0) : Number(item.price || 0);
+      const displayName = variant ? `${item.name} – ${variant.name}` : item.name;
       if (found) {
-        return prev.map((x) => (x.menuItem === id ? { ...x, qty: x.qty + 1 } : x));
+        return prev.map((x) => (x.cartKey === cartKey ? { ...x, qty: x.qty + 1 } : x));
       }
-      return [...prev, { menuItem: id, name: item.name, price: item.price, qty: 1 }];
+      return [...prev, { cartKey, menuItem: id, variantId: varId || undefined, name: displayName, price, qty: 1 }];
     });
-    showToast(`Added ${item.name} to cart`);
+    showToast(`Added ${variant ? variant.name : item.name} to cart`);
   };
 
-  const changeQty = (menuItemId, delta) => {
+  const addWithVariant = (item) => {
+    if (item.hasVariants && item.variants?.length > 0) {
+      setVariantSelectionItem(item);
+    } else {
+      addOne(item);
+    }
+  };
+
+  const changeQty = (cartKey, delta) => {
     setCart((prev) =>
       prev
-        .map((x) => (x.menuItem === menuItemId ? { ...x, qty: x.qty + delta } : x))
+        .map((x) => (x.cartKey === cartKey ? { ...x, qty: x.qty + delta } : x))
         .filter((x) => x.qty > 0),
     );
   };
 
-  const removeLine = (menuItemId) => {
-    setCart((prev) => prev.filter((x) => x.menuItem !== menuItemId));
+  const removeLine = (cartKey) => {
+    setCart((prev) => prev.filter((x) => x.cartKey !== cartKey));
   };
 
   const cartTotal = cart.reduce((s, i) => s + Number(i.price || 0) * i.qty, 0);
@@ -435,7 +679,11 @@ export default function TableOrderApp() {
     setSubmitting(true);
     try {
       await axios.post(`${sessionPath(tenantId, storeId, tableId)}/items`, {
-        items: cart.map((c) => ({ menuItem: c.menuItem, qty: c.qty })),
+        items: cart.map((c) => ({
+          menuItem: c.menuItem,
+          qty: c.qty,
+          ...(c.variantId ? { variantId: c.variantId } : {}),
+        })),
       });
       setCart([]);
       setMsg('Sent to the kitchen. Thank you!');
@@ -561,18 +809,25 @@ export default function TableOrderApp() {
                       key={c}
                       type="button"
                       onClick={() => setActiveCat(c)}
-                      className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap border shrink-0 transition active:scale-95 ${
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap shrink-0 transition active:scale-95 ${
                         activeCat === c
-                          ? 'text-white shadow-md border-transparent'
-                          : 'bg-slate-800/80 text-slate-300 border-slate-600/70 hover:bg-slate-700/60'
+                          ? 'text-white'
+                          : 'bg-slate-800/80 text-slate-300 border border-slate-600/70 hover:bg-slate-700/60'
                       }`}
                       style={
                         activeCat === c
-                          ? { backgroundColor: 'var(--qr-accent, #f59e0b)', color: 'var(--qr-on-accent, #fff)' }
+                          ? {
+                              backgroundColor: 'var(--qr-accent, #f59e0b)',
+                              color: 'var(--qr-on-accent, #fff)',
+                              border: '2px solid var(--qr-accent, #f59e0b)',
+                              boxShadow: '0 0 12px 2px color-mix(in srgb, var(--qr-accent, #f59e0b) 55%, transparent)',
+                            }
                           : {}
                       }
                     >
-                      <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 bg-slate-700/60 flex items-center justify-center text-[10px]">
+                      <div className={`w-5 h-5 rounded-full overflow-hidden shrink-0 flex items-center justify-center text-[10px] ${
+                        activeCat === c ? 'bg-white/20' : 'bg-slate-700/60'
+                      }`}>
                         {c === 'All' ? (
                           '🍽️'
                         ) : imageUrl ? (
@@ -618,8 +873,11 @@ export default function TableOrderApp() {
                   filteredMenu.map((item) => {
                     const photos = itemPhotoUrls(item);
                     const thumb = photos[0];
-                    const cartItem = cart.find((x) => x.menuItem === String(item._id));
-                    const qtyInCart = cartItem ? cartItem.qty : 0;
+                    // Sum quantities for this menu item across all variants
+                    const itemCartLines = cart.filter((x) => x.menuItem === String(item._id));
+                    const qtyInCart = itemCartLines.reduce((s, x) => s + x.qty, 0);
+                    // For single-variant or no-variant items, use the first matching line's cartKey
+                    const singleCartKey = !item.hasVariants ? (itemCartLines[0]?.cartKey ?? String(item._id)) : null;
 
                     return (
                       <div
@@ -647,19 +905,17 @@ export default function TableOrderApp() {
                                 </span>
                               )}
                             </div>
-                            {item.description ? (
-                              <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
-                                {item.description}
-                              </p>
-                            ) : (
-                              item.category && <p className="text-[11px] text-slate-500 mt-0.5">{item.category}</p>
-                            )}
+                            {item.category && <p className="text-[11px] text-slate-500 mt-1">{item.category}</p>}
                           </div>
                           
                           <div className="flex items-center justify-between gap-2 mt-3 pt-1">
-                            <span className="text-base font-extrabold tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
-                              {fmtMoney(item.price)}
-                            </span>
+                            {item.hasVariants && item.variants?.length > 0 ? (
+                              <span className="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-full shrink-0">
+                                {item.variants.length} options
+                              </span>
+                            ) : (
+                              <span />
+                            )}
                             
                             <div className="flex items-center gap-2">
                               <button
@@ -671,11 +927,11 @@ export default function TableOrderApp() {
                                 <Eye size={15} />
                               </button>
                               
-                              {qtyInCart > 0 ? (
+                              {qtyInCart > 0 && !item.hasVariants ? (
                                 <div className="inline-flex items-center rounded-lg border border-slate-600/70 bg-slate-800 overflow-hidden h-8 shadow-sm">
                                   <button
                                     type="button"
-                                    onClick={() => changeQty(String(item._id), -1)}
+                                    onClick={() => changeQty(singleCartKey, -1)}
                                     className="w-8 h-full flex items-center justify-center text-slate-300 hover:bg-slate-700 transition font-bold"
                                   >
                                     -
@@ -685,7 +941,7 @@ export default function TableOrderApp() {
                                   </span>
                                   <button
                                     type="button"
-                                    onClick={() => changeQty(String(item._id), 1)}
+                                    onClick={() => changeQty(singleCartKey, 1)}
                                     className="w-8 h-full flex items-center justify-center text-slate-300 hover:bg-slate-700 transition font-bold"
                                   >
                                     +
@@ -695,11 +951,12 @@ export default function TableOrderApp() {
                                 <button
                                   type="button"
                                   disabled={!item.available}
-                                  onClick={() => addOne(item)}
-                                  className="inline-flex items-center gap-1 h-8 px-3.5 rounded-lg text-xs font-extrabold text-white disabled:opacity-40 hover:brightness-110 active:scale-95 transition shrink-0"
+                                  onClick={() => addWithVariant(item)}
+                                  className="inline-flex items-center gap-1 h-8 px-3.5 rounded-lg text-xs font-extrabold disabled:opacity-40 hover:brightness-110 active:scale-95 transition shrink-0"
                                   style={{ backgroundColor: 'var(--qr-accent, #f59e0b)', color: 'var(--qr-on-accent, #fff)' }}
                                 >
-                                  <Plus size={13} /> Add
+                                  <Plus size={13} />
+                                  {item.hasVariants && qtyInCart > 0 ? `${qtyInCart} in cart` : 'Add'}
                                 </button>
                               )}
                             </div>
@@ -729,6 +986,33 @@ export default function TableOrderApp() {
                 )}
               </div>
             </div>
+
+            {/* Floating subtotal bar when cart has items */}
+            {cartCount > 0 && (
+              <div
+                className="absolute left-3 right-3 rounded-2xl shadow-2xl overflow-hidden z-20"
+                style={{
+                  bottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setTab('cart')}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3.5 font-bold text-sm"
+                  style={{
+                    backgroundColor: 'var(--qr-accent, #f59e0b)',
+                    color: 'var(--qr-on-accent, #ffffff)',
+                    boxShadow: '0 0 24px 4px color-mix(in srgb, var(--qr-accent, #f59e0b) 45%, transparent)',
+                  }}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-extrabold">{cartCount}</span>
+                    View Cart
+                  </span>
+                  <span className="tabular-nums font-extrabold">{fmtMoney(cartTotal)}</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -742,15 +1026,18 @@ export default function TableOrderApp() {
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Your selection</p>
                   {cart.map((c) => (
                     <div
-                      key={c.menuItem}
+                      key={c.cartKey}
                       className="flex items-center justify-between gap-2 text-sm bg-[var(--qr-panel)] border border-slate-600/60 rounded-xl px-3 py-2"
                     >
-                      <span className="text-slate-200 truncate min-w-0 flex-1">{c.name}</span>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-slate-200 font-medium truncate block">{c.name}</span>
+                        <span className="text-xs tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>{fmtMoney(c.price)}</span>
+                      </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
                           className="p-1.5 rounded-lg border border-slate-600 text-slate-200"
-                          onClick={() => changeQty(c.menuItem, -1)}
+                          onClick={() => changeQty(c.cartKey, -1)}
                           aria-label="Decrease quantity"
                         >
                           <Minus size={16} />
@@ -759,7 +1046,7 @@ export default function TableOrderApp() {
                         <button
                           type="button"
                           className="p-1.5 rounded-lg border border-slate-600 text-slate-200"
-                          onClick={() => changeQty(c.menuItem, 1)}
+                          onClick={() => changeQty(c.cartKey, 1)}
                         >
                           <Plus size={16} />
                         </button>
@@ -767,7 +1054,7 @@ export default function TableOrderApp() {
                           type="button"
                           title="Remove from cart"
                           className="p-1.5 rounded-lg border border-red-500/50 text-red-400 hover:bg-red-500/10"
-                          onClick={() => removeLine(c.menuItem)}
+                          onClick={() => removeLine(c.cartKey)}
                           aria-label="Remove line"
                         >
                           <Trash2 size={16} />
@@ -840,44 +1127,40 @@ export default function TableOrderApp() {
         </button>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-slate-700 bg-[#151f2e] pt-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.35)]">
-        <button
-          type="button"
-          onClick={() => setTab('menu')}
-          className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-semibold ${
-            tab === 'menu' ? 'text-[var(--qr-accent,#f59e0b)]' : 'text-slate-400'
-          }`}
-        >
-          <ShoppingBag size={20} />
-          Menu
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('cart')}
-          className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-semibold ${
-            tab === 'cart' ? 'text-[var(--qr-accent,#f59e0b)]' : 'text-slate-400'
-          }`}
-        >
-          <span className="relative inline-flex">
-            <ShoppingCart size={20} />
-            {cartCount > 0 ? (
-              <span className="absolute -top-1.5 -right-2 min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center leading-none">
-                {cartCount > 99 ? '99+' : cartCount}
+      <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-slate-800/80 bg-[#080d16] pb-[max(0.35rem,env(safe-area-inset-bottom))] shadow-[0_-4px_24px_rgba(0,0,0,0.5)]">
+        {[
+          { id: 'menu', label: 'Menu', Icon: ShoppingBag },
+          { id: 'cart', label: 'Cart', Icon: ShoppingCart },
+          { id: 'order', label: 'Order', Icon: ClipboardList },
+        ].map(({ id, label, Icon }) => {
+          const active = tab === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTab(id)}
+              className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 pt-2 pb-1.5 text-[11px] font-bold transition-colors ${
+                active ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              {active && (
+                <span
+                  className="absolute top-0 left-1/2 -translate-x-1/2 h-[2px] w-8 rounded-b-full"
+                  style={{ backgroundColor: 'var(--qr-accent, #f59e0b)', boxShadow: '0 0 8px 1px color-mix(in srgb, var(--qr-accent, #f59e0b) 70%, transparent)' }}
+                />
+              )}
+              <span className="relative inline-flex">
+                <Icon size={20} style={active ? { color: 'var(--qr-accent, #f59e0b)' } : {}} />
+                {id === 'cart' && cartCount > 0 ? (
+                  <span className="absolute -top-1.5 -right-2 min-w-[1.125rem] h-[1.125rem] px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                ) : null}
               </span>
-            ) : null}
-          </span>
-          Cart
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('order')}
-          className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-semibold ${
-            tab === 'order' ? 'text-[var(--qr-accent,#f59e0b)]' : 'text-slate-400'
-          }`}
-        >
-          <ClipboardList size={20} />
-          Order
-        </button>
+              <span style={active ? { color: 'var(--qr-accent, #f59e0b)' } : {}}>{label}</span>
+            </button>
+          );
+        })}
       </nav>
 
       {detailItem && (
@@ -885,6 +1168,15 @@ export default function TableOrderApp() {
           item={detailItem}
           currencySymbol={currencySymbol}
           onClose={() => setDetailItem(null)}
+          onAdd={addOne}
+        />
+      )}
+
+      {variantSelectionItem && (
+        <VariantSelectorModal
+          item={variantSelectionItem}
+          currencySymbol={currencySymbol}
+          onClose={() => setVariantSelectionItem(null)}
           onAdd={addOne}
         />
       )}
