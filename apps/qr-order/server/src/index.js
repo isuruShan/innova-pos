@@ -84,7 +84,7 @@ async function start() {
   });
 
   const PORT = parseInt(process.env.PORT, 10) || 5010;
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`[qr-order-server] listening on ${PORT}`);
   });
 }
