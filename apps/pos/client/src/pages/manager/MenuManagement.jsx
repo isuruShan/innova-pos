@@ -81,12 +81,6 @@ function ComboItemsPreview({ comboItems }) {
 export default function MenuManagement() {
   const navigate = useNavigate();
   const { selectedStoreId, isStoreReady } = useStoreContext();
-  const [prevStoreId, setPrevStoreId] = useState(selectedStoreId);
-  if (selectedStoreId !== prevStoreId) {
-    setPrevStoreId(selectedStoreId);
-    setActiveCategory('All');
-    setMenuSearch('');
-  }
   const { data: paidAddons } = useTenantPaidAddons();
   const whatsappAddonActive = paidAddons?.whatsapp === true;
 
@@ -104,6 +98,15 @@ export default function MenuManagement() {
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
   const [sortCriteria, setSortCriteria] = useState('custom');
+
+  // Reset category & search when the selected store changes
+  const [prevStoreId, setPrevStoreId] = useState(selectedStoreId);
+  if (selectedStoreId !== prevStoreId) {
+    setPrevStoreId(selectedStoreId);
+    setActiveCategory('All');
+    setMenuSearch('');
+  }
+
 
   const sort = useMemo(() => {
     if (sortCriteria === 'name-asc' || sortCriteria === 'name-desc') return 'name';
