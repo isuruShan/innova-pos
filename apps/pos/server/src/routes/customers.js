@@ -228,20 +228,30 @@ router.get('/session-checkin-sse/:sessionId', async (req, res) => {
   
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
+    'Cache-Control': 'no-cache, no-transform',
     'Connection': 'keep-alive',
     'X-Accel-Buffering': 'no', // Disable Nginx buffering for SSE
   });
+  if (typeof res.flushHeaders === 'function') {
+    res.flushHeaders();
+  }
+
+  const writeAndFlush = (data) => {
+    res.write(data);
+    if (typeof res.flush === 'function') {
+      res.flush();
+    }
+  };
 
   // Keep-alive tick
   const keepAlive = setInterval(() => {
-    res.write(': keep-alive\n\n');
+    writeAndFlush(': keep-alive\n\n');
   }, 15000);
 
   // Subscribe to check-in notifications from the notification bus (clustered/single instance safe)
   const unsubscribe = subscribeCheckinEvent(sessionId, (message) => {
     console.log(`[session-checkin-sse] Sending event to client for session ${sessionId}, data:`, message);
-    res.write(`data: ${message}\n\n`);
+    writeAndFlush(`data: ${message}\n\n`);
   });
 
   req.on('close', () => {
@@ -250,6 +260,7 @@ router.get('/session-checkin-sse/:sessionId', async (req, res) => {
     unsubscribe();
   });
 });
+
 
 // POST /api/customers/session-checkin-trigger/:sessionId — Called when a customer successfully checks in
 router.post('/session-checkin-trigger/:sessionId', async (req, res) => {
