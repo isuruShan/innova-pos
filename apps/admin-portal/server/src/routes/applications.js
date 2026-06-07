@@ -344,20 +344,25 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
         assignedPlanId = customPlan._id;
         planLocked = true;
       } else {
-        const trialPlan = await SubscriptionPlan.findOne({
-          isTrialPlan: true,
-          planAudience,
-          isActive: true,
-        });
-
-        if (trialPlan) {
-          subStatus = 'trial';
-          trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-          assignedPlanId = trialPlan._id;
+        let selectedPlan = null;
+        if (application.requestedPlanId && mongoose.Types.ObjectId.isValid(application.requestedPlanId)) {
+          selectedPlan = await SubscriptionPlan.findById(application.requestedPlanId);
         }
 
-        if (application.requestedPlanId && mongoose.Types.ObjectId.isValid(application.requestedPlanId)) {
-          pendingPlanId = application.requestedPlanId;
+        if (!selectedPlan) {
+          selectedPlan = await SubscriptionPlan.findOne({ isTrialPlan: true, planAudience, isActive: true });
+        }
+
+        if (!selectedPlan) {
+          selectedPlan = await SubscriptionPlan.findOne({ isDefault: true, planAudience, isActive: true })
+            || await SubscriptionPlan.findOne({ isActive: true });
+        }
+
+        if (selectedPlan) {
+          subStatus = 'trial';
+          trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+          assignedPlanId = selectedPlan._id;
+          pendingPlanId = selectedPlan._id;
           pendingPlanEffectiveAt = trialEndsAt;
         }
       }

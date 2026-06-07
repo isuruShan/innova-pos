@@ -256,7 +256,7 @@ export default function ApplicationDetailPage() {
                 label="Requested Subscription Plan"
                 value={
                   app.requestedPlan
-                    ? `${app.requestedPlan.name} (${app.requestedBillingCycle || 'monthly'})`
+                    ? `${app.requestedPlan.name} Plan — ${app.requestedBillingCycle === 'yearly' ? 'Yearly Billing' : 'Monthly Billing'}`
                     : app.requestedPlanId === 'custom'
                       ? 'Custom Plan (Superadmin locked)'
                       : 'None'

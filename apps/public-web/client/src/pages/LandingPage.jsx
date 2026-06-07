@@ -4,7 +4,7 @@ import {
   Zap, ShoppingCart, BarChart3, Users, Layers, Shield,
   Clock, CheckCircle, Star, ArrowRight, ChefHat, Tablet, TrendingUp, Mail,
   ChevronLeft, ChevronRight, Laptop, Smartphone, Sparkles, Cpu, Activity,
-  Smartphone as PhoneIcon, HeartHandshake, Check, WifiOff, Settings2, BarChart4
+  Smartphone as PhoneIcon, HeartHandshake, Check, WifiOff, Settings2, BarChart4, X
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
