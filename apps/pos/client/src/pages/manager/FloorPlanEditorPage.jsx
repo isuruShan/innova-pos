@@ -387,6 +387,60 @@ export default function FloorPlanEditorPage() {
     };
   }, []);
 
+  // Handle nudging shapes with arrow keys
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (
+        document.activeElement.tagName === 'INPUT' ||
+        document.activeElement.tagName === 'TEXTAREA'
+      ) {
+        return;
+      }
+
+      const isArrowKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key);
+      if (!isArrowKey) return;
+
+      const hasSelection = selectedTable || selectedTables.length > 0;
+      if (!hasSelection || !localPlan) return;
+
+      e.preventDefault(); // Prevent page scrolling
+
+      let dx = 0;
+      let dy = 0;
+      if (e.key === 'ArrowLeft') dx = -1;
+      else if (e.key === 'ArrowRight') dx = 1;
+      else if (e.key === 'ArrowUp') dy = -1;
+      else if (e.key === 'ArrowDown') dy = 1;
+
+      const selectedIds = selectedTable 
+        ? [String(selectedTable.tableId)] 
+        : selectedTables.map(String);
+
+      const updatedTables = localPlan.tables.map((t) => {
+        if (selectedIds.includes(String(t.tableId))) {
+          const newX = Math.max(0, t.x + dx);
+          const newY = Math.max(0, t.y + dy);
+          return { ...t, x: newX, y: newY };
+        }
+        return t;
+      });
+
+      setLocalPlan({ ...localPlan, tables: updatedTables });
+      
+      if (selectedTable) {
+        const matchingTable = updatedTables.find(t => String(t.tableId) === String(selectedTable.tableId));
+        if (matchingTable) {
+          setSelectedTable(matchingTable);
+        }
+      }
+
+      setIsDirty(true);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTable, selectedTables, localPlan]);
+
   // Fetch floor plan
   const { data: floorPlan, isLoading } = useQuery({
     queryKey: ['floor-plan', selectedStoreId],
