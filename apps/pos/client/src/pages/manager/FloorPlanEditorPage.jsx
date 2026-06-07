@@ -1,10 +1,11 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Grid3X3, Save, RotateCcw, Plus, Trash2, Square, Circle, 
+  Grid3X3, Save, RotateCcw, Plus, Trash2, Square, Circle as CircleIcon, 
   Sofa, Wine, ZoomIn, ZoomOut, Move, Users, Layers, List, X, QrCode, Edit2,
   Slash, Type, Map as MapIcon,
 } from 'lucide-react';
+import { Stage, Layer, Rect, Circle, Text, Line, Group, Transformer } from 'react-konva';
 import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
 import { useAuth } from '../../context/AuthContext';
@@ -16,150 +17,193 @@ import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 
 const SHAPES = [
   { id: 'rectangle', icon: Square, label: 'Rectangle' },
-  { id: 'round', icon: Circle, label: 'Round' },
+  { id: 'round', icon: CircleIcon, label: 'Round' },
   { id: 'booth', icon: Sofa, label: 'Booth' },
   { id: 'bar', icon: Wine, label: 'Bar seat' },
 ];
 
 const SHAPE_COLORS = {
-  rectangle: 'bg-amber-500/90',
-  round: 'bg-teal-500/90',
-  booth: 'bg-purple-500/90',
-  bar: 'bg-orange-500/90',
+  rectangle: { fill: '#b45309', stroke: '#f59e0b' },
+  round: { fill: '#0f766e', stroke: '#14b8a6' },
+  booth: { fill: '#6b21a8', stroke: '#a855f7' },
+  bar: { fill: '#c2410c', stroke: '#f97316' },
 };
 
 const STATUS_COLORS = {
-  available: 'ring-2 ring-green-500',
-  occupied: 'ring-2 ring-red-500 animate-pulse',
-  reserved: 'ring-2 ring-yellow-500',
+  occupied: { fill: '#ef4444', stroke: '#f87171' },
+  reserved: { fill: '#eab308', stroke: '#facc15' },
 };
 
-function TableShape({ table, isSelected, onClick, onDragStart, onDragEnd, tableStatus, showCapacity, zoom = 1 }) {
+function TableShape({ table, isSelected, onClick, onDragEnd, tableStatus, showCapacity }) {
   const status = tableStatus?.[String(table.tableId)] || {};
-  const statusClass = status.status ? STATUS_COLORS[status.status] || '' : '';
-  const cellSize = 50 * zoom;
+  const cellSize = 50;
   const capacity = table.capacity || 4;
+  const width = table.width * cellSize;
+  const height = table.height * cellSize;
 
-  // Calculate chair positions around the table
-  const getChairPositions = () => {
+  const colors = useMemo(() => {
+    if (status.status === 'occupied') return STATUS_COLORS.occupied;
+    if (status.status === 'reserved') return STATUS_COLORS.reserved;
+    return SHAPE_COLORS[table.shape] || SHAPE_COLORS.rectangle;
+  }, [status.status, table.shape]);
+
+  const renderChairs = () => {
+    if (!showCapacity) return null;
     const chairs = [];
-    const width = table.width * cellSize - 4;
-    const height = table.height * cellSize - 4;
-    const chairSize = Math.max(8, 12 * zoom);
+    const chairSize = 8;
     
     if (table.shape === 'round') {
-      // Circular arrangement for round tables
-      const radius = (Math.max(width, height) / 2) + chairSize;
+      const radius = (Math.max(width, height) / 2) + 10;
       for (let i = 0; i < capacity; i++) {
         const angle = (i * 2 * Math.PI) / capacity - Math.PI / 2;
-        chairs.push({
-          x: Math.cos(angle) * radius,
-          y: Math.sin(angle) * radius,
-        });
+        chairs.push(
+          <Circle
+            key={`chair-${i}`}
+            x={width / 2 + Math.cos(angle) * radius}
+            y={height / 2 + Math.sin(angle) * radius}
+            radius={chairSize / 2}
+            fill="#475569"
+            stroke="#334155"
+            strokeWidth={1}
+          />
+        );
       }
     } else if (table.shape === 'bar') {
-      // Single side for bar seating
       const spacing = width / (capacity + 1);
       for (let i = 0; i < capacity; i++) {
-        chairs.push({
-          x: spacing * (i + 1) - width / 2,
-          y: height / 2 + chairSize + 4,
-        });
+        chairs.push(
+          <Rect
+            key={`chair-${i}`}
+            x={spacing * (i + 1) - chairSize / 2}
+            y={height + 2}
+            width={chairSize}
+            height={chairSize - 2}
+            fill="#475569"
+            stroke="#334155"
+            strokeWidth={1}
+            cornerRadius={1}
+          />
+        );
       }
     } else {
-      // Rectangle/booth - distribute around perimeter
       const perimeter = 2 * (width + height);
       const spacing = perimeter / capacity;
       
       for (let i = 0; i < capacity; i++) {
         const distance = i * spacing;
-        let x, y;
+        let cx, cy;
         
         if (distance < width) {
-          // Top edge
-          x = distance - width / 2;
-          y = -height / 2 - chairSize - 4;
+          cx = distance;
+          cy = -chairSize - 2;
         } else if (distance < width + height) {
-          // Right edge
-          x = width / 2 + chairSize + 4;
-          y = (distance - width) - height / 2;
+          cx = width + 2;
+          cy = distance - width;
         } else if (distance < 2 * width + height) {
-          // Bottom edge
-          x = width - (distance - width - height) - width / 2;
-          y = height / 2 + chairSize + 4;
+          cx = width - (distance - width - height);
+          cy = height + 2;
         } else {
-          // Left edge
-          x = -width / 2 - chairSize - 4;
-          y = height - (distance - 2 * width - height) - height / 2;
+          cx = -chairSize - 2;
+          cy = height - (distance - 2 * width - height);
         }
         
-        chairs.push({ x, y });
+        chairs.push(
+          <Rect
+            key={`chair-${i}`}
+            x={cx}
+            y={cy}
+            width={chairSize}
+            height={chairSize - 2}
+            fill="#475569"
+            stroke="#334155"
+            strokeWidth={1}
+            cornerRadius={1}
+          />
+        );
       }
     }
-    
     return chairs;
   };
 
-  const chairPositions = showCapacity ? getChairPositions() : [];
-
   return (
-    <div
-      className={`
-        absolute cursor-move flex items-center justify-center text-white font-bold
-        transition-all duration-150 select-none
-        ${SHAPE_COLORS[table.shape] || SHAPE_COLORS.rectangle}
-        ${table.shape === 'round' ? 'rounded-full' : 'rounded-lg'}
-        ${isSelected ? 'ring-4 ring-amber-400 z-20' : 'hover:ring-2 hover:ring-white/50'}
-        ${statusClass}
-      `}
-      style={{
-        left: `${table.x * cellSize}px`,
-        top: `${table.y * cellSize}px`,
-        width: `${table.width * cellSize - 4}px`,
-        height: `${table.height * cellSize - 4}px`,
-        transform: `rotate(${table.rotation || 0}deg)`,
-        fontSize: `${Math.max(10, 12 * zoom)}px`,
-      }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick?.(table, e);
-      }}
+    <Group
+      id={`table-${table.tableId}`}
+      x={table.x * cellSize}
+      y={table.y * cellSize}
+      width={width}
+      height={height}
+      rotation={table.rotation || 0}
+      offsetX={width / 2}
+      offsetY={height / 2}
       draggable
-      onDragStart={(e) => onDragStart?.(e, table)}
-      onDragEnd={onDragEnd}
+      onClick={(e) => onClick?.(table, e.evt)}
+      onTap={(e) => onClick?.(table, e.evt)}
+      onDragEnd={(e) => onDragEnd?.(e, table.tableId)}
+      onTransformEnd={(e) => onDragEnd?.(e, table.tableId)}
     >
-      {/* Chair indicators */}
-      {chairPositions.map((pos, idx) => (
-        <div
-          key={idx}
-          className="absolute bg-slate-600 rounded-sm"
-          style={{
-            width: `${Math.max(8, 12 * zoom)}px`,
-            height: `${Math.max(6, 10 * zoom)}px`,
-            left: `calc(50% + ${pos.x}px)`,
-            top: `calc(50% + ${pos.y}px)`,
-            transform: 'translate(-50%, -50%)',
-          }}
+      {table.shape === 'round' ? (
+        <Circle
+          x={width / 2}
+          y={height / 2}
+          radius={Math.min(width, height) / 2 - 2}
+          fill={colors.fill}
+          stroke={isSelected ? '#38bdf8' : colors.stroke}
+          strokeWidth={isSelected ? 3 : 1.5}
+          shadowBlur={isSelected ? 8 : 4}
+          shadowColor="black"
+          shadowOpacity={0.4}
         />
-      ))}
-      
-      <div className="flex flex-col items-center relative z-10">
-        <span className="truncate max-w-full px-1">{table.label || 'T'}</span>
-        <span style={{ fontSize: `${Math.max(7, 9 * zoom)}px` }} className="opacity-60 capitalize">
-          {table.shape === 'bar' ? 'Bar' : table.shape === 'booth' ? 'Booth' : table.shape === 'round' ? 'Round' : 'Table'}
-        </span>
-        {showCapacity && (
-          <span style={{ fontSize: `${Math.max(8, 10 * zoom)}px` }} className="opacity-75 flex items-center gap-0.5">
-            <Users size={Math.max(8, 10 * zoom)} /> {table.capacity}
-          </span>
-        )}
-      </div>
-      {status.status === 'occupied' && status.seatedMinutes && (
-        <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-red-600 px-1 rounded" style={{ fontSize: `${Math.max(8, 10 * zoom)}px` }}>
-          {status.seatedMinutes}m
-        </div>
+      ) : (
+        <Rect
+          x={2}
+          y={2}
+          width={width - 4}
+          height={height - 4}
+          fill={colors.fill}
+          stroke={isSelected ? '#38bdf8' : colors.stroke}
+          strokeWidth={isSelected ? 3 : 1.5}
+          cornerRadius={table.shape === 'booth' ? 8 : 4}
+          shadowBlur={isSelected ? 8 : 4}
+          shadowColor="black"
+          shadowOpacity={0.4}
+        />
       )}
-    </div>
+
+      {renderChairs()}
+
+      <Text
+        text={table.label || 'T'}
+        x={0}
+        y={height / 2 - 10}
+        width={width}
+        align="center"
+        fontSize={12}
+        fontStyle="bold"
+        fill="#ffffff"
+      />
+      <Text
+        text={`${table.shape === 'bar' ? 'Bar' : table.shape === 'booth' ? 'Booth' : table.shape === 'round' ? 'Round' : 'Table'} (${capacity})`}
+        x={0}
+        y={height / 2 + 4}
+        width={width}
+        align="center"
+        fontSize={8}
+        fill="#e2e8f0"
+        opacity={0.8}
+      />
+      {status.status === 'occupied' && status.seatedMinutes && (
+        <Text
+          text={`${status.seatedMinutes}m`}
+          x={0}
+          y={height + 14}
+          width={width}
+          align="center"
+          fontSize={9}
+          fill="#f87171"
+          fontStyle="bold"
+        />
+      )}
+    </Group>
   );
 }
 
@@ -288,26 +332,6 @@ function TableEditModal({ isOpen, onClose, table, qrOrderEnabled, tenantId, stor
   );
 }
 
-function Zone({ zone, zoom = 1 }) {
-  const cellSize = 50 * zoom;
-  return (
-    <div
-      className="absolute rounded-lg opacity-30 pointer-events-none"
-      style={{
-        left: `${zone.x * cellSize}px`,
-        top: `${zone.y * cellSize}px`,
-        width: `${zone.width * cellSize}px`,
-        height: `${zone.height * cellSize}px`,
-        backgroundColor: zone.color || '#3b82f6',
-      }}
-    >
-      <span className="absolute top-1 left-2 font-medium text-white/80" style={{ fontSize: `${Math.max(10, 12 * zoom)}px` }}>
-        {zone.name}
-      </span>
-    </div>
-  );
-}
-
 export default function FloorPlanEditorPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -315,9 +339,10 @@ export default function FloorPlanEditorPage() {
   const qrOrderEnabled = paidAddons?.qrOrdering === true;
   const { selectedStoreId, isStoreReady, stores } = useStoreContext();
   const { user } = useAuth();
-  const selectedStore = stores.find((s) => String(s._id) === String(selectedStoreId));
   const canvasRef = useRef(null);
   const draggedTableRef = useRef(null);
+  const stageRef = useRef(null);
+  const trRef = useRef(null);
 
   const [selectedTable, setSelectedTable] = useState(null);
   const [selectedTables, setSelectedTables] = useState([]);
@@ -329,12 +354,38 @@ export default function FloorPlanEditorPage() {
   const [localPlan, setLocalPlan] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [nextTableNumber, setNextTableNumber] = useState(1);
-  const [selectionBox, setSelectionBox] = useState(null);
-  const [isSelecting, setIsSelecting] = useState(false);
   const [showTableList, setShowTableList] = useState(false);
   const [editingTableId, setEditingTableId] = useState(null);
   const [drawingLine, setDrawingLine] = useState(null);
   const [drawingHall, setDrawingHall] = useState(null);
+  const [isStageDraggable, setIsStageDraggable] = useState(false);
+
+  // Keyboard spacebar listener to enable Stage panning
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === 'Space') {
+        setIsStageDraggable(true);
+        e.preventDefault();
+      }
+      if (e.key === 'Escape') {
+        setSelectedTable(null);
+        setSelectedTables([]);
+        setDrawingLine(null);
+        setDrawingHall(null);
+      }
+    };
+    const handleKeyUp = (e) => {
+      if (e.code === 'Space') {
+        setIsStageDraggable(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
 
   // Fetch floor plan
   const { data: floorPlan, isLoading } = useQuery({
@@ -406,23 +457,27 @@ export default function FloorPlanEditorPage() {
     }
   }, [tables]);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        setSelectedTable(null);
-        setSelectedTables([]);
-        setIsSelecting(false);
-        setSelectionBox(null);
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   const plan = localPlan || floorPlan;
   const [errorMessage, setErrorMessage] = useState(null);
+
+  // Attach Transformer to selected tables
+  useEffect(() => {
+    if (trRef.current) {
+      const stage = stageRef.current;
+      const nodes = [];
+      if (selectedTable) {
+        const node = stage.findOne(`#table-${selectedTable.tableId}`);
+        if (node) nodes.push(node);
+      } else if (selectedTables.length > 0) {
+        selectedTables.forEach((id) => {
+          const node = stage.findOne(`#table-${id}`);
+          if (node) nodes.push(node);
+        });
+      }
+      trRef.current.nodes(nodes);
+      trRef.current.getLayer()?.batchDraw();
+    }
+  }, [selectedTable, selectedTables, localPlan]);
 
   // Save mutation
   const saveMutation = useMutation({
@@ -440,7 +495,6 @@ export default function FloorPlanEditorPage() {
     },
   });
 
-
   // Create new table mutation
   const createTableMutation = useMutation({
     mutationFn: (tableData) => api.post('/tables', tableData),
@@ -448,16 +502,15 @@ export default function FloorPlanEditorPage() {
       const newTable = response.data;
       qc.invalidateQueries({ queryKey: ['pos-tables'] });
       
-      // Add the newly created table to the floor plan
       if (localPlan && variables._tempPosition) {
         const newTablePos = {
           tableId: newTable._id,
           label: newTable.label,
-          x: variables._tempPosition.x,
-          y: variables._tempPosition.y,
+          x: variables._tempPosition.x + 1, // Offset to account for offset center anchor
+          y: variables._tempPosition.y + 1,
           width: 2,
           height: 2,
-          shape: selectedShape,
+          shape: selectedShape || 'rectangle',
           rotation: 0,
           capacity: newTable.capacity || 4,
         };
@@ -470,7 +523,6 @@ export default function FloorPlanEditorPage() {
       }
       setNextTableNumber((n) => n + 1);
       
-      // Show success message
       const successMsg = `Created ${response.data.label}`;
       setErrorMessage(successMsg);
       setTimeout(() => {
@@ -490,7 +542,6 @@ export default function FloorPlanEditorPage() {
     onSuccess: (response, tableId) => {
       qc.invalidateQueries({ queryKey: ['pos-tables'] });
       
-      // Remove from floor plan if present
       if (localPlan) {
         const updatedTables = localPlan.tables.filter(
           (t) => String(t.tableId) !== String(tableId)
@@ -499,10 +550,8 @@ export default function FloorPlanEditorPage() {
         setIsDirty(true);
       }
       
-      // Clear selection
       setSelectedTable(null);
       setSelectedTables([]);
-      
       setErrorMessage('Table deleted permanently');
       setTimeout(() => setErrorMessage(null), 2000);
     },
@@ -521,7 +570,6 @@ export default function FloorPlanEditorPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['pos-tables'] });
       
-      // Remove from floor plan
       if (localPlan) {
         const deletedIds = new Set(selectedTables.map(String));
         const updatedTables = localPlan.tables.filter(
@@ -533,7 +581,6 @@ export default function FloorPlanEditorPage() {
       
       setSelectedTable(null);
       setSelectedTables([]);
-      
       setErrorMessage(`${selectedTables.length} tables deleted`);
       setTimeout(() => setErrorMessage(null), 2000);
     },
@@ -557,17 +604,64 @@ export default function FloorPlanEditorPage() {
     });
   }, [localPlan, saveMutation]);
 
-  const handleTableDragStart = useCallback((e, table) => {
-    e.dataTransfer.setData('text/plain', String(table.tableId));
-    e.dataTransfer.setData('tableId', String(table.tableId));
-    e.dataTransfer.effectAllowed = 'move';
-    draggedTableRef.current = { type: 'existing', id: String(table.tableId) };
-  }, []);
+  // Handle table drag/transform end on stage
+  const handleTableDragOrTransformEnd = useCallback((e, tableId) => {
+    const node = e.target;
+    const cellSize = 50;
+    
+    // Snapped scale and reset
+    const scaleX = node.scaleX();
+    const scaleY = node.scaleY();
+    node.scaleX(1);
+    node.scaleY(1);
+    
+    // Width and height in cells
+    const rawWidth = (node.width() * scaleX) / cellSize;
+    const rawHeight = (node.height() * scaleY) / cellSize;
+    const newWidth = Math.max(1, Math.round(rawWidth));
+    const newHeight = Math.max(1, Math.round(rawHeight));
+    
+    // Position (taking offset center into account)
+    const newX = Math.round((node.x() - (newWidth * cellSize) / 2) / cellSize);
+    const newY = Math.round((node.y() - (newHeight * cellSize) / 2) / cellSize);
+    const newRotation = Math.round(node.rotation() / 90) * 90;
 
-  const handleTableDragEnd = useCallback(() => {
-    draggedTableRef.current = null;
-  }, []);
+    if (localPlan) {
+      let updatedGridWidth = localPlan.gridWidth || 20;
+      let updatedGridHeight = localPlan.gridHeight || 15;
 
+      if (newX + newWidth > updatedGridWidth) {
+        updatedGridWidth = Math.min(50, newX + newWidth + 2);
+      }
+      if (newY + newHeight > updatedGridHeight) {
+        updatedGridHeight = Math.min(40, newY + newHeight + 2);
+      }
+
+      const updatedTables = localPlan.tables.map((t) => {
+        if (String(t.tableId) === String(tableId)) {
+          return {
+            ...t,
+            x: Math.max(0, newX),
+            y: Math.max(0, newY),
+            width: newWidth,
+            height: newHeight,
+            rotation: newRotation % 360,
+          };
+        }
+        return t;
+      });
+
+      setLocalPlan({
+        ...localPlan,
+        gridWidth: updatedGridWidth,
+        gridHeight: updatedGridHeight,
+        tables: updatedTables,
+      });
+      setIsDirty(true);
+    }
+  }, [localPlan]);
+
+  // Handle Drop from Sidebar to Canvas
   const handleCanvasDrop = useCallback(
     (e) => {
       e.preventDefault();
@@ -578,36 +672,20 @@ export default function FloorPlanEditorPage() {
       const newTableId = e.dataTransfer.getData('newTableId') || (draggedTableRef.current?.type === 'new' ? draggedTableRef.current.id : null);
 
       const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) {
-        console.warn('Floor plan drop failed: missing canvas rect');
-        setErrorMessage('Drop failed: Canvas not ready');
-        setTimeout(() => setErrorMessage(null), 3000);
-        return;
-      }
+      if (!rect) return;
       
-      if (!localPlan) {
-        console.warn('Floor plan drop failed: no local plan');
-        setErrorMessage('Drop failed: Floor plan not loaded');
-        setTimeout(() => setErrorMessage(null), 3000);
-        return;
-      }
+      if (!localPlan) return;
 
-      // Ensure tables array exists
       const currentTables = localPlan.tables || [];
-
-      // Cell size in pixels (accounting for zoom)
       const cellSize = 50 * zoom;
       const x = Math.floor((e.clientX - rect.left) / cellSize);
       const y = Math.floor((e.clientY - rect.top) / cellSize);
-
-      console.log('Drop event:', { newTableId, tableId, x, y, zoom, cellSize });
 
       let updatedGridWidth = localPlan.gridWidth || 20;
       let updatedGridHeight = localPlan.gridHeight || 15;
       const width = newTableId ? 2 : (currentTables.find((t) => String(t.tableId) === tableId)?.width || 2);
       const height = newTableId ? 2 : (currentTables.find((t) => String(t.tableId) === tableId)?.height || 2);
 
-      // Expand grid size if table is dragged beyond current boundaries
       if (x + width > updatedGridWidth) {
         updatedGridWidth = Math.min(50, Math.max(updatedGridWidth + 5, x + width));
       }
@@ -616,19 +694,11 @@ export default function FloorPlanEditorPage() {
       }
 
       if (newTableId) {
-        // Adding a new table from sidebar
         const table = tables.find((t) => String(t._id) === newTableId);
-        if (!table) {
-          console.warn('Table not found:', newTableId);
-          return;
-        }
+        if (!table) return;
 
-        // Check if already on plan
         const exists = currentTables.some((t) => String(t.tableId) === newTableId);
-        if (exists) {
-          console.warn('Table already on floor plan:', newTableId);
-          return;
-        }
+        if (exists) return;
 
         const newTablePos = {
           tableId: table._id,
@@ -637,38 +707,16 @@ export default function FloorPlanEditorPage() {
           y: Math.max(0, Math.min(y, updatedGridHeight - 2)),
           width: 2,
           height: 2,
-          shape: selectedShape,
+          shape: selectedShape || 'rectangle',
           rotation: 0,
           capacity: table.capacity || 4,
         };
-
-        console.log('Adding table to floor plan:', newTablePos);
 
         setLocalPlan({
           ...localPlan,
           gridWidth: updatedGridWidth,
           gridHeight: updatedGridHeight,
           tables: [...currentTables, newTablePos],
-        });
-        setIsDirty(true);
-      } else if (tableId) {
-        // Moving existing table
-        const updatedTables = currentTables.map((t) => {
-          if (String(t.tableId) === tableId) {
-            return {
-              ...t,
-              x: Math.max(0, Math.min(x, updatedGridWidth - t.width)),
-              y: Math.max(0, Math.min(y, updatedGridHeight - t.height)),
-            };
-          }
-          return t;
-        });
-
-        setLocalPlan({
-          ...localPlan,
-          gridWidth: updatedGridWidth,
-          gridHeight: updatedGridHeight,
-          tables: updatedTables,
         });
         setIsDirty(true);
       }
@@ -680,203 +728,57 @@ export default function FloorPlanEditorPage() {
   const handleCanvasDragOver = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
-    const isNew = draggedTableRef.current?.type === 'new' || e.dataTransfer.types.includes('newtableid');
-    e.dataTransfer.dropEffect = isNew ? 'copy' : 'move';
+    e.dataTransfer.dropEffect = 'copy';
   }, []);
 
-  const handleCanvasDragEnter = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-  }, []);
-
-  const handleCanvasDragLeave = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Only set to false if leaving the canvas (not a child element)
-    if (!canvasRef.current?.contains(e.relatedTarget)) {
-      setIsDragOver(false);
-    }
-  }, []);
-
-  // Handle canvas click - create new table or deselect
-  const handleCanvasClick = useCallback((e) => {
-    // Check if we're clicking on the canvas itself (not a table or child element)
-    const isCanvasBackground = 
-      e.target === canvasRef.current || 
-      e.target.classList.contains('zone-overlay') ||
-      e.currentTarget === canvasRef.current;
+  const handleStageMouseDown = (e) => {
+    if (isStageDraggable || e.evt.button === 2) return;
     
-    if (isCanvasBackground) {
-      if (localPlan) {
-        // If tables are selected, deselect them first
-        if (selectedTable || selectedTables.length > 0) {
-          setSelectedTable(null);
-          setSelectedTables([]);
-          return;
-        }
-        
-        // If in Select/Move mode (no shape selected), do not create table
-        if (!selectedShape) return;
-
-        if (selectedShape === 'text') {
-          const rect = canvasRef.current?.getBoundingClientRect();
-          if (!rect) return;
-          const cellSize = 50 * zoom;
-          const gridX = Math.round((e.clientX - rect.left) / cellSize);
-          const gridY = Math.round((e.clientY - rect.top) / cellSize);
-
-          const textVal = prompt("Enter text label:");
-          if (textVal && textVal.trim()) {
-            const newText = {
-              x: gridX,
-              y: gridY,
-              text: textVal.trim(),
-              color: '#f8fafc',
-              fontSize: 14,
-            };
-            setLocalPlan(prev => ({
-              ...prev,
-              texts: [...(prev.texts || []), newText]
-            }));
-            setIsDirty(true);
-          }
-          return;
-        }
-        
-        // Create a new table at click position
-        const rect = canvasRef.current?.getBoundingClientRect();
-        if (!rect) return;
-
-        const cellSize = 50 * zoom;
-        const x = Math.floor((e.clientX - rect.left) / cellSize);
-        const y = Math.floor((e.clientY - rect.top) / cellSize);
-
-        // Clamp to grid bounds
-        const gridX = Math.max(0, Math.min(x, (localPlan.gridWidth || 20) - 2));
-        const gridY = Math.max(0, Math.min(y, (localPlan.gridHeight || 15) - 2));
-
-        // Create a new table in the database and add to floor plan
-        createTableMutation.mutate({
-          label: `Table ${nextTableNumber}`,
-          capacity: 4,
-          sortOrder: tables.length,
-          _tempPosition: { x: gridX, y: gridY }, // Used in onSuccess to place on plan
-        });
-      }
-    }
-  }, [localPlan, zoom, nextTableNumber, tables.length, createTableMutation, selectedTable, selectedTables, selectedShape]);
-
-  const handleTableSelect = useCallback((table, event) => {
-    if (event?.ctrlKey || event?.metaKey) {
-      // Multi-select with Ctrl/Cmd
-      const tableId = String(table.tableId);
-      if (selectedTables.includes(tableId)) {
-        setSelectedTables(selectedTables.filter(id => id !== tableId));
-      } else {
-        setSelectedTables([...selectedTables, tableId]);
-      }
-      setSelectedTable(null);
-    } else {
-      // Single select
-      setSelectedTable(table);
-      setSelectedTables([]);
-    }
-  }, [selectedTables]);
-
-  const handleRotateSelected = useCallback(() => {
-    if (!selectedTable || !localPlan) return;
-    const updatedTables = localPlan.tables.map((t) => {
-      if (String(t.tableId) === String(selectedTable.tableId)) {
-        return { ...t, rotation: ((t.rotation || 0) + 90) % 360 };
-      }
-      return t;
-    });
-    setLocalPlan({ ...localPlan, tables: updatedTables });
-    setSelectedTable({ ...selectedTable, rotation: ((selectedTable.rotation || 0) + 90) % 360 });
-    setIsDirty(true);
-  }, [selectedTable, localPlan]);
-
-  const handleDeleteSelected = useCallback(() => {
-    if (!selectedTable || !localPlan) return;
-    // Only remove from floor plan, not delete permanently
-    const updatedTables = localPlan.tables.filter(
-      (t) => String(t.tableId) !== String(selectedTable.tableId)
-    );
-    setLocalPlan({ ...localPlan, tables: updatedTables });
-    setSelectedTable(null);
-    setIsDirty(true);
-  }, [selectedTable, localPlan]);
-
-  const handleDeletePermanently = useCallback(() => {
-    if (selectedTables.length > 0) {
-      if (confirm(`Permanently delete ${selectedTables.length} table(s)? This cannot be undone.`)) {
-        // Get the actual table IDs from the database
-        const tableIdsToDelete = selectedTables.map(tableId => {
-          const planTable = (localPlan?.tables || []).find(t => String(t.tableId) === String(tableId));
-          return planTable ? planTable.tableId : tableId;
-        });
-        bulkDeleteMutation.mutate(tableIdsToDelete);
-      }
-    } else if (selectedTable) {
-      if (confirm(`Permanently delete "${selectedTable.label}"? This cannot be undone.`)) {
-        // Use the tableId from the floor plan, which is the actual table's _id in the database
-        deleteTableMutation.mutate(selectedTable.tableId);
-      }
-    }
-  }, [selectedTable, selectedTables, deleteTableMutation, bulkDeleteMutation, localPlan]);
-
-  // Selection box and drawing handlers
-  const handleMouseDown = useCallback((e) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const cellSize = 50 * zoom;
+    const stage = stageRef.current;
+    const pos = stage.getRelativePointerPosition();
+    if (!pos) return;
+    
+    const cellSize = 50;
+    const gridX = Math.round(pos.x / cellSize);
+    const gridY = Math.round(pos.y / cellSize);
 
     if (selectedShape === 'line') {
-      const gridX = Math.round((e.clientX - rect.left) / cellSize);
-      const gridY = Math.round((e.clientY - rect.top) / cellSize);
       setDrawingLine({ x1: gridX, y1: gridY, x2: gridX, y2: gridY });
     } else if (selectedShape === 'hall') {
-      const gridX = Math.floor((e.clientX - rect.left) / cellSize);
-      const gridY = Math.floor((e.clientY - rect.top) / cellSize);
-      setDrawingHall({ x1: gridX, y1: gridY, x2: gridX + 1, y2: gridY + 1 });
+      const cellFloorX = Math.floor(pos.x / cellSize);
+      const cellFloorY = Math.floor(pos.y / cellSize);
+      setDrawingHall({ x1: cellFloorX, y1: cellFloorY, x2: cellFloorX + 1, y2: cellFloorY + 1 });
     } else {
-      // Only start selection if clicking on canvas background and not dragging a table
-      if (e.target === canvasRef.current || e.target.classList.contains('zone-overlay') || e.target.tagName === 'svg' || e.target.tagName === 'line') {
-        setIsSelecting(true);
-        setSelectionBox({
-          startX: e.clientX - rect.left,
-          startY: e.clientY - rect.top,
-          currentX: e.clientX - rect.left,
-          currentY: e.clientY - rect.top,
-        });
+      const isBackground = e.target === stage || e.target.hasName('grid-bg') || e.target.hasName('zone-rect');
+      if (isBackground) {
+        setSelectedTable(null);
+        setSelectedTables([]);
       }
     }
-  }, [selectedShape, zoom]);
+  };
 
-  const handleMouseMove = useCallback((e) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const cellSize = 50 * zoom;
+  const handleStageMouseMove = (e) => {
+    if (isStageDraggable) return;
+    const stage = stageRef.current;
+    const pos = stage.getRelativePointerPosition();
+    if (!pos) return;
+    
+    const cellSize = 50;
 
     if (selectedShape === 'line' && drawingLine) {
-      const gridX = Math.round((e.clientX - rect.left) / cellSize);
-      const gridY = Math.round((e.clientY - rect.top) / cellSize);
+      const gridX = Math.round(pos.x / cellSize);
+      const gridY = Math.round(pos.y / cellSize);
       setDrawingLine({ ...drawingLine, x2: gridX, y2: gridY });
     } else if (selectedShape === 'hall' && drawingHall) {
-      const gridX = Math.floor((e.clientX - rect.left) / cellSize);
-      const gridY = Math.floor((e.clientY - rect.top) / cellSize);
+      const gridX = Math.floor(pos.x / cellSize);
+      const gridY = Math.floor(pos.y / cellSize);
       setDrawingHall({ ...drawingHall, x2: gridX + 1, y2: gridY + 1 });
-    } else if (isSelecting && selectionBox) {
-      setSelectionBox({
-        ...selectionBox,
-        currentX: e.clientX - rect.left,
-        currentY: e.clientY - rect.top,
-      });
     }
-  }, [isSelecting, selectionBox, selectedShape, zoom, drawingLine, drawingHall]);
+  };
 
-  const handleMouseUp = useCallback(() => {
+  const handleStageMouseUp = (e) => {
+    if (isStageDraggable) return;
+
     if (selectedShape === 'line' && drawingLine) {
       if (drawingLine.x1 !== drawingLine.x2 || drawingLine.y1 !== drawingLine.y2) {
         const newLine = {
@@ -923,38 +825,104 @@ export default function FloorPlanEditorPage() {
       setDrawingHall(null);
       return;
     }
+  };
 
-    if (!isSelecting || !selectionBox || !localPlan) {
-      setIsSelecting(false);
-      setSelectionBox(null);
-      return;
+  const handleStageClick = (e) => {
+    if (isStageDraggable || e.evt.button === 2) return;
+    
+    const stage = stageRef.current;
+    const isBackground = e.target === stage || e.target.hasName('grid-bg') || e.target.hasName('zone-rect');
+    
+    if (isBackground) {
+      if (selectedShape && selectedShape !== 'line' && selectedShape !== 'hall') {
+        const pos = stage.getRelativePointerPosition();
+        if (!pos) return;
+        const cellSize = 50;
+        const gridX = Math.max(0, Math.min(Math.floor(pos.x / cellSize), (localPlan?.gridWidth || 20) - 2));
+        const gridY = Math.max(0, Math.min(Math.floor(pos.y / cellSize), (localPlan?.gridHeight || 15) - 2));
+
+        if (selectedShape === 'text') {
+          const textVal = prompt("Enter text label:");
+          if (textVal && textVal.trim()) {
+            const newText = {
+              x: gridX,
+              y: gridY,
+              text: textVal.trim(),
+              color: '#f8fafc',
+              fontSize: 14,
+            };
+            setLocalPlan(prev => ({
+              ...prev,
+              texts: [...(prev.texts || []), newText]
+            }));
+            setIsDirty(true);
+          }
+          return;
+        }
+
+        createTableMutation.mutate({
+          label: `Table ${nextTableNumber}`,
+          capacity: 4,
+          sortOrder: tables.length,
+          _tempPosition: { x: gridX, y: gridY },
+        });
+      }
     }
+  };
 
-    // Calculate selection box bounds
-    const minX = Math.min(selectionBox.startX, selectionBox.currentX);
-    const maxX = Math.max(selectionBox.startX, selectionBox.currentX);
-    const minY = Math.min(selectionBox.startY, selectionBox.currentY);
-    const maxY = Math.max(selectionBox.startY, selectionBox.currentY);
+  const handleTableSelect = useCallback((table, event) => {
+    if (event?.ctrlKey || event?.metaKey) {
+      const tableId = String(table.tableId);
+      if (selectedTables.includes(tableId)) {
+        setSelectedTables(selectedTables.filter(id => id !== tableId));
+      } else {
+        setSelectedTables([...selectedTables, tableId]);
+      }
+      setSelectedTable(null);
+    } else {
+      setSelectedTable(table);
+      setSelectedTables([]);
+    }
+  }, [selectedTables]);
 
-    // Find tables within selection box
-    const cellSize = 50 * zoom;
-    const selectedIds = (localPlan.tables || [])
-      .filter((table) => {
-        const tableLeft = table.x * cellSize;
-        const tableTop = table.y * cellSize;
-        const tableRight = tableLeft + (table.width * cellSize);
-        const tableBottom = tableTop + (table.height * cellSize);
-        
-        // Check if table overlaps with selection box
-        return !(tableRight < minX || tableLeft > maxX || tableBottom < minY || tableTop > maxY);
-      })
-      .map((t) => String(t.tableId));
+  const handleRotateSelected = useCallback(() => {
+    if (!selectedTable || !localPlan) return;
+    const updatedTables = localPlan.tables.map((t) => {
+      if (String(t.tableId) === String(selectedTable.tableId)) {
+        return { ...t, rotation: ((t.rotation || 0) + 90) % 360 };
+      }
+      return t;
+    });
+    setLocalPlan({ ...localPlan, tables: updatedTables });
+    setSelectedTable({ ...selectedTable, rotation: ((selectedTable.rotation || 0) + 90) % 360 });
+    setIsDirty(true);
+  }, [selectedTable, localPlan]);
 
-    setSelectedTables(selectedIds);
+  const handleDeleteSelected = useCallback(() => {
+    if (!selectedTable || !localPlan) return;
+    const updatedTables = localPlan.tables.filter(
+      (t) => String(t.tableId) !== String(selectedTable.tableId)
+    );
+    setLocalPlan({ ...localPlan, tables: updatedTables });
     setSelectedTable(null);
-    setIsSelecting(false);
-    setSelectionBox(null);
-  }, [isSelecting, selectionBox, localPlan, zoom, selectedShape, drawingLine, drawingHall]);
+    setIsDirty(true);
+  }, [selectedTable, localPlan]);
+
+  const handleDeletePermanently = useCallback(() => {
+    if (selectedTables.length > 0) {
+      if (confirm(`Permanently delete ${selectedTables.length} table(s)? This cannot be undone.`)) {
+        const tableIdsToDelete = selectedTables.map(tableId => {
+          const planTable = (localPlan?.tables || []).find(t => String(t.tableId) === String(tableId));
+          return planTable ? planTable.tableId : tableId;
+        });
+        bulkDeleteMutation.mutate(tableIdsToDelete);
+      }
+    } else if (selectedTable) {
+      if (confirm(`Permanently delete "${selectedTable.label}"? This cannot be undone.`)) {
+        deleteTableMutation.mutate(selectedTable.tableId);
+      }
+    }
+  }, [selectedTable, selectedTables, deleteTableMutation, bulkDeleteMutation, localPlan]);
 
   const handleUpdateSelectedProperty = useCallback(
     (prop, value) => {
@@ -972,7 +940,6 @@ export default function FloorPlanEditorPage() {
     [selectedTable, localPlan]
   );
 
-  // Tables not yet on the floor plan
   const unplacedTables = useMemo(() => {
     if (!plan) return tables;
     const planTables = plan.tables || [];
@@ -980,7 +947,6 @@ export default function FloorPlanEditorPage() {
     return tables.filter((t) => !placedIds.has(String(t._id)));
   }, [tables, plan]);
 
-  // Merge table labels into plan tables
   const planTablesWithLabels = useMemo(() => {
     if (!plan) return [];
     const planTables = plan.tables || [];
@@ -990,6 +956,39 @@ export default function FloorPlanEditorPage() {
       label: tableMap.get(String(pt.tableId))?.label || pt.label || 'T',
     }));
   }, [plan, tables]);
+
+  // Grid Lines helper (drawn inside Canvas Stage)
+  const renderGridLines = () => {
+    if (!showGrid || !plan) return null;
+    const lines = [];
+    const gridW = plan.gridWidth || 20;
+    const gridH = plan.gridHeight || 15;
+    const cellSize = 50;
+
+    for (let i = 0; i <= gridW; i++) {
+      lines.push(
+        <Line
+          key={`v-${i}`}
+          points={[i * cellSize, 0, i * cellSize, gridH * cellSize]}
+          stroke="#475569"
+          strokeWidth={0.5}
+          opacity={0.3}
+        />
+      );
+    }
+    for (let j = 0; j <= gridH; j++) {
+      lines.push(
+        <Line
+          key={`h-${j}`}
+          points={[0, j * cellSize, gridW * cellSize, j * cellSize]}
+          stroke="#475569"
+          strokeWidth={0.5}
+          opacity={0.3}
+        />
+      );
+    }
+    return lines;
+  };
 
   if (!isStoreReady) {
     return (
@@ -1125,7 +1124,6 @@ export default function FloorPlanEditorPage() {
               Tables ({tables.length})
             </button>
 
-
             <Link
               to="/manager/floor-plan"
               className="px-4 py-2 rounded-lg bg-slate-700 text-slate-350 hover:bg-slate-600 font-semibold text-sm flex items-center gap-2 transition border border-slate-600"
@@ -1143,144 +1141,170 @@ export default function FloorPlanEditorPage() {
             </button>
           </div>
 
-          {/* Canvas */}
-          <div className="flex-1 bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl overflow-auto min-h-0">
+          {/* Canvas Wrapper */}
+          <div
+            ref={canvasRef}
+            className={`flex-1 bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl overflow-auto min-h-0 relative select-none ${
+              isStageDraggable ? 'cursor-grab active:cursor-grabbing' : ''
+            }`}
+            onDrop={handleCanvasDrop}
+            onDragOver={handleCanvasDragOver}
+          >
             {isLoading ? (
               <div className="flex items-center justify-center h-full text-slate-400">
                 Loading floor plan...
               </div>
             ) : plan ? (
-              <div
-                ref={canvasRef}
-                className={`relative transition-all ${isDragOver ? 'ring-2 ring-amber-400 ring-inset bg-amber-500/5' : ''}`}
-                style={{
-                  width: `${(localPlan?.gridWidth || plan.gridWidth || 20) * 50 * zoom}px`,
-                  height: `${(localPlan?.gridHeight || plan.gridHeight || 15) * 50 * zoom}px`,
-                  backgroundImage: showGrid
-                    ? 'linear-gradient(to right, var(--pos-grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--pos-grid-line) 1px, transparent 1px)'
-                    : 'none',
-                  backgroundSize: `${50 * zoom}px ${50 * zoom}px`,
-                }}
-                onDrop={handleCanvasDrop}
-                onDragOver={handleCanvasDragOver}
-                onDragEnter={handleCanvasDragEnter}
-                onDragLeave={handleCanvasDragLeave}
-                onClick={handleCanvasClick}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
+              <Stage
+                ref={stageRef}
+                width={(localPlan?.gridWidth || plan.gridWidth || 20) * 50 * zoom}
+                height={(localPlan?.gridHeight || plan.gridHeight || 15) * 50 * zoom}
+                scaleX={zoom}
+                scaleY={zoom}
+                draggable={isStageDraggable}
+                onMouseDown={handleStageMouseDown}
+                onMouseMove={handleStageMouseMove}
+                onMouseUp={handleStageMouseUp}
+                onClick={handleStageClick}
               >
-                {/* Zones */}
-                {plan.zones?.map((zone) => (
-                  <Zone key={zone._id || zone.name} zone={zone} zoom={zoom} />
-                ))}
+                <Layer>
+                  {/* Grid Background */}
+                  <Rect
+                    name="grid-bg"
+                    x={0}
+                    y={0}
+                    width={(localPlan?.gridWidth || plan.gridWidth || 20) * 50}
+                    height={(localPlan?.gridHeight || plan.gridHeight || 15) * 50}
+                    fill="#1e293b"
+                  />
 
-                {/* SVG Lines */}
-                <svg className="absolute inset-0 pointer-events-none w-full h-full" style={{ zIndex: 4 }}>
-                  {(plan.lines || []).map((line, idx) => (
-                    <line
-                      key={`line-${idx}`}
-                      x1={line.x1 * 50 * zoom}
-                      y1={line.y1 * 50 * zoom}
-                      x2={line.x2 * 50 * zoom}
-                      y2={line.y2 * 50 * zoom}
-                      stroke={line.color || '#94a3b8'}
-                      strokeWidth={(line.thickness || 2) * zoom}
-                    />
+                  {/* Dynamic grid lines */}
+                  {renderGridLines()}
+
+                  {/* Zones / Halls */}
+                  {(plan.zones || []).map((zone, idx) => (
+                    <Group key={`zone-${idx}`}>
+                      <Rect
+                        name="zone-rect"
+                        x={zone.x * 50}
+                        y={zone.y * 50}
+                        width={zone.width * 50}
+                        height={zone.height * 50}
+                        fill={zone.color || '#3b82f6'}
+                        opacity={0.15}
+                        cornerRadius={6}
+                      />
+                      <Text
+                        text={zone.name}
+                        x={zone.x * 50 + 10}
+                        y={zone.y * 50 + 10}
+                        fill="#94a3b8"
+                        fontSize={11}
+                        fontStyle="bold"
+                      />
+                    </Group>
                   ))}
-                  {drawingLine && (
-                    <line
-                      x1={drawingLine.x1 * 50 * zoom}
-                      y1={drawingLine.y1 * 50 * zoom}
-                      x2={drawingLine.x2 * 50 * zoom}
-                      y2={drawingLine.y2 * 50 * zoom}
+
+                  {/* Drawing Hall Preview */}
+                  {drawingHall && (
+                    <Rect
+                      x={Math.min(drawingHall.x1, drawingHall.x2) * 50}
+                      y={Math.min(drawingHall.y1, drawingHall.y2) * 50}
+                      width={Math.abs(drawingHall.x2 - drawingHall.x1) * 50}
+                      height={Math.abs(drawingHall.y2 - drawingHall.y1) * 50}
+                      fill="#f59e0b"
+                      opacity={0.15}
                       stroke="#f59e0b"
-                      strokeWidth={2 * zoom}
-                      strokeDasharray="4,4"
+                      strokeWidth={1}
+                      dash={[4, 4]}
                     />
                   )}
-                </svg>
 
-                {/* Text Labels */}
-                {(plan.texts || []).map((t, idx) => (
-                  <div
-                    key={`text-${idx}`}
-                    className="absolute select-none font-semibold whitespace-nowrap text-center pointer-events-none"
-                    style={{
-                      left: `${t.x * 50 * zoom}px`,
-                      top: `${t.y * 50 * zoom}px`,
-                      color: t.color || '#f8fafc',
-                      fontSize: `${(t.fontSize || 14) * zoom}px`,
-                      transform: 'translate(-50%, -50%)',
-                      zIndex: 6,
-                    }}
-                  >
-                    {t.text}
-                  </div>
-                ))}
-
-                {/* Hall / Zone drawing preview */}
-                {drawingHall && (
-                  <div
-                    className="absolute border border-dashed border-amber-500 bg-amber-500/10 pointer-events-none"
-                    style={{
-                      left: `${Math.min(drawingHall.x1, drawingHall.x2) * 50 * zoom}px`,
-                      top: `${Math.min(drawingHall.y1, drawingHall.y2) * 50 * zoom}px`,
-                      width: `${Math.abs(drawingHall.x2 - drawingHall.x1) * 50 * zoom}px`,
-                      height: `${Math.abs(drawingHall.y2 - drawingHall.y1) * 50 * zoom}px`,
-                      zIndex: 3,
-                    }}
-                  />
-                )}
-
-                {/* Empty state helper */}
-                {planTablesWithLabels.length === 0 && !isDragOver && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none zone-overlay">
-                    <div className="text-center text-slate-500">
-                      <Plus size={48} className="mx-auto mb-2 opacity-50 text-amber-400" />
-                      <p className="text-sm text-amber-400">Click anywhere on the grid to add a table</p>
-                      <p className="text-xs">Or drag existing tables from the sidebar</p>
-                      <p className="text-xs mt-1">Ctrl+Click or drag to multi-select</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Selection Box */}
-                {selectionBox && (
-                  <div
-                    className="absolute border-2 border-amber-400 bg-amber-400/10 pointer-events-none"
-                    style={{
-                      left: `${Math.min(selectionBox.startX, selectionBox.currentX)}px`,
-                      top: `${Math.min(selectionBox.startY, selectionBox.currentY)}px`,
-                      width: `${Math.abs(selectionBox.currentX - selectionBox.startX)}px`,
-                      height: `${Math.abs(selectionBox.currentY - selectionBox.startY)}px`,
-                    }}
-                  />
-                )}
-
-                {/* Tables */}
-                {planTablesWithLabels.map((table) => {
-                  const tableId = String(table.tableId);
-                  const isSingleSelected = selectedTable && String(selectedTable.tableId) === tableId;
-                  const isMultiSelected = selectedTables.includes(tableId);
-                  return (
-                    <TableShape
-                      key={tableId}
-                      table={table}
-                      isSelected={isSingleSelected || isMultiSelected}
-                      onClick={handleTableSelect}
-                      onDragStart={handleTableDragStart}
-                      onDragEnd={handleTableDragEnd}
-                      tableStatus={tableStatus}
-                      showCapacity={showCapacity}
-                      zoom={zoom}
+                  {/* Wall Lines */}
+                  {(plan.lines || []).map((line, idx) => (
+                    <Line
+                      key={`line-${idx}`}
+                      points={[line.x1 * 50, line.y1 * 50, line.x2 * 50, line.y2 * 50]}
+                      stroke={line.color || '#94a3b8'}
+                      strokeWidth={line.thickness || 2}
+                      lineCap="round"
                     />
-                  );
-                })}
-              </div>
+                  ))}
+
+                  {/* Drawing Line Preview */}
+                  {drawingLine && (
+                    <Line
+                      points={[drawingLine.x1 * 50, drawingLine.y1 * 50, drawingLine.x2 * 50, drawingLine.y2 * 50]}
+                      stroke="#f59e0b"
+                      strokeWidth={2}
+                      dash={[4, 4]}
+                      lineCap="round"
+                    />
+                  )}
+
+                  {/* Texts */}
+                  {(plan.texts || []).map((t, idx) => (
+                    <Text
+                      key={`text-${idx}`}
+                      text={t.text}
+                      x={t.x * 50}
+                      y={t.y * 50}
+                      fill={t.color || '#f8fafc'}
+                      fontSize={t.fontSize || 12}
+                      fontStyle="bold"
+                      offsetX={50}
+                      width={100}
+                      align="center"
+                    />
+                  ))}
+
+                  {/* Placeable Tables */}
+                  {planTablesWithLabels.map((table) => {
+                    const tableId = String(table.tableId);
+                    const isSingleSelected = selectedTable && String(selectedTable.tableId) === tableId;
+                    const isMultiSelected = selectedTables.includes(tableId);
+                    return (
+                      <TableShape
+                        key={tableId}
+                        table={table}
+                        isSelected={isSingleSelected || isMultiSelected}
+                        onClick={handleTableSelect}
+                        onDragEnd={handleTableDragOrTransformEnd}
+                        tableStatus={tableStatus}
+                        showCapacity={showCapacity}
+                      />
+                    );
+                  })}
+
+                  {/* Transform overlay handles */}
+                  <Transformer
+                    ref={trRef}
+                    rotateEnabled={true}
+                    enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
+                    boundBoxFunc={(oldBox, newBox) => {
+                      if (newBox.width < 30 || newBox.height < 30) {
+                        return oldBox;
+                      }
+                      return newBox;
+                    }}
+                  />
+                </Layer>
+              </Stage>
             ) : (
               <div className="flex items-center justify-center h-full text-slate-400">
                 No floor plan found
+              </div>
+            )}
+
+            {/* Quick Helper overlay */}
+            {!isLoading && planTablesWithLabels.length === 0 && !isDragOver && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="text-center text-slate-500 bg-slate-900/60 p-6 rounded-xl border border-slate-700/50 backdrop-blur-sm">
+                  <Plus size={40} className="mx-auto mb-2 opacity-50 text-amber-400 animate-bounce" />
+                  <p className="text-sm text-amber-400 font-semibold">Click canvas (with shape selected) to place tables</p>
+                  <p className="text-xs mt-1">Drag unplaced tables from the sidebar</p>
+                  <p className="text-xs mt-1">Hold SPACEBAR + drag mouse to pan canvas</p>
+                </div>
               </div>
             )}
           </div>
@@ -1291,23 +1315,21 @@ export default function FloorPlanEditorPage() {
           {/* Multi-Select Actions */}
           {selectedTables.length > 0 && (
             <div className="bg-[var(--pos-panel)] border border-amber-500/60 rounded-xl p-4 space-y-3">
-              <h3 className="font-semibold text-[var(--pos-text-primary)]">
+              <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm">
                 {selectedTables.length} Table{selectedTables.length > 1 ? 's' : ''} Selected
               </h3>
               <div className="flex gap-2">
                 <button
-                  onClick={() => {
-                    setSelectedTables([]);
-                  }}
-                  className="flex-1 px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 text-sm"
+                  onClick={() => setSelectedTables([])}
+                  className="flex-1 px-3 py-2 rounded-lg bg-slate-700 text-slate-350 hover:bg-slate-600 text-xs"
                 >
                   Deselect All
                 </button>
                 <button
                   onClick={handleDeletePermanently}
-                  className="flex-1 px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm flex items-center justify-center gap-2"
+                  className="flex-1 px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs flex items-center justify-center gap-1.5"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={12} />
                   Delete
                 </button>
               </div>
@@ -1317,7 +1339,7 @@ export default function FloorPlanEditorPage() {
           {/* Selected Table Properties */}
           {selectedTable && (
             <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4 space-y-4">
-              <h3 className="font-semibold text-[var(--pos-text-primary)] flex items-center justify-between">
+              <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm flex items-center justify-between">
                 Table Properties
                 <div className="flex items-center gap-1">
                   <button
@@ -1328,28 +1350,28 @@ export default function FloorPlanEditorPage() {
                     className="p-1.5 rounded-lg text-slate-500 hover:text-slate-350 hover:bg-slate-800 transition"
                     title="Close properties panel"
                   >
-                    <X size={14} />
+                    <X size={12} />
                   </button>
                   <button
                     onClick={handleDeleteSelected}
                     className="p-1.5 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30"
                     title="Remove from floor plan"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={12} />
                   </button>
                   <button
                     onClick={handleDeletePermanently}
                     className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30"
                     title="Delete permanently"
                   >
-                    <Trash2 size={14} className="fill-current" />
+                    <Trash2 size={12} className="fill-current" />
                   </button>
                 </div>
               </h3>
 
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-slate-400">Shape</label>
+                  <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Shape</label>
                   <div className="flex gap-2 mt-1">
                     {SHAPES.map((shape) => (
                       <button
@@ -1358,10 +1380,11 @@ export default function FloorPlanEditorPage() {
                         className={`p-2 rounded-lg transition-colors ${
                           selectedTable.shape === shape.id
                             ? 'bg-amber-500 text-white'
-                            : 'bg-slate-700 text-slate-300'
+                            : 'bg-slate-700 text-slate-300 hover:bg-slate-650'
                         }`}
+                        title={shape.label}
                       >
-                        <shape.icon size={14} />
+                        <shape.icon size={13} />
                       </button>
                     ))}
                   </div>
@@ -1369,46 +1392,46 @@ export default function FloorPlanEditorPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-slate-400">Width</label>
+                    <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Width (Cells)</label>
                     <input
                       type="number"
                       min={1}
-                      max={4}
+                      max={6}
                       value={selectedTable.width}
-                      onChange={(e) => handleUpdateSelectedProperty('width', Number(e.target.value))}
-                      className="w-full mt-1 border border-slate-600 rounded-lg px-3 py-2 text-sm bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)]"
+                      onChange={(e) => handleUpdateSelectedProperty('width', Math.max(1, Number(e.target.value)))}
+                      className="w-full mt-1 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-slate-400">Height</label>
+                    <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Height (Cells)</label>
                     <input
                       type="number"
                       min={1}
-                      max={4}
+                      max={6}
                       value={selectedTable.height}
-                      onChange={(e) => handleUpdateSelectedProperty('height', Number(e.target.value))}
-                      className="w-full mt-1 border border-slate-600 rounded-lg px-3 py-2 text-sm bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)]"
+                      onChange={(e) => handleUpdateSelectedProperty('height', Math.max(1, Number(e.target.value)))}
+                      className="w-full mt-1 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs text-slate-400">Capacity</label>
+                  <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Capacity</label>
                   <input
                     type="number"
                     min={1}
                     max={20}
                     value={selectedTable.capacity}
-                    onChange={(e) => handleUpdateSelectedProperty('capacity', Number(e.target.value))}
-                    className="w-full mt-1 border border-slate-600 rounded-lg px-3 py-2 text-sm bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)]"
+                    onChange={(e) => handleUpdateSelectedProperty('capacity', Math.max(1, Number(e.target.value)))}
+                    className="w-full mt-1 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
 
                 <button
                   onClick={handleRotateSelected}
-                  className="w-full py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 text-sm flex items-center justify-center gap-2"
+                  className="w-full py-1.5 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 text-xs flex items-center justify-center gap-1.5 transition"
                 >
-                  <RotateCcw size={14} />
+                  <RotateCcw size={12} />
                   Rotate 90°
                 </button>
               </div>
@@ -1417,8 +1440,8 @@ export default function FloorPlanEditorPage() {
 
           {/* Unplaced Tables */}
           <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4">
-            <h3 className="font-semibold text-[var(--pos-text-primary)] mb-3 flex items-center gap-2">
-              <Plus size={16} className="text-amber-400" />
+            <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm mb-3 flex items-center gap-2">
+              <Plus size={14} className="text-amber-400" />
               Add Tables
             </h3>
             {unplacedTables.length === 0 ? (
@@ -1435,13 +1458,13 @@ export default function FloorPlanEditorPage() {
                       e.dataTransfer.effectAllowed = 'copy';
                       draggedTableRef.current = { type: 'new', id: String(table._id) };
                     }}
-                    onDragEnd={handleTableDragEnd}
+                    onDragEnd={() => { draggedTableRef.current = null; }}
                     className="flex items-center gap-3 p-2 rounded-lg bg-slate-700/50 cursor-grab hover:bg-slate-700 active:cursor-grabbing"
                   >
-                    <Move size={14} className="text-slate-500" />
-                    <span className="text-sm text-[var(--pos-text-primary)]">{table.label}</span>
-                    <span className="text-xs text-slate-500 ml-auto flex items-center gap-1">
-                      <Users size={12} /> {table.capacity || 4}
+                    <Move size={12} className="text-slate-500" />
+                    <span className="text-xs text-[var(--pos-text-primary)]">{table.label}</span>
+                    <span className="text-[10px] text-slate-500 ml-auto flex items-center gap-1">
+                      <Users size={10} /> {table.capacity || 4}
                     </span>
                   </div>
                 ))}
@@ -1452,14 +1475,14 @@ export default function FloorPlanEditorPage() {
           {/* Halls & Areas Manager */}
           {localPlan?.zones && localPlan.zones.length > 0 && (
             <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4 space-y-3">
-              <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm">
+              <h3 className="font-semibold text-[var(--pos-text-primary)] text-xs">
                 Halls & Areas
               </h3>
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {localPlan.zones.map((zone, i) => (
-                  <div key={`zone-${i}`} className="flex items-center justify-between bg-[var(--pos-surface-inset)] p-2 rounded-lg text-xs">
+                  <div key={`zone-${i}`} className="flex items-center justify-between bg-[var(--pos-surface-inset)] p-2 rounded-lg text-[10px]">
                     <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: zone.color || '#3b82f6' }} />
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: zone.color || '#3b82f6' }} />
                       <span className="truncate text-slate-350 font-medium">{zone.name}</span>
                     </div>
                     <button
@@ -1468,9 +1491,9 @@ export default function FloorPlanEditorPage() {
                         setLocalPlan({ ...localPlan, zones: updated });
                         setIsDirty(true);
                       }}
-                      className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/10 transition"
+                      className="text-red-400 hover:text-red-300 p-0.5 rounded hover:bg-red-500/10 transition"
                     >
-                      <Trash2 size={12} />
+                      <Trash2 size={10} />
                     </button>
                   </div>
                 ))}
@@ -1481,27 +1504,27 @@ export default function FloorPlanEditorPage() {
           {/* Decorations Panel */}
           {((localPlan?.lines && localPlan.lines.length > 0) || (localPlan?.texts && localPlan.texts.length > 0)) && (
             <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4 space-y-3">
-              <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm">
+              <h3 className="font-semibold text-[var(--pos-text-primary)] text-xs">
                 Floor Decorations
               </h3>
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {localPlan.texts?.map((t, i) => (
-                  <div key={`text-${i}`} className="flex items-center justify-between bg-[var(--pos-surface-inset)] p-2 rounded-lg text-xs">
-                    <span className="truncate flex-1 text-slate-350">Text: "{t.text}" ({t.x}, {t.y})</span>
+                  <div key={`text-${i}`} className="flex items-center justify-between bg-[var(--pos-surface-inset)] p-2 rounded-lg text-[10px]">
+                    <span className="truncate flex-1 text-slate-350">Text: "{t.text}"</span>
                     <button
                       onClick={() => {
                         const updated = localPlan.texts.filter((_, idx) => idx !== i);
                         setLocalPlan({ ...localPlan, texts: updated });
                         setIsDirty(true);
                       }}
-                      className="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-500/10 transition"
+                      className="text-red-400 hover:text-red-300 p-0.5 rounded hover:bg-red-500/10 transition"
                     >
-                      <Trash2 size={12} />
+                      <Trash2 size={10} />
                     </button>
                   </div>
                 ))}
                 {localPlan.lines?.map((line, i) => (
-                  <div key={`line-${i}`} className="flex items-center justify-between bg-[var(--pos-surface-inset)] p-2 rounded-lg text-xs">
+                  <div key={`line-${i}`} className="flex items-center justify-between bg-[var(--pos-surface-inset)] p-2 rounded-lg text-[10px]">
                     <span className="truncate flex-1 text-slate-350">Line: ({line.x1},{line.y1}) to ({line.x2},{line.y2})</span>
                     <button
                       onClick={() => {
@@ -1509,9 +1532,9 @@ export default function FloorPlanEditorPage() {
                         setLocalPlan({ ...localPlan, lines: updated });
                         setIsDirty(true);
                       }}
-                      className="text-red-405 hover:text-red-300 p-1 rounded hover:bg-red-500/10 transition"
+                      className="text-red-400 hover:text-red-300 p-0.5 rounded hover:bg-red-500/10 transition"
                     >
-                      <Trash2 size={12} />
+                      <Trash2 size={10} />
                     </button>
                   </div>
                 ))}
@@ -1521,32 +1544,31 @@ export default function FloorPlanEditorPage() {
 
           {/* Legend */}
           <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4">
-            <h3 className="font-semibold text-[var(--pos-text-primary)] mb-3">Status Legend</h3>
-            <div className="space-y-2 text-sm">
+            <h3 className="font-semibold text-[var(--pos-text-primary)] text-xs mb-3">Status Legend</h3>
+            <div className="space-y-2 text-xs">
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded ring-2 ring-green-500" />
+                <div className="w-3 h-3 rounded bg-[#10766e]" />
                 <span className="text-slate-400">Available</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded ring-2 ring-red-500" />
+                <div className="w-3 h-3 rounded bg-red-500" />
                 <span className="text-slate-400">Occupied</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded ring-2 ring-yellow-500" />
+                <div className="w-3 h-3 rounded bg-yellow-500" />
                 <span className="text-slate-400">Reserved</span>
               </div>
             </div>
             
             <div className="mt-4 pt-4 border-t border-slate-700/60">
-              <h4 className="text-xs font-semibold text-slate-400 mb-2">Quick Guide</h4>
-              <ul className="space-y-1 text-xs text-slate-500">
-                <li>• Click grid to add table</li>
-                <li>• Drag tables to move</li>
-                <li>• Ctrl+Click for multi-select</li>
-                <li>• Drag on grid to select area</li>
-                <li>• ESC to deselect</li>
-                <li>• 🗑️ Hollow = Remove from plan</li>
-                <li>• 🗑️ Filled = Delete permanently</li>
+              <h4 className="text-[10px] font-semibold text-slate-400 mb-2 uppercase tracking-wider">Quick Guide</h4>
+              <ul className="space-y-1 text-[10px] text-slate-500">
+                <li>• Shape active → Click stage to place table</li>
+                <li>• Drag tables to move on grid</li>
+                <li>• Use visual handles to resize/rotate tables</li>
+                <li>• Hold Spacebar + drag stage to pan canvas</li>
+                <li>• Ctrl+Click table to multi-select</li>
+                <li>• ESC to clear shapes or drawing</li>
               </ul>
             </div>
           </div>

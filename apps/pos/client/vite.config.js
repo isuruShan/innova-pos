@@ -49,6 +49,7 @@ export default defineConfig({
         enabled: false,
       },
       workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         // Take control immediately on update instead of waiting for tab close.
         skipWaiting: true,
         clientsClaim: true,
