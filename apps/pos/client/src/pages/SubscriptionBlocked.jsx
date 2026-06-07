@@ -21,7 +21,7 @@ export default function SubscriptionBlocked() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-950 p-6">
-      <div className="max-w-md w-full bg-slate-900/80 backdrop-blur-md rounded-3xl border border-red-500/20 shadow-2xl p-8 text-center space-y-6">
+      <div className="max-w-md w-full bg-slate-900 rounded-3xl border border-red-500/20 shadow-2xl p-8 text-center space-y-6">
         <div className="mx-auto w-16 h-16 rounded-full bg-red-950/50 border border-red-500/30 flex items-center justify-center text-red-500 animate-pulse">
           <AlertOctagon size={32} />
         </div>

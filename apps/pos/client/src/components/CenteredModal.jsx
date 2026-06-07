@@ -41,7 +41,7 @@ export default function CenteredModal({
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel || title}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
+      onClick={(e) => { if (!isMobile && e.target === e.currentTarget) onClose?.(); }}
     >
       <div
         className={`bg-[var(--pos-panel)] border border-slate-700/60 shadow-2xl w-full ${maxWidth} flex flex-col ${

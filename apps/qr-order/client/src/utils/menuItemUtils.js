@@ -19,12 +19,16 @@ export function buildCategorySortMap(categories) {
 }
 
 export function buildCategoryTabs(categories, menuItems) {
+  const items = menuItems || [];
+  const categoriesWithProducts = new Set(items.map(item => item.category).filter(Boolean));
+
   const fromApi = (categories || [])
+    .filter((c) => categoriesWithProducts.has(c.name))
     .slice()
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || (a.name || '').localeCompare(b.name || ''))
     .map((c) => c.name)
     .filter((name) => name !== 'Uncategorized');
-  const extras = [...new Set((menuItems || []).map((m) => m.category))]
+  const extras = [...new Set(items.map((m) => m.category))]
     .filter((c) => c && c !== 'Uncategorized' && !fromApi.includes(c))
     .sort();
   return ['All', ...fromApi, ...extras];
@@ -53,6 +57,10 @@ export function sortMenuItemsForDisplay(items, { activeCategory, categorySortMap
     const byOrder = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
     if (byOrder !== 0) return byOrder;
     
+    const dateA = new Date(a.createdAt || 0).getTime();
+    const dateB = new Date(b.createdAt || 0).getTime();
+    if (dateA !== dateB) return dateB - dateA;
+
     const nameA = a.name || '';
     const nameB = b.name || '';
     return nameA.localeCompare(nameB);

@@ -723,11 +723,11 @@ export default function MenuManagement() {
                     )}
                     <div className="absolute top-2 right-2 transition flex gap-1">
                       <button type="button" onClick={() => openEdit(item)}
-                        className="w-7 h-7 bg-slate-900/80 backdrop-blur rounded-lg flex items-center justify-center text-slate-300 hover:text-[var(--pos-text-primary)]">
+                        className="w-7 h-7 bg-slate-900 rounded-lg flex items-center justify-center text-slate-300 hover:text-[var(--pos-text-primary)]">
                         <Edit2 size={12} />
                       </button>
                       <button type="button" onClick={() => setDeleteTarget(item)}
-                        className="w-7 h-7 bg-slate-900/80 backdrop-blur rounded-lg flex items-center justify-center text-slate-300 hover:text-red-400">
+                        className="w-7 h-7 bg-slate-900 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-400">
                         <Trash2 size={12} />
                       </button>
                     </div>

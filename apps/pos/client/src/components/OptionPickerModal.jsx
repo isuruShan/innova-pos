@@ -50,7 +50,9 @@ export default function OptionPickerModal({
   return (
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/70"
-      onClick={onClose}
+      onClick={(e) => {
+        if (window.innerWidth >= 640 && e.target === e.currentTarget) onClose?.();
+      }}
     >
       <div
         className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl"
@@ -184,7 +186,9 @@ export function MenuItemPickerModal({
   return (
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/70"
-      onClick={onClose}
+      onClick={(e) => {
+        if (window.innerWidth >= 640 && e.target === e.currentTarget) onClose?.();
+      }}
     >
       <div
         className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl"
@@ -331,7 +335,9 @@ export function TablePickerModal({
   return (
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/70"
-      onClick={onClose}
+      onClick={(e) => {
+        if (window.innerWidth >= 640 && e.target === e.currentTarget) onClose?.();
+      }}
     >
       <div
         className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl"
@@ -554,7 +560,9 @@ export function CustomerPickerModal({
   return (
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/70"
-      onClick={handleClose}
+      onClick={(e) => {
+        if (window.innerWidth >= 640 && e.target === e.currentTarget) handleClose?.();
+      }}
     >
       <div
         className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl"

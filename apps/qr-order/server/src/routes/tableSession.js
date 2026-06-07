@@ -105,7 +105,7 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
 
     const menuTotal = await MenuItem.countDocuments(menuFilter);
     const menuItemsRaw = await MenuItem.find(menuFilter)
-      .sort({ category: 1, sortOrder: 1, name: 1 })
+      .sort({ category: 1, sortOrder: 1, createdAt: -1 })
       .skip(menuSkip)
       .limit(menuLimit)
       .lean();

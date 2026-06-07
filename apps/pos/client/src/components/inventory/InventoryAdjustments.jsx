@@ -237,10 +237,17 @@ export default function InventoryAdjustments() {
         </div>
       )}
 
-      {/* Close Session Dialog */}
       {showCloseDialog && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--pos-panel)] rounded-2xl border border-slate-700 max-w-md w-full p-6">
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (window.innerWidth >= 640 && e.target === e.currentTarget) setShowCloseDialog(false);
+          }}
+        >
+          <div
+            className="bg-[var(--pos-panel)] rounded-2xl border border-slate-700 max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-bold text-[var(--pos-text-primary)] mb-2">Close Adjustment Session</h3>
             <p className="text-sm text-slate-400 mb-4">
               You made {activeSession.adjustmentCount} adjustments. Merchant admins will be notified.

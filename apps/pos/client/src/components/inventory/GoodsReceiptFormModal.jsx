@@ -246,8 +246,16 @@ export default function GoodsReceiptFormModal({
       : `New ${isReceipt ? 'Goods Receipt' : 'Goods Return'}`;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[var(--pos-panel)] rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto border border-slate-700">
+    <div
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      onClick={(e) => {
+        if (window.innerWidth >= 640 && e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="bg-[var(--pos-panel)] rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto border border-slate-700"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="sticky top-0 bg-[var(--pos-panel)] border-b border-slate-700 px-6 py-4 flex items-center justify-between z-10">
           <div>

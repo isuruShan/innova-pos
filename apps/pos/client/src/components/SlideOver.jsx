@@ -15,7 +15,7 @@ export default function SlideOver({ open, onClose, title, children }) {
     <div className="fixed inset-0 z-[500] flex">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60"
         onClick={onClose}
       />
       {/* Panel */}

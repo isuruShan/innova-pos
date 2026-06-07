@@ -90,7 +90,7 @@ export default function PwaInstallPrompt() {
     <>
       {/* Floating Install Banner */}
       <div className="fixed bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-96 z-50 animate-in slide-in-from-bottom duration-300">
-        <div className="relative overflow-hidden bg-slate-900/90 border border-slate-700/50 backdrop-blur-xl rounded-2xl p-4 shadow-2xl flex items-center justify-between gap-4">
+        <div className="relative overflow-hidden bg-slate-900 border border-slate-700/50 rounded-2xl p-4 shadow-2xl flex items-center justify-between gap-4">
           
           {/* Subtle amber gradient border glow */}
           <div className="absolute inset-0 border border-amber-500/10 pointer-events-none rounded-2xl" />
@@ -130,7 +130,7 @@ export default function PwaInstallPrompt() {
 
       {/* iOS Instructions Modal */}
       {showIosModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-950/80 animate-in fade-in duration-200">
           <div 
             className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl text-left animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200"
             role="dialog"

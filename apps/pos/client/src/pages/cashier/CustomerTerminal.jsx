@@ -325,7 +325,7 @@ export default function CustomerTerminal() {
 
         {/* Info/Subscribe Screen */}
         <div className="flex-1 flex items-center justify-center p-6 bg-slate-950/20">
-          <div className="max-w-2xl w-full bg-slate-900/60 border border-slate-800/60 backdrop-blur-xl p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center relative overflow-hidden">
+          <div className="max-w-2xl w-full bg-slate-900 border border-slate-800/60 p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center relative overflow-hidden">
             {/* Elegant glowing background elements */}
             <div className="absolute -top-24 -left-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
             <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -482,7 +482,7 @@ export default function CustomerTerminal() {
           }}
         >
           {/* Semi-transparent dark overlay for readability */}
-          <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-[2px] z-0"></div>
+          <div className="absolute inset-0 bg-slate-950/70 z-0"></div>
 
           <div className="relative z-10 flex flex-col justify-center h-full items-center w-full">
             {successMessage && (
@@ -500,7 +500,7 @@ export default function CustomerTerminal() {
 
             {customerName || orderState.selectedCustomer ? (
               // Vivid, Glassmorphic Customer Greeting Card
-              <div className="w-full max-w-[380px] bg-slate-900/60 border border-white/10 backdrop-blur-xl p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center relative overflow-hidden animate-fade-in">
+              <div className="w-full max-w-[380px] bg-slate-900 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center relative overflow-hidden animate-fade-in">
                 {/* Subtle glowing elements */}
                 <div className="absolute -top-12 -left-12 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
                 <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
@@ -555,7 +555,7 @@ export default function CustomerTerminal() {
             ) : !showInputScreen ? (
               <div className="flex flex-col items-center justify-center space-y-6 w-full">
                 {/* QR Check-in Box */}
-                <div className="bg-slate-800/50 border border-slate-800 p-5 rounded-2xl text-center flex flex-col items-center w-full max-w-[320px] shadow-lg backdrop-blur-sm">
+                <div className="bg-slate-800 border border-slate-800 p-5 rounded-2xl text-center flex flex-col items-center w-full max-w-[320px] shadow-lg">
                   <h3 className="text-sm font-semibold mb-3 text-slate-300">Scan QR Code to Check-in</h3>
                   <div className="w-[180px] h-[180px] bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden border border-slate-700/50">
                     {qrCodeImgSrc && <img src={qrCodeImgSrc} alt="Check-in QR" className="w-[160px] h-[160px]" />}

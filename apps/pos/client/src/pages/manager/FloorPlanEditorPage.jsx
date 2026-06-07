@@ -257,8 +257,16 @@ function TableEditModal({ isOpen, onClose, table, qrOrderEnabled, tenantId, stor
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[var(--pos-panel)] rounded-2xl border border-slate-700 max-w-md w-full p-6">
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+      onClick={(e) => {
+        if (window.innerWidth >= 640 && e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="bg-[var(--pos-panel)] rounded-2xl border border-slate-700 max-w-md w-full p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold text-[var(--pos-text-primary)]">Edit Table</h3>
           <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition">
@@ -1485,7 +1493,7 @@ export default function FloorPlanEditorPage() {
             {/* Quick Helper overlay */}
             {!isLoading && planTablesWithLabels.length === 0 && !isDragOver && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="text-center text-slate-500 bg-slate-900/60 p-6 rounded-xl border border-slate-700/50 backdrop-blur-sm">
+                <div className="text-center text-slate-500 bg-slate-900 p-6 rounded-xl border border-slate-700/50">
                   <Plus size={40} className="mx-auto mb-2 opacity-50 text-amber-400 animate-bounce" />
                   <p className="text-sm text-amber-400 font-semibold">Click canvas (with shape selected) to place tables</p>
                   <p className="text-xs mt-1">Drag unplaced tables from the sidebar</p>

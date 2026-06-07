@@ -47,7 +47,7 @@ export default function SubscriptionExpiredPage() {
           <h1 className="text-2xl font-bold text-white">Cafinity POS</h1>
         </div>
 
-        <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-8">
+        <div className="bg-slate-900 border border-white/10 rounded-2xl p-8">
           <div className="text-center mb-6">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-500/20 mb-4">
               <AlertCircle size={32} className="text-red-400" />

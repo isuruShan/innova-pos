@@ -943,8 +943,16 @@ export default function InventoryManagement() {
 
       {/* Stock Movements Graph & Table Modal */}
       {graphItem && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
+        <div
+          className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (window.innerWidth >= 640 && e.target === e.currentTarget) setGraphItem(null);
+          }}
+        >
+          <div
+            className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-800 p-4 sm:p-5">
               <div>
@@ -1061,8 +1069,16 @@ export default function InventoryManagement() {
 
       {/* Session Details Modal */}
       {activeSessionDetails && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col">
+        <div
+          className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (window.innerWidth >= 640 && e.target === e.currentTarget) setActiveSessionDetails(null);
+          }}
+        >
+          <div
+            className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-800 p-4 sm:p-5">
               <div>

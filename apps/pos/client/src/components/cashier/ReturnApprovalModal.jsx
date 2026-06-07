@@ -35,8 +35,10 @@ export default function ReturnApprovalModal({ open, onClose, onApproved }) {
 
   return (
     <div
-      className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
+      className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60"
+      onClick={(e) => {
+        if (window.innerWidth >= 640 && e.target === e.currentTarget) onClose();
+      }}
       role="dialog"
       aria-modal="true"
     >

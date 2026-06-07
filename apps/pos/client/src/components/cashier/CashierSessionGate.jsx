@@ -572,7 +572,7 @@ export default function CashierSessionGate({ children, requireSession = false })
         )}
 
         {closeOpen && closedSession && (
-          <div className="fixed inset-0 z-[301] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[301] flex items-center justify-center bg-black/75 p-4">
             <div className="bg-[var(--pos-panel)] border border-slate-600/80 rounded-2xl max-w-lg w-full shadow-2xl shadow-black/60 overflow-hidden">
               <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-700/60 bg-slate-800/50">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/30">
@@ -653,7 +653,7 @@ export default function CashierSessionGate({ children, requireSession = false })
         )}
 
         {closeOpen && session && !closedSession && (
-          <div className="fixed inset-0 z-[301] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[301] flex items-center justify-center bg-black/75 p-4">
             <div className="bg-[var(--pos-panel)] border border-slate-600/80 rounded-2xl max-w-lg w-full shadow-2xl shadow-black/60 relative max-h-[min(94vh,44rem)] flex flex-col overflow-hidden">
               {/* Modal header */}
               <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-700/60 bg-slate-800/50 shrink-0">

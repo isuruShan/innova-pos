@@ -36,7 +36,7 @@ export default function ConfirmDialog({
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
       role="dialog"
       aria-modal="true"
-      onClick={(e) => { if (e.target === e.currentTarget) onCancel?.(); }}
+      onClick={(e) => { if (window.innerWidth >= 640 && e.target === e.currentTarget) onCancel?.(); }}
     >
       <div
         className="bg-[var(--pos-panel)] rounded-xl max-w-sm w-full shadow-xl border border-slate-700 overflow-hidden"

@@ -163,8 +163,16 @@ export default function UberOrdersBar() {
 
       {/* Real-time incoming order popup alert */}
       {alertOrder && (
-        <div className="fixed inset-0 z-[260] flex items-center justify-center p-4 bg-black/70 backdrop-blur-[2px]">
-          <div className="w-full max-w-md rounded-2xl border border-emerald-500/40 bg-[var(--pos-panel)] shadow-2xl overflow-hidden p-5 space-y-4">
+        <div
+          className="fixed inset-0 z-[260] flex items-center justify-center p-4 bg-black/70"
+          onClick={(e) => {
+            if (window.innerWidth >= 640 && e.target === e.currentTarget) setAlertOrder(null);
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-emerald-500/40 bg-[var(--pos-panel)] shadow-2xl overflow-hidden p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-slate-700/60 pb-3">
               <div>
                 <h2 className="text-lg font-bold text-[var(--pos-text-primary)] flex items-center gap-2">

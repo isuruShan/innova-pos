@@ -75,6 +75,10 @@ export function sortMenuItemsForDisplay(items, { activeCategory, categorySortMap
     const byOrder = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
     if (byOrder !== 0) return byOrder;
     
+    const dateA = new Date(a.createdAt || 0).getTime();
+    const dateB = new Date(b.createdAt || 0).getTime();
+    if (dateA !== dateB) return dateB - dateA;
+    
     const nameA = a.name || '';
     const nameB = b.name || '';
     return nameA.localeCompare(nameB);

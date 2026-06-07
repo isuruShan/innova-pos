@@ -48,7 +48,9 @@ export default function ItemVariantPickerModal({ item, onClose, onSelect, title,
   return (
     <div
       className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/70"
-      onClick={onClose}
+      onClick={(e) => {
+        if (window.innerWidth >= 640 && e.target === e.currentTarget) onClose?.();
+      }}
     >
       <div
         className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl"

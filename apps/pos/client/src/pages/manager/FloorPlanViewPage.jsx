@@ -135,8 +135,16 @@ function TableEditModal({ isOpen, onClose, table, qrOrderEnabled, tenantId, stor
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[var(--pos-panel)] rounded-2xl border border-slate-700 max-w-md w-full p-6">
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+      onClick={(e) => {
+        if (window.innerWidth >= 640 && e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="bg-[var(--pos-panel)] rounded-2xl border border-slate-700 max-w-md w-full p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold text-[var(--pos-text-primary)]">Edit Table</h3>
           <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition">

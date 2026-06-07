@@ -40,7 +40,7 @@ const MENU_SORT_FIELDS = {
   createdAt: 'createdAt',
 };
 
-const DEFAULT_MENU_SORT = { createdAt: -1 };
+const DEFAULT_MENU_SORT = { sortOrder: 1, createdAt: -1 };
 
 async function resolveItemCategory(req, body, storeId) {
   const payload = sanitizeMenuPayload(body);
@@ -77,7 +77,7 @@ router.patch('/reorder', protect, authorize('manager', 'merchant_admin', 'supera
       filter.category = String(category).trim();
     }
     const count = await applyReorder(MenuItem, filter, ids, req.user.id);
-    const items = await MenuItem.find(filter).sort({ category: 1, sortOrder: 1, name: 1 }).lean();
+    const items = await MenuItem.find(filter).sort({ category: 1, sortOrder: 1, createdAt: -1 }).lean();
     const enriched = await attachFreshMenuImageUrls(items);
     res.json({ message: 'Menu order updated', count, items: enriched });
   } catch (err) {
