@@ -158,7 +158,19 @@ export default function MenuMixView({ dateFrom, dateTo, registerExport }) {
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         {/* Table representation */}
         <div className="xl:col-span-3 flex flex-col gap-3">
+          <style>{`
+            .menu-mix-scroll-table .hidden.sm\\:block {
+              max-height: 360px;
+              overflow-y: auto;
+            }
+            .menu-mix-scroll-table th {
+              position: sticky !important;
+              top: 0 !important;
+              z-index: 10;
+            }
+          `}</style>
           <ResponsiveTable
+            className="menu-mix-scroll-table"
             rows={sortedData}
             rowKey={(item) => item._id || item.name}
             loading={isPending}
@@ -167,7 +179,6 @@ export default function MenuMixView({ dateFrom, dateTo, registerExport }) {
             currentSort={sortField}
             currentOrder={sortOrder}
             onSort={handleSort}
-            maxHeight="360px"
             columns={[
               {
                 key: 'name', header: 'Item Name',

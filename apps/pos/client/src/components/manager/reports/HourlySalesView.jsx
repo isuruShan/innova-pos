@@ -176,7 +176,19 @@ export default function HourlySalesView({ dateFrom, dateTo, registerExport }) {
 
         {/* Hour-by-Hour Sorting Table */}
         <div className="xl:col-span-2 flex flex-col gap-3">
+          <style>{`
+            .hourly-sales-scroll-table .hidden.sm\\:block {
+              max-height: 360px;
+              overflow-y: auto;
+            }
+            .hourly-sales-scroll-table th {
+              position: sticky !important;
+              top: 0 !important;
+              z-index: 10;
+            }
+          `}</style>
           <ResponsiveTable
+            className="hourly-sales-scroll-table"
             rows={sortedData}
             rowKey={(d) => d.hour}
             loading={isPending}
@@ -185,7 +197,6 @@ export default function HourlySalesView({ dateFrom, dateTo, registerExport }) {
             currentSort={sortField}
             currentOrder={sortOrder}
             onSort={handleSort}
-            maxHeight="360px"
             columns={[
               {
                 key: 'hour',

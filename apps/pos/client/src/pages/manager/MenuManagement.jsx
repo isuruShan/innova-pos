@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Link2,
   ChevronDown, ChevronUp, Tag, GripVertical, Search, LayoutGrid, List,
-  Download, Upload, Phone,
+  Download, Upload, Phone, X,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
@@ -96,7 +96,42 @@ export default function MenuManagement() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
-  const { sort, order, toggleSort } = useListSort('createdAt', 'desc');
+  const [sortCriteria, setSortCriteria] = useState('custom');
+
+  const sort = useMemo(() => {
+    if (sortCriteria === 'name-asc' || sortCriteria === 'name-desc') return 'name';
+    if (sortCriteria === 'category-asc' || sortCriteria === 'category-desc') return 'category';
+    if (sortCriteria === 'price-asc' || sortCriteria === 'price-desc') return 'price';
+    if (sortCriteria === 'newest' || sortCriteria === 'oldest') return 'createdAt';
+    if (sortCriteria === 'status') return 'available';
+    return 'sortOrder';
+  }, [sortCriteria]);
+
+  const order = useMemo(() => {
+    if (sortCriteria === 'name-desc' || sortCriteria === 'category-desc' || sortCriteria === 'price-desc' || sortCriteria === 'newest') return 'desc';
+    return 'asc';
+  }, [sortCriteria]);
+
+  const toggleSort = useCallback((field) => {
+    setSortCriteria((current) => {
+      if (field === 'name') {
+        return current === 'name-asc' ? 'name-desc' : 'name-asc';
+      }
+      if (field === 'category') {
+        return current === 'category-asc' ? 'category-desc' : 'category-asc';
+      }
+      if (field === 'price') {
+        return current === 'price-asc' ? 'price-desc' : 'price-asc';
+      }
+      if (field === 'createdAt') {
+        return current === 'newest' ? 'oldest' : 'newest';
+      }
+      if (field === 'available') {
+        return current === 'status' ? 'custom' : 'status';
+      }
+      return 'custom';
+    });
+  }, []);
 
   const menuKey = menuQueryKey(selectedStoreId);
 
@@ -361,27 +396,42 @@ export default function MenuManagement() {
   );
 
   const displayed = useMemo(() => {
-    if (viewMode === 'grid') return orderedBySortOrder;
+    let result = [...categoryFiltered];
+
+    if (sortCriteria === 'custom') {
+      return sortMenuItemsForDisplay(result, {
+        activeCategory,
+        categorySortMap,
+        menuSearch,
+      });
+    }
+
     const dir = order === 'asc' ? 1 : -1;
     const field = sort;
-    return [...categoryFiltered].sort((a, b) => {
+
+    return result.sort((a, b) => {
       if (field === 'createdAt') {
-        return compareSortValues(new Date(a.createdAt).getTime(), new Date(b.createdAt).getTime(), dir);
+        return compareSortValues(new Date(a.createdAt || 0).getTime(), new Date(b.createdAt || 0).getTime(), dir);
       }
       if (field === 'price') {
-        return compareSortValues(Number(a.price), Number(b.price), dir);
+        const priceA = getItemDisplayPrice(a).price;
+        const priceB = getItemDisplayPrice(b).price;
+        return compareSortValues(priceA, priceB, dir);
       }
       if (field === 'available') {
         return compareSortValues(a.available ? 1 : 0, b.available ? 1 : 0, dir);
       }
-      if (field === 'sortOrder') {
-        return compareSortValues(a.sortOrder ?? 0, b.sortOrder ?? 0, dir);
+      if (field === 'category') {
+        return compareSortValues(a.category || '', b.category || '', dir);
+      }
+      if (field === 'name') {
+        return compareSortValues(a.name || '', b.name || '', dir);
       }
       return compareSortValues(a[field], b[field], dir);
     });
-  }, [categoryFiltered, orderedBySortOrder, viewMode, sort, order]);
+  }, [categoryFiltered, sortCriteria, sort, order, activeCategory, categorySortMap, menuSearch]);
 
-  const canDragProducts = activeCategory !== 'All';
+  const canDragProducts = activeCategory !== 'All' && sortCriteria === 'custom';
 
   const persistMenuReorder = useCallback((fromId, toId) => {
     const reordered = reorderByDrag(orderedBySortOrder, fromId, toId);
@@ -552,21 +602,42 @@ export default function MenuManagement() {
               </button>
             )}
           </div>
-          <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg p-0.5 shrink-0 self-end sm:self-auto">
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'table' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
-            >
-              <List size={14} /> Table
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'grid' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
-            >
-              <LayoutGrid size={14} /> Grid
-            </button>
+          <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto w-full sm:w-auto justify-end">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-slate-500 font-semibold">Sort:</span>
+              <select
+                value={sortCriteria}
+                onChange={(e) => setSortCriteria(e.target.value)}
+                className="bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-350 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+              >
+                <option value="custom">Drag Order / Default</option>
+                <option value="name-asc">Name (A-Z)</option>
+                <option value="name-desc">Name (Z-A)</option>
+                <option value="category-asc">Category (A-Z)</option>
+                <option value="category-desc">Category (Z-A)</option>
+                <option value="price-asc">Price (Low to High)</option>
+                <option value="price-desc">Price (High to Low)</option>
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="status">Availability</option>
+              </select>
+            </div>
+            <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'table' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
+              >
+                <List size={14} /> Table
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'grid' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
+              >
+                <LayoutGrid size={14} /> Grid
+              </button>
+            </div>
           </div>
         </div>
 
@@ -589,6 +660,8 @@ export default function MenuManagement() {
               <p className="text-[11px] text-slate-500 flex items-center gap-1">
                 <GripVertical size={11} /> Drag products to reorder within {activeCategory}
               </p>
+            ) : sortCriteria !== 'custom' ? (
+              <p className="text-[11px] text-slate-500">Drag to reorder is disabled when sorted. Switch back to "Drag Order / Default" to reorder.</p>
             ) : (
               <p className="text-[11px] text-slate-500">Select a category tab to drag and reorder products</p>
             )}
