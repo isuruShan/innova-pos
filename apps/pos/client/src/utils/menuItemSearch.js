@@ -1,8 +1,8 @@
 /** Filter menu items by name, category, or description. */
 export function filterMenuItems(items, query) {
-  const q = query.trim().toLowerCase();
-  if (!q) return items;
-  return items.filter((item) => {
+  const q = (query || '').trim().toLowerCase();
+  if (!q) return items || [];
+  return (items || []).filter((item) => {
     const name = item.name?.toLowerCase() || '';
     const category = item.category?.toLowerCase() || '';
     const description = item.description?.toLowerCase() || '';
@@ -33,7 +33,7 @@ export function buildCategoryTabs(categoryRows, menuItems, { includeInactive = f
     .filter((c) => includeInactive || c.active !== false)
     .filter((c) => categoriesWithActiveProducts.has(c.name)) // Only include if has active products
     .filter((c) => !excludeUncategorized || (c.name?.toLowerCase() !== 'uncategorized')) // Exclude Uncategorized
-    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name))
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || (a.name || '').localeCompare(b.name || ''))
     .map((c) => c.name);
   
   // Extras: orphan categories from menu items (also only if they have active products)
@@ -49,10 +49,10 @@ export function buildCategoryTabs(categoryRows, menuItems, { includeInactive = f
  * Scope items by category tab. When search is active, search across all categories.
  */
 export function scopeMenuItemsByCategory(items, activeCategory, menuSearch) {
-  const searching = menuSearch.trim().length > 0;
+  const searching = (menuSearch || '').trim().length > 0;
   const list = searching || activeCategory === 'All'
-    ? items
-    : items.filter((i) => i.category === activeCategory);
+    ? (items || [])
+    : (items || []).filter((i) => i.category === activeCategory);
   return filterMenuItems(list, menuSearch);
 }
 
@@ -61,17 +61,23 @@ export function scopeMenuItemsByCategory(items, activeCategory, menuSearch) {
  * then item sortOrder, then name.
  */
 export function sortMenuItemsForDisplay(items, { activeCategory, categorySortMap, menuSearch = '' }) {
-  const useCategoryOrder = menuSearch.trim().length > 0 || activeCategory === 'All';
-  return [...items].sort((a, b) => {
-    if (useCategoryOrder) {
+  const useCategoryOrder = (menuSearch || '').trim().length > 0 || activeCategory === 'All';
+  return [...(items || [])].sort((a, b) => {
+    if (useCategoryOrder && categorySortMap) {
       const catA = categorySortMap.get(a.category) ?? 9999;
       const catB = categorySortMap.get(b.category) ?? 9999;
       if (catA !== catB) return catA - catB;
-      if (a.category !== b.category) return a.category.localeCompare(b.category);
+      
+      const catA_name = a.category || '';
+      const catB_name = b.category || '';
+      if (catA_name !== catB_name) return catA_name.localeCompare(catB_name);
     }
     const byOrder = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
     if (byOrder !== 0) return byOrder;
-    return a.name.localeCompare(b.name);
+    
+    const nameA = a.name || '';
+    const nameB = b.name || '';
+    return nameA.localeCompare(nameB);
   });
 }
 
