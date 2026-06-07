@@ -8,6 +8,11 @@ const NOTIFICATION_QUERY_PREFIXES = [
   'notifications-all',
   'waiter-call-notifications',
   'qr-order-update-notifications',
+  // Also refresh the order board and kitchen display when a notification arrives
+  // (e.g. new QR order from table). This avoids waiting for the 15-second poll.
+  'order-board',
+  'kitchen-orders',
+  'cashier-ready-orders',
 ];
 
 /**

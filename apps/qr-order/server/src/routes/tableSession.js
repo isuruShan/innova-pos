@@ -240,8 +240,7 @@ router.post('/:tenantId/:storeId/:tableId/items', async (req, res) => {
       const prevStatus = order.status;
       await appendItemsToOrder(order, items, ctx.ids.tenantId, ctx.ids.storeId);
       if (['preparing', 'ready'].includes(prevStatus)) {
-        order.status = 'pending';
-        order.kitchenAddsStatus = null;
+        order.kitchenAddsStatus = 'pending_adds';
       }
       await order.save();
 

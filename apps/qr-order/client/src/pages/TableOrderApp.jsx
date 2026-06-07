@@ -773,10 +773,13 @@ export default function TableOrderApp() {
                 <ul className="mt-3 divide-y divide-slate-600/50 text-sm">
                   {(order.items || []).map((line, idx) => (
                     <li key={idx} className="py-2 flex justify-between gap-2">
-                      <span className="text-slate-200">
-                        {line.name} × {line.qty}
+                      <span className="text-slate-200 min-w-0">
+                        <span className="block truncate">{line.name} × {line.qty}</span>
+                        {line.variantName && (
+                          <span className="block text-[11px] text-amber-400/80 truncate">↳ {line.variantName}</span>
+                        )}
                       </span>
-                      <span className="text-slate-400 tabular-nums">{fmtMoney(line.price * line.qty)}</span>
+                      <span className="text-slate-400 tabular-nums shrink-0">{fmtMoney(line.price * line.qty)}</span>
                     </li>
                   ))}
                 </ul>
@@ -986,33 +989,6 @@ export default function TableOrderApp() {
                 )}
               </div>
             </div>
-
-            {/* Floating subtotal bar when cart has items */}
-            {cartCount > 0 && (
-              <div
-                className="absolute left-3 right-3 rounded-2xl shadow-2xl overflow-hidden z-20"
-                style={{
-                  bottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))',
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setTab('cart')}
-                  className="w-full flex items-center justify-between gap-3 px-4 py-3.5 font-bold text-sm"
-                  style={{
-                    backgroundColor: 'var(--qr-accent, #f59e0b)',
-                    color: 'var(--qr-on-accent, #ffffff)',
-                    boxShadow: '0 0 24px 4px color-mix(in srgb, var(--qr-accent, #f59e0b) 45%, transparent)',
-                  }}
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-extrabold">{cartCount}</span>
-                    View Cart
-                  </span>
-                  <span className="tabular-nums font-extrabold">{fmtMoney(cartTotal)}</span>
-                </button>
-              </div>
-            )}
           </div>
         )}
 

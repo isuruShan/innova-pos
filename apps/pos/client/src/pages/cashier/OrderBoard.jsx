@@ -102,6 +102,9 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
   const meta = STATUS_META[order.status];
   const isBusy = busyId === order._id;
 
+  const hasPendingAdds = ['preparing', 'ready'].includes(order.status) &&
+    ['pending_adds', 'preparing_adds'].includes(order.kitchenAddsStatus);
+
   let nextStatus = meta?.next;
   let nextLabel = meta?.nextLabel;
   let nextClass = meta?.nextClass;
@@ -153,7 +156,7 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
     <div className={`bg-[var(--pos-panel)] rounded-xl border ${meta.border} overflow-hidden flex flex-col`}>
       {/* Header */}
       <div className={`px-3 py-2.5 flex items-center justify-between gap-1 ${meta.bg}`}>
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           {order._offlinePending && (
             <span
               className="text-[9px] font-bold uppercase tracking-tight text-amber-200/90 bg-amber-500/20 border border-amber-500/35 rounded px-1 py-0.5 flex-shrink-0"
@@ -178,6 +181,14 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
             color={order.orderTypeBranding?.color}
             size="xs"
           />
+          {hasPendingAdds && (
+            <span
+              className="text-[9px] font-bold uppercase tracking-tight text-orange-200 bg-orange-500/20 border border-orange-500/35 rounded px-1.5 py-0.5 flex-shrink-0 animate-pulse"
+              title="New items added need kitchen preparation"
+            >
+              Adds Pending
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <ElapsedBadge createdAt={order.createdAt} status={order.status} />
@@ -254,34 +265,44 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
       </div>
 
       {/* Status action buttons */}
-      {(nextStatus || prevStatus) && (
-        <div className="px-3 pb-3 flex gap-1.5">
-          {prevStatus && (
-            <button
-              onClick={() => onAdvanceStatus(order, prevStatus)}
-              disabled={isBusy}
-              className="flex-1 flex items-center justify-center gap-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-300 text-xs font-medium py-2 rounded-lg transition"
-            >
-              <ChevronLeft size={12} />
-              {prevLabel}
-            </button>
-          )}
-          {nextStatus && (
-            <button
-              onClick={() => onAdvanceStatus(order, nextStatus)}
-              disabled={isBusy}
-              className={`flex-1 flex items-center justify-center gap-1 text-xs font-semibold py-2 rounded-lg transition disabled:opacity-50 ${nextClass}`}
-            >
-              {isBusy ? (
-                <span className="flex items-center gap-1">
-                  <RefreshCw size={11} className="animate-spin" /> …
-                </span>
-              ) : (
-                <>{nextLabel} {!prevStatus && <ChevronRight size={12} />}</>
-              )}
-            </button>
-          )}
+      {hasPendingAdds ? (
+        <div className="px-3 pb-3">
+          <div className="w-full py-2 rounded-lg text-xs font-semibold text-orange-400 bg-orange-500/10 border border-orange-500/20 text-center animate-pulse">
+            {order.kitchenAddsStatus === 'preparing_adds'
+              ? 'Kitchen prepping additions...'
+              : 'Additions pending kitchen...'}
+          </div>
         </div>
+      ) : (
+        (nextStatus || prevStatus) && (
+          <div className="px-3 pb-3 flex gap-1.5">
+            {prevStatus && (
+              <button
+                onClick={() => onAdvanceStatus(order, prevStatus)}
+                disabled={isBusy}
+                className="flex-1 flex items-center justify-center gap-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-300 text-xs font-medium py-2 rounded-lg transition"
+              >
+                <ChevronLeft size={12} />
+                {prevLabel}
+              </button>
+            )}
+            {nextStatus && (
+              <button
+                onClick={() => onAdvanceStatus(order, nextStatus)}
+                disabled={isBusy}
+                className={`flex-1 flex items-center justify-center gap-1 text-xs font-semibold py-2 rounded-lg transition disabled:opacity-50 ${nextClass}`}
+              >
+                {isBusy ? (
+                  <span className="flex items-center gap-1">
+                    <RefreshCw size={11} className="animate-spin" /> …
+                  </span>
+                ) : (
+                  <>{nextLabel} {!prevStatus && <ChevronRight size={12} />}</>
+                )}
+              </button>
+            )}
+          </div>
+        )
       )}
     </div>
   );
@@ -485,7 +506,10 @@ export default function OrderBoard() {
     const q = searchQuery.trim().toLowerCase();
     
     [...orders].reverse().forEach((o) => {
-      if (!g[o.status]) return;
+      const hasPendingAdds = ['preparing', 'ready'].includes(o.status) &&
+        ['pending_adds', 'preparing_adds'].includes(o.kitchenAddsStatus);
+      const displayStatus = hasPendingAdds ? 'pending' : o.status;
+      if (!g[displayStatus]) return;
       
       // Search filter: match order number, customer name, or table number
       if (q) {
@@ -504,14 +528,14 @@ export default function OrderBoard() {
       }
       
       // For cashier mode (not register/manager), filter completed/cancelled to session
-      if (!fohr.isRegister && (o.status === 'completed' || o.status === 'cancelled')) {
+      if (!fohr.isRegister && (displayStatus === 'completed' || displayStatus === 'cancelled')) {
         const creatorId = o.createdBy?._id || o.createdBy?.id || o.createdById;
         if (creatorId && currentUserId && String(creatorId) !== String(currentUserId)) {
           return;
         }
       }
       
-      g[o.status].push(o);
+      g[displayStatus].push(o);
     });
     return g;
   }, [orders, searchQuery, fohr.isRegister, currentUserId]);

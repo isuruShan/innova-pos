@@ -184,7 +184,7 @@ async function notifyCashiersQrOrderChange({ tenantId, storeId, tableLabel, orde
   const tid = castTenantId(tenantId);
   const users = await User.find({
     tenantId: tid,
-    role: 'cashier',
+    role: { $in: ['cashier', 'manager', 'merchant_admin'] },
     isActive: true,
   })
     .select('_id storeIds')
