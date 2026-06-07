@@ -143,7 +143,22 @@ function ContactSection() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-extrabold text-white mb-3">Let's talk operations</h2>
-          <p className="text-slate-400">Have questions about migrating from your old POS system? We are here to help.</p>
+          <p className="text-slate-400 mb-6">Have questions about migrating from your old POS system? We are here to help.</p>
+          <a
+            href="https://wa.me/94773539443"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2.5 px-6 py-3 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg shadow-emerald-950/20 hover:shadow-emerald-950/30 hover:scale-[1.02] active:scale-[0.98] transition-all text-sm group"
+          >
+            <svg
+              className="w-5 h-5 fill-current text-white group-hover:animate-pulse"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.968C16.528 1.97 14.076.945 11.472.945c-5.442 0-9.866 4.372-9.87 9.802 0 1.814.504 3.58 1.46 5.176l-.99 3.616 3.731-.97c1.554.846 3.176 1.291 4.254 1.291zm10.222-7.042c-.282-.141-1.666-.822-1.924-.916-.258-.094-.446-.141-.634.141-.188.282-.728.916-.893 1.1-.164.185-.328.207-.61.066-.282-.141-1.19-.439-2.268-1.4c-.838-.747-1.403-1.671-1.567-1.953-.164-.282-.018-.434.122-.574.127-.127.282-.328.423-.493.141-.164.188-.282.282-.47.094-.188.047-.353-.023-.493-.07-.141-.634-1.527-.868-2.09-.228-.549-.459-.475-.634-.484-.164-.008-.352-.01-.54-.01s-.493.07-.751.353c-.258.282-.986.963-.986 2.348s1.009 2.72 1.15 2.908c.141.188 1.984 3.03 4.81 4.25 2.827 1.22 2.827.813 3.344.765.517-.047 1.667-.68 1.902-1.338.235-.658.235-1.22.164-1.338-.07-.117-.258-.211-.54-.353z" />
+            </svg>
+            Chat with us on WhatsApp
+          </a>
         </div>
 
         {status === 'success' ? (

@@ -10,30 +10,25 @@ export default function Navbar() {
   return (
     <nav className="fixed top-0 inset-x-0 z-50 bg-[#233d4d]/98 backdrop-blur-sm border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-16 relative">
           <Link to="/" className="flex items-center gap-2 shrink-0">
             <img src="/logo-1.png" alt="Cafinity" className="h-9 w-auto rounded-lg shadow-sm" />
           </Link>
 
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-6 absolute left-1/2 -translate-x-1/2">
             {[
               { label: 'Features', href: '/#features' },
               { label: 'Pricing', href: '/#pricing' },
               { label: 'Contact', href: '/#contact' },
-              { label: 'WhatsApp', href: 'https://wa.me/94723539443', target: '_blank', rel: 'noreferrer' },
             ].map((link) => (
               <a
                 key={link.label}
                 href={link.href}
-                target={link.target}
-                rel={link.rel}
                 className="text-sm font-medium text-teal-100/85 hover:text-white transition-colors"
               >
                 {link.label}
               </a>
             ))}
-            <span className="h-5 w-px bg-white/20 shrink-0" aria-hidden />
-  
           </div>
 
           <div className="hidden md:flex items-center gap-3">
@@ -65,13 +60,10 @@ export default function Navbar() {
             { href: '/#features', label: 'Features' },
             { href: '/#pricing', label: 'Pricing' },
             { href: '/#contact', label: 'Contact' },
-            { href: 'https://wa.me/94723539443', label: 'WhatsApp', target: '_blank', rel: 'noreferrer' },
           ].map((link) => (
             <a
               key={link.label}
               href={link.href}
-              target={link.target}
-              rel={link.rel}
               onClick={() => setOpen(false)}
               className="block text-sm font-medium text-teal-100/90 py-2 hover:text-white"
             >

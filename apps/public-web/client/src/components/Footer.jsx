@@ -19,7 +19,7 @@ export default function Footer() {
   };
 
   return (
-    <footer id="contact" className="bg-brand-brown-deep text-white">
+    <footer id="contact" className="bg-[#233d4d] text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
           {/* Brand */}
@@ -84,7 +84,7 @@ export default function Footer() {
               <li className="flex items-center gap-2 text-sm text-gray-400">
                 <Phone size={14} className="shrink-0" />
                 <a
-                  href="https://wa.me/94723539443"
+                  href="https://wa.me/94773539443"
                   target="_blank"
                   rel="noreferrer"
                   className="hover:text-white transition-colors"

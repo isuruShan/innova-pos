@@ -8,26 +8,6 @@ import { useStoreContext } from '../../../context/StoreContext';
 import { exportToCsv } from '../../../utils/exportCsv';
 import ResponsiveTable from '../../ResponsiveTable';
 
-function SortHeader({ label, field, currentSort, currentOrder, onSort }) {
-  const active = currentSort === field;
-  return (
-    <button
-      type="button"
-      onClick={() => onSort(field)}
-      className={`inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider hover:text-gray-200 transition-colors ${
-        active ? 'text-amber-500' : 'text-slate-500'
-      }`}
-    >
-      <span>{label}</span>
-      {active ? (
-        currentOrder === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
-      ) : (
-        <ArrowUpDown size={12} className="opacity-40" />
-      )}
-    </button>
-  );
-}
-
 export default function MenuMixView({ dateFrom, dateTo, registerExport }) {
   const { selectedStoreId } = useStoreContext();
   const [search, setSearch] = useState('');
@@ -166,7 +146,7 @@ export default function MenuMixView({ dateFrom, dateTo, registerExport }) {
           {selectedCategories.length > 0 && (
             <button
               onClick={() => setSelectedCategories([])}
-              className="text-xs text-red-400 hover:underline ml-2"
+              className="text-xs text-red-450 hover:underline ml-2"
             >
               Clear
             </button>
@@ -184,26 +164,33 @@ export default function MenuMixView({ dateFrom, dateTo, registerExport }) {
             loading={isPending}
             skeletonRows={5}
             emptyState="No items matched your filters."
+            currentSort={sortField}
+            currentOrder={sortOrder}
+            onSort={handleSort}
             columns={[
               {
                 key: 'name', header: 'Item Name',
+                sortField: 'name',
                 mobilePrimary: true,
                 render: (item) => <span className="font-medium text-slate-200">{item.name}</span>,
               },
               {
                 key: 'revenue', header: 'Revenue',
+                sortField: 'revenue',
                 mobileRight: true,
                 className: 'text-right', headerClassName: 'text-right',
                 render: (item) => <span className="font-semibold text-slate-200 tabular-nums">{formatCurrency(item.revenue)}</span>,
               },
               {
                 key: 'category', header: 'Category',
+                sortField: 'category',
                 render: (item) => (
                   <span className="bg-slate-800/60 text-slate-400 px-2 py-0.5 rounded-md text-xs">{item.category}</span>
                 ),
               },
               {
                 key: 'qty', header: 'Qty Sold',
+                sortField: 'qty',
                 className: 'text-right', headerClassName: 'text-right',
                 render: (item) => <span className="tabular-nums">{item.qty}</span>,
               },

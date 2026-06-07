@@ -6,6 +6,7 @@ import api from '../../../api/axios';
 import { formatCurrency } from '../../../utils/format';
 import { useStoreContext } from '../../../context/StoreContext';
 import { exportToCsv } from '../../../utils/exportCsv';
+import ResponsiveTable from '../../ResponsiveTable';
 
 const COLORS = ['#f59e0b', '#3b82f6', '#10b981', '#a855f7', '#ef4444', '#06b6d4'];
 
@@ -78,6 +79,20 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
       return sourceSortOrder === 'asc' ? valA - valB : valB - valA;
     });
   }, [bySourceData, sourceSortField, sourceSortOrder]);
+
+  const sortedTypesWithColors = useMemo(() => {
+    return sortedTypes.map((t, idx) => ({
+      ...t,
+      colorIndex: idx,
+    }));
+  }, [sortedTypes]);
+
+  const sortedSourcesWithColors = useMemo(() => {
+    return sortedSources.map((s, idx) => ({
+      ...s,
+      colorIndex: idx + 2,
+    }));
+  }, [sortedSources]);
 
   // Export CSV
   useEffect(() => {
@@ -191,41 +206,45 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
             </div>
 
             {/* Table */}
-            <div className="sm:col-span-3 overflow-hidden border border-slate-800/80 rounded-xl">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-950/40 text-slate-500 border-b border-slate-800">
-                    <th className="px-3 py-2 font-medium">Type</th>
-                    <th className="px-3 py-2 text-right">
-                      <button onClick={() => handleSortType('orders')} className="hover:text-slate-300 inline-flex items-center gap-0.5 font-medium">
-                        Orders {typeSortField === 'orders' ? (typeSortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
-                      </button>
-                    </th>
-                    <th className="px-3 py-2 text-right">
-                      <button onClick={() => handleSortType('revenue')} className="hover:text-slate-300 inline-flex items-center gap-0.5 font-medium">
-                        Revenue {typeSortField === 'revenue' ? (typeSortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/40 text-slate-300">
-                  {sortedTypes.map((t, idx) => (
-                    <tr key={t.type} className="hover:bg-slate-800/10">
-                      <td className="px-3 py-2 flex items-center gap-1.5 font-medium">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+            <div className="sm:col-span-3">
+              <ResponsiveTable
+                rows={sortedTypesWithColors}
+                rowKey={(t) => t.type}
+                loading={isPending}
+                emptyState="No data available"
+                currentSort={typeSortField}
+                currentOrder={typeSortOrder}
+                onSort={handleSortType}
+                columns={[
+                  {
+                    key: 'type',
+                    header: 'Type',
+                    mobilePrimary: true,
+                    render: (t) => (
+                      <span className="flex items-center gap-1.5 font-medium text-slate-200">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[t.colorIndex % COLORS.length] }} />
                         {ORDER_TYPE_LABELS[t.type] || t.type}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono">{t.orders}</td>
-                      <td className="px-3 py-2 text-right font-semibold text-slate-200 font-mono">{formatCurrency(t.revenue)}</td>
-                    </tr>
-                  ))}
-                  {sortedTypes.length === 0 && !isPending && (
-                    <tr>
-                      <td colSpan={3} className="text-center py-4 text-slate-600">No data available</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'orders',
+                    header: 'Orders',
+                    sortField: 'orders',
+                    className: 'text-right',
+                    headerClassName: 'text-right',
+                    render: (t) => <span className="font-mono text-slate-350">{t.orders}</span>,
+                  },
+                  {
+                    key: 'revenue',
+                    header: 'Revenue',
+                    sortField: 'revenue',
+                    className: 'text-right',
+                    headerClassName: 'text-right',
+                    render: (t) => <span className="font-mono font-semibold text-slate-200">{formatCurrency(t.revenue)}</span>,
+                  },
+                ]}
+              />
             </div>
           </div>
         </div>
@@ -272,41 +291,45 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
             </div>
 
             {/* Table */}
-            <div className="sm:col-span-3 overflow-hidden border border-slate-800/80 rounded-xl">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-950/40 text-slate-500 border-b border-slate-800">
-                    <th className="px-3 py-2 font-medium">Source</th>
-                    <th className="px-3 py-2 text-right">
-                      <button onClick={() => handleSortSource('orders')} className="hover:text-slate-300 inline-flex items-center gap-0.5 font-medium">
-                        Orders {sourceSortField === 'orders' ? (sourceSortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
-                      </button>
-                    </th>
-                    <th className="px-3 py-2 text-right">
-                      <button onClick={() => handleSortSource('revenue')} className="hover:text-slate-300 inline-flex items-center gap-0.5 font-medium">
-                        Revenue {sourceSortField === 'revenue' ? (sourceSortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
-                      </button>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/40 text-slate-300">
-                  {sortedSources.map((s, idx) => (
-                    <tr key={s.source} className="hover:bg-slate-800/10">
-                      <td className="px-3 py-2 flex items-center gap-1.5 font-medium">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[(idx + 2) % COLORS.length] }} />
+            <div className="sm:col-span-3">
+              <ResponsiveTable
+                rows={sortedSourcesWithColors}
+                rowKey={(s) => s.source}
+                loading={isPending}
+                emptyState="No data available"
+                currentSort={sourceSortField}
+                currentOrder={sourceSortOrder}
+                onSort={handleSortSource}
+                columns={[
+                  {
+                    key: 'source',
+                    header: 'Source',
+                    mobilePrimary: true,
+                    render: (s) => (
+                      <span className="flex items-center gap-1.5 font-medium text-slate-200">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[s.colorIndex % COLORS.length] }} />
                         {SOURCE_LABELS[s.source] || s.source}
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono">{s.orders}</td>
-                      <td className="px-3 py-2 text-right font-semibold text-slate-200 font-mono">{formatCurrency(s.revenue)}</td>
-                    </tr>
-                  ))}
-                  {sortedSources.length === 0 && !isPending && (
-                    <tr>
-                      <td colSpan={3} className="text-center py-4 text-slate-600">No data available</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'orders',
+                    header: 'Orders',
+                    sortField: 'orders',
+                    className: 'text-right',
+                    headerClassName: 'text-right',
+                    render: (s) => <span className="font-mono text-slate-355">{s.orders}</span>,
+                  },
+                  {
+                    key: 'revenue',
+                    header: 'Revenue',
+                    sortField: 'revenue',
+                    className: 'text-right',
+                    headerClassName: 'text-right',
+                    render: (s) => <span className="font-mono font-semibold text-slate-200">{formatCurrency(s.revenue)}</span>,
+                  },
+                ]}
+              />
             </div>
           </div>
         </div>
