@@ -645,6 +645,15 @@ export default function NewOrder() {
     });
   }, [patchActiveDraft]);
 
+  const { data: paidAddons } = useQuery({
+    queryKey: ['tenant-paid-addons'],
+    queryFn: () => api.get('/tenant/paid-addons').then((r) => r.data),
+    enabled: isStoreReady,
+    staleTime: 60_000,
+  });
+  const loyaltyAddonActive = paidAddons?.loyalty === true;
+  const dualScreenAddonActive = paidAddons?.dualScreen === true;
+
   const tableMgmt = paidAddons?.tableManagement === true;
   const posMenuLayout = selectedStore?.posMenuLayout || 'default';
   const isCompact = posMenuLayout === 'compact';
@@ -757,14 +766,7 @@ export default function NewOrder() {
   }, [qc]);
 
 
-  const { data: paidAddons } = useQuery({
-    queryKey: ['tenant-paid-addons'],
-    queryFn: () => api.get('/tenant/paid-addons').then((r) => r.data),
-    enabled: isStoreReady,
-    staleTime: 60_000,
-  });
-  const loyaltyAddonActive = paidAddons?.loyalty === true;
-  const dualScreenAddonActive = paidAddons?.dualScreen === true;
+
 
   const { data: loyaltyConfig } = useQuery({
     queryKey: ['loyalty-config'],
