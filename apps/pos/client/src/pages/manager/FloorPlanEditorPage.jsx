@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Grid3X3, Save, RotateCcw, Plus, Trash2, Square, Circle, 
   Sofa, Wine, ZoomIn, ZoomOut, Move, Users, Layers, List, X, QrCode, Edit2,
-  Slash, Type, Map,
+  Slash, Type, Map as MapIcon,
 } from 'lucide-react';
 import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
@@ -1066,7 +1066,7 @@ export default function FloorPlanEditorPage() {
                 }`}
                 title="Define Hall / Area"
               >
-                <Map size={16} />
+                <MapIcon size={16} />
               </button>
             </div>
 
