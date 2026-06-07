@@ -645,7 +645,7 @@ export default function NewOrder() {
     });
   }, [patchActiveDraft]);
 
-  const tableMgmt = selectedStore?.tableManagementEnabled === true;
+  const tableMgmt = paidAddons?.tableManagement === true;
   const posMenuLayout = selectedStore?.posMenuLayout || 'default';
   const isCompact = posMenuLayout === 'compact';
   const deferPayment = tableMgmt && orderType === 'dine-in';

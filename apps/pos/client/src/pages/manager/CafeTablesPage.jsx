@@ -60,7 +60,7 @@ export default function CafeTablesPage() {
   const { data: tables = [], isPending } = useQuery({
     queryKey: ['pos-tables', selectedStoreId],
     queryFn: () => api.get('/tables').then((r) => r.data),
-    enabled: isStoreReady && Boolean(selectedStore?.tableManagementEnabled),
+    enabled: isStoreReady,
   });
 
   const invalidate = () => {
@@ -68,14 +68,6 @@ export default function CafeTablesPage() {
     qc.invalidateQueries({ queryKey: ['floor-plan'] });
   };
 
-  const updateStoreMutation = useMutation({
-    mutationFn: (payload) => api.put(`/stores/${selectedStoreId}`, payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['pos-stores'] });
-      setError('');
-    },
-    onError: (e) => setError(e.response?.data?.message || 'Could not update store'),
-  });
 
   const createMut = useMutation({
     mutationFn: (payload) => api.post('/tables', payload),
@@ -119,7 +111,6 @@ export default function CafeTablesPage() {
     createMut.mutate({ label: label.trim(), sortOrder: Number(sortOrder) || 0 });
   };
 
-  const tmEnabled = selectedStore?.tableManagementEnabled === true;
 
   const [qrAddonModal, setQrAddonModal] = useState(false);
 
@@ -136,7 +127,7 @@ export default function CafeTablesPage() {
           Café tables & QR ordering
         </h1>
         <p className="text-slate-500 text-sm mt-1">
-          Turn on table management for <strong>{selectedStore?.name || '…'}</strong>, define tables, then print or share QR codes so guests can order from their phones.
+          Manage tables for <strong>{selectedStore?.name || '…'}</strong> — define tables, then print or share QR codes so guests can order from their phones.
         </p>
       </div>
     ),
@@ -155,26 +146,6 @@ export default function CafeTablesPage() {
             Select a store in the header first.
           </p>
         ) : (
-          <div className="rounded-2xl border border-slate-700/60 bg-[var(--pos-panel)] p-4 space-y-3">
-            <label className="flex items-center gap-3 text-sm text-[var(--pos-text-primary)] cursor-pointer">
-              <input
-                type="checkbox"
-                checked={tmEnabled}
-                onChange={(e) =>
-                  updateStoreMutation.mutate({ tableManagementEnabled: e.target.checked })
-                }
-                disabled={updateStoreMutation.isPending}
-                className="rounded border-slate-600 w-4 h-4"
-              />
-              <span>
-                Enable table management for this store (table picker on POS, pay-at-checkout for dine-in, guest QR ordering)
-              </span>
-            </label>
-            {error ? <p className="text-sm text-red-400">{error}</p> : null}
-          </div>
-        )}
-
-        {isStoreReady && tmEnabled ? (
           <>
             <form onSubmit={onCreate} className="rounded-xl border border-slate-700/60 bg-[var(--pos-panel)] p-4 flex flex-wrap gap-3 items-end">
               <div className="flex-1 min-w-[140px]">
@@ -321,11 +292,7 @@ export default function CafeTablesPage() {
               )}
             </div>
           </>
-        ) : isStoreReady ? (
-          <p className="text-sm text-slate-500 border border-dashed border-slate-700 rounded-xl px-4 py-6 text-center">
-            Turn on table management above to configure tables and QR codes.
-          </p>
-        ) : null}
+        )}
       </div>
 
       {qrAddonModal && (

@@ -11,6 +11,7 @@ import { useBranding } from '../context/BrandingContext';
 import { printReceipt, printKitchenTicket } from '../utils/receiptPrint';
 import { buildCategorySortMap, resolveMenuDisplayItems } from '../utils/menuItemSearch';
 import OptionPickerModal, { MenuItemPickerModal, TablePickerModal } from './OptionPickerModal';
+import { useTenantPaidAddons } from '../hooks/useTenantPaidAddons';
 
 const CACHEABLE_QUERIES = ['order-board', 'kitchen-orders', 'cashier-ready-orders', 'recent-orders', 'manager-orders', 'sales-report'];
 
@@ -252,10 +253,9 @@ function AddItemRow({ menuItems, existingIds, onAdd, orderType, partners, getIte
 export default function OrderDetailSlideOver({ order, onClose, canCancel = true, hidePricing = false }) {
   const qc = useQueryClient();
   const branding = useBranding();
-  const { selectedStoreId, isStoreReady, stores } = useStoreContext();
-  const selectedStore =
-    stores.find((s) => String(s._id) === String(selectedStoreId)) || stores.find((s) => s.isDefault) || null;
-  const tableMgmt = selectedStore?.tableManagementEnabled === true;
+  const { selectedStoreId, isStoreReady } = useStoreContext();
+  const { data: paidAddons } = useTenantPaidAddons();
+  const tableMgmt = paidAddons?.tableManagement === true;
   const isEditable = order && EDITABLE_STATUSES.includes(order.status) && order.orderType !== 'uber-eats';
 
   const [orderType, setOrderType] = useState(order?.orderType || 'dine-in');

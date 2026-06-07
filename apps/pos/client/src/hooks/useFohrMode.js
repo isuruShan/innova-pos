@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useStoreContext } from '../context/StoreContext';
 import { Utensils } from 'lucide-react';
 import { CASHIER_NAV_GROUPS } from '../constants/cashierLinks';
 import { REGISTER_NAV_GROUPS } from '../constants/registerLinks';
@@ -19,17 +18,13 @@ export function normalizePosRole(role) {
 export function useFohrMode() {
   const { pathname } = useLocation();
   const { user } = useAuth();
-  const { stores, selectedStoreId } = useStoreContext();
   const { data: paidAddons } = useTenantPaidAddons();
   const role = normalizePosRole(user?.role);
   const isRegister = pathname.startsWith('/register');
   const isCashierRole = role === 'cashier';
 
-  const selectedStore = stores.find((s) => String(s._id) === String(selectedStoreId));
-  const tableMgmt = selectedStore?.tableManagementEnabled === true;
   const tableAddonActive = paidAddons?.tableManagement === true;
-  const isManagerOrAdmin = ['manager', 'merchant_admin'].includes(role);
-  const showTables = tableAddonActive && (tableMgmt || isRegister || isManagerOrAdmin);
+  const showTables = tableAddonActive;
 
   const navGroups = useMemo(() => {
     const base = isRegister ? [...REGISTER_NAV_GROUPS] : [...CASHIER_NAV_GROUPS];

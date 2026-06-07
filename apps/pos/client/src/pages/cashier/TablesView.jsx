@@ -9,6 +9,7 @@ import { useFohrMode } from '../../hooks/useFohrMode';
 import { useCashierDraftOrders } from '../../context/CashierDraftOrdersContext';
 import Navbar from '../../components/Navbar';
 import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
+import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 
 const STATUS_STYLES = {
   available: {
@@ -39,9 +40,9 @@ const SHAPE_RADIUS = {
 };
 
 export default function TablesView() {
-  const { selectedStoreId, isStoreReady, stores } = useStoreContext();
-  const selectedStore = stores.find((s) => String(s._id) === String(selectedStoreId));
-  const tableMgmt = selectedStore?.tableManagementEnabled === true;
+  const { selectedStoreId, isStoreReady } = useStoreContext();
+  const { data: paidAddons } = useTenantPaidAddons();
+  const tableMgmt = paidAddons?.tableManagement === true;
   
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -200,30 +201,6 @@ export default function TablesView() {
     );
   }
 
-  if (!tableMgmt) {
-    return (
-      <div className="min-h-screen flex flex-col bg-[var(--pos-page-bg)]">
-        <Navbar groups={fohr.navGroups} />
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto">
-          <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 mb-4">
-            <Utensils size={32} />
-          </div>
-          <h2 className="text-lg font-bold text-[var(--pos-text-primary)]">Table Management Disabled</h2>
-          <p className="text-sm text-slate-400 mt-2">
-            Table management is not enabled for this store. You can enable it in the back-office Settings.
-          </p>
-          {(user?.role === 'manager' || user?.role === 'merchant_admin') && (
-            <button
-              onClick={() => navigate('/manager/cafe-tables')}
-              className="mt-6 px-4 py-2.5 rounded-xl bg-amber-500 text-white font-semibold text-sm hover:bg-amber-600 transition"
-            >
-              Configure Café Tables
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="h-screen flex flex-col bg-[var(--pos-page-bg)] text-[var(--pos-text-primary)] select-none overflow-hidden">

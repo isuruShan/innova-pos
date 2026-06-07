@@ -24,37 +24,35 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
-      // Register service worker for PWA functionality
+      // Evict any stale service worker that might be serving a cached old bundle.
+      // This runs before vite-plugin-pwa registers the new SW, so stale caches
+      // are cleared on first load after a deployment.
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-              console.log('✅ ServiceWorker registered:', registration.scope);
-              
-              // Check for updates
-              registration.addEventListener('updatefound', () => {
-                console.log('🔄 ServiceWorker update found');
-              });
-            })
-            .catch(error => {
-              console.error('❌ ServiceWorker registration failed:', error);
-            });
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((reg) => {
+            // Force the waiting SW (new version) to activate immediately.
+            if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          });
         });
-      } else {
-        console.warn('⚠️ ServiceWorkers not supported in this browser');
+
+        // When the new SW takes over, reload to get the fresh bundle.
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          // Only reload once to avoid an infinite loop.
+          if (!sessionStorage.getItem('sw-reloaded')) {
+            sessionStorage.setItem('sw-reloaded', '1');
+            window.location.reload();
+          }
+        });
       }
 
       // Listen for install prompt
       window.addEventListener('beforeinstallprompt', (e) => {
-        console.log('✅ PWA install prompt available');
         e.preventDefault();
         window.deferredPrompt = e;
-        // Dispatch custom event so React components can listen
         window.dispatchEvent(new CustomEvent('pwa-beforeinstallprompt', { detail: e }));
       });
 
       window.addEventListener('appinstalled', () => {
-        console.log('✅ PWA installed successfully');
         window.deferredPrompt = null;
         window.dispatchEvent(new CustomEvent('pwa-installed'));
       });

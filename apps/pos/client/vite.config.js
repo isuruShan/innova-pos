@@ -44,12 +44,14 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['logo-1.png', 'favicon.svg'],
       manifest: pwaManifest,
-      // Enable service worker in dev so PWA features are testable locally.
+      // Disable SW in dev — it caches dev bundles and causes stale-JS errors.
       devOptions: {
-        enabled: true,
-        type: 'module',
+        enabled: false,
       },
       workbox: {
+        // Take control immediately on update instead of waiting for tab close.
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,woff,webmanifest}'],
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api\//, /^\/uploads\//],

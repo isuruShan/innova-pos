@@ -383,11 +383,6 @@ export default function Navbar({ links = [], groups: groupsProp }) {
   const { data: paidAddons } = useTenantPaidAddons();
   const activePaidAddons = paidAddons || {};
 
-  const selectedStore = useMemo(() => {
-    return stores.find((s) => String(s._id) === String(selectedStoreId));
-  }, [stores, selectedStoreId]);
-  const tableMgmtEnabled = selectedStore?.tableManagementEnabled === true;
-
   const navGroups = useMemo(() => {
     let baseGroups = [];
     if (groupsProp?.length) {
@@ -426,7 +421,7 @@ export default function Navbar({ links = [], groups: groupsProp }) {
         };
       })
       .filter(Boolean);
-  }, [groupsProp, links, activePaidAddons, tableMgmtEnabled, user?.role]);
+  }, [groupsProp, links, activePaidAddons, user?.role]);
 
   return (
     <>

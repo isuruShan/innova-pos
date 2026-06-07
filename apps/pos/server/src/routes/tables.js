@@ -2,7 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const CafeTable = require('../models/CafeTable');
 const Order = require('../models/Order');
-const Store = require('../models/Store');
+
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, resolveWriteStoreId } = require('../middleware/storeScope');
 const { handleWriteError } = require('../utils/mongoErrors');
@@ -12,10 +12,6 @@ const router = express.Router();
 router.get('/occupancy', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     if (!req.storeId) return res.status(400).json({ message: 'Store context required' });
-    const st = await Store.findById(req.storeId).select('tableManagementEnabled').lean();
-    if (!st?.tableManagementEnabled) {
-      return res.json([]);
-    }
     const rows = await Order.find({
       tenantId: req.tenantId,
       storeId: req.storeId,
