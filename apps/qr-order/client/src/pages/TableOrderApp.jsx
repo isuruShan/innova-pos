@@ -40,10 +40,19 @@ function sessionPath(tenantId, storeId, tableId, query = {}) {
   return base ? `${base}${full}` : full;
 }
 
+function resolveAssetUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  const base = apiBase();
+  return `${base}/${url.replace(/^\//, '')}`;
+}
+
 function itemPhotoUrls(item) {
   const g = (item.images || []).map((x) => String(x.url || '').trim()).filter(Boolean);
-  if (g.length) return g;
-  if (item.image) return [String(item.image).trim()];
+  if (g.length) return g.map(resolveAssetUrl);
+  if (item.image) return [resolveAssetUrl(item.image.trim())];
   return [];
 }
 
@@ -255,9 +264,9 @@ export default function TableOrderApp() {
       '--qr-accent': customAccent,
       '--qr-text': branding.textColor || '#f8fafc',
       '--qr-on-accent': branding.selectionTextColor || '#ffffff',
-      '--qr-page-bg': '#0b1220',
-      '--qr-panel': '#151f2e',
-      '--qr-body': '#e2e8f0',
+      '--qr-page-bg': branding.primaryColor || '#0b1220',
+      '--qr-panel': branding.sidebarColor || '#151f2e',
+      '--qr-body': branding.textColor || '#e2e8f0',
       '--qr-muted': '#94a3b8',
     };
   }, [branding]);
@@ -467,7 +476,7 @@ export default function TableOrderApp() {
       >
         <div className="flex items-start gap-3 max-w-lg mx-auto">
           {branding?.logoUrl ? (
-            <img src={branding.logoUrl} alt="" className="h-12 w-12 rounded-lg object-cover border border-white/20 shrink-0" />
+            <img src={resolveAssetUrl(branding.logoUrl)} alt="" className="h-12 w-12 rounded-lg object-cover border border-white/20 shrink-0" />
           ) : null}
           <div className="min-w-0 flex-1">
             <h1 className="text-lg sm:text-xl font-bold leading-tight truncate">{displayName}</h1>
@@ -587,7 +596,7 @@ export default function TableOrderApp() {
                           className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-slate-700/60 bg-[var(--qr-panel)] shadow-md group active:scale-95 transition-transform text-left"
                         >
                           {c.imageUrl ? (
-                            <img src={c.imageUrl} alt="" className="w-full h-full object-cover" />
+                            <img src={resolveAssetUrl(c.imageUrl)} alt="" className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full bg-slate-800 flex items-center justify-center text-4xl">
                               🍽️
