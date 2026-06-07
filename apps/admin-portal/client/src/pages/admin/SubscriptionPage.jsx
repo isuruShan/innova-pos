@@ -689,13 +689,15 @@ export default function SubscriptionPage() {
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="font-semibold text-gray-900 text-sm">Current Plan</h3>
-                    <button
-                      type="button"
-                      onClick={() => setPlanModalOpen(true)}
-                      className="px-3 py-1.5 border border-gray-300 hover:border-gray-400 text-gray-700 text-xs font-semibold rounded-lg shadow-sm transition cursor-pointer"
-                    >
-                      Change Plan
-                    </button>
+                    {!tenant?.planLocked && (
+                      <button
+                        type="button"
+                        onClick={() => setPlanModalOpen(true)}
+                        className="px-3 py-1.5 border border-gray-300 hover:border-gray-400 text-gray-700 text-xs font-semibold rounded-lg shadow-sm transition cursor-pointer"
+                      >
+                        Change Plan
+                      </button>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                     <div>
@@ -705,7 +707,14 @@ export default function SubscriptionPage() {
                     {tenant.assignedPlanId && (
                       <div>
                         <p className="text-xs text-gray-400">Assigned plan</p>
-                        <p className="font-semibold text-gray-900 mt-0.5">{tenant.assignedPlanId.name}</p>
+                        <p className="font-semibold text-gray-900 mt-0.5 flex items-center gap-1.5">
+                          {tenant.assignedPlanId.name}
+                          {tenant.planLocked && (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-bold">
+                              Locked
+                            </span>
+                          )}
+                        </p>
                       </div>
                     )}
                     {latestSubscription && (

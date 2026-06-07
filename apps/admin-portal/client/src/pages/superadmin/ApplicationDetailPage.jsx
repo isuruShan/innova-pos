@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft, CheckCircle, XCircle, RefreshCw,
+  ArrowLeft, CheckCircle, XCircle, RefreshCw, Sparkles,
   Building2, User, MapPin, FileText, Phone, Mail, ExternalLink, Loader
 } from 'lucide-react';
 import api from '../../api/axios';
@@ -46,6 +46,7 @@ export default function ApplicationDetailPage() {
   const [updatingEmail, setUpdatingEmail] = useState(false);
   const [sendingVerification, setSendingVerification] = useState(false);
   const [emailStatusMessage, setEmailStatusMessage] = useState('');
+  const [selectedPlanId, setSelectedPlanId] = useState('');
 
   const { data: app, isLoading } = useQuery({
     queryKey: ['application', id],
@@ -53,6 +54,15 @@ export default function ApplicationDetailPage() {
       const { data } = await api.get(`/applications/${id}`);
       return data;
     },
+  });
+
+  const { data: plans = [] } = useQuery({
+    queryKey: ['workspace-plans'],
+    queryFn: async () => {
+      const { data } = await api.get('/plans', { params: { status: 'active' } });
+      return Array.isArray(data) ? data : [];
+    },
+    enabled: app?.requestedPlanId === 'custom' && !['approved', 'rejected'].includes(app?.status),
   });
 
   const { data: brPreview, isError: brPreviewError, isLoading: brPreviewLoading } = useQuery({
@@ -71,6 +81,7 @@ export default function ApplicationDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['application', id] });
       queryClient.invalidateQueries({ queryKey: ['applications'] });
       setAction(null);
+      setSelectedPlanId('');
     },
   });
 
@@ -116,10 +127,12 @@ export default function ApplicationDetailPage() {
 
   const submitAction = () => {
     if (action === 'reject' && !rejectionReason.trim()) return;
+    if (action === 'approve' && app?.requestedPlanId === 'custom' && !selectedPlanId) return;
     mutation.mutate({
       action,
       rejectionReason: action === 'reject' ? rejectionReason : undefined,
       notes: notes || undefined,
+      planId: (action === 'approve' && app?.requestedPlanId === 'custom') ? selectedPlanId : undefined,
     });
   };
 
@@ -238,6 +251,17 @@ export default function ApplicationDetailPage() {
               {app.business.isRegistered && (
                 <DetailRow icon={FileText} label="Reg. number" value={app.business.registrationNumber || '—'} />
               )}
+              <DetailRow
+                icon={Sparkles}
+                label="Requested Subscription Plan"
+                value={
+                  app.requestedPlan
+                    ? `${app.requestedPlan.name} (${app.requestedBillingCycle || 'monthly'})`
+                    : app.requestedPlanId === 'custom'
+                      ? 'Custom Plan (Superadmin locked)'
+                      : 'None'
+                }
+              />
             </div>
           </div>
         </div>
@@ -375,6 +399,25 @@ export default function ApplicationDetailPage() {
                 Approving will create a merchant account, generate a temporary password, and email the applicant their
                 admin portal login.
               </p>
+              {app.requestedPlanId === 'custom' && (
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Assign Custom Plan <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={selectedPlanId}
+                    onChange={(e) => setSelectedPlanId(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+                  >
+                    <option value="">Select custom plan created for this user...</option>
+                    {plans.map((p) => (
+                      <option key={p._id} value={p._id}>
+                        {p.name} ({p.currency} {Number(p.amount).toLocaleString()} / {p.billingCycle || 'monthly'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Internal notes (optional)</label>
                 <textarea
@@ -386,14 +429,14 @@ export default function ApplicationDetailPage() {
               </div>
               <div className="flex gap-3">
                 <button
-                  onClick={() => setAction(null)}
+                  onClick={() => { setAction(null); setSelectedPlanId(''); }}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={submitAction}
-                  disabled={mutation.isPending}
+                  disabled={mutation.isPending || (app.requestedPlanId === 'custom' && !selectedPlanId)}
                   className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-60"
                 >
                   {mutation.isPending ? <Loader size={14} className="animate-spin" /> : <CheckCircle size={14} />}

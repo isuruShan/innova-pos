@@ -20,10 +20,13 @@ export default function Navbar() {
               { label: 'Features', href: '/#features' },
               { label: 'Pricing', href: '/#pricing' },
               { label: 'Contact', href: '/#contact' },
+              { label: 'WhatsApp', href: 'https://wa.me/94773539443', target: '_blank', rel: 'noreferrer' },
             ].map((link) => (
               <a
                 key={link.label}
                 href={link.href}
+                target={link.target}
+                rel={link.rel}
                 className="text-sm font-medium text-teal-100/85 hover:text-white transition-colors"
               >
                 {link.label}
@@ -62,10 +65,13 @@ export default function Navbar() {
             { href: '/#features', label: 'Features' },
             { href: '/#pricing', label: 'Pricing' },
             { href: '/#contact', label: 'Contact' },
+            { href: 'https://wa.me/94773539443', label: 'WhatsApp', target: '_blank', rel: 'noreferrer' },
           ].map((link) => (
             <a
-              key={link.href}
+              key={link.label}
               href={link.href}
+              target={link.target}
+              rel={link.rel}
               onClick={() => setOpen(false)}
               className="block text-sm font-medium text-teal-100/90 py-2 hover:text-white"
             >

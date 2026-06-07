@@ -1,6 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const MerchantApplication = require('../models/MerchantApplication');
 const Tenant = require('../models/Tenant');
 const User = require('../models/User');
@@ -227,8 +228,26 @@ router.get('/:id', authenticateJWT, authorize('superadmin'), async (req, res) =>
   try {
     const app = await MerchantApplication.findById(req.params.id).populate('reviewedBy', 'name').lean();
     if (!app) return res.status(404).json({ message: 'Application not found' });
+
+    let requestedPlan = null;
+    if (app.requestedPlanId === 'custom') {
+      requestedPlan = { name: 'Custom Plan', isCustom: true };
+    } else if (app.requestedPlanId && mongoose.Types.ObjectId.isValid(app.requestedPlanId)) {
+      const SubscriptionPlan = require('../models/SubscriptionPlan');
+      const plan = await SubscriptionPlan.findById(app.requestedPlanId).lean();
+      if (plan) {
+        requestedPlan = {
+          name: plan.name,
+          monthlyPrice: plan.monthlyPrice,
+          yearlyPrice: plan.yearlyPrice,
+          currency: plan.currency,
+        };
+      }
+    }
+
     res.json({
       ...app,
+      requestedPlan,
       business: app.business ? { ...app.business, brDocumentUrl: '' } : app.business,
     });
   } catch (err) {
@@ -304,28 +323,45 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
       const SubscriptionPlan = require('../models/SubscriptionPlan');
       const countryIso = deriveCountryIsoFromApplication(application);
       const planAudience = countryIso === 'LK' ? 'local' : 'international';
-      const trialPlan = await SubscriptionPlan.findOne({
-        isTrialPlan: true,
-        planAudience,
-        isActive: true,
-      });
 
       let subStatus = 'expired';
       let trialEndsAt = null;
       let assignedPlanId = null;
-
-      if (trialPlan) {
-        subStatus = 'trial';
-        trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-        assignedPlanId = trialPlan._id;
-      }
-
       let pendingPlanId = null;
       let pendingPlanEffectiveAt = null;
-      if (application.requestedPlanId && mongoose.Types.ObjectId.isValid(application.requestedPlanId)) {
-        pendingPlanId = application.requestedPlanId;
-        pendingPlanEffectiveAt = trialEndsAt;
+      let planLocked = false;
+
+      if (application.requestedPlanId === 'custom') {
+        const customPlanId = req.body.planId;
+        if (!customPlanId) {
+          return res.status(400).json({ message: 'Custom plan assignment is required for custom requests' });
+        }
+        const customPlan = await SubscriptionPlan.findOne({ _id: customPlanId, isActive: true });
+        if (!customPlan) {
+          return res.status(404).json({ message: 'Selected plan not found' });
+        }
+        subStatus = 'active';
+        assignedPlanId = customPlan._id;
+        planLocked = true;
+      } else {
+        const trialPlan = await SubscriptionPlan.findOne({
+          isTrialPlan: true,
+          planAudience,
+          isActive: true,
+        });
+
+        if (trialPlan) {
+          subStatus = 'trial';
+          trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+          assignedPlanId = trialPlan._id;
+        }
+
+        if (application.requestedPlanId && mongoose.Types.ObjectId.isValid(application.requestedPlanId)) {
+          pendingPlanId = application.requestedPlanId;
+          pendingPlanEffectiveAt = trialEndsAt;
+        }
       }
+
       const billingCycle = application.requestedBillingCycle === 'yearly' ? 'yearly' : 'monthly';
 
       // Create tenant
@@ -340,6 +376,7 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
         pendingPlanId,
         pendingPlanEffectiveAt,
         billingCycle,
+        planLocked,
         adminCount: 1,
         createdBy: req.user.id,
       });
