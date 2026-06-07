@@ -675,7 +675,18 @@ export default function NewOrder() {
     prevStoreRef.current = selectedStoreId;
   }, [selectedStoreId]);
 
-  const activeType = ORDER_TYPE_MAP[orderType] ?? ORDER_TYPE_MAP['dine-in'];
+  const dynamicTypes = buildOrderTypes(partners);
+  const activeType = dynamicTypes.find(t => t.id === orderType) || 
+                     ORDER_TYPE_MAP[orderType] || 
+                     {
+                       id: orderType,
+                       label: orderType ? orderType.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Dine-In',
+                       icon: '🛵',
+                       bg: 'bg-emerald-500/10',
+                       border: 'border-emerald-500/30',
+                       color: '#10b981',
+                       placeholder: `${orderType} order #`,
+                     };
 
   const referenceFocusRing =
     orderType === 'takeaway'
@@ -1444,6 +1455,9 @@ export default function NewOrder() {
                   orderType={o.orderType}
                   tableNumber={o.tableNumber}
                   reference={o.reference}
+                  logoUrl={o.orderTypeBranding?.logoUrl}
+                  icon={o.orderTypeBranding?.icon}
+                  color={o.orderTypeBranding?.color}
                   size="xs"
                 />
               </button>

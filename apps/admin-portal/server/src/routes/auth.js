@@ -170,6 +170,36 @@ router.put('/me', authenticateJWT, async (req, res) => {
   }
 });
 
+// PUT /auth/me/approval-pin — set/change the manager approval PIN (merchant_admin only)
+router.put('/me/approval-pin', authenticateJWT, async (req, res) => {
+  try {
+    if (!['merchant_admin', 'manager'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Only merchant admins and managers can set an approval PIN' });
+    }
+    const { currentPassword, newPin } = req.body;
+    if (!currentPassword) return res.status(400).json({ message: 'Current password is required' });
+    if (!newPin) return res.status(400).json({ message: 'New PIN is required' });
+    if (!/^\d{4,8}$/.test(String(newPin))) {
+      return res.status(400).json({ message: 'PIN must be 4–8 digits' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!(await user.comparePassword(currentPassword))) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    user.managerApprovalPin = String(newPin);
+    user.updatedBy = req.user.id;
+    await user.save();
+
+    res.json({ message: 'Approval PIN updated successfully' });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
+
 // POST /auth/profile-image — upload profile image
 const multer = require('multer');
 const { proxyUploadToService } = require('../lib/uploadProxy');

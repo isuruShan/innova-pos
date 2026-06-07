@@ -271,8 +271,9 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
   const { data: partners = [] } = useQuery({
     queryKey: ['foodmarket-partners'],
     queryFn: () => api.get('/foodmarket-partners').then((r) => r.data),
-    enabled: isStoreReady,
+    enabled: !!order,
   });
+
 
   const getPartnerForOrderType = (type, partnerList) => {
     if (!type || !partnerList) return null;

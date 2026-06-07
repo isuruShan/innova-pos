@@ -168,11 +168,17 @@ export default function MenuManagement() {
   });
 
   const menuLoading = !isStoreReady || menuPending || categoriesPending;
-  const activeCategories = useMemo(() => allCategories.filter((c) => c.active), [allCategories]);
+  const activeCategories = useMemo(() =>
+    allCategories
+      .filter((c) => c.active)
+      .slice()
+      .sort((a, b) => (a.sortOrder ?? 9999) - (b.sortOrder ?? 9999) || a.name.localeCompare(b.name)),
+    [allCategories]);
   const categoryNames = useMemo(() => activeCategories.map((c) => c.name), [activeCategories]);
   const selectableCategoryNames = useMemo(() => activeCategories
     .filter((c) => isSelectableMenuCategory(c.name))
     .map((c) => c.name), [activeCategories]);
+
 
   const reorderMenuMutation = useMutation({
     mutationFn: ({ ids, category }) => api.patch('/menu/reorder', { ids, category }),

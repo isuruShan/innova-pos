@@ -3,11 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Package, X, AlertTriangle, Truck, Search,
   LineChart as LineChartIcon, Calendar, User, SlidersHorizontal,
-  Eye, Trash2
+  Eye, Trash2, BarChart2, TrendingDown, TrendingUp, Layers,
 } from 'lucide-react';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
-  CartesianGrid, Tooltip
+  CartesianGrid, Tooltip, BarChart, Bar, Cell, PieChart, Pie, Legend,
 } from 'recharts';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -200,7 +200,26 @@ export default function InventoryManagement() {
     enabled: !!graphItem?._id,
   });
 
+  const [analyticsDays, setAnalyticsDays] = useState(30);
+
+  const analyticsFromDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - analyticsDays);
+    return d.toISOString().split('T')[0];
+  }, [analyticsDays]);
+
+  const analyticsToDate = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  const { data: consumptionReport, isPending: consumptionPending } = useQuery({
+    queryKey: ['inventory-consumption', selectedStoreId, analyticsFromDate, analyticsToDate],
+    queryFn: () => api.get('/inventory/consumption-report', {
+      params: { from: analyticsFromDate, to: analyticsToDate },
+    }).then(r => r.data),
+    enabled: isStoreReady && activeTab === 'analytics',
+  });
+
   const pageLoading = !isStoreReady || invPending || supPending;
+
 
   const createMutation = useMutation({
     mutationFn: (data) => api.post('/inventory', data),
@@ -389,11 +408,14 @@ export default function InventoryManagement() {
           subtitle={
             activeTab === 'stock' ? `${items.length} items tracked` :
             activeTab === 'adjustments' ? 'Make manual stock adjustments' :
+            activeTab === 'analytics' ? 'Stock health, category breakdown & consumption' :
             'View history of stock adjustments'
           }
           actions={activeTab === 'stock' ? [
             { label: 'Manage Categories', icon: SlidersHorizontal, onClick: () => setManageCategoriesOpen(true) },
             { label: 'Add Item', icon: Plus, onClick: openAdd, primary: true },
+          ] : activeTab === 'analytics' ? [
+            { label: 'Stock Levels', icon: Package, onClick: () => { setActiveTab('stock'); setSelectedCategoryId(null); } },
           ] : []}
         />
 
@@ -403,6 +425,7 @@ export default function InventoryManagement() {
             { key: 'stock', label: 'Stock Levels' },
             { key: 'adjustments', label: 'Adjustments' },
             { key: 'sessions', label: 'Adjustment History' },
+            { key: 'analytics', label: 'Analytics' },
           ].map(tab => (
             <button
               key={tab.key}
@@ -915,6 +938,185 @@ export default function InventoryManagement() {
             )}
           </>
         )}
+
+        {/* ── Analytics Tab ── */}
+        {activeTab === 'analytics' && (() => {
+          const outOfStock = items.filter(i => i.quantity <= 0);
+          const lowStock = items.filter(i => i.quantity > 0 && getStockStatus(i.quantity, i.minThreshold).variant !== 'ok');
+          const okStock = items.filter(i => getStockStatus(i.quantity, i.minThreshold).variant === 'ok');
+
+          // Category breakdown
+          const catMap = {};
+          categories.forEach(c => { catMap[c._id] = { name: c.name, count: 0, lowCount: 0 }; });
+          items.forEach(item => {
+            const catId = item.category?._id || item.category || 'uncategorized';
+            if (!catMap[catId]) catMap[catId] = { name: item.category?.name || 'Uncategorized', count: 0, lowCount: 0 };
+            catMap[catId].count++;
+            if (getStockStatus(item.quantity, item.minThreshold).variant !== 'ok') catMap[catId].lowCount++;
+          });
+          const catData = Object.values(catMap).filter(c => c.count > 0);
+
+          const PIE_COLORS = ['#f59e0b', '#6366f1', '#10b981', '#ec4899', '#14b8a6', '#8b5cf6', '#f97316', '#3b82f6'];
+
+          // Consumption chart data from report
+          const consumptionItems = (consumptionReport?.items || [])
+            .filter(i => (i.theoreticalConsumed || 0) > 0)
+            .sort((a, b) => (b.theoreticalConsumed || 0) - (a.theoreticalConsumed || 0))
+            .slice(0, 10);
+
+          return (
+            <div className="space-y-6">
+              {/* Date range selector */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-400 font-medium">Period:</span>
+                {[7, 14, 30, 90].map(d => (
+                  <button
+                    key={d}
+                    onClick={() => setAnalyticsDays(d)}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
+                      analyticsDays === d
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'
+                    }`}
+                  >
+                    {d}d
+                  </button>
+                ))}
+              </div>
+
+              {/* Stat Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[
+                  { label: 'Total Items', value: items.length, icon: Layers, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
+                  { label: 'Out of Stock', value: outOfStock.length, icon: Package, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' },
+                  { label: 'Low Stock', value: lowStock.length, icon: TrendingDown, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20' },
+                  { label: 'Well Stocked', value: okStock.length, icon: TrendingUp, color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' },
+                ].map(stat => (
+                  <div key={stat.label} className={`rounded-xl border p-4 flex items-start gap-3 ${stat.bg}`}>
+                    <stat.icon size={20} className={`shrink-0 mt-0.5 ${stat.color}`} />
+                    <div>
+                      <p className="text-xl font-bold text-[var(--pos-text-primary)]">{stat.value}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{stat.label}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Category Breakdown Pie */}
+                <div className="bg-[var(--pos-panel)] rounded-xl border border-slate-700 p-4">
+                  <h3 className="text-sm font-semibold text-[var(--pos-text-primary)] mb-4 flex items-center gap-2">
+                    <BarChart2 size={15} className="text-amber-400" /> Items by Category
+                  </h3>
+                  {catData.length === 0 ? (
+                    <p className="text-center text-sm text-slate-500 py-8">No category data</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={220}>
+                      <PieChart>
+                        <Pie
+                          data={catData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={55}
+                          outerRadius={85}
+                          paddingAngle={2}
+                          dataKey="count"
+                          nameKey="name"
+                        >
+                          {catData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
+                          formatter={(val, name) => [`${val} items`, name]}
+                        />
+                        <Legend
+                          iconType="circle"
+                          iconSize={8}
+                          wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+
+                {/* Low Stock Items Table */}
+                <div className="bg-[var(--pos-panel)] rounded-xl border border-slate-700 p-4">
+                  <h3 className="text-sm font-semibold text-[var(--pos-text-primary)] mb-4 flex items-center gap-2">
+                    <AlertTriangle size={15} className="text-yellow-400" /> Items Needing Attention
+                  </h3>
+                  {outOfStock.length + lowStock.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 gap-2">
+                      <TrendingUp size={28} className="text-green-400 opacity-70" />
+                      <p className="text-sm text-slate-400">All items are well stocked!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {[...outOfStock, ...lowStock].map(item => {
+                        const status = getStockStatus(item.quantity, item.minThreshold);
+                        return (
+                          <div key={item._id} className="flex items-center justify-between gap-2 bg-[var(--pos-surface-inset)] border border-slate-800 rounded-lg px-3 py-2">
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-[var(--pos-text-primary)] truncate">{item.itemName}</p>
+                              <p className="text-[10px] text-slate-500">{item.category?.name || 'Uncategorized'}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className={`text-xs font-bold ${status.variant === 'critical' ? 'text-red-400' : 'text-yellow-400'}`}>
+                                {item.quantity} {item.unit}
+                              </p>
+                              <p className="text-[10px] text-slate-500">min: {item.minThreshold}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Consumption Chart */}
+              <div className="bg-[var(--pos-panel)] rounded-xl border border-slate-700 p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-[var(--pos-text-primary)] flex items-center gap-2">
+                    <LineChartIcon size={15} className="text-purple-400" /> Top Consumed Ingredients (last {analyticsDays} days)
+                  </h3>
+                  {consumptionReport && (
+                    <span className="text-xs text-slate-500">{consumptionReport.summary?.totalOrders || 0} orders</span>
+                  )}
+                </div>
+                {consumptionPending ? (
+                  <div className="flex items-center justify-center h-40 text-slate-500 text-sm">Loading...</div>
+                ) : consumptionItems.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-40 gap-2">
+                    <LineChartIcon size={28} className="text-slate-600 opacity-50" />
+                    <p className="text-sm text-slate-500">No consumption data for this period</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={consumptionItems} layout="vertical" margin={{ left: 8, right: 24, top: 4, bottom: 4 }}>
+                      <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                      <YAxis
+                        type="category"
+                        dataKey="itemName"
+                        tick={{ fontSize: 11, fill: '#94a3b8' }}
+                        width={110}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
+                        formatter={(val) => [`${val} ${''} units`, 'Consumed']}
+                        cursor={{ fill: 'rgba(245,158,11,0.07)' }}
+                      />
+                      <Bar dataKey="theoreticalConsumed" fill="#a78bfa" radius={[0, 4, 4, 0]} barSize={14} name="Consumed" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       <SlideOver open={slideOpen} onClose={closeSlide} title={editing ? 'Edit Inventory Item' : 'Add Inventory Item'}>

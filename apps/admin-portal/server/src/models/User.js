@@ -21,6 +21,7 @@ const userSchema = new mongoose.Schema(
     licensedStoreSlots: { type: Number, default: 1, min: 1 },
     profileImage: { type: String, default: '' },
     profileImageKey: { type: String, default: '' },
+    managerApprovalPin: { type: String, default: '' },
 
     isActive: { type: Boolean, default: true },
     isTemporaryPassword: { type: Boolean, default: false },
@@ -38,12 +39,21 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.pre('save', async function () {
-  if (!this.isModified('password')) return;
-  this.password = await bcrypt.hash(this.password, 10);
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
+  if (this.isModified('managerApprovalPin') && this.managerApprovalPin) {
+    this.managerApprovalPin = await bcrypt.hash(this.managerApprovalPin, 10);
+  }
 });
 
 userSchema.methods.comparePassword = function (plain) {
   return bcrypt.compare(plain, this.password);
+};
+
+userSchema.methods.compareApprovalPin = function (plain) {
+  if (!this.managerApprovalPin) return Promise.resolve(false);
+  return bcrypt.compare(String(plain), this.managerApprovalPin);
 };
 
 // Compound index: email must be unique per tenant

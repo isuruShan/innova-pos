@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Save, Loader, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Save, Loader, CheckCircle, AlertTriangle, Shield, Eye, EyeOff } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { fieldAttrs, validatePersonName } from '../../utils/formFields';
@@ -8,12 +8,19 @@ import PlatformContactSection from '../../components/profile/PlatformContactSect
 
 export default function ProfilePage() {
   const { user, updateUser, isSuperAdmin } = useAuth();
+  const isMerchantAdmin = user?.role === 'merchant_admin';
   const mustChange = Boolean(user?.isTemporaryPassword);
 
   const [nameForm, setNameForm] = useState({ name: '' });
   const [nameError, setNameError] = useState('');
   const [saved, setSaved] = useState({ name: false });
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  // PIN change state
+  const [pinForm, setPinForm] = useState({ currentPassword: '', newPin: '', confirmPin: '' });
+  const [pinError, setPinError] = useState('');
+  const [pinSaved, setPinSaved] = useState(false);
+  const [showPin, setShowPin] = useState(false);
 
   useEffect(() => {
     if (user?.name != null) setNameForm({ name: user.name });
@@ -25,6 +32,19 @@ export default function ProfilePage() {
       updateUser(res.data.user, res.data.token, res.data.refreshToken);
       setSaved((s) => ({ ...s, name: true }));
       setTimeout(() => setSaved((s) => ({ ...s, name: false })), 3000);
+    },
+  });
+
+  const pinMutation = useMutation({
+    mutationFn: (payload) => api.put('/auth/me/approval-pin', payload),
+    onSuccess: () => {
+      setPinForm({ currentPassword: '', newPin: '', confirmPin: '' });
+      setPinError('');
+      setPinSaved(true);
+      setTimeout(() => setPinSaved(false), 3000);
+    },
+    onError: (err) => {
+      setPinError(err.response?.data?.message || 'Failed to update PIN');
     },
   });
 
@@ -69,6 +89,15 @@ export default function ProfilePage() {
     }
     setNameError('');
     profileMutation.mutate({ name: nameForm.name.trim() });
+  };
+
+  const handleSavePin = () => {
+    setPinError('');
+    if (!pinForm.currentPassword) return setPinError('Current password is required');
+    if (!pinForm.newPin) return setPinError('New PIN is required');
+    if (!/^\d{4,8}$/.test(pinForm.newPin)) return setPinError('PIN must be 4–8 digits (numbers only)');
+    if (pinForm.newPin !== pinForm.confirmPin) return setPinError('PINs do not match');
+    pinMutation.mutate({ currentPassword: pinForm.currentPassword, newPin: pinForm.newPin });
   };
 
   const inputClass =
@@ -180,6 +209,95 @@ export default function ProfilePage() {
         </div>
       </div>
 
+
+
+      {/* Approval Passcode (merchant_admin only) */}
+      {isMerchantAdmin && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Shield size={16} className="text-brand-orange" />
+            <h3 className="font-semibold text-gray-900">Approval Passcode</h3>
+          </div>
+          <p className="text-sm text-gray-500">
+            This PIN is used to authorise manager actions (e.g. processing returns). It is separate from your login password.
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="pin-current-pw">
+                Current password
+              </label>
+              <input
+                id="pin-current-pw"
+                type="password"
+                value={pinForm.currentPassword}
+                onChange={(e) => { setPinForm(f => ({ ...f, currentPassword: e.target.value })); if (pinError) setPinError(''); }}
+                placeholder="Enter your login password"
+                autoComplete="current-password"
+                className={`${inputClass} border-gray-300`}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="pin-new">
+                New PIN (4–8 digits)
+              </label>
+              <div className="relative">
+                <input
+                  id="pin-new"
+                  type={showPin ? 'text' : 'password'}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={8}
+                  value={pinForm.newPin}
+                  onChange={(e) => { setPinForm(f => ({ ...f, newPin: e.target.value.replace(/\D/g, '') })); if (pinError) setPinError(''); }}
+                  placeholder="e.g. 1234"
+                  className={`${inputClass} border-gray-300 pr-10`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  tabIndex={-1}
+                >
+                  {showPin ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="pin-confirm">
+                Confirm PIN
+              </label>
+              <input
+                id="pin-confirm"
+                type={showPin ? 'text' : 'password'}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={8}
+                value={pinForm.confirmPin}
+                onChange={(e) => { setPinForm(f => ({ ...f, confirmPin: e.target.value.replace(/\D/g, '') })); if (pinError) setPinError(''); }}
+                placeholder="Re-enter new PIN"
+                className={`${inputClass} border-gray-300`}
+              />
+            </div>
+            {pinError && <p className="text-xs text-red-500">{pinError}</p>}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSavePin}
+                disabled={pinMutation.isPending}
+                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-60"
+              >
+                {pinMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Shield size={14} />}
+                Update PIN
+              </button>
+              {pinSaved && (
+                <span className="text-sm text-green-600 flex items-center gap-1">
+                  <CheckCircle size={13} /> PIN updated
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
 
       {isSuperAdmin && <PlatformContactSection />}

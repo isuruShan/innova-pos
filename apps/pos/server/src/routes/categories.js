@@ -24,7 +24,8 @@ const CATEGORY_SORT_FIELDS = {
   active: 'active',
 };
 
-const DEFAULT_CATEGORY_SORT = { createdAt: -1 };
+const DEFAULT_CATEGORY_SORT = { sortOrder: 1, name: 1 };
+
 
 router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {

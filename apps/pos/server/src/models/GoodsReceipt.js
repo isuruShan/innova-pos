@@ -37,7 +37,6 @@ const goodsReceiptSchema = new mongoose.Schema(
     receiptNumber: {
       type: String,
       required: true,
-      unique: true,
     },
     type: {
       type: String,
