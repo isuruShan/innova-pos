@@ -1,8 +1,10 @@
 import { X } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import useSwipeDismiss from '../hooks/useSwipeDismiss';
 
 /**
- * Bottom-sheet modal — slides up from the bottom, swipe-down to dismiss.
+ * Responsive modal component — slides up as a bottom sheet on mobile views,
+ * and displays as a standard centered modal dialog on desktop views.
  */
 export default function CenteredModal({
   open,
@@ -14,15 +16,27 @@ export default function CenteredModal({
   ariaLabel,
   disableBottomSheet = false,
 }) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(max-width: 639px)');
+    const listener = (e) => setIsMobile(e.matches);
+    setIsMobile(media.matches);
+    media.addEventListener('change', listener);
+    return () => media.removeEventListener('change', listener);
+  }, []);
+
   const { bind } = useSwipeDismiss({ onClose, open });
-  const activeBind = disableBottomSheet ? {} : bind;
+  const treatAsBottomSheet = !disableBottomSheet && isMobile;
+  const activeBind = treatAsBottomSheet ? bind : {};
 
   if (!open) return null;
 
   return (
     <div
       className={`fixed inset-0 z-50 flex justify-center bg-black/60 ${
-        disableBottomSheet ? 'items-center p-4' : 'items-end sm:items-center sm:p-4'
+        treatAsBottomSheet ? 'items-end' : 'items-center p-4'
       }`}
       role="dialog"
       aria-modal="true"
@@ -31,16 +45,16 @@ export default function CenteredModal({
     >
       <div
         className={`bg-[var(--pos-panel)] border border-slate-700/60 shadow-2xl w-full ${maxWidth} flex flex-col ${
-          disableBottomSheet
-            ? 'rounded-2xl max-h-[90vh] touch-auto'
-            : 'rounded-t-2xl sm:rounded-2xl max-h-[85vh] sm:max-h-[90vh] sm:touch-auto touch-none'
+          treatAsBottomSheet
+            ? 'rounded-t-2xl max-h-[85vh] touch-none'
+            : 'rounded-2xl max-h-[90vh] touch-auto'
         }`}
-        style={disableBottomSheet ? undefined : activeBind.style}
+        style={treatAsBottomSheet ? activeBind.style : undefined}
         onClick={(e) => e.stopPropagation()}
-        {...(disableBottomSheet ? {} : activeBind)}
+        {...(treatAsBottomSheet ? activeBind : {})}
       >
         {/* Drag handle */}
-        {!disableBottomSheet && (
+        {treatAsBottomSheet && (
           <div className="w-12 h-1.5 bg-slate-600 rounded-full mx-auto mt-3 mb-1 shrink-0 cursor-grab active:cursor-grabbing" />
         )}
         {(title || onClose) && (
@@ -70,3 +84,4 @@ export default function CenteredModal({
     </div>
   );
 }
+

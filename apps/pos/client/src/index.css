@@ -15,9 +15,9 @@
 /* Theme tokens — toggled via ThemeProvider / html[data-theme] */
 :root[data-theme="dark"],
 :root:not([data-theme]) {
-  --pos-page-bg: #0b1220;
-  --pos-panel: #151f2e;
-  --pos-surface-inset: #0d1624;
+  --pos-page-bg: #090d16;
+  --pos-panel: #121824;
+  --pos-surface-inset: #0a0e17;
   --pos-text-primary: #f8fafc;
   --pos-selection-text: #ffffff;
   --pos-text-secondary: #cbd5e1;

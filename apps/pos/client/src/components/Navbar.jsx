@@ -29,7 +29,6 @@ export function AvatarMenu({ user, onLogout }) {
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const ref = useRef(null);
-  const { style, bind } = useSwipeDismiss({ onClose: () => setOpen(false), open });
 
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
@@ -54,15 +53,9 @@ export function AvatarMenu({ user, onLogout }) {
         </button>
 
         {open && (
-          <>
-            {/* Backdrop on mobile */}
-            <div className="fixed inset-0 z-[199] md:hidden bg-transparent" onClick={() => setOpen(false)} />
-            <div
-              className="fixed inset-x-0 bottom-0 z-[200] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/50 overflow-y-auto max-h-[80vh] py-4 animate-slide-up md:absolute md:inset-auto md:right-0 md:top-11 md:w-60 md:rounded-2xl md:border md:border-slate-700/60 md:shadow-2xl md:max-h-none md:overflow-hidden md:py-0 md:animate-slide-down"
-              {...bind}
-              style={style}
-            >
-              <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden shrink-0" />
+          <div
+            className="absolute right-0 top-11 z-[200] w-60 rounded-2xl border border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/50 overflow-hidden py-0 animate-slide-down"
+          >
               {/* User info header */}
               <div className="px-4 py-3 border-b border-slate-700/50 flex items-center gap-3">
                 <AvatarDisplay user={user} size="md" />
@@ -117,8 +110,7 @@ export function AvatarMenu({ user, onLogout }) {
                   </button>
                 </div>
               </div>
-            </div>
-          </>
+          </div>
         )}
       </div>
 
@@ -130,7 +122,6 @@ export function AvatarMenu({ user, onLogout }) {
 function StoreSwitcher({ stores, selectedStoreId, selectStore }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  const { style, bind } = useSwipeDismiss({ onClose: () => setOpen(false), open });
 
 
   const storeListActiveFg = useMemo(
@@ -173,16 +164,10 @@ function StoreSwitcher({ stores, selectedStoreId, selectStore }) {
       </button>
 
       {open && (
-        <>
-          {/* Backdrop on mobile */}
-          <div className="fixed inset-0 z-[119] md:hidden bg-transparent" onClick={() => setOpen(false)} />
-          <div
-            className="fixed inset-x-0 bottom-0 z-[120] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-y-auto max-h-[80vh] py-4 animate-slide-up md:absolute md:inset-auto md:right-0 md:top-full md:mt-1.5 md:w-[18rem] md:rounded-xl md:border md:border-slate-600/80 md:py-1 md:shadow-2xl md:max-h-none md:overflow-hidden md:animate-slide-down"
-            role="listbox"
-            {...bind}
-            style={style}
-          >
-            <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden shrink-0" />
+        <div
+          className="absolute right-0 sm:left-0 top-full mt-1.5 z-[120] w-[18rem] rounded-xl border border-slate-600/80 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-hidden py-1 animate-slide-down"
+          role="listbox"
+        >
             <div className="px-3 py-2 border-b border-slate-700/60">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Switch location</p>
             </div>
@@ -219,8 +204,7 @@ function StoreSwitcher({ stores, selectedStoreId, selectStore }) {
                 );
               })}
             </ul>
-          </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -277,7 +261,6 @@ function NavDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-  const { style, bind } = useSwipeDismiss({ onClose: () => setOpen(false), open });
   const filtered = filterLinksForRole(items, userRole, paidAddons);
 
 
@@ -321,16 +304,10 @@ function NavDropdown({
       </button>
 
       {open && (
-        <>
-          {/* Backdrop on mobile */}
-          <div className="fixed inset-0 z-[119] md:hidden bg-transparent" onClick={() => setOpen(false)} />
-          <div
-            className="fixed inset-x-0 bottom-0 z-[120] w-full rounded-t-3xl border-t border-slate-700/60 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-y-auto max-h-[80vh] py-4 animate-slide-up md:absolute md:inset-auto md:left-0 md:top-full md:mt-1.5 md:min-w-[12rem] md:max-w-[18rem] md:rounded-xl md:border md:border-slate-600/80 md:shadow-2xl md:max-h-none md:overflow-hidden md:py-1 md:animate-slide-down"
-            role="menu"
-            {...bind}
-            style={style}
-          >
-            <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mb-3 md:hidden shrink-0" />
+        <div
+          className="absolute left-0 top-full mt-1.5 z-[120] min-w-[12rem] max-w-[18rem] rounded-xl border border-slate-600/80 bg-[var(--pos-panel)] shadow-2xl shadow-black/40 overflow-hidden py-1 animate-slide-down"
+          role="menu"
+        >
             {filtered.map((link) => {
               const itemActive = linkMatchesPath(location.pathname, link.to);
               return (
@@ -350,8 +327,7 @@ function NavDropdown({
                 </Link>
               );
             })}
-          </div>
-        </>
+        </div>
       )}
     </div>
   );

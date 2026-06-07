@@ -509,7 +509,8 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
   const legacyGroups = form.variantOptions.filter(
     (o) => !VARIANT_CRITERIA.includes(o.name),
   );
-  const showMatrix = sizes.length > 0 && flavors.length > 0 && legacyGroups.length === 0;
+  // Force always rendering as a list view (one variant in one line view) per user request
+  const showMatrix = false;
   
   // Get all available criteria (system + saved custom)
   const allAvailableCriteria = [
