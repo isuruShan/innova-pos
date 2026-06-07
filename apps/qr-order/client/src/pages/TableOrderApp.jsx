@@ -251,26 +251,36 @@ export default function TableOrderApp() {
   const rootStyle = useMemo(() => {
     if (!branding) {
       return {
-        '--qr-primary': '#151f2e',
-        '--qr-accent': '#f59e0b',
+        '--qr-primary': '#0f172a',
+        '--qr-accent': '#fa7237',
         '--qr-text': '#f8fafc',
         '--qr-on-accent': '#ffffff',
-        '--qr-page-bg': '#0b1220',
-        '--qr-panel': '#151f2e',
-        '--qr-body': '#e2e8f0',
-        '--qr-muted': '#94a3b8',
+        '--qr-page-bg': '#020617',
+        '--qr-panel': '#1e293b',
+        '--qr-border': '#334155',
+        '--qr-body': '#cbd5e1',
+        '--qr-muted': '#64748b',
+        '--qr-radius': '1rem',
       };
     }
-    const customAccent = branding?.qrOrdering?.accentColor || branding?.accentColor || '#f59e0b';
+    const prim = branding.primaryColor || '#0f172a';
+    const accent = branding?.qrOrdering?.accentColor || branding?.accentColor || '#fa7237';
+    const text = branding.textColor || '#f8fafc';
+    const side = branding.sidebarColor || '#1e293b';
+
+    const isLight = prim.toLowerCase() === '#ffffff' || prim.toLowerCase() === '#fff' || prim.toLowerCase() === '#f8fafc' || prim.toLowerCase() === 'white';
+
     return {
-      '--qr-primary': branding.primaryColor || '#151f2e',
-      '--qr-accent': customAccent,
-      '--qr-text': branding.textColor || '#f8fafc',
+      '--qr-primary': prim,
+      '--qr-accent': accent,
+      '--qr-text': text,
       '--qr-on-accent': branding.selectionTextColor || '#ffffff',
-      '--qr-page-bg': branding.primaryColor || '#0b1220',
-      '--qr-panel': branding.sidebarColor || '#151f2e',
-      '--qr-body': branding.textColor || '#e2e8f0',
-      '--qr-muted': '#94a3b8',
+      '--qr-page-bg': isLight ? '#f8fafc' : '#080d16',
+      '--qr-panel': isLight ? '#ffffff' : side,
+      '--qr-border': isLight ? '#e2e8f0' : '#334155',
+      '--qr-body': isLight ? '#1e293b' : text,
+      '--qr-muted': isLight ? '#64748b' : '#94a3b8',
+      '--qr-radius': '1rem',
     };
   }, [branding]);
 
@@ -541,42 +551,55 @@ export default function TableOrderApp() {
 
         {tab === 'menu' && (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <div className="shrink-0 px-3 pt-3 pb-2 bg-[var(--qr-panel)] border-b border-slate-700/80 space-y-2">
-              <div className="flex gap-2 overflow-x-auto pb-1 touch-pan-x max-w-lg mx-auto w-full">
-                {categories.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setActiveCat(c)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap border shrink-0 transition ${
-                      activeCat === c
-                        ? 'text-white shadow-md border-transparent'
-                        : 'bg-slate-800/80 text-slate-300 border-slate-600'
-                    }`}
-                    style={
-                      activeCat === c
-                        ? { backgroundColor: 'var(--qr-accent, #f59e0b)', color: 'var(--qr-on-accent, #fff)' }
-                        : {}
-                    }
-                  >
-                    {c}
-                  </button>
-                ))}
+            <div className="shrink-0 px-3 pt-3 pb-2.5 bg-[var(--qr-panel)] border-b border-[var(--qr-border)]/60 space-y-2.5">
+              <div className="flex gap-2.5 overflow-x-auto pb-1.5 touch-pan-x max-w-lg mx-auto w-full scrollbar-none">
+                {categories.map((c) => {
+                  const catObj = categoryRows.find((row) => row.name === c);
+                  const imageUrl = catObj?.imageUrl;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setActiveCat(c)}
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap border shrink-0 transition active:scale-95 ${
+                        activeCat === c
+                          ? 'text-white shadow-md border-transparent'
+                          : 'bg-slate-800/80 text-slate-300 border-slate-600/70 hover:bg-slate-700/60'
+                      }`}
+                      style={
+                        activeCat === c
+                          ? { backgroundColor: 'var(--qr-accent, #f59e0b)', color: 'var(--qr-on-accent, #fff)' }
+                          : {}
+                      }
+                    >
+                      <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 bg-slate-700/60 flex items-center justify-center text-[10px]">
+                        {c === 'All' ? (
+                          '🍽️'
+                        ) : imageUrl ? (
+                          <img src={resolveAssetUrl(imageUrl)} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          '🏷️'
+                        )}
+                      </div>
+                      <span>{c}</span>
+                    </button>
+                  );
+                })}
               </div>
               <div className="relative max-w-lg mx-auto w-full">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                   type="text"
                   value={menuSearch}
                   onChange={(e) => setMenuSearch(e.target.value)}
                   placeholder="Search menu…"
-                  className="w-full bg-slate-900/60 border border-slate-600 text-slate-100 rounded-xl pl-9 pr-9 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/60 placeholder-slate-500"
+                  className="w-full bg-slate-900/60 border border-slate-600/70 text-slate-100 rounded-2xl pl-10 pr-9 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/60 placeholder-slate-500 transition-all"
                 />
                 {menuSearch && (
                   <button
                     type="button"
                     onClick={() => setMenuSearch('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-lg font-bold"
                     aria-label="Clear search"
                   >
                     ×
@@ -585,89 +608,107 @@ export default function TableOrderApp() {
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-3 py-3">
-              <div className="max-w-lg mx-auto w-full space-y-3 pb-[calc(8rem+env(safe-area-inset-bottom))]">
-                {activeCat === 'All' && branding?.qrOrdering?.categoryImageFirst && categoryRows.filter(c => c.name !== 'Uncategorized').length > 0 && !menuSearch.trim() ? (
-                  <div className="grid grid-cols-2 gap-3.5 pt-1">
-                    {categoryRows
-                      .filter((c) => c.name !== 'Uncategorized')
-                      .map((c) => (
-                        <button
-                          key={c.name}
-                          type="button"
-                          onClick={() => setActiveCat(c.name)}
-                          className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-slate-700/60 bg-[var(--qr-panel)] shadow-md group active:scale-95 transition-transform text-left"
-                        >
-                          {c.imageUrl ? (
-                            <img src={resolveAssetUrl(c.imageUrl)} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full bg-slate-800 flex items-center justify-center text-4xl">
-                              🍽️
-                            </div>
-                          )}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/5 flex flex-col justify-end p-3.5">
-                            <p className="font-bold text-sm sm:text-base text-white tracking-wide leading-tight group-hover:underline">
-                              {c.name}
-                            </p>
-                          </div>
-                        </button>
-                      ))}
-                  </div>
-                ) : filteredMenu.length === 0 ? (
-                  <p className="text-center text-slate-500 text-sm py-12">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-3 py-4">
+              <div className="max-w-lg mx-auto w-full space-y-3.5 pb-[calc(8rem+env(safe-area-inset-bottom))]">
+                {filteredMenu.length === 0 ? (
+                  <p className="text-center text-slate-500 text-sm py-16 bg-[var(--qr-panel)]/40 border border-[var(--qr-border)]/50 rounded-2xl">
                     {menuSearch.trim() ? 'No items match your search' : 'No items in this category'}
                   </p>
                 ) : (
                   filteredMenu.map((item) => {
-                  const photos = itemPhotoUrls(item);
-                  const thumb = photos[0];
-                  return (
-                    <div
-                      key={item._id}
-                      className={`rounded-2xl border shadow-sm overflow-hidden flex gap-0 ${
-                        item.available ? 'bg-[var(--qr-panel)] border-slate-600/60' : 'opacity-55 border-slate-700 bg-slate-900/50'
-                      }`}
-                    >
-                      <div className="w-28 sm:w-32 shrink-0 bg-slate-800 self-stretch min-h-[7rem]">
-                        {thumb ? (
-                          <img src={thumb} alt="" className="w-full h-full min-h-[7rem] object-cover" loading="lazy" />
-                        ) : (
-                        <div className="w-full h-full min-h-[7rem] flex items-center justify-center text-3xl bg-slate-800">
-                          🍽️
+                    const photos = itemPhotoUrls(item);
+                    const thumb = photos[0];
+                    const cartItem = cart.find((x) => x.menuItem === String(item._id));
+                    const qtyInCart = cartItem ? cartItem.qty : 0;
+
+                    return (
+                      <div
+                        key={item._id}
+                        className={`rounded-2xl border shadow-sm overflow-hidden flex gap-0 transition-transform active:scale-[0.99] duration-200 ${
+                          item.available ? 'bg-[var(--qr-panel)] border-[var(--qr-border)]/60' : 'opacity-55 border-slate-700 bg-slate-900/50'
+                        }`}
+                      >
+                        <div className="w-28 sm:w-32 shrink-0 bg-slate-800 self-stretch min-h-[7.5rem]">
+                          {thumb ? (
+                            <img src={thumb} alt="" className="w-full h-full min-h-[7.5rem] object-cover" loading="lazy" />
+                          ) : (
+                            <div className="w-full h-full min-h-[7.5rem] flex items-center justify-center text-3xl bg-slate-800">
+                              🍽️
+                            </div>
+                          )}
                         </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0 p-3 flex flex-col">
-                        <p className="font-semibold text-slate-100 leading-snug">{item.name}</p>
-                        {item.category && <p className="text-xs text-slate-500 mt-0.5">{item.category}</p>}
-                        <p className="text-base font-bold tabular-nums mt-1" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
-                          {fmtMoney(item.price)}
-                        </p>
-                        {photos.length > 1 && (
-                          <p className="text-[10px] text-slate-400 mt-0.5">{photos.length} photos</p>
-                        )}
-                        <div className="mt-auto pt-2 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setDetailItem(item)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-600 text-slate-200 text-xs font-semibold bg-slate-800/80 hover:bg-slate-700"
-                          >
-                            <Eye size={14} /> View
-                          </button>
-                          <button
-                            type="button"
-                            disabled={!item.available}
-                            onClick={() => addOne(item)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-40"
-                            style={{ backgroundColor: 'var(--qr-accent, #f59e0b)' }}
-                          >
-                            <Plus size={14} /> Add
-                          </button>
+                        <div className="flex-1 min-w-0 p-3.5 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-start justify-between gap-1">
+                              <p className="font-bold text-slate-100 leading-snug truncate" title={item.name}>{item.name}</p>
+                              {photos.length > 1 && (
+                                <span className="text-[9px] text-slate-400 font-semibold shrink-0 bg-slate-800 px-1.5 py-0.5 rounded">
+                                  {photos.length} photos
+                                </span>
+                              )}
+                            </div>
+                            {item.description ? (
+                              <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                                {item.description}
+                              </p>
+                            ) : (
+                              item.category && <p className="text-[11px] text-slate-500 mt-0.5">{item.category}</p>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center justify-between gap-2 mt-3 pt-1">
+                            <span className="text-base font-extrabold tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
+                              {fmtMoney(item.price)}
+                            </span>
+                            
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setDetailItem(item)}
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-600/70 text-slate-300 bg-slate-800/80 hover:bg-slate-700 transition"
+                                title="View details"
+                              >
+                                <Eye size={15} />
+                              </button>
+                              
+                              {qtyInCart > 0 ? (
+                                <div className="inline-flex items-center rounded-lg border border-slate-600/70 bg-slate-800 overflow-hidden h-8 shadow-sm">
+                                  <button
+                                    type="button"
+                                    onClick={() => changeQty(String(item._id), -1)}
+                                    className="w-8 h-full flex items-center justify-center text-slate-300 hover:bg-slate-700 transition font-bold"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="px-2 text-xs font-bold text-slate-100 tabular-nums">
+                                    {qtyInCart}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => changeQty(String(item._id), 1)}
+                                    className="w-8 h-full flex items-center justify-center text-slate-300 hover:bg-slate-700 transition font-bold"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={!item.available}
+                                  onClick={() => addOne(item)}
+                                  className="inline-flex items-center gap-1 h-8 px-3.5 rounded-lg text-xs font-extrabold text-white disabled:opacity-40 hover:brightness-110 active:scale-95 transition shrink-0"
+                                  style={{ backgroundColor: 'var(--qr-accent, #f59e0b)', color: 'var(--qr-on-accent, #fff)' }}
+                                >
+                                  <Plus size={13} /> Add
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                }))}
+                    );
+                  })
+                )}
                 {filteredMenu.length > 0 && menuItems.length < menuTotal && (
                   <div className="flex justify-center pt-2">
                     <button

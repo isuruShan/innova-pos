@@ -68,7 +68,7 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
   const [validationError, setValidationError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const { sort, order, toggleSort } = useListSort('createdAt', 'desc');
+  const { sort, order, toggleSort, setSort, setOrder } = useListSort('sortOrder', 'asc');
 
   const catKey = categoriesQueryKey(selectedStoreId);
   const menuKey = menuQueryKey(selectedStoreId);
@@ -426,6 +426,7 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
         title="Manage Categories"
         maxWidth="max-w-4xl"
         ariaLabel="Manage categories"
+        disableBottomSheet={true}
       >
         <div className="space-y-4">
           {/* Export/Import Buttons */}
@@ -542,6 +543,25 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
             <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">{validationError}</div>
           )}
 
+          {sort !== 'sortOrder' && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 flex items-center justify-between">
+              <p className="text-xs text-amber-400 flex items-center gap-2">
+                <AlertTriangle size={14} className="shrink-0" />
+                <span>Drag-to-reorder is paused while sorted by {sort === 'productCount' ? 'products' : sort}.</span>
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSort('sortOrder');
+                  setOrder('asc');
+                }}
+                className="text-xs bg-amber-500 hover:bg-amber-400 text-white px-2.5 py-1.5 rounded-lg font-semibold transition"
+              >
+                Restore Custom Order
+              </button>
+            </div>
+          )}
+
           <div className="rounded-lg border border-slate-700 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -569,15 +589,15 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                       return (
                         <tr
                           key={cat._id}
-                          draggable={!isEditing}
+                          draggable={!isEditing && sort === 'sortOrder'}
                           onDragStart={(e) => handleDragStart(e, cat._id)}
                           onDragOver={(e) => handleDragOver(e, cat._id)}
                           onDragEnd={handleDragEnd}
                           className={`hover:bg-slate-800/40 transition ${!cat.active ? 'opacity-60' : ''} ${
                             draggedId === cat._id ? 'bg-amber-500/20 opacity-50 border-y-2 border-dashed border-amber-500' : ''
-                          } ${!isEditing ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                          } ${!isEditing && sort === 'sortOrder' ? 'cursor-grab active:cursor-grabbing' : ''}`}
                         >
-                          <td className="px-3 py-3 text-slate-500">
+                          <td className={`px-3 py-3 ${sort === 'sortOrder' ? 'text-slate-500' : 'text-slate-600 opacity-40'}`}>
                             <GripVertical size={16} />
                           </td>
                           <td className="px-4 py-3">
