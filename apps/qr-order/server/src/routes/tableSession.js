@@ -12,7 +12,7 @@ const Category = require(paths.models.Category);
 const Order = require(paths.models.Order);
 const TenantSettings = require(paths.models.TenantSettings);
 const { enrichItems, recalculateOrderMoney, appendItemsToOrder } = require(paths.orderHelpers);
-const { notifyCashiersTableWaiterCall, notifyCashiersQrOrderChange } = require(paths.notificationHelpers);
+const { notifyCashiersTableWaiterCall, notifyCashiersQrOrderChange, notifyPosStaffOrderStatusChange } = require(paths.notificationHelpers);
 
 const router = express.Router();
 
@@ -237,11 +237,27 @@ router.post('/:tenantId/:storeId/:tableId/items', async (req, res) => {
       await recalculateOrderMoney(order);
       await order.save();
     } else {
+      const prevStatus = order.status;
       await appendItemsToOrder(order, items, ctx.ids.tenantId, ctx.ids.storeId);
-      if (['preparing', 'ready'].includes(order.status)) {
-        order.kitchenAddsStatus = 'pending_adds';
+      if (['preparing', 'ready'].includes(prevStatus)) {
+        order.status = 'pending';
+        order.kitchenAddsStatus = null;
       }
       await order.save();
+
+      if (prevStatus !== order.status) {
+        try {
+          await notifyPosStaffOrderStatusChange({
+            tenantId: ctx.ids.tenantId,
+            storeId: ctx.ids.storeId,
+            order: order.toObject ? order.toObject({ flattenMaps: true }) : order,
+            prevStatus,
+            nextStatus: order.status,
+          });
+        } catch (notifyErr) {
+          console.error('[qr-order-server] notifyPosStaffOrderStatusChange:', notifyErr?.message || notifyErr);
+        }
+      }
     }
 
     try {

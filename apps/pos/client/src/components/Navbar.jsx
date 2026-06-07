@@ -12,7 +12,6 @@ import NotificationBell from './NotificationBell';
 import CashierSessionNavButton from './cashier/CashierSessionNavButton';
 import OfflineBanner from './OfflineBanner';
 import WaiterCallBar from './WaiterCallBar';
-import QrOrderUpdateBar from './QrOrderUpdateBar';
 import UberOrdersBar from './uber/UberOrdersBar';
 import TrialBanners from './TrialBanners';
 import useSwipeDismiss from '../hooks/useSwipeDismiss';
@@ -427,7 +426,6 @@ export default function Navbar({ links = [], groups: groupsProp }) {
     <>
     <OfflineBanner />
     <WaiterCallBar />
-    <QrOrderUpdateBar />
     <UberOrdersBar />
     <nav
       className="border-b px-4 py-2.5 flex items-center justify-between sticky top-0 z-50"

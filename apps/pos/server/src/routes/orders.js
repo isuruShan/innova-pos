@@ -626,6 +626,32 @@ router.put('/:id', protect, authorize('cashier', 'manager', 'merchant_admin'), t
     if (items && items.length > 0) {
       const sigBefore = itemKitchenAddsSignature(order.items);
       const merged = await mergeItemsForUpdate(order.items, items, req.tenantId, order.storeId, order.status, order.foodmarketPartnerId);
+
+      // Automatically reset status to 'pending' if items or quantities changed on preparing/ready orders
+      if (['preparing', 'ready'].includes(order.status)) {
+        const prevMap = {};
+        for (const item of order.items || []) {
+          const key = `${item.menuItem}:${item.variantId || ''}`;
+          prevMap[key] = (prevMap[key] || 0) + item.qty;
+        }
+        const nextMap = {};
+        for (const item of merged || []) {
+          const key = `${item.menuItem}:${item.variantId || ''}`;
+          nextMap[key] = (nextMap[key] || 0) + item.qty;
+        }
+        const allKeys = new Set([...Object.keys(prevMap), ...Object.keys(nextMap)]);
+        let changed = false;
+        for (const key of allKeys) {
+          if (prevMap[key] !== nextMap[key]) {
+            changed = true;
+            break;
+          }
+        }
+        if (changed) {
+          order.status = 'pending';
+        }
+      }
+
       order.items = merged;
       await recalculateOrderMoney(order);
       syncKitchenAddsStatusAfterItemChange(order, sigBefore);

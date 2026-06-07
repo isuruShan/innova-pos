@@ -28,7 +28,9 @@ function WaiterCallDetailModal({ notification, order, orderLoading, orderError, 
         <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-slate-700/60 bg-amber-500/10">
           <div className="min-w-0">
             <h2 id="waiter-call-title" className="text-base font-bold text-[var(--pos-text-primary)]">
-              Guest called waiter
+              {notification?.type === 'qr_order_updated'
+                ? (meta.changeKind === 'new_order' ? 'New QR table order' : 'QR order updated')
+                : 'Guest called waiter'}
             </h2>
             <p className="text-sm text-amber-200/90 mt-0.5">
               Table <span className="font-mono font-semibold">{tableLabel}</span>
@@ -116,7 +118,7 @@ export default function WaiterCallBar() {
       api
         .get('/notifications', {
           params: {
-            type: 'table_waiter_call',
+            type: 'table_waiter_call,qr_order_updated',
             unread: '1',
             limit: 25,
             storeId: selectedStoreId,
@@ -149,11 +151,14 @@ export default function WaiterCallBar() {
   // 2) Open the detail modal (it will stay open until user manually closes it)
   const onChip = async (n) => {
     try {
-      // Delete the notification from the database
-      await api.delete(`/notifications/${encodeURIComponent(n._id)}`);
+      if (n.type === 'qr_order_updated') {
+        await api.patch(`/notifications/${encodeURIComponent(n._id)}/read`);
+      } else {
+        await api.delete(`/notifications/${encodeURIComponent(n._id)}`);
+      }
       invalidate();
     } catch (error) {
-      console.error('Failed to delete notification:', error);
+      console.error('Failed to update notification:', error);
       /* still show modal */
     }
     setActive(n);
@@ -166,7 +171,7 @@ export default function WaiterCallBar() {
       <div className="border-b border-amber-500/25 bg-gradient-to-r from-amber-950/90 via-amber-900/80 to-amber-950/90 px-3 py-2 flex items-center gap-2 shrink-0 z-[55]">
         <BellRing size={16} className="text-amber-400 shrink-0 animate-pulse" aria-hidden />
         <span className="text-[11px] font-bold uppercase tracking-wider text-amber-200/90 shrink-0 hidden sm:inline">
-          Waiter calls
+          Table Alerts
         </span>
         <div className="flex-1 min-w-0 flex gap-2 overflow-x-auto pb-0.5">
           {items.map((n) => (
