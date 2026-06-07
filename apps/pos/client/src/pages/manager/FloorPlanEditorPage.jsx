@@ -731,11 +731,20 @@ export default function FloorPlanEditorPage() {
     e.dataTransfer.dropEffect = 'copy';
   }, []);
 
+  const getStageRelativePointerPosition = useCallback((stage) => {
+    const pos = stage.getPointerPosition();
+    if (!pos) return null;
+    return {
+      x: (pos.x - stage.x()) / zoom,
+      y: (pos.y - stage.y()) / zoom,
+    };
+  }, [zoom]);
+
   const handleStageMouseDown = (e) => {
     if (isStageDraggable || e.evt.button === 2) return;
     
     const stage = stageRef.current;
-    const pos = stage.getRelativePointerPosition();
+    const pos = getStageRelativePointerPosition(stage);
     if (!pos) return;
     
     const cellSize = 50;
@@ -760,7 +769,7 @@ export default function FloorPlanEditorPage() {
   const handleStageMouseMove = (e) => {
     if (isStageDraggable) return;
     const stage = stageRef.current;
-    const pos = stage.getRelativePointerPosition();
+    const pos = getStageRelativePointerPosition(stage);
     if (!pos) return;
     
     const cellSize = 50;
@@ -835,7 +844,7 @@ export default function FloorPlanEditorPage() {
     
     if (isBackground) {
       if (selectedShape && selectedShape !== 'line' && selectedShape !== 'hall') {
-        const pos = stage.getRelativePointerPosition();
+        const pos = getStageRelativePointerPosition(stage);
         if (!pos) return;
         const cellSize = 50;
         const gridX = Math.max(0, Math.min(Math.floor(pos.x / cellSize), (localPlan?.gridWidth || 20) - 2));
