@@ -10,7 +10,10 @@ const router = express.Router();
 router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const filter = { tenantId: req.tenantId };
-    if (req.storeId) {
+    const isAdmin = req.user.role === 'merchant_admin' || req.user.role === 'superadmin';
+    if (req.query.pending === 'true' && isAdmin) {
+      // Merchant admins see pending promotions for the whole tenant
+    } else if (req.storeId) {
       filter.$or = [{ storeId: req.storeId }, { storeId: null }];
     } else {
       Object.assign(filter, buildStoreFilter(req));
@@ -54,10 +57,12 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
 
 router.get('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const scope =
-      req.storeId != null
-        ? { $or: [{ storeId: req.storeId }, { storeId: null }] }
-        : buildStoreFilter(req);
+    const isAdmin = req.user.role === 'merchant_admin' || req.user.role === 'superadmin';
+    const scope = isAdmin
+      ? {}
+      : (req.storeId != null
+          ? { $or: [{ storeId: req.storeId }, { storeId: null }] }
+          : buildStoreFilter(req));
     const p = await Promotion.findOne({ _id: req.params.id, tenantId: req.tenantId, ...scope });
     if (!p) return res.status(404).json({ message: 'Promotion not found' });
     res.json(p);
@@ -114,10 +119,11 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
 
 router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
+    const isAdmin = req.user.role === 'merchant_admin' || req.user.role === 'superadmin';
     const existing = await Promotion.findOne({
       _id: req.params.id,
       tenantId: req.tenantId,
-      ...buildStoreFilter(req),
+      ...(isAdmin ? {} : buildStoreFilter(req)),
     });
     if (!existing) return res.status(404).json({ message: 'Promotion not found' });
 
@@ -173,7 +179,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
 router.post('/:id/approve', protect, authorize('merchant_admin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const existing = await Promotion.findOne(
-      { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) }
+      { _id: req.params.id, tenantId: req.tenantId }
     );
     if (!existing) return res.status(404).json({ message: 'Promotion not found' });
 
@@ -219,7 +225,7 @@ router.post('/:id/reject', protect, authorize('merchant_admin'), tenantScope, re
   try {
     const reason = String(req.body.rejectionReason || '').trim() || 'No reason provided';
     const existing = await Promotion.findOne(
-      { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) }
+      { _id: req.params.id, tenantId: req.tenantId }
     );
     if (!existing) return res.status(404).json({ message: 'Promotion not found' });
 
@@ -261,7 +267,12 @@ router.post('/:id/reject', protect, authorize('merchant_admin'), tenantScope, re
 
 router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const promo = await Promotion.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) });
+    const isAdmin = req.user.role === 'merchant_admin' || req.user.role === 'superadmin';
+    const promo = await Promotion.findOneAndDelete({
+      _id: req.params.id,
+      tenantId: req.tenantId,
+      ...(isAdmin ? {} : buildStoreFilter(req)),
+    });
     if (!promo) return res.status(404).json({ message: 'Promotion not found' });
     res.json({ message: 'Deleted' });
   } catch (err) {

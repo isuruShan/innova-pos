@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Calendar, Package, FileText, AlertTriangle } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { X, Plus, Trash2, Calendar, Package, FileText, AlertTriangle, Download } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 import InventorySearchSelect from './InventorySearchSelect';
 import AddInventoryItemDrawer from './AddInventoryItemDrawer';
@@ -13,8 +13,10 @@ export default function GoodsReceiptFormModal({
   suppliers,
   inventory,
   purchaseOrders,
+  receipts = [],
   onSubmit,
   isPending,
+  readOnly = false,
 }) {
   const [supplierId, setSupplierId] = useState('');
   const [purchaseOrderId, setPurchaseOrderId] = useState('');
@@ -24,6 +26,111 @@ export default function GoodsReceiptFormModal({
   const [returnReason, setReturnReason] = useState('');
   const [error, setError] = useState('');
   const [activeAddDrawerIndex, setActiveAddDrawerIndex] = useState(null);
+
+  const getEligibleReturnItems = (poId) => {
+    if (!poId) return [];
+    const po = purchaseOrders.find((p) => String(p._id) === poId);
+    if (!po) return [];
+
+    const grns = receipts.filter(
+      (r) =>
+        r.type === 'receipt' &&
+        r.status === 'confirmed' &&
+        String(r.purchaseOrderId?._id || r.purchaseOrderId) === poId
+    );
+
+    const otherReturns = receipts.filter(
+      (r) =>
+        r.type === 'return' &&
+        String(r.purchaseOrderId?._id || r.purchaseOrderId) === poId &&
+        (!editing || String(r._id) !== String(editing._id))
+    );
+
+    const returnedMap = {};
+    otherReturns.forEach((ret) => {
+      ret.items.forEach((item) => {
+        const itemId = String(item.inventoryItemId);
+        returnedMap[itemId] = (returnedMap[itemId] || 0) + (item.receivedQty || 0);
+      });
+    });
+
+    if (grns.length > 0) {
+      const grnItemsMap = {};
+      grns.forEach((grn) => {
+        grn.items.forEach((item) => {
+          const itemId = String(item.inventoryItemId);
+          if (!grnItemsMap[itemId]) {
+            grnItemsMap[itemId] = {
+              inventoryItemId: itemId,
+              itemName: item.itemName,
+              unit: item.unit,
+              acceptedQty: 0,
+              unitPrice: item.unitPrice,
+            };
+          }
+          grnItemsMap[itemId].acceptedQty += item.acceptedQty || 0;
+        });
+      });
+
+      return Object.values(grnItemsMap).map((item) => {
+        const alreadyReturned = returnedMap[item.inventoryItemId] || 0;
+        const maxReturn = Math.max(item.acceptedQty - alreadyReturned, 0);
+        return {
+          inventoryItemId: item.inventoryItemId,
+          itemName: item.itemName,
+          unit: item.unit,
+          orderedQty: 0,
+          receivedQty: 0,
+          acceptedQty: 0,
+          rejectedQty: 0,
+          unitPrice: item.unitPrice,
+          maxReturnQty: maxReturn,
+          rejectionReason: '',
+        };
+      });
+    } else {
+      return po.items.map((item) => {
+        const itemId = String(item.inventoryItemId);
+        const alreadyReturned = returnedMap[itemId] || 0;
+        const maxReturn = Math.max(item.orderedQty - alreadyReturned, 0);
+        return {
+          inventoryItemId: itemId,
+          itemName: item.itemName,
+          unit: item.unit,
+          orderedQty: item.orderedQty,
+          receivedQty: 0,
+          acceptedQty: 0,
+          rejectedQty: 0,
+          unitPrice: item.unitPrice,
+          maxReturnQty: maxReturn,
+          rejectionReason: '',
+        };
+      });
+    }
+  };
+
+  const filteredInventory = useMemo(() => {
+    if (!purchaseOrderId) return inventory;
+    const po = purchaseOrders.find((p) => String(p._id) === purchaseOrderId);
+    if (!po) return [];
+
+    if (type === 'return') {
+      const grns = receipts.filter(
+        (r) =>
+          r.type === 'receipt' &&
+          r.status === 'confirmed' &&
+          String(r.purchaseOrderId?._id || r.purchaseOrderId) === purchaseOrderId
+      );
+      if (grns.length > 0) {
+        const itemIds = new Set();
+        grns.forEach((grn) => grn.items.forEach((item) => itemIds.add(String(item.inventoryItemId))));
+        return inventory.filter((item) => itemIds.has(String(item._id)));
+      }
+    }
+
+    const poItemIds = new Set(po.items.map((item) => String(item.inventoryItemId)));
+    return inventory.filter((item) => poItemIds.has(String(item._id)));
+  }, [purchaseOrderId, inventory, purchaseOrders, receipts, type]);
 
   const handleAddNewItemSuccess = (newItem) => {
     if (activeAddDrawerIndex !== null && newItem) {
@@ -39,18 +146,23 @@ export default function GoodsReceiptFormModal({
     if (open && editing) {
       setSupplierId(String(editing.supplierId._id || editing.supplierId));
       setPurchaseOrderId(editing.purchaseOrderId ? String(editing.purchaseOrderId._id || editing.purchaseOrderId) : '');
+      const eligible = editing.purchaseOrderId ? getEligibleReturnItems(String(editing.purchaseOrderId._id || editing.purchaseOrderId)) : [];
       setItems(
-        editing.items.map((item) => ({
-          inventoryItemId: String(item.inventoryItemId),
-          itemName: item.itemName,
-          unit: item.unit,
-          orderedQty: item.orderedQty,
-          receivedQty: item.receivedQty,
-          acceptedQty: item.acceptedQty,
-          rejectedQty: item.rejectedQty,
-          unitPrice: item.unitPrice,
-          rejectionReason: item.rejectionReason || '',
-        }))
+        editing.items.map((item) => {
+          const eligItem = eligible.find(e => String(e.inventoryItemId) === String(item.inventoryItemId));
+          return {
+            inventoryItemId: String(item.inventoryItemId),
+            itemName: item.itemName,
+            unit: item.unit,
+            orderedQty: item.orderedQty,
+            receivedQty: item.receivedQty,
+            acceptedQty: item.acceptedQty,
+            rejectedQty: item.rejectedQty,
+            unitPrice: item.unitPrice,
+            rejectionReason: item.rejectionReason || '',
+            maxReturnQty: eligItem ? eligItem.maxReturnQty : undefined,
+          };
+        })
       );
       setReceiptDate(editing.receiptDate ? editing.receiptDate.split('T')[0] : '');
       setNotes(editing.notes || '');
@@ -143,25 +255,34 @@ export default function GoodsReceiptFormModal({
       const po = purchaseOrders.find((p) => String(p._id) === poId);
       if (po) {
         setSupplierId(String(po.supplierId._id || po.supplierId));
-        setItems(
-          po.items.map((item) => ({
-            inventoryItemId: String(item.inventoryItemId),
-            itemName: item.itemName,
-            unit: item.unit,
-            orderedQty: item.orderedQty,
-            receivedQty: Math.max(item.orderedQty - item.receivedQty, 0),
-            acceptedQty: Math.max(item.orderedQty - item.receivedQty, 0),
-            rejectedQty: 0,
-            unitPrice: item.unitPrice,
-            rejectionReason: '',
-          }))
-        );
+        if (type === 'receipt') {
+          setItems(
+            po.items.map((item) => ({
+              inventoryItemId: String(item.inventoryItemId),
+              itemName: item.itemName,
+              unit: item.unit,
+              orderedQty: item.orderedQty,
+              receivedQty: Math.max(item.orderedQty - item.receivedQty, 0),
+              acceptedQty: Math.max(item.orderedQty - item.receivedQty, 0),
+              rejectedQty: 0,
+              unitPrice: item.unitPrice,
+              rejectionReason: '',
+            }))
+          );
+        } else {
+          const returnItems = getEligibleReturnItems(poId);
+          setItems(returnItems);
+        }
       }
+    } else {
+      setSupplierId('');
+      setItems([]);
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (readOnly) return;
     setError('');
 
     if (!supplierId) {
@@ -200,6 +321,16 @@ export default function GoodsReceiptFormModal({
         if (!item.receivedQty || item.receivedQty <= 0) {
           return setError(`Item ${i + 1}: Return quantity must be greater than 0`);
         }
+        if (purchaseOrderId) {
+          const eligibleItems = getEligibleReturnItems(purchaseOrderId);
+          const eligibleItem = eligibleItems.find(ei => String(ei.inventoryItemId) === String(item.inventoryItemId));
+          if (!eligibleItem) {
+            return setError(`Item ${i + 1}: This item is not eligible for return from this Purchase Order`);
+          }
+          if (Number(item.receivedQty) > eligibleItem.maxReturnQty) {
+            return setError(`Item ${i + 1}: Return quantity (${item.receivedQty}) cannot exceed maximum returnable quantity (${eligibleItem.maxReturnQty})`);
+          }
+        }
       }
       if (item.unitPrice < 0) {
         return setError(`Item ${i + 1}: Unit price cannot be negative`);
@@ -231,6 +362,216 @@ export default function GoodsReceiptFormModal({
     onSubmit(payload);
   };
 
+  const handleExportCSV = () => {
+    if (!editing) return;
+    const supplierName = suppliers.find(s => String(s._id) === supplierId)?.name || 'Unknown';
+    const poNumber = purchaseOrderId ? (purchaseOrders.find(p => String(p._id) === purchaseOrderId)?.orderNumber || '') : 'N/A';
+    
+    let csvContent = '';
+    if (type === 'receipt') {
+      csvContent = [
+        ['Goods Receipt Note (GRN) Details'],
+        ['GRN Number', editing.receiptNumber || ''],
+        ['Purchase Order', poNumber],
+        ['Supplier', supplierName],
+        ['Receipt Date', receiptDate || ''],
+        ['Notes', notes || ''],
+        [],
+        ['Item Name', 'Ordered Qty', 'Received Qty', 'Rejected Qty', 'Accepted Qty', 'Unit', 'Unit Price', 'Subtotal'],
+        ...items.map(item => [
+          item.itemName,
+          item.orderedQty || 0,
+          item.receivedQty || 0,
+          item.rejectedQty || 0,
+          item.acceptedQty || 0,
+          item.unit || '',
+          item.unitPrice || 0,
+          (item.acceptedQty || 0) * (item.unitPrice || 0)
+        ]),
+        [],
+        ['Total Value', totalAmount]
+      ].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    } else {
+      csvContent = [
+        ['Goods Return Details'],
+        ['Return Number', editing.receiptNumber || ''],
+        ['Purchase Order Reference', poNumber],
+        ['Supplier', supplierName],
+        ['Return Date', receiptDate || ''],
+        ['Return Reason', returnReason || ''],
+        ['Notes', notes || ''],
+        [],
+        ['Item Name', 'Return Qty', 'Unit', 'Unit Price', 'Subtotal'],
+        ...items.map(item => [
+          item.itemName,
+          item.receivedQty || 0,
+          item.unit || '',
+          item.unitPrice || 0,
+          (item.receivedQty || 0) * (item.unitPrice || 0)
+        ]),
+        [],
+        ['Total Value', totalAmount]
+      ].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${type === 'receipt' ? 'GRN' : 'Return'}_${editing.receiptNumber || 'Export'}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportPDF = () => {
+    if (!editing) return;
+    const supplierName = suppliers.find(s => String(s._id) === supplierId)?.name || 'Unknown';
+    const poNumber = purchaseOrderId ? (purchaseOrders.find(p => String(p._id) === purchaseOrderId)?.orderNumber || '') : 'N/A';
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    let itemsHtml = '';
+    let tableHeaders = '';
+    
+    if (type === 'receipt') {
+      tableHeaders = `
+        <th>Item Name</th>
+        <th style="text-align: right;">Ordered</th>
+        <th style="text-align: right;">Received</th>
+        <th style="text-align: right;">Rejected</th>
+        <th style="text-align: right;">Accepted</th>
+        <th>Unit</th>
+        <th style="text-align: right;">Unit Price</th>
+        <th style="text-align: right;">Subtotal</th>
+      `;
+      itemsHtml = items.map(item => `
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">${item.itemName}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right;">${item.orderedQty || 0}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right;">${item.receivedQty || 0}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right;">${item.rejectedQty || 0}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right; font-weight: bold; color: #16a34a;">${item.acceptedQty || 0}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">${item.unit}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right;">${formatCurrency(item.unitPrice)}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right; font-weight: bold;">${formatCurrency((item.acceptedQty || 0) * item.unitPrice)}</td>
+        </tr>
+      `).join('');
+    } else {
+      tableHeaders = `
+        <th>Item Name</th>
+        <th style="text-align: right;">Return Qty</th>
+        <th>Unit</th>
+        <th style="text-align: right;">Unit Price</th>
+        <th style="text-align: right;">Subtotal</th>
+      `;
+      itemsHtml = items.map(item => `
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">${item.itemName}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right; font-weight: bold; color: #dc2626;">${item.receivedQty || 0}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd;">${item.unit}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right;">${formatCurrency(item.unitPrice)}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right; font-weight: bold;">${formatCurrency((item.receivedQty || 0) * item.unitPrice)}</td>
+        </tr>
+      `).join('');
+    }
+
+    const documentTitle = type === 'receipt' ? 'Goods Receipt Note' : 'Goods Return Note';
+    const colorTheme = type === 'receipt' ? '#16a34a' : '#dc2626';
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${documentTitle} - ${editing.receiptNumber || ''}</title>
+          <style>
+            body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #333; margin: 0; padding: 40px; }
+            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+            .title { font-size: 24px; font-weight: bold; color: #111; }
+            .meta-info { margin-bottom: 30px; display: grid; grid-template-cols: 1fr 1fr; gap: 20px; }
+            .meta-block h3 { margin: 0 0 8px 0; font-size: 14px; text-transform: uppercase; color: #666; }
+            .meta-block p { margin: 0; font-size: 16px; font-weight: 500; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th { background-color: #f5f5f5; text-align: left; padding: 10px; font-weight: 600; border-bottom: 2px solid #ddd; }
+            .total-row { font-size: 18px; font-weight: bold; }
+            .notes { margin-top: 40px; padding: 15px; background: #f9f9f9; border-left: 4px solid #ccc; font-size: 14px; }
+            .reason { margin-top: 20px; padding: 15px; background: #fef2f2; border-left: 4px solid #ef4444; font-size: 14px; }
+            @media print {
+              body { padding: 20px; }
+              button { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="title" style="color: ${colorTheme};">${documentTitle.toUpperCase()}</div>
+              <div style="font-size: 16px; color: #666; margin-top: 5px;">Ref #: ${editing.receiptNumber || ''}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 18px; font-weight: bold;">SplitSecond POS</div>
+              <div style="font-size: 12px; color: #666;">Date: ${new Date().toLocaleDateString()}</div>
+            </div>
+          </div>
+          
+          <div class="meta-info">
+            <div class="meta-block">
+              <h3>Supplier</h3>
+              <p>${supplierName}</p>
+            </div>
+            <div class="meta-block">
+              <h3>${type === 'receipt' ? 'Receipt' : 'Return'} Date</h3>
+              <p>${receiptDate ? new Date(receiptDate).toLocaleDateString() : 'N/A'}</p>
+            </div>
+            <div class="meta-block">
+              <h3>Linked PO</h3>
+              <p>${poNumber}</p>
+            </div>
+          </div>
+
+          ${type === 'return' && returnReason ? `
+            <div class="reason">
+              <strong>Reason for Return:</strong>
+              <p style="margin: 5px 0 0 0; white-space: pre-wrap;">${returnReason}</p>
+            </div>
+          ` : ''}
+
+          <table>
+            <thead>
+              <tr>
+                ${tableHeaders}
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+              <tr class="total-row">
+                <td colspan="${type === 'receipt' ? '7' : '4'}" style="padding: 15px 10px; text-align: right;">Total Value:</td>
+                <td style="padding: 15px 10px; text-align: right; color: ${colorTheme};">${formatCurrency(totalAmount)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          ${notes ? `
+            <div class="notes">
+              <strong>Notes:</strong>
+              <p style="margin: 5px 0 0 0; white-space: pre-wrap;">${notes}</p>
+            </div>
+          ` : ''}
+
+          <script>
+            window.onload = function() {
+              window.print();
+              window.onafterprint = function() {
+                window.close();
+              };
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const totalAmount = items.reduce((sum, item) => {
     const qty = type === 'receipt' ? Number(item.acceptedQty) || 0 : Number(item.receivedQty) || 0;
     return sum + qty * (Number(item.unitPrice) || 0);
@@ -239,11 +580,13 @@ export default function GoodsReceiptFormModal({
   if (!open) return null;
 
   const isReceipt = type === 'receipt';
-  const title = editing
-    ? `Edit ${isReceipt ? 'Goods Receipt' : 'Goods Return'}`
-    : createFromPO
-      ? `Create GRN from PO ${createFromPO.orderNumber}`
-      : `New ${isReceipt ? 'Goods Receipt' : 'Goods Return'}`;
+  const title = readOnly
+    ? `View ${isReceipt ? 'Goods Receipt' : 'Goods Return'}`
+    : editing
+      ? `Edit ${isReceipt ? 'Goods Receipt' : 'Goods Return'}`
+      : createFromPO
+        ? `Create GRN from PO ${createFromPO.orderNumber}`
+        : `New ${isReceipt ? 'Goods Receipt' : 'Goods Return'}`;
 
   return (
     <div
@@ -274,7 +617,7 @@ export default function GoodsReceiptFormModal({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Purchase Order Selection (for receipts only, when not editing) */}
-          {isReceipt && !editing && !createFromPO && (
+          {!editing && !createFromPO && (
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
                 <FileText size={14} />
@@ -284,11 +627,16 @@ export default function GoodsReceiptFormModal({
                 value={purchaseOrderId}
                 onChange={(e) => handlePOChange(e.target.value)}
                 className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                disabled={isPending}
+                disabled={isPending || readOnly}
               >
-                <option value="">None (standalone receipt)</option>
+                <option value="">None (standalone {isReceipt ? 'receipt' : 'return'})</option>
                 {purchaseOrders
-                  .filter((po) => ['sent', 'partial'].includes(po.status))
+                  .filter((po) => {
+                    if (isReceipt) {
+                      return ['sent', 'partial'].includes(po.status);
+                    }
+                    return true;
+                  })
                   .map((po) => (
                     <option key={po._id} value={po._id}>
                       {po.orderNumber} - {po.supplierId?.name}
@@ -307,7 +655,7 @@ export default function GoodsReceiptFormModal({
               value={supplierId}
               onChange={(e) => setSupplierId(e.target.value)}
               className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
-              disabled={isPending || !!purchaseOrderId}
+              disabled={isPending || !!purchaseOrderId || readOnly}
             >
               <option value="">Select a supplier</option>
               {suppliers.map((supplier) => (
@@ -329,7 +677,7 @@ export default function GoodsReceiptFormModal({
               value={receiptDate}
               onChange={(e) => setReceiptDate(e.target.value)}
               className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
-              disabled={isPending}
+              disabled={isPending || readOnly}
             />
           </div>
 
@@ -340,7 +688,7 @@ export default function GoodsReceiptFormModal({
                 <Package size={14} />
                 Items <span className="text-red-400">*</span>
               </label>
-              {!purchaseOrderId && (
+              {!purchaseOrderId && !readOnly && (
                 <button
                   type="button"
                   onClick={handleAddItem}
@@ -370,10 +718,10 @@ export default function GoodsReceiptFormModal({
                         <label className="block text-xs text-slate-500 mb-1">Item</label>
                         <InventorySearchSelect
                           value={item.inventoryItemId}
-                          inventory={inventory}
+                          inventory={filteredInventory}
                           onChange={(val) => handleItemChange(index, 'inventoryItemId', val)}
                           onAddNewClick={() => setActiveAddDrawerIndex(index)}
-                          disabled={isPending || !!purchaseOrderId}
+                          disabled={isPending || !!purchaseOrderId || readOnly}
                         />
                       </div>
 
@@ -400,7 +748,7 @@ export default function GoodsReceiptFormModal({
                               value={item.receivedQty}
                               onChange={(e) => handleItemChange(index, 'receivedQty', e.target.value)}
                               className="w-full bg-slate-800 border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                              disabled={isPending}
+                              disabled={isPending || readOnly}
                             />
                           </div>
                           <div className="col-span-4 md:col-span-2">
@@ -412,7 +760,7 @@ export default function GoodsReceiptFormModal({
                               value={item.rejectedQty}
                               onChange={(e) => handleItemChange(index, 'rejectedQty', e.target.value)}
                               className="w-full bg-slate-800 border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                              disabled={isPending}
+                              disabled={isPending || readOnly}
                             />
                           </div>
                           <div className="col-span-4 md:col-span-2">
@@ -427,7 +775,9 @@ export default function GoodsReceiptFormModal({
                         </>
                       ) : (
                         <div className="col-span-6 md:col-span-3">
-                          <label className="block text-xs text-red-400 mb-1">Return Qty</label>
+                          <label className="block text-xs text-red-400 mb-1">
+                            Return Qty {item.maxReturnQty !== undefined && `(Max: ${item.maxReturnQty})`}
+                          </label>
                           <input
                             type="number"
                             min="0"
@@ -435,7 +785,7 @@ export default function GoodsReceiptFormModal({
                             value={item.receivedQty}
                             onChange={(e) => handleItemChange(index, 'receivedQty', e.target.value)}
                             className="w-full bg-slate-800 border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                            disabled={isPending}
+                            disabled={isPending || readOnly}
                           />
                         </div>
                       )}
@@ -450,12 +800,12 @@ export default function GoodsReceiptFormModal({
                           value={item.unitPrice}
                           onChange={(e) => handleItemChange(index, 'unitPrice', e.target.value)}
                           className="w-full bg-slate-800 border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                          disabled={isPending}
+                          disabled={isPending || readOnly}
                         />
                       </div>
 
                       {/* Delete Button */}
-                      {!purchaseOrderId && (
+                      {!purchaseOrderId && !readOnly && (
                         <div className="col-span-3 md:col-span-1 flex items-end">
                           <button
                             type="button"
@@ -482,7 +832,7 @@ export default function GoodsReceiptFormModal({
                           onChange={(e) => handleItemChange(index, 'rejectionReason', e.target.value)}
                           placeholder="Damaged, expired, wrong item, etc."
                           className="w-full bg-red-500/10 border border-red-500/30 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder-slate-600"
-                          disabled={isPending}
+                          disabled={isPending || readOnly}
                         />
                       </div>
                     )}
@@ -505,7 +855,7 @@ export default function GoodsReceiptFormModal({
                 rows={2}
                 placeholder="Reason for returning these items..."
                 className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500 resize-none"
-                disabled={isPending}
+                disabled={isPending || readOnly}
               />
             </div>
           )}
@@ -519,7 +869,7 @@ export default function GoodsReceiptFormModal({
               rows={2}
               placeholder="Optional notes..."
               className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500 resize-none"
-              disabled={isPending}
+              disabled={isPending || readOnly}
             />
           </div>
 
@@ -543,23 +893,51 @@ export default function GoodsReceiptFormModal({
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isPending}
-              className="flex-1 px-4 py-2.5 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700/50 transition disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="flex-1 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-white font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isPending ? 'Saving...' : editing ? 'Update' : 'Create Draft'}
-            </button>
-          </div>
+          {readOnly ? (
+            <div className="flex flex-col sm:flex-row gap-3 pt-2 w-full">
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition"
+              >
+                <Download size={16} />
+                Export CSV
+              </button>
+              <button
+                type="button"
+                onClick={handleExportPDF}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-semibold rounded-lg transition"
+              >
+                <FileText size={16} />
+                Export PDF
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition"
+              >
+                Close
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isPending}
+                className="flex-1 px-4 py-2.5 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700/50 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isPending}
+                className="flex-1 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-white font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isPending ? 'Saving...' : editing ? 'Update' : 'Create Draft'}
+              </button>
+            </div>
+          )}
         </form>
       </div>
       <AddInventoryItemDrawer

@@ -212,7 +212,10 @@ router.delete('/tiers/:id', authorize('merchant_admin'), async (req, res) => {
 router.get('/rewards', authorize('cashier', 'manager', 'merchant_admin'), resolveSelectedStore, async (req, res) => {
   try {
     const filter = { tenantId: req.tenantId };
-    if (req.storeId) {
+    const isAdmin = req.user.role === 'merchant_admin' || req.user.role === 'superadmin';
+    if (req.query.pending === 'true' && isAdmin) {
+      // Bypass store scoping for pending rewards approvals
+    } else if (req.storeId) {
       filter.$or = [{ storeId: req.storeId }, { storeId: null }];
     }
     if (req.query.pending === 'true') filter.approvalStatus = 'pending';
@@ -285,10 +288,11 @@ router.post('/rewards', authorize('manager', 'merchant_admin'), resolveSelectedS
 
 router.put('/rewards/:id', authorize('manager', 'merchant_admin'), resolveSelectedStore, async (req, res) => {
   try {
+    const isAdmin = req.user.role === 'merchant_admin' || req.user.role === 'superadmin';
     const existing = await LoyaltyReward.findOne({
       _id: req.params.id,
       tenantId: req.tenantId,
-      ...buildStoreFilter(req),
+      ...(isAdmin ? {} : buildStoreFilter(req)),
     });
     if (!existing) return res.status(404).json({ message: 'Reward not found' });
 
@@ -336,7 +340,7 @@ router.put('/rewards/:id', authorize('manager', 'merchant_admin'), resolveSelect
 router.post('/rewards/:id/approve', authorize('merchant_admin'), resolveSelectedStore, async (req, res) => {
   try {
     const existing = await LoyaltyReward.findOne(
-      { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) }
+      { _id: req.params.id, tenantId: req.tenantId }
     );
     if (!existing) return res.status(404).json({ message: 'Reward not found' });
 
@@ -382,7 +386,7 @@ router.post('/rewards/:id/reject', authorize('merchant_admin'), resolveSelectedS
   try {
     const reason = String(req.body.rejectionReason || '').trim() || 'No reason provided';
     const existing = await LoyaltyReward.findOne(
-      { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) }
+      { _id: req.params.id, tenantId: req.tenantId }
     );
     if (!existing) return res.status(404).json({ message: 'Reward not found' });
 

@@ -319,6 +319,12 @@ export default function SubscriptionPage() {
 
   const subscriptionEnd = subscriptionEndDate ? new Date(subscriptionEndDate) : null;
 
+  const isNextBillingPaid = useMemo(() => {
+    if (!latestReceipt || latestReceipt.status !== 'verified') return false;
+    if (!latestReceipt.billingPeriodEnd || !subscriptionEnd) return false;
+    return new Date(latestReceipt.billingPeriodEnd).getTime() > subscriptionEnd.getTime();
+  }, [latestReceipt, subscriptionEnd]);
+
   /** Plan due at the next payment (scheduled change or current assigned plan). */
   const nextBillingPlanId = useMemo(() => {
     if (tenant?.planLocked && tenant.assignedPlanId?._id) return tenant.assignedPlanId._id;
@@ -811,7 +817,7 @@ export default function SubscriptionPage() {
                     </div>
                   )}
 
-                  {latestReceipt?.status === 'verified' && (
+                  {isNextBillingPaid && (
                     <div className="bg-green-50 border border-green-200 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="space-y-2">
                         <p className="font-semibold text-green-800 flex items-center gap-2">
@@ -837,7 +843,8 @@ export default function SubscriptionPage() {
                             '';
                           const defaultPlan = payPlans.find((p) => p._id === defaultPlanId) || payPlans[0];
                           const price = selectedCycle === 'yearly' ? defaultPlan?.yearlyPrice : defaultPlan?.monthlyPrice;
-                          setForm((f) => ({ ...f, planId: defaultPlanId, amount: String(price || 0) }));
+                          const amountToPay = billingBreakdown?.total > 0 ? billingBreakdown.total : price;
+                          setForm((f) => ({ ...f, planId: defaultPlanId, amount: String(amountToPay || 0) }));
                           setTrialSubscribeStep('payment_select');
                         }}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg shadow-sm transition whitespace-nowrap cursor-pointer"
@@ -858,7 +865,7 @@ export default function SubscriptionPage() {
                     </div>
                   )}
 
-                  {(!latestReceipt || latestReceipt.status === 'rejected') && (
+                  {(!latestReceipt || latestReceipt.status === 'rejected' || (!isNextBillingPaid && latestReceipt.status === 'verified')) && (
                     <div className="space-y-4">
                       <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
@@ -882,7 +889,8 @@ export default function SubscriptionPage() {
                               '';
                             const defaultPlan = payPlans.find((p) => p._id === defaultPlanId) || payPlans[0];
                             const price = selectedCycle === 'yearly' ? defaultPlan?.yearlyPrice : defaultPlan?.monthlyPrice;
-                            setForm((f) => ({ ...f, planId: defaultPlanId, amount: String(price || 0) }));
+                            const amountToPay = billingBreakdown?.total > 0 ? billingBreakdown.total : price;
+                            setForm((f) => ({ ...f, planId: defaultPlanId, amount: String(amountToPay || 0) }));
                             setTrialSubscribeStep('payment_select');
                           }}
                           className="px-6 py-2.5 bg-brand-orange hover:bg-brand-orange-hover text-white text-xs font-semibold rounded-lg shadow-sm transition cursor-pointer"
@@ -1240,9 +1248,9 @@ export default function SubscriptionPage() {
                   {trialSubscribeStep === 'pay_form' && 'Complete Payment'}
                 </h2>
                 <p className="text-xs text-gray-500 mt-1">
-                  {trialSubscribeStep === 'plan_select' && 'Choose the plan that best fits your business. (Step 1 of 3)'}
-                  {trialSubscribeStep === 'payment_select' && 'Select how you would like to submit payment. (Step 2 of 3)'}
-                  {trialSubscribeStep === 'pay_form' && `Submit details for your payment via ${METHOD_LABELS[paymentMethod] || paymentMethod}. (Step 3 of 3)`}
+                  {trialSubscribeStep === 'plan_select' && `Choose the plan that best fits your business.${tenant?.subscriptionStatus === 'trial' ? ' (Step 1 of 3)' : ''}`}
+                  {trialSubscribeStep === 'payment_select' && `Select how you would like to submit payment.${tenant?.subscriptionStatus === 'trial' ? ' (Step 2 of 3)' : ''}`}
+                  {trialSubscribeStep === 'pay_form' && `Submit details for your payment via ${METHOD_LABELS[paymentMethod] || paymentMethod}.${tenant?.subscriptionStatus === 'trial' ? ' (Step 3 of 3)' : ''}`}
                 </p>
               </div>
               <button
@@ -1386,7 +1394,7 @@ export default function SubscriptionPage() {
               {trialSubscribeStep === 'payment_select' && (
                 <div className="space-y-6">
                   <p className="text-sm text-gray-650">
-                    Select a payment option below to subscribe to the <strong className="text-gray-900">{selectedPlan?.name || 'selected'} plan</strong> ({selectedPlan?.currency || 'LKR'} {Number(selectedCycle === 'yearly' ? selectedPlan?.yearlyPrice : selectedPlan?.monthlyPrice).toLocaleString()} / {selectedCycle === 'yearly' ? 'year' : 'month'}).
+                    Select a payment option below to subscribe to the <strong className="text-gray-900">{selectedPlan?.name || 'selected'} plan</strong> ({selectedPlan?.currency || 'LKR'} {Number(form.amount).toLocaleString()} / {selectedCycle === 'yearly' ? 'year' : 'month'}).
                   </p>
                   <div className="flex flex-wrap gap-4 justify-center py-4">
                     {paymentOptions?.stripe?.enabled && !isInternational && (

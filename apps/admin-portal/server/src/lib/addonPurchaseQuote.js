@@ -1,6 +1,8 @@
 'use strict';
 
 const { getAddonByCode, priceAddonForPlan } = require('./addonBilling');
+const Subscription = require('../models/Subscription');
+const PaymentReceipt = require('../models/PaymentReceipt');
 const {
   computeProratedAddonCharge,
   buildRecurringRates,
@@ -31,15 +33,44 @@ async function getAddonPurchaseQuote(tenantId, code) {
     countryIso: tenant.countryIso,
   });
 
+  // Calculate future prepaid or pending renewal cycles
+  let futureCyclesCount = 0;
+  if (periodEnd) {
+    const futureSubscriptions = await Subscription.find({
+      tenantId: tenant._id,
+      startDate: { $gte: periodEnd }
+    }).lean();
+
+    const pendingReceipts = await PaymentReceipt.find({
+      tenantId: tenant._id,
+      status: 'pending',
+      receiptKind: 'subscription',
+      billingPeriodStart: { $gte: periodEnd }
+    }).lean();
+
+    futureCyclesCount = futureSubscriptions.length + pendingReceipts.length;
+  }
+
+  const extraCharge = full.amount * futureCyclesCount;
+  const totalAmount = prorated.amount + extraCharge;
+
+  let label = prorated.label || addon?.name || '';
+  let prorationNote = prorated.prorationNote;
+  if (futureCyclesCount > 0) {
+    const cycleLabel = futureCyclesCount === 1 ? '1 next pre-paid cycle' : `${futureCyclesCount} next pre-paid cycles`;
+    prorationNote = `${prorationNote || ''} Includes full cycle charge of ${full.currency} ${extraCharge.toLocaleString()} for ${cycleLabel}.`;
+    label = `${label} (+ ${cycleLabel})`;
+  }
+
   return {
     addon,
     plan,
     billingLabel: prorated.billingLabel,
     recurringRates: buildRecurringRates(full, plan),
     priced: {
-      amount: prorated.amount,
+      amount: totalAmount,
       currency: prorated.currency,
-      label: prorated.label,
+      label: label,
     },
     fullCycle: {
       amount: full.amount,
@@ -49,7 +80,11 @@ async function getAddonPurchaseQuote(tenantId, code) {
       yearlyAmount: full.yearlyAmount,
       billingCycle: full.billingCycle,
     },
-    proration: buildProrationPayload(prorated),
+    proration: {
+      ...buildProrationPayload(prorated),
+      amount: totalAmount,
+      note: prorationNote,
+    },
   };
 }
 

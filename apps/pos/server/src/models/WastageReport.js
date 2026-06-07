@@ -35,10 +35,25 @@ const wastageReportSchema = new mongoose.Schema(
     },
     items: [
       {
+        itemType: {
+          type: String,
+          enum: ['inventory', 'menu'],
+          default: 'inventory',
+          required: true,
+        },
         inventoryItemId: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Inventory',
-          required: true,
+          required: false,
+        },
+        menuItemId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'MenuItem',
+          required: false,
+        },
+        variantId: {
+          type: mongoose.Schema.Types.ObjectId,
+          required: false,
         },
         quantity: {
           type: Number,

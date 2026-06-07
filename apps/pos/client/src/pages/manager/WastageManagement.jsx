@@ -2,15 +2,16 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Calendar, Package, Trash2, SlidersHorizontal, ChevronDown, X,
-  Search, FileText, AlertTriangle, Eye, CheckCircle, List, LayoutGrid
+  Search, FileText, AlertTriangle, Eye, CheckCircle, List, LayoutGrid, UtensilsCrossed
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import Toast from '../../components/Toast';
-import SlideOver from '../../components/SlideOver';
+import CenteredModal from '../../components/CenteredModal';
 import PageHeader from '../../components/PageHeader';
 import PosDateField from '../../components/PosDateField';
 import InventorySearchSelect from '../../components/inventory/InventorySearchSelect';
+import MenuSearchSelect from '../../components/inventory/MenuSearchSelect';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { useStoreContext } from '../../context/StoreContext';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
@@ -54,7 +55,7 @@ export default function WastageManagement() {
   const [notes, setNotes] = useState('');
   const [wastageType, setWastageType] = useState('spill_expiry_damage');
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
-  const [items, setItems] = useState([]); // Array of { inventoryItemId: '', quantity: 0, reason: 'spillage' }
+  const [items, setItems] = useState([]); // Array of { itemType: 'inventory', inventoryItemId: '', menuItemId: '', variantId: '', quantity: 1, reason: 'spillage' }
 
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
@@ -68,6 +69,12 @@ export default function WastageManagement() {
   const { data: inventory = [] } = useQuery({
     queryKey: ['inventory', selectedStoreId],
     queryFn: () => api.get('/inventory').then((r) => r.data),
+    enabled: isStoreReady,
+  });
+
+  const { data: menuItems = [] } = useQuery({
+    queryKey: ['menu', selectedStoreId],
+    queryFn: () => api.get('/menu').then((r) => r.data),
     enabled: isStoreReady,
   });
 
@@ -94,7 +101,12 @@ export default function WastageManagement() {
       result = result.filter(r => 
         (r.notes || '').toLowerCase().includes(q) ||
         (r.createdBy?.name || '').toLowerCase().includes(q) ||
-        r.items.some(item => (item.inventoryItemId?.itemName || '').toLowerCase().includes(q))
+        r.items.some(item => {
+          const itemName = item.itemType === 'menu'
+            ? item.menuItemId?.name
+            : item.inventoryItemId?.itemName;
+          return (itemName || '').toLowerCase().includes(q);
+        })
       );
     }
 
@@ -120,7 +132,7 @@ export default function WastageManagement() {
     setNotes('');
     setWastageType('spill_expiry_damage');
     setReportDate(new Date().toISOString().split('T')[0]);
-    setItems([{ inventoryItemId: '', quantity: 1, reason: 'spillage' }]);
+    setItems([{ itemType: 'inventory', inventoryItemId: '', menuItemId: '', variantId: '', quantity: 1, reason: 'spillage' }]);
     setSlideOpen(true);
   };
 
@@ -130,7 +142,7 @@ export default function WastageManagement() {
   };
 
   const handleAddItemRow = () => {
-    setItems(prev => [...prev, { inventoryItemId: '', quantity: 1, reason: 'spillage' }]);
+    setItems(prev => [...prev, { itemType: 'inventory', inventoryItemId: '', menuItemId: '', variantId: '', quantity: 1, reason: 'spillage' }]);
   };
 
   const handleRemoveItemRow = (idx) => {
@@ -140,14 +152,25 @@ export default function WastageManagement() {
   const handleItemChange = (idx, field, val) => {
     setItems(prev => prev.map((item, i) => {
       if (i !== idx) return item;
-      return { ...item, [field]: val };
+      const updatedItem = { ...item, [field]: val };
+      // Reset values if item type changes
+      if (field === 'itemType') {
+        updatedItem.inventoryItemId = '';
+        updatedItem.menuItemId = '';
+        updatedItem.variantId = '';
+      }
+      return updatedItem;
     }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (items.some(item => !item.inventoryItemId)) {
-      showToast('Select an inventory item for all rows', 'error');
+    if (items.some(item => item.itemType === 'inventory' && !item.inventoryItemId)) {
+      showToast('Select an inventory item for all inventory rows', 'error');
+      return;
+    }
+    if (items.some(item => item.itemType === 'menu' && !item.menuItemId)) {
+      showToast('Select a menu item for all menu rows', 'error');
       return;
     }
     if (items.some(item => Number(item.quantity) <= 0)) {
@@ -158,7 +181,14 @@ export default function WastageManagement() {
       date: reportDate,
       type: wastageType,
       notes,
-      items
+      items: items.map(item => ({
+        itemType: item.itemType || 'inventory',
+        inventoryItemId: item.itemType === 'inventory' ? item.inventoryItemId : undefined,
+        menuItemId: item.itemType === 'menu' ? item.menuItemId : undefined,
+        variantId: item.itemType === 'menu' ? item.variantId || null : undefined,
+        quantity: Number(item.quantity),
+        reason: item.reason,
+      }))
     });
   };
 
@@ -230,7 +260,7 @@ export default function WastageManagement() {
                     {(fromDate || toDate || typeFilter !== 'all') && (
                       <button
                         onClick={() => { setFromDate(''); setToDate(''); setTypeFilter('all'); }}
-                        className="text-[10px] text-amber-450 hover:underline"
+                        className="text-[10px] text-amber-455 hover:underline"
                       >
                         Clear All
                       </button>
@@ -349,12 +379,19 @@ export default function WastageManagement() {
                     mobileSecondary: true,
                     render: (r) => (
                       <div className="space-y-1">
-                        {r.items.slice(0, 2).map((item, idx) => (
-                          <div key={idx} className="text-slate-350">
-                            {item.inventoryItemId?.itemName || 'Unknown Item'}{' '}
-                            <span className="text-rose-455 font-bold">({item.quantity} {item.inventoryItemId?.unit})</span>
-                          </div>
-                        ))}
+                        {r.items.slice(0, 2).map((item, idx) => {
+                          const name = item.itemType === 'menu'
+                            ? (item.menuItemId?.name + (item.variantId ? ` (${item.menuItemId.variants?.find(v => String(v._id) === String(item.variantId))?.name || ''})` : ''))
+                            : (item.inventoryItemId?.itemName || 'Unknown Item');
+                          const unit = item.itemType === 'menu' ? 'unit' : (item.inventoryItemId?.unit || '');
+                          return (
+                            <div key={idx} className="text-slate-355">
+                              {item.itemType === 'menu' ? <UtensilsCrossed size={11} className="inline mr-1 text-amber-500" /> : <Package size={11} className="inline mr-1 text-slate-500" />}
+                              {name}{' '}
+                              <span className="text-rose-455 font-bold">({item.quantity} {unit})</span>
+                            </div>
+                          );
+                        })}
                         {r.items.length > 2 && (
                           <p className="text-slate-500 text-[10px]">+{r.items.length - 2} more items</p>
                         )}
@@ -364,7 +401,7 @@ export default function WastageManagement() {
                   {
                     key: 'notes', header: 'Notes',
                     render: (r) => (
-                      <span className="text-slate-450 italic truncate max-w-xs block" title={r.notes}>
+                      <span className="text-slate-455 italic truncate max-w-xs block" title={r.notes}>
                         {r.notes || '—'}
                       </span>
                     ),
@@ -418,12 +455,21 @@ export default function WastageManagement() {
                       <div className="space-y-1.5 border-t border-slate-800/40 pt-3">
                         <p className="text-slate-500 text-xs font-medium">Wasted Items ({report.items.length})</p>
                         <div className="space-y-1">
-                          {report.items.slice(0, 3).map((item, idx) => (
-                            <div key={idx} className="flex justify-between text-xs text-slate-300 bg-slate-800/20 px-2 py-1 rounded">
-                              <span>{item.inventoryItemId?.itemName || 'Unknown Item'}</span>
-                              <span className="font-semibold text-rose-400">{item.quantity} {item.inventoryItemId?.unit}</span>
-                            </div>
-                          ))}
+                          {report.items.slice(0, 3).map((item, idx) => {
+                            const name = item.itemType === 'menu'
+                              ? (item.menuItemId?.name + (item.variantId ? ` (${item.menuItemId.variants?.find(v => String(v._id) === String(item.variantId))?.name || ''})` : ''))
+                              : (item.inventoryItemId?.itemName || 'Unknown Item');
+                            const unit = item.itemType === 'menu' ? 'unit' : (item.inventoryItemId?.unit || '');
+                            return (
+                              <div key={idx} className="flex justify-between text-xs text-slate-300 bg-slate-800/20 px-2 py-1 rounded">
+                                <span className="flex items-center gap-1 truncate">
+                                  {item.itemType === 'menu' ? <UtensilsCrossed size={11} className="text-amber-500 shrink-0" /> : <Package size={11} className="text-slate-500 shrink-0" />}
+                                  <span className="truncate">{name}</span>
+                                </span>
+                                <span className="font-semibold text-rose-400 shrink-0">{item.quantity} {unit}</span>
+                              </div>
+                            );
+                          })}
                           {report.items.length > 3 && (
                             <p className="text-slate-600 text-[10px] italic">+{report.items.length - 3} more items...</p>
                           )}
@@ -449,8 +495,8 @@ export default function WastageManagement() {
         )}
       </div>
 
-      {/* Log Wastage Form SlideOver */}
-      <SlideOver open={slideOpen} onClose={closeWastageForm} title="Log Wastage">
+      {/* Log Wastage Form Popup Modal */}
+      <CenteredModal open={slideOpen} onClose={closeWastageForm} title="Log Wastage" maxWidth="max-w-3xl">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">Wastage Type</label>
@@ -485,46 +531,74 @@ export default function WastageManagement() {
               </button>
             </div>
 
-            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+            {/* Set a larger max-height and bottom padding pb-24 so absolute dropdown searches have plenty of space to overlay without being cut off */}
+            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 pb-24 relative overflow-visible">
               {items.map((item, idx) => (
-                <div key={idx} className="bg-slate-800/40 p-3 rounded-xl border border-slate-800 space-y-2 relative">
+                <div key={idx} className="bg-slate-800/40 p-4 rounded-xl border border-slate-800 relative overflow-visible">
                   {items.length > 1 && (
                     <button
                       type="button"
                       onClick={() => handleRemoveItemRow(idx)}
-                      className="absolute right-2 top-2 text-slate-500 hover:text-red-400"
+                      className="absolute -top-2 -right-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 p-1.5 border border-red-500/25 rounded-full transition shadow-lg z-10"
                     >
                       <Trash2 size={13} />
                     </button>
                   )}
 
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-1">Item</label>
-                    <InventorySearchSelect
-                      value={item.inventoryItemId}
-                      inventory={inventory}
-                      onChange={val => handleItemChange(idx, 'inventoryItemId', val)}
-                      onAddNewClick={() => showToast('Create item in Suppliers/Inventory management first', 'info')}
-                    />
-                  </div>
+                  <div className="grid grid-cols-12 gap-3 items-end">
+                    {/* Item Type selection */}
+                    <div className="col-span-12 sm:col-span-3">
+                      <label className="block text-[10px] text-slate-500 mb-1 font-semibold uppercase tracking-wider">Type</label>
+                      <select
+                        value={item.itemType || 'inventory'}
+                        onChange={e => handleItemChange(idx, 'itemType', e.target.value)}
+                        className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      >
+                        <option value="inventory">Inventory Item</option>
+                        <option value="menu">Menu Item</option>
+                      </select>
+                    </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] text-slate-500 mb-1">Qty</label>
+                    {/* Conditional Select Search input with more width */}
+                    <div className="col-span-12 sm:col-span-5">
+                      <label className="block text-[10px] text-slate-500 mb-1 font-semibold uppercase tracking-wider">Select Item</label>
+                      {item.itemType === 'menu' ? (
+                        <MenuSearchSelect
+                          menuItemId={item.menuItemId}
+                          variantId={item.variantId}
+                          menuItems={menuItems}
+                          onChange={(menuId, varId) => {
+                            handleItemChange(idx, 'menuItemId', menuId);
+                            handleItemChange(idx, 'variantId', varId);
+                          }}
+                        />
+                      ) : (
+                        <InventorySearchSelect
+                          value={item.inventoryItemId}
+                          inventory={inventory}
+                          onChange={val => handleItemChange(idx, 'inventoryItemId', val)}
+                          onAddNewClick={() => showToast('Create item in Suppliers/Inventory management first', 'info')}
+                        />
+                      )}
+                    </div>
+
+                    <div className="col-span-6 sm:col-span-2">
+                      <label className="block text-[10px] text-slate-500 mb-1 font-semibold uppercase tracking-wider">Qty</label>
                       <input
                         type="number"
                         step="any"
                         value={item.quantity}
                         onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
-                        className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-1.5 focus:outline-none"
+                        className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-2 focus:outline-none"
                       />
                     </div>
-                    <div>
-                      <label className="block text-[10px] text-slate-500 mb-1">Reason</label>
+
+                    <div className="col-span-6 sm:col-span-2">
+                      <label className="block text-[10px] text-slate-500 mb-1 font-semibold uppercase tracking-wider">Reason</label>
                       <select
                         value={item.reason}
                         onChange={e => handleItemChange(idx, 'reason', e.target.value)}
-                        className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2 py-1.5 focus:outline-none"
+                        className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2 py-2 focus:outline-none"
                       >
                         <option value="spillage">Spillage</option>
                         <option value="expiry">Expiry</option>
@@ -566,10 +640,10 @@ export default function WastageManagement() {
             </button>
           </div>
         </form>
-      </SlideOver>
+      </CenteredModal>
 
-      {/* View Details Modal SlideOver */}
-      <SlideOver open={!!activeReport} onClose={() => setActiveReport(null)} title="Wastage Details">
+      {/* View Details Popup Modal */}
+      <CenteredModal open={!!activeReport} onClose={() => setActiveReport(null)} title="Wastage Details" maxWidth="max-w-2xl">
         {activeReport && (
           <div className="space-y-4">
             <div className="bg-slate-800/40 p-4 rounded-xl space-y-2">
@@ -586,19 +660,28 @@ export default function WastageManagement() {
             <div className="space-y-2">
               <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Wasted Items</h4>
               <div className="space-y-2">
-                {activeReport.items.map((item, idx) => (
-                  <div key={idx} className="bg-[var(--pos-surface-inset)] border border-slate-700/60 p-3 rounded-xl flex items-center justify-between text-sm">
-                    <div>
-                      <p className="font-semibold text-slate-200">{item.inventoryItemId?.itemName || 'Unknown Item'}</p>
-                      <span className="text-[10px] text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded capitalize">
-                        Reason: {REASON_LABELS[item.reason] || item.reason}
+                {activeReport.items.map((item, idx) => {
+                  const name = item.itemType === 'menu'
+                    ? (item.menuItemId?.name + (item.variantId ? ` (${item.menuItemId.variants?.find(v => String(v._id) === String(item.variantId))?.name || ''})` : ''))
+                    : (item.inventoryItemId?.itemName || 'Unknown Item');
+                  const unit = item.itemType === 'menu' ? 'unit' : (item.inventoryItemId?.unit || '');
+                  return (
+                    <div key={idx} className="bg-[var(--pos-surface-inset)] border border-slate-700/60 p-3 rounded-xl flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        {item.itemType === 'menu' ? <UtensilsCrossed size={14} className="text-amber-500" /> : <Package size={14} className="text-slate-500" />}
+                        <div>
+                          <p className="font-semibold text-slate-200">{name}</p>
+                          <span className="text-[10px] text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded capitalize">
+                            Reason: {REASON_LABELS[item.reason] || item.reason}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-rose-400 font-bold tabular-nums">
+                        {item.quantity} {unit}
                       </span>
                     </div>
-                    <span className="text-rose-400 font-bold tabular-nums">
-                      {item.quantity} {item.inventoryItemId?.unit}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -624,7 +707,7 @@ export default function WastageManagement() {
             </button>
           </div>
         )}
-      </SlideOver>
+      </CenteredModal>
 
       <Toast toast={toast} onDismiss={clearToast} />
     </div>

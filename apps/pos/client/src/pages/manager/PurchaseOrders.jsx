@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, FileText, Send, Edit2, Trash2, Calendar, Package,
   DollarSign, AlertCircle, CheckCircle, XCircle, Clock,
-  Search, SlidersHorizontal, ChevronDown, X, ArrowDown, ArrowUp
+  Search, SlidersHorizontal, ChevronDown, X, ArrowDown, ArrowUp, Eye
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -48,6 +48,7 @@ export default function PurchaseOrders() {
   const [activeStatus, setActiveStatus] = useState('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [isReadOnly, setIsReadOnly] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [sendTarget, setSendTarget] = useState(null);
   const [search, setSearch] = useState('');
@@ -204,11 +205,19 @@ export default function PurchaseOrders() {
 
   const openAdd = () => {
     setEditing(null);
+    setIsReadOnly(false);
     setFormOpen(true);
   };
 
   const openEdit = (order) => {
     setEditing(order);
+    setIsReadOnly(false);
+    setFormOpen(true);
+  };
+
+  const openView = (order) => {
+    setEditing(order);
+    setIsReadOnly(true);
     setFormOpen(true);
   };
 
@@ -476,6 +485,14 @@ export default function PurchaseOrders() {
                     key: 'actions', header: '',
                     render: (o) => (
                       <div className="flex items-center gap-1.5 justify-end">
+                        <button
+                          type="button"
+                          onClick={() => openView(o)}
+                          className="p-1.5 bg-slate-805 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition"
+                          title="View Details"
+                        >
+                          <Eye size={13} />
+                        </button>
                         {o.status === 'draft' && (
                           <button
                             type="button"
@@ -555,6 +572,14 @@ export default function PurchaseOrders() {
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => openView(order)}
+                              className="p-1 bg-slate-700/50 hover:bg-slate-650 rounded-lg text-slate-300 hover:text-white transition"
+                              title="View Details"
+                            >
+                              <Eye size={12} />
+                            </button>
                             {order.status === 'draft' && (
                               <button
                                 type="button"
@@ -647,6 +672,7 @@ export default function PurchaseOrders() {
         onClose={() => {
           setFormOpen(false);
           setEditing(null);
+          setIsReadOnly(false);
         }}
         editing={editing}
         suppliers={suppliers}
@@ -659,6 +685,7 @@ export default function PurchaseOrders() {
           }
         }}
         isPending={createMutation.isPending || updateMutation.isPending}
+        readOnly={isReadOnly}
       />
 
       {/* Delete Confirmation */}

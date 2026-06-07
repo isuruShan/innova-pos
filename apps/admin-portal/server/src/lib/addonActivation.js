@@ -38,7 +38,27 @@ async function activatePaidAddonForTenant(tenantId, addonCode, opts) {
 
   const isTrial = tenant.subscriptionStatus === 'trial';
   const activatedAt = isTrial ? null : new Date();
-  const periodEndsAt = isTrial ? null : computeAddonPeriodEnd(activatedAt, plan?.billingCycle || 'monthly');
+  let periodEndsAt = isTrial ? null : computeAddonPeriodEnd(activatedAt, plan?.billingCycle || 'monthly');
+
+  if (periodEndsAt) {
+    const Subscription = require('../models/Subscription');
+    const futureSubscriptions = await Subscription.find({
+      tenantId: tenant._id,
+      endDate: { $gt: periodEndsAt }
+    }).sort({ endDate: -1 }).lean();
+    if (futureSubscriptions.length > 0) {
+      periodEndsAt = futureSubscriptions[0].endDate;
+    }
+    const pendingReceipts = await PaymentReceipt.find({
+      tenantId: tenant._id,
+      status: 'pending',
+      receiptKind: 'subscription',
+      billingPeriodEnd: { $gt: periodEndsAt }
+    }).sort({ billingPeriodEnd: -1 }).lean();
+    if (pendingReceipts.length > 0 && pendingReceipts[0].billingPeriodEnd > periodEndsAt) {
+      periodEndsAt = pendingReceipts[0].billingPeriodEnd;
+    }
+  }
 
   tenant.paidAddons = tenant.paidAddons || {};
   tenant.paidAddons[entitlementKey] = {

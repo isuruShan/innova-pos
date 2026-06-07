@@ -4,7 +4,7 @@ import {
   Plus, FileCheck, Package, Edit2, Trash2, Calendar,
   CheckCircle, FileText, AlertCircle, TrendingUp, TrendingDown,
   Search, SlidersHorizontal, ChevronDown, X, ArrowDown, ArrowUp,
-  List, LayoutGrid
+  List, LayoutGrid, Eye
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -42,6 +42,7 @@ export default function GoodsReceipts() {
   const [activeTab, setActiveTab] = useState('receipts');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [isReadOnly, setIsReadOnly] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [createFromPO, setCreateFromPO] = useState(null);
@@ -216,18 +217,28 @@ export default function GoodsReceipts() {
   const openAdd = () => {
     setEditing(null);
     setCreateFromPO(null);
+    setIsReadOnly(false);
     setFormOpen(true);
   };
 
   const openEdit = (receipt) => {
     setEditing(receipt);
     setCreateFromPO(null);
+    setIsReadOnly(false);
     setFormOpen(true);
   };
 
   const openCreateFromPO = (po) => {
     setCreateFromPO(po);
     setEditing(null);
+    setIsReadOnly(false);
+    setFormOpen(true);
+  };
+
+  const openView = (receipt) => {
+    setEditing(receipt);
+    setCreateFromPO(null);
+    setIsReadOnly(true);
     setFormOpen(true);
   };
 
@@ -285,7 +296,7 @@ export default function GoodsReceipts() {
             className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/20 text-sm"
           >
             <Plus size={16} />
-            New GRN
+            {activeTab === 'receipts' ? 'New GRN' : 'Add Return'}
           </button>
         </div>
 
@@ -554,11 +565,19 @@ export default function GoodsReceipts() {
                     key: 'actions', header: '',
                     render: (r) => (
                       <div className="flex items-center gap-1.5 justify-end">
+                        <button
+                          type="button"
+                          onClick={() => openView(r)}
+                          className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition"
+                          title="View Details"
+                        >
+                          <Eye size={13} />
+                        </button>
                         {r.status === 'draft' && (
                           <button
                             type="button"
                             onClick={() => setConfirmTarget(r)}
-                            className="flex items-center gap-1 px-2.5 py-1 bg-green-500/10 hover:bg-green-500/20 text-green-450 border border-green-500/20 rounded-lg text-xs font-semibold transition"
+                            className="flex items-center gap-1 px-2.5 py-1 bg-green-500/10 hover:bg-green-500/20 text-green-455 border border-green-500/20 rounded-lg text-xs font-semibold transition"
                           >
                             Confirm
                           </button>
@@ -624,6 +643,14 @@ export default function GoodsReceipts() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openView(receipt)}
+                            className="p-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition"
+                            title="View Details"
+                          >
+                            <Eye size={12} />
+                          </button>
                           {receipt.status === 'draft' && (
                             <button
                               type="button"
@@ -646,7 +673,7 @@ export default function GoodsReceipts() {
                             <button
                               type="button"
                               onClick={() => setDeleteTarget(receipt)}
-                              className="p-1 bg-slate-800 hover:bg-red-500/10 rounded-lg text-slate-450 hover:text-red-400 transition"
+                              className="p-1 bg-slate-800 hover:bg-red-500/10 rounded-lg text-slate-455 hover:text-red-400 transition"
                             >
                               <Trash2 size={12} />
                             </button>
@@ -715,13 +742,15 @@ export default function GoodsReceipts() {
           setFormOpen(false);
           setEditing(null);
           setCreateFromPO(null);
+          setIsReadOnly(false);
         }}
         editing={editing}
         createFromPO={createFromPO}
-        type={activeTab === 'receipts' ? 'receipt' : 'return'}
+        type={editing ? editing.type : (activeTab === 'receipts' ? 'receipt' : 'return')}
         suppliers={suppliers}
         inventory={inventory}
-        purchaseOrders={pendingPOs}
+        purchaseOrders={activeTab === 'receipts' ? pendingPOs : purchaseOrders}
+        receipts={receipts}
         onSubmit={(data) => {
           if (editing) {
             updateMutation.mutate({ id: editing._id, data });
@@ -730,6 +759,7 @@ export default function GoodsReceipts() {
           }
         }}
         isPending={createMutation.isPending || updateMutation.isPending}
+        readOnly={isReadOnly}
       />
 
       {/* Confirm Dialog */}
