@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Clock, TrendingUp, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { Clock, TrendingUp } from 'lucide-react';
 import api from '../../../api/axios';
 import { formatCurrency } from '../../../utils/format';
 import { useStoreContext } from '../../../context/StoreContext';
 import { exportToCsv } from '../../../utils/exportCsv';
+import ResponsiveTable from '../../ResponsiveTable';
 
 function formatHour(h) {
   const ampm = h >= 12 ? 'PM' : 'AM';
@@ -174,61 +175,55 @@ export default function HourlySalesView({ dateFrom, dateTo, registerExport }) {
         </div>
 
         {/* Hour-by-Hour Sorting Table */}
-        <div className="xl:col-span-2 bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between">
-          <div className="overflow-y-auto max-h-[360px]">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-950/40 text-slate-500 border-b border-slate-800 sticky top-0 z-10">
-                  <th className="px-3 py-2.5">
-                    <button onClick={() => handleSort('hour')} className="hover:text-slate-300 inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider">
-                      Hour {sortField === 'hour' ? (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2.5 text-right">
-                    <button onClick={() => handleSort('orders')} className="hover:text-slate-300 inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider">
-                      Orders {sortField === 'orders' ? (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2.5 text-right">
-                    <button onClick={() => handleSort('revenue')} className="hover:text-slate-300 inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider">
-                      Revenue {sortField === 'revenue' ? (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2.5 text-right">
-                    <button onClick={() => handleSort('avgOrderValue')} className="hover:text-slate-300 inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider">
-                      Ticket Avg {sortField === 'avgOrderValue' ? (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
-                    </button>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/40 text-slate-300">
-                {isPending ? (
-                  Array.from({ length: 12 }).map((_, i) => (
-                    <tr key={i} className="animate-pulse">
-                      <td className="px-3 py-2"><div className="h-3.5 bg-slate-800 rounded w-10" /></td>
-                      <td className="px-3 py-2 text-right"><div className="h-3.5 bg-slate-800 rounded w-6 ml-auto" /></td>
-                      <td className="px-3 py-2 text-right"><div className="h-3.5 bg-slate-800 rounded w-10 ml-auto" /></td>
-                      <td className="px-3 py-2 text-right"><div className="h-3.5 bg-slate-800 rounded w-10 ml-auto" /></td>
-                    </tr>
-                  ))
-                ) : (
-                  sortedData.map((d) => (
-                    <tr key={d.hour} className="hover:bg-slate-800/10">
-                      <td className="px-3 py-2 font-medium">{formatHour(d.hour)}</td>
-                      <td className="px-3 py-2 text-right font-mono">{d.orders}</td>
-                      <td className="px-3 py-2 text-right font-semibold font-mono text-slate-200">{formatCurrency(d.revenue)}</td>
-                      <td className="px-3 py-2 text-right font-mono">{formatCurrency(d.avgOrderValue)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+        <div className="xl:col-span-2 flex flex-col gap-3">
+          <ResponsiveTable
+            rows={sortedData}
+            rowKey={(d) => d.hour}
+            loading={isPending}
+            skeletonRows={12}
+            emptyState="No sales data in range"
+            currentSort={sortField}
+            currentOrder={sortOrder}
+            onSort={handleSort}
+            columns={[
+              {
+                key: 'hour',
+                header: 'Hour',
+                sortField: 'hour',
+                mobilePrimary: true,
+                render: (d) => <span className="font-medium text-slate-200">{formatHour(d.hour)}</span>,
+              },
+              {
+                key: 'orders',
+                header: 'Orders',
+                sortField: 'orders',
+                className: 'text-right',
+                headerClassName: 'text-right',
+                render: (d) => <span className="font-mono text-slate-350">{d.orders}</span>,
+              },
+              {
+                key: 'revenue',
+                header: 'Revenue',
+                sortField: 'revenue',
+                className: 'text-right',
+                headerClassName: 'text-right',
+                render: (d) => <span className="font-semibold text-slate-200 tabular-nums">{formatCurrency(d.revenue)}</span>,
+              },
+              {
+                key: 'avgOrderValue',
+                header: 'Ticket Avg',
+                sortField: 'avgOrderValue',
+                className: 'text-right',
+                headerClassName: 'text-right',
+                render: (d) => <span className="font-mono text-slate-400">{formatCurrency(d.avgOrderValue)}</span>,
+              },
+            ]}
+          />
           {/* Summary Row */}
-          <div className="bg-slate-950/40 px-3 py-2 border-t border-slate-800 flex justify-between items-center text-[10px] font-semibold text-slate-500">
+          <div className="bg-[var(--pos-panel)] border border-slate-700 rounded-xl px-4 py-3 flex justify-between items-center text-xs font-semibold text-slate-400">
             <span>Total: 24h Summary</span>
-            <div className="flex gap-3">
-              <span>Orders: <span className="text-slate-300">{totalOrders}</span></span>
+            <div className="flex gap-4">
+              <span>Orders: <span className="text-slate-200">{totalOrders}</span></span>
               <span>Sales: <span className="text-amber-400">{formatCurrency(totalRevenue)}</span></span>
             </div>
           </div>

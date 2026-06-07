@@ -976,7 +976,7 @@ export default function InventoryManagement() {
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={[...itemMovements].reverse().map(m => ({
                           date: new Date(m.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-                          stock: m.newQuantity,
+                          stock: m.newQty,
                         }))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
                           <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} tickLine={false} />
@@ -1029,11 +1029,11 @@ export default function InventoryManagement() {
                                 <td className="p-3">
                                   <Badge label={badge.label} variant={badge.variant} className="text-[10px] px-1.5 py-0.5" />
                                 </td>
-                                <td className="p-3 text-right text-slate-500 font-medium">{m.previousQuantity}</td>
+                                <td className="p-3 text-right text-slate-500 font-medium">{m.previousQty}</td>
                                 <td className={`p-3 text-right font-bold ${isPositive ? 'text-green-450' : changeQty < 0 ? 'text-red-400' : 'text-slate-400'}`}>
                                   {isPositive ? `+${changeQty}` : changeQty}
                                 </td>
-                                <td className="p-3 text-right text-slate-300 font-semibold">{m.newQuantity}</td>
+                                <td className="p-3 text-right text-slate-300 font-semibold">{m.newQty}</td>
                                 <td className="p-3 text-slate-400 max-w-[200px] truncate" title={m.notes || m.reason || ''}>
                                   {m.notes || m.reason || <span className="text-slate-650">—</span>}
                                 </td>
@@ -1134,11 +1134,11 @@ export default function InventoryManagement() {
                                 {m.inventoryItemId?.itemName || 'Unknown Item'}
                                 {m.inventoryItemId?.unit && <span className="text-[10px] text-slate-500 ml-1.5">({m.inventoryItemId.unit})</span>}
                               </td>
-                              <td className="p-3 text-right text-slate-500">{m.previousQuantity}</td>
+                              <td className="p-3 text-right text-slate-500">{m.previousQty}</td>
                               <td className={`p-3 text-right font-bold ${isPositive ? 'text-green-450' : changeQty < 0 ? 'text-red-400' : 'text-slate-400'}`}>
                                 {isPositive ? `+${changeQty}` : changeQty}
                               </td>
-                              <td className="p-3 text-right text-slate-350 font-semibold">{m.newQuantity}</td>
+                              <td className="p-3 text-right text-slate-350 font-semibold">{m.newQty}</td>
                               <td className="p-3 text-slate-400 truncate max-w-[200px]" title={m.notes || ''}>
                                 {m.notes || <span className="text-slate-655">—</span>}
                               </td>

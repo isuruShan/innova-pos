@@ -157,7 +157,7 @@ export default function MenuMixView({ dateFrom, dateTo, registerExport }) {
       {/* Main Grid: Chart & Table */}
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         {/* Table representation */}
-        <div className="xl:col-span-3 bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between">
+        <div className="xl:col-span-3 flex flex-col gap-3">
           <ResponsiveTable
             rows={sortedData}
             rowKey={(item) => item._id || item.name}
@@ -197,7 +197,7 @@ export default function MenuMixView({ dateFrom, dateTo, registerExport }) {
             ]}
           />
           {/* Summary Row */}
-          <div className="bg-slate-950/40 px-4 py-3 border-t border-slate-800 flex justify-between items-center text-xs font-semibold text-slate-400">
+          <div className="bg-[var(--pos-panel)] border border-slate-700 rounded-xl px-4 py-3 flex justify-between items-center text-xs font-semibold text-slate-400">
             <span>Total Filtered: {filteredData.length} items</span>
             <div className="flex gap-4">
               <span>Qty: <span className="text-slate-200">{totalQty}</span></span>
