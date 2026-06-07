@@ -84,7 +84,7 @@ export default function Footer() {
               <li className="flex items-center gap-2 text-sm text-gray-400">
                 <Phone size={14} className="shrink-0" />
                 <a
-                  href="https://wa.me/94773539443"
+                  href="https://wa.me/94723539443"
                   target="_blank"
                   rel="noreferrer"
                   className="hover:text-white transition-colors"

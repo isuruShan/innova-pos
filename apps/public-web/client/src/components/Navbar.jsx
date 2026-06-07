@@ -20,7 +20,7 @@ export default function Navbar() {
               { label: 'Features', href: '/#features' },
               { label: 'Pricing', href: '/#pricing' },
               { label: 'Contact', href: '/#contact' },
-              { label: 'WhatsApp', href: 'https://wa.me/94773539443', target: '_blank', rel: 'noreferrer' },
+              { label: 'WhatsApp', href: 'https://wa.me/94723539443', target: '_blank', rel: 'noreferrer' },
             ].map((link) => (
               <a
                 key={link.label}
@@ -65,7 +65,7 @@ export default function Navbar() {
             { href: '/#features', label: 'Features' },
             { href: '/#pricing', label: 'Pricing' },
             { href: '/#contact', label: 'Contact' },
-            { href: 'https://wa.me/94773539443', label: 'WhatsApp', target: '_blank', rel: 'noreferrer' },
+            { href: 'https://wa.me/94723539443', label: 'WhatsApp', target: '_blank', rel: 'noreferrer' },
           ].map((link) => (
             <a
               key={link.label}
