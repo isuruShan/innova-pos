@@ -167,6 +167,7 @@ export default function MenuMixView({ dateFrom, dateTo, registerExport }) {
             currentSort={sortField}
             currentOrder={sortOrder}
             onSort={handleSort}
+            maxHeight="360px"
             columns={[
               {
                 key: 'name', header: 'Item Name',

@@ -44,6 +44,7 @@ export default function ResponsiveTable({
   onSort,
   currentSort,
   currentOrder,
+  maxHeight,
 }) {
   const primaryCol = columns.find((c) => c.mobilePrimary);
   const secondaryCol = columns.find((c) => c.mobileSecondary);
@@ -52,11 +53,16 @@ export default function ResponsiveTable({
     (c) => !c.mobilePrimary && !c.mobileSecondary && !c.mobileRight && !c.mobileHide,
   );
 
+  const stickyTopClass = maxHeight ? 'top-0' : 'top-16';
+
   return (
     <div className={className}>
       {/* ─── DESKTOP TABLE (sm+) ─── */}
-      <div className="hidden sm:block bg-[var(--pos-panel)] rounded-2xl border border-slate-700">
-        <div className="overflow-x-auto sm:overflow-visible">
+      <div className="hidden sm:block bg-[var(--pos-panel)] rounded-2xl border border-slate-700 overflow-hidden">
+        <div 
+          className={`overflow-x-auto custom-scrollbar ${maxHeight ? 'overflow-y-auto' : 'sm:overflow-visible'}`}
+          style={maxHeight ? { maxHeight } : undefined}
+        >
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-[var(--pos-panel)]">
@@ -72,14 +78,14 @@ export default function ResponsiveTable({
                         currentOrder={currentOrder}
                         onSort={onSort}
                         align={col.className?.includes('text-right') ? 'right' : col.className?.includes('text-center') ? 'center' : 'left'}
-                        className={`sticky top-16 bg-[var(--pos-panel)] z-10 border-b border-slate-700 ${col.headerClassName || ''}`}
+                        className={`sticky ${stickyTopClass} bg-[var(--pos-panel)] z-10 border-b border-slate-700 ${col.headerClassName || ''}`}
                       />
                     );
                   }
                   return (
                     <th
                       key={col.key}
-                      className={`sticky top-16 bg-[var(--pos-panel)] z-10 text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3 border-b border-slate-700 ${col.headerClassName || ''}`}
+                      className={`sticky ${stickyTopClass} bg-[var(--pos-panel)] z-10 text-left text-xs font-medium text-slate-500 uppercase tracking-wider px-4 py-3 border-b border-slate-700 ${col.headerClassName || ''}`}
                     >
                       {col.header}
                     </th>

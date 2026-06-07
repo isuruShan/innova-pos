@@ -74,7 +74,7 @@ export default function ReportsPortal() {
     'menu-mix': 'Menu Mix Report',
     'order-distribution': 'Order Channel Distribution',
     'hourly-sales': 'Hourly Sales Trends',
-    'payment-reconciliation': 'Payment Reconciliation Summary',
+    // 'payment-reconciliation': 'Payment Reconciliation Summary',
     'refunds': 'Returns & Refunds Audit',
     'cash-sessions': 'Drawer Cash Sessions',
   };
@@ -204,13 +204,13 @@ export default function ReportsPortal() {
                 registerExport={registerExport}
               />
             )}
-            {reportType === 'payment-reconciliation' && (
+            {/* {reportType === 'payment-reconciliation' && (
               <PaymentReconciliationView
                 dateFrom={dateFrom}
                 dateTo={dateTo}
                 registerExport={registerExport}
               />
-            )}
+            )} */}
             {reportType === 'refunds' && (
               <RefundsView
                 dateFrom={dateFrom}
