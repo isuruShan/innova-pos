@@ -34,6 +34,14 @@ const STATUS_COLORS = {
   reserved: { fill: '#eab308', stroke: '#facc15' },
 };
 
+const DECORATION_COLORS = [
+  { name: 'Slate', value: '#f8fafc' },
+  { name: 'Amber', value: '#f59e0b' },
+  { name: 'Teal', value: '#14b8a6' },
+  { name: 'Blue', value: '#3b82f6' },
+  { name: 'Red', value: '#ef4444' },
+];
+
 function TableShape({ table, isSelected, onClick, onDragEnd, tableStatus, showCapacity }) {
   const status = tableStatus?.[String(table.tableId)] || {};
   const cellSize = 50;
@@ -344,7 +352,7 @@ export default function FloorPlanEditorPage() {
   const stageRef = useRef(null);
   const trRef = useRef(null);
 
-  const [selectedTable, setSelectedTable] = useState(null);
+  const [selectedElement, setSelectedElement] = useState(null); // { type: 'table'|'zone'|'text'|'line', id|index }
   const [selectedTables, setSelectedTables] = useState([]);
   const [selectedShape, setSelectedShape] = useState(null);
   const [zoom, setZoom] = useState(1);
@@ -360,86 +368,98 @@ export default function FloorPlanEditorPage() {
   const [drawingHall, setDrawingHall] = useState(null);
   const [isStageDraggable, setIsStageDraggable] = useState(false);
 
-  // Keyboard spacebar listener to enable Stage panning
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.code === 'Space') {
-        setIsStageDraggable(true);
-        e.preventDefault();
-      }
-      if (e.key === 'Escape') {
-        setSelectedTable(null);
-        setSelectedTables([]);
-        setDrawingLine(null);
-        setDrawingHall(null);
-      }
-    };
-    const handleKeyUp = (e) => {
-      if (e.code === 'Space') {
-        setIsStageDraggable(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, []);
+  // Derive selected elements for backward compatibility and visual properties rendering
+  const plan = localPlan;
+  
+  const selectedTable = useMemo(() => {
+    if (selectedElement?.type === 'table') {
+      return localPlan?.tables?.find(t => String(t.tableId) === String(selectedElement.id));
+    }
+    return null;
+  }, [selectedElement, localPlan?.tables]);
 
-  // Handle nudging shapes with arrow keys
+  const selectedZone = useMemo(() => {
+    if (selectedElement?.type === 'zone') {
+      return localPlan?.zones?.[selectedElement.index];
+    }
+    return null;
+  }, [selectedElement, localPlan?.zones]);
+
+  const selectedText = useMemo(() => {
+    if (selectedElement?.type === 'text') {
+      return localPlan?.texts?.[selectedElement.index];
+    }
+    return null;
+  }, [selectedElement, localPlan?.texts]);
+
+  const selectedLine = useMemo(() => {
+    if (selectedElement?.type === 'line') {
+      return localPlan?.lines?.[selectedElement.index];
+    }
+    return null;
+  }, [selectedElement, localPlan?.lines]);
+
+  // Keyboard spacebar, escape, delete listeners
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Don't intercept hotkeys when editing inputs
       if (
         document.activeElement.tagName === 'INPUT' ||
         document.activeElement.tagName === 'TEXTAREA'
       ) {
         return;
       }
-
-      const isArrowKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key);
-      if (!isArrowKey) return;
-
-      const hasSelection = selectedTable || selectedTables.length > 0;
-      if (!hasSelection || !localPlan) return;
-
-      e.preventDefault(); // Prevent page scrolling
-
-      let dx = 0;
-      let dy = 0;
-      if (e.key === 'ArrowLeft') dx = -1;
-      else if (e.key === 'ArrowRight') dx = 1;
-      else if (e.key === 'ArrowUp') dy = -1;
-      else if (e.key === 'ArrowDown') dy = 1;
-
-      const selectedIds = selectedTable 
-        ? [String(selectedTable.tableId)] 
-        : selectedTables.map(String);
-
-      const updatedTables = localPlan.tables.map((t) => {
-        if (selectedIds.includes(String(t.tableId))) {
-          const newX = Math.max(0, t.x + dx);
-          const newY = Math.max(0, t.y + dy);
-          return { ...t, x: newX, y: newY };
-        }
-        return t;
-      });
-
-      setLocalPlan({ ...localPlan, tables: updatedTables });
       
-      if (selectedTable) {
-        const matchingTable = updatedTables.find(t => String(t.tableId) === String(selectedTable.tableId));
-        if (matchingTable) {
-          setSelectedTable(matchingTable);
-        }
+      if (e.code === 'Space') {
+        setIsStageDraggable(true);
+        e.preventDefault();
+      }
+      
+      if (e.key === 'Escape') {
+        setSelectedElement(null);
+        setSelectedTables([]);
+        setDrawingLine(null);
+        setDrawingHall(null);
       }
 
-      setIsDirty(true);
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedElement && localPlan) {
+          e.preventDefault();
+          if (selectedElement.type === 'table') {
+            handleDeleteSelected();
+          } else if (selectedElement.type === 'zone') {
+            const updated = localPlan.zones.filter((_, idx) => idx !== selectedElement.index);
+            setLocalPlan({ ...localPlan, zones: updated });
+            setSelectedElement(null);
+            setIsDirty(true);
+          } else if (selectedElement.type === 'text') {
+            const updated = localPlan.texts.filter((_, idx) => idx !== selectedElement.index);
+            setLocalPlan({ ...localPlan, texts: updated });
+            setSelectedElement(null);
+            setIsDirty(true);
+          } else if (selectedElement.type === 'line') {
+            const updated = localPlan.lines.filter((_, idx) => idx !== selectedElement.index);
+            setLocalPlan({ ...localPlan, lines: updated });
+            setSelectedElement(null);
+            setIsDirty(true);
+          }
+        }
+      }
     };
-
+    
+    const handleKeyUp = (e) => {
+      if (e.code === 'Space') {
+        setIsStageDraggable(false);
+      }
+    };
+    
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedTable, selectedTables, localPlan]);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [selectedElement, localPlan]);
 
   // Fetch floor plan
   const { data: floorPlan, isLoading } = useQuery({
@@ -467,7 +487,7 @@ export default function FloorPlanEditorPage() {
   useEffect(() => {
     setLocalPlan(null);
     setIsDirty(false);
-    setSelectedTable(null);
+    setSelectedElement(null);
     setSelectedTables([]);
   }, [selectedStoreId]);
 
@@ -511,7 +531,6 @@ export default function FloorPlanEditorPage() {
     }
   }, [tables]);
 
-  const plan = localPlan || floorPlan;
   const [errorMessage, setErrorMessage] = useState(null);
 
   // Attach Transformer to selected tables
@@ -531,6 +550,52 @@ export default function FloorPlanEditorPage() {
       trRef.current.nodes(nodes);
       trRef.current.getLayer()?.batchDraw();
     }
+  }, [selectedTable, selectedTables, localPlan]);
+
+  // Handle nudging shapes with arrow keys
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (
+        document.activeElement.tagName === 'INPUT' ||
+        document.activeElement.tagName === 'TEXTAREA'
+      ) {
+        return;
+      }
+
+      const isArrowKey = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key);
+      if (!isArrowKey) return;
+
+      const hasSelection = selectedTable || selectedTables.length > 0;
+      if (!hasSelection || !localPlan) return;
+
+      e.preventDefault(); // Prevent page scrolling
+
+      let dx = 0;
+      let dy = 0;
+      if (e.key === 'ArrowLeft') dx = -1;
+      else if (e.key === 'ArrowRight') dx = 1;
+      else if (e.key === 'ArrowUp') dy = -1;
+      else if (e.key === 'ArrowDown') dy = 1;
+
+      const selectedIds = selectedTable 
+        ? [String(selectedTable.tableId)] 
+        : selectedTables.map(String);
+
+      const updatedTables = localPlan.tables.map((t) => {
+        if (selectedIds.includes(String(t.tableId))) {
+          const newX = Math.max(0, t.x + dx);
+          const newY = Math.max(0, t.y + dy);
+          return { ...t, x: newX, y: newY };
+        }
+        return t;
+      });
+
+      setLocalPlan({ ...localPlan, tables: updatedTables });
+      setIsDirty(true);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedTable, selectedTables, localPlan]);
 
   // Save mutation
@@ -560,7 +625,7 @@ export default function FloorPlanEditorPage() {
         const newTablePos = {
           tableId: newTable._id,
           label: newTable.label,
-          x: variables._tempPosition.x + 1, // Offset to account for offset center anchor
+          x: variables._tempPosition.x + 1,
           y: variables._tempPosition.y + 1,
           width: 2,
           height: 2,
@@ -604,7 +669,7 @@ export default function FloorPlanEditorPage() {
         setIsDirty(true);
       }
       
-      setSelectedTable(null);
+      setSelectedElement(null);
       setSelectedTables([]);
       setErrorMessage('Table deleted permanently');
       setTimeout(() => setErrorMessage(null), 2000);
@@ -633,7 +698,7 @@ export default function FloorPlanEditorPage() {
         setIsDirty(true);
       }
       
-      setSelectedTable(null);
+      setSelectedElement(null);
       setSelectedTables([]);
       setErrorMessage(`${selectedTables.length} tables deleted`);
       setTimeout(() => setErrorMessage(null), 2000);
@@ -663,19 +728,16 @@ export default function FloorPlanEditorPage() {
     const node = e.target;
     const cellSize = 50;
     
-    // Snapped scale and reset
     const scaleX = node.scaleX();
     const scaleY = node.scaleY();
     node.scaleX(1);
     node.scaleY(1);
     
-    // Width and height in cells
     const rawWidth = (node.width() * scaleX) / cellSize;
     const rawHeight = (node.height() * scaleY) / cellSize;
     const newWidth = Math.max(1, Math.round(rawWidth));
     const newHeight = Math.max(1, Math.round(rawHeight));
     
-    // Position (taking offset center into account)
     const newX = Math.round((node.x() - (newWidth * cellSize) / 2) / cellSize);
     const newY = Math.round((node.y() - (newHeight * cellSize) / 2) / cellSize);
     const newRotation = Math.round(node.rotation() / 90) * 90;
@@ -814,7 +876,7 @@ export default function FloorPlanEditorPage() {
     } else {
       const isBackground = e.target === stage || e.target.hasName('grid-bg') || e.target.hasName('zone-rect');
       if (isBackground) {
-        setSelectedTable(null);
+        setSelectedElement(null);
         setSelectedTables([]);
       }
     }
@@ -941,9 +1003,9 @@ export default function FloorPlanEditorPage() {
       } else {
         setSelectedTables([...selectedTables, tableId]);
       }
-      setSelectedTable(null);
+      setSelectedElement(null);
     } else {
-      setSelectedTable(table);
+      setSelectedElement({ type: 'table', id: table.tableId });
       setSelectedTables([]);
     }
   }, [selectedTables]);
@@ -957,7 +1019,6 @@ export default function FloorPlanEditorPage() {
       return t;
     });
     setLocalPlan({ ...localPlan, tables: updatedTables });
-    setSelectedTable({ ...selectedTable, rotation: ((selectedTable.rotation || 0) + 90) % 360 });
     setIsDirty(true);
   }, [selectedTable, localPlan]);
 
@@ -967,7 +1028,7 @@ export default function FloorPlanEditorPage() {
       (t) => String(t.tableId) !== String(selectedTable.tableId)
     );
     setLocalPlan({ ...localPlan, tables: updatedTables });
-    setSelectedTable(null);
+    setSelectedElement(null);
     setIsDirty(true);
   }, [selectedTable, localPlan]);
 
@@ -997,7 +1058,6 @@ export default function FloorPlanEditorPage() {
         return t;
       });
       setLocalPlan({ ...localPlan, tables: updatedTables });
-      setSelectedTable({ ...selectedTable, [prop]: value });
       setIsDirty(true);
     },
     [selectedTable, localPlan]
@@ -1207,7 +1267,7 @@ export default function FloorPlanEditorPage() {
           {/* Canvas Wrapper */}
           <div
             ref={canvasRef}
-            className={`flex-1 bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl overflow-auto min-h-0 relative select-none ${
+            className={`flex-1 bg-[var(--pos-page-bg)] border border-slate-700/60 rounded-xl overflow-auto min-h-0 relative select-none ${
               isStageDraggable ? 'cursor-grab active:cursor-grabbing' : ''
             }`}
             onDrop={handleCanvasDrop}
@@ -1238,35 +1298,63 @@ export default function FloorPlanEditorPage() {
                     y={0}
                     width={(localPlan?.gridWidth || plan.gridWidth || 20) * 50}
                     height={(localPlan?.gridHeight || plan.gridHeight || 15) * 50}
-                    fill="#1e293b"
+                    fill="#0f172a"
                   />
 
                   {/* Dynamic grid lines */}
                   {renderGridLines()}
 
                   {/* Zones / Halls */}
-                  {(plan.zones || []).map((zone, idx) => (
-                    <Group key={`zone-${idx}`}>
-                      <Rect
-                        name="zone-rect"
-                        x={zone.x * 50}
-                        y={zone.y * 50}
-                        width={zone.width * 50}
-                        height={zone.height * 50}
-                        fill={zone.color || '#3b82f6'}
-                        opacity={0.15}
-                        cornerRadius={6}
-                      />
-                      <Text
-                        text={zone.name}
-                        x={zone.x * 50 + 10}
-                        y={zone.y * 50 + 10}
-                        fill="#94a3b8"
-                        fontSize={11}
-                        fontStyle="bold"
-                      />
-                    </Group>
-                  ))}
+                  {(plan.zones || []).map((zone, idx) => {
+                    const isZoneSelected = selectedElement?.type === 'zone' && selectedElement.index === idx;
+                    return (
+                      <Group
+                        key={`zone-${idx}`}
+                        draggable
+                        onDragEnd={(e) => {
+                          const node = e.target;
+                          const newX = Math.max(0, Math.round(node.x() / 50));
+                          const newY = Math.max(0, Math.round(node.y() / 50));
+                          node.x(newX * 50);
+                          node.y(newY * 50);
+                          const updated = localPlan.zones.map((z, i) => 
+                            i === idx ? { ...z, x: newX, y: newY } : z
+                          );
+                          setLocalPlan({ ...localPlan, zones: updated });
+                          setIsDirty(true);
+                        }}
+                      >
+                        <Rect
+                          name="zone-rect"
+                          x={zone.x * 50}
+                          y={zone.y * 50}
+                          width={zone.width * 50}
+                          height={zone.height * 50}
+                          fill={zone.color || '#3b82f6'}
+                          opacity={isZoneSelected ? 0.35 : 0.15}
+                          stroke={isZoneSelected ? '#38bdf8' : 'transparent'}
+                          strokeWidth={2}
+                          cornerRadius={6}
+                          onClick={(e) => {
+                            e.cancelBubble = true;
+                            setSelectedElement({ type: 'zone', index: idx });
+                          }}
+                          onTap={(e) => {
+                            e.cancelBubble = true;
+                            setSelectedElement({ type: 'zone', index: idx });
+                          }}
+                        />
+                        <Text
+                          text={zone.name}
+                          x={zone.x * 50 + 10}
+                          y={zone.y * 50 + 10}
+                          fill={isZoneSelected ? '#38bdf8' : '#94a3b8'}
+                          fontSize={11}
+                          fontStyle="bold"
+                        />
+                      </Group>
+                    );
+                  })}
 
                   {/* Drawing Hall Preview */}
                   {drawingHall && (
@@ -1284,15 +1372,26 @@ export default function FloorPlanEditorPage() {
                   )}
 
                   {/* Wall Lines */}
-                  {(plan.lines || []).map((line, idx) => (
-                    <Line
-                      key={`line-${idx}`}
-                      points={[line.x1 * 50, line.y1 * 50, line.x2 * 50, line.y2 * 50]}
-                      stroke={line.color || '#94a3b8'}
-                      strokeWidth={line.thickness || 2}
-                      lineCap="round"
-                    />
-                  ))}
+                  {(plan.lines || []).map((line, idx) => {
+                    const isLineSelected = selectedElement?.type === 'line' && selectedElement.index === idx;
+                    return (
+                      <Line
+                        key={`line-${idx}`}
+                        points={[line.x1 * 50, line.y1 * 50, line.x2 * 50, line.y2 * 50]}
+                        stroke={isLineSelected ? '#38bdf8' : (line.color || '#94a3b8')}
+                        strokeWidth={(line.thickness || 2) + (isLineSelected ? 2 : 0)}
+                        lineCap="round"
+                        onClick={(e) => {
+                          e.cancelBubble = true;
+                          setSelectedElement({ type: 'line', index: idx });
+                        }}
+                        onTap={(e) => {
+                          e.cancelBubble = true;
+                          setSelectedElement({ type: 'line', index: idx });
+                        }}
+                      />
+                    );
+                  })}
 
                   {/* Drawing Line Preview */}
                   {drawingLine && (
@@ -1306,25 +1405,49 @@ export default function FloorPlanEditorPage() {
                   )}
 
                   {/* Texts */}
-                  {(plan.texts || []).map((t, idx) => (
-                    <Text
-                      key={`text-${idx}`}
-                      text={t.text}
-                      x={t.x * 50}
-                      y={t.y * 50}
-                      fill={t.color || '#f8fafc'}
-                      fontSize={t.fontSize || 12}
-                      fontStyle="bold"
-                      offsetX={50}
-                      width={100}
-                      align="center"
-                    />
-                  ))}
+                  {(plan.texts || []).map((t, idx) => {
+                    const isTextSelected = selectedElement?.type === 'text' && selectedElement.index === idx;
+                    return (
+                      <Text
+                        key={`text-${idx}`}
+                        text={t.text}
+                        x={t.x * 50}
+                        y={t.y * 50}
+                        fill={isTextSelected ? '#38bdf8' : (t.color || '#f8fafc')}
+                        fontSize={t.fontSize || 12}
+                        fontStyle="bold"
+                        offsetX={50}
+                        width={100}
+                        align="center"
+                        draggable
+                        onClick={(e) => {
+                          e.cancelBubble = true;
+                          setSelectedElement({ type: 'text', index: idx });
+                        }}
+                        onTap={(e) => {
+                          e.cancelBubble = true;
+                          setSelectedElement({ type: 'text', index: idx });
+                        }}
+                        onDragEnd={(e) => {
+                          const node = e.target;
+                          const newX = Math.max(0, Math.round(node.x() / 50));
+                          const newY = Math.max(0, Math.round(node.y() / 50));
+                          node.x(newX * 50);
+                          node.y(newY * 50);
+                          const updated = localPlan.texts.map((txt, i) => 
+                            i === idx ? { ...txt, x: newX, y: newY } : txt
+                          );
+                          setLocalPlan({ ...localPlan, texts: updated });
+                          setIsDirty(true);
+                        }}
+                      />
+                    );
+                  })}
 
                   {/* Placeable Tables */}
                   {planTablesWithLabels.map((table) => {
                     const tableId = String(table.tableId);
-                    const isSingleSelected = selectedTable && String(selectedTable.tableId) === tableId;
+                    const isSingleSelected = selectedElement?.type === 'table' && String(selectedElement.id) === tableId;
                     const isMultiSelected = selectedTables.includes(tableId);
                     return (
                       <TableShape
@@ -1406,10 +1529,7 @@ export default function FloorPlanEditorPage() {
                 Table Properties
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={() => {
-                      setSelectedTable(null);
-                      setSelectedTables([]);
-                    }}
+                    onClick={() => setSelectedElement(null)}
                     className="p-1.5 rounded-lg text-slate-500 hover:text-slate-350 hover:bg-slate-800 transition"
                     title="Close properties panel"
                   >
@@ -1501,6 +1621,252 @@ export default function FloorPlanEditorPage() {
             </div>
           )}
 
+          {/* Selected Zone Properties */}
+          {selectedZone && (
+            <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4 space-y-4">
+              <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm flex items-center justify-between">
+                Zone Properties
+                <button
+                  onClick={() => setSelectedElement(null)}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-350 hover:bg-slate-800 transition"
+                >
+                  <X size={12} />
+                </button>
+              </h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Zone Name</label>
+                  <input
+                    type="text"
+                    value={selectedZone.name}
+                    onChange={(e) => {
+                      const updated = localPlan.zones.map((z, idx) => 
+                        idx === selectedElement.index ? { ...z, name: e.target.value } : z
+                      );
+                      setLocalPlan({ ...localPlan, zones: updated });
+                      setIsDirty(true);
+                    }}
+                    className="w-full mt-1 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Width</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={selectedZone.width}
+                      onChange={(e) => {
+                        const updated = localPlan.zones.map((z, idx) => 
+                          idx === selectedElement.index ? { ...z, width: Math.max(1, Number(e.target.value)) } : z
+                        );
+                        setLocalPlan({ ...localPlan, zones: updated });
+                        setIsDirty(true);
+                      }}
+                      className="w-full mt-1 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Height</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={selectedZone.height}
+                      onChange={(e) => {
+                        const updated = localPlan.zones.map((z, idx) => 
+                          idx === selectedElement.index ? { ...z, height: Math.max(1, Number(e.target.value)) } : z
+                        );
+                        setLocalPlan({ ...localPlan, zones: updated });
+                        setIsDirty(true);
+                      }}
+                      className="w-full mt-1 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Color</label>
+                  <div className="flex gap-1.5 mt-1">
+                    {['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'].map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => {
+                          const updated = localPlan.zones.map((z, idx) => 
+                            idx === selectedElement.index ? { ...z, color: c } : z
+                          );
+                          setLocalPlan({ ...localPlan, zones: updated });
+                          setIsDirty(true);
+                        }}
+                        style={{ backgroundColor: c }}
+                        className={`w-6 h-6 rounded-full border-2 ${selectedZone.color === c ? 'border-white' : 'border-transparent'}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const updated = localPlan.zones.filter((_, idx) => idx !== selectedElement.index);
+                    setLocalPlan({ ...localPlan, zones: updated });
+                    setSelectedElement(null);
+                    setIsDirty(true);
+                  }}
+                  className="w-full py-1.5 mt-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 size={12} />
+                  Delete Zone
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Selected Text Properties */}
+          {selectedText && (
+            <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4 space-y-4">
+              <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm flex items-center justify-between">
+                Label Properties
+                <button
+                  onClick={() => setSelectedElement(null)}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-350 hover:bg-slate-800 transition"
+                >
+                  <X size={12} />
+                </button>
+              </h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Text Content</label>
+                  <input
+                    type="text"
+                    value={selectedText.text}
+                    onChange={(e) => {
+                      const updated = localPlan.texts.map((t, idx) => 
+                        idx === selectedElement.index ? { ...t, text: e.target.value } : t
+                      );
+                      setLocalPlan({ ...localPlan, texts: updated });
+                      setIsDirty(true);
+                    }}
+                    className="w-full mt-1 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Font Size</label>
+                    <select
+                      value={selectedText.fontSize || 12}
+                      onChange={(e) => {
+                        const updated = localPlan.texts.map((t, idx) => 
+                          idx === selectedElement.index ? { ...t, fontSize: Number(e.target.value) } : t
+                        );
+                        setLocalPlan({ ...localPlan, texts: updated });
+                        setIsDirty(true);
+                      }}
+                      className="w-full mt-1 border border-slate-700 rounded-lg px-2 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none"
+                    >
+                      {[10, 12, 14, 16, 20, 24].map((s) => (
+                        <option key={s} value={s}>{s}px</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Color</label>
+                    <select
+                      value={selectedText.color || '#f8fafc'}
+                      onChange={(e) => {
+                        const updated = localPlan.texts.map((t, idx) => 
+                          idx === selectedElement.index ? { ...t, color: e.target.value } : t
+                        );
+                        setLocalPlan({ ...localPlan, texts: updated });
+                        setIsDirty(true);
+                      }}
+                      className="w-full mt-1 border border-slate-700 rounded-lg px-2 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none"
+                    >
+                      {DECORATION_COLORS.map((c) => (
+                        <option key={c.value} value={c.value}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const updated = localPlan.texts.filter((_, idx) => idx !== selectedElement.index);
+                    setLocalPlan({ ...localPlan, texts: updated });
+                    setSelectedElement(null);
+                    setIsDirty(true);
+                  }}
+                  className="w-full py-1.5 mt-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 size={12} />
+                  Delete Label
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Selected Line Properties */}
+          {selectedLine && (
+            <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4 space-y-4">
+              <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm flex items-center justify-between">
+                Line Properties
+                <button
+                  onClick={() => setSelectedElement(null)}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-350 hover:bg-slate-800 transition"
+                >
+                  <X size={12} />
+                </button>
+              </h3>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Thickness</label>
+                    <select
+                      value={selectedLine.thickness || 2}
+                      onChange={(e) => {
+                        const updated = localPlan.lines.map((l, idx) => 
+                          idx === selectedElement.index ? { ...l, thickness: Number(e.target.value) } : l
+                        );
+                        setLocalPlan({ ...localPlan, lines: updated });
+                        setIsDirty(true);
+                      }}
+                      className="w-full mt-1 border border-slate-700 rounded-lg px-2 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none"
+                    >
+                      {[1, 2, 4, 6, 8].map((t) => (
+                        <option key={t} value={t}>{t}px</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Color</label>
+                    <select
+                      value={selectedLine.color || '#94a3b8'}
+                      onChange={(e) => {
+                        const updated = localPlan.lines.map((l, idx) => 
+                          idx === selectedElement.index ? { ...l, color: e.target.value } : l
+                        );
+                        setLocalPlan({ ...localPlan, lines: updated });
+                        setIsDirty(true);
+                      }}
+                      className="w-full mt-1 border border-slate-700 rounded-lg px-2 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none"
+                    >
+                      {DECORATION_COLORS.map((c) => (
+                        <option key={c.value} value={c.value}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const updated = localPlan.lines.filter((_, idx) => idx !== selectedElement.index);
+                    setLocalPlan({ ...localPlan, lines: updated });
+                    setSelectedElement(null);
+                    setIsDirty(true);
+                  }}
+                  className="w-full py-1.5 mt-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 size={12} />
+                  Delete Line
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Unplaced Tables */}
           <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4">
             <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm mb-3 flex items-center gap-2">
@@ -1543,15 +1909,27 @@ export default function FloorPlanEditorPage() {
               </h3>
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {localPlan.zones.map((zone, i) => (
-                  <div key={`zone-${i}`} className="flex items-center justify-between bg-[var(--pos-surface-inset)] p-2 rounded-lg text-[10px]">
+                  <div 
+                    key={`zone-${i}`} 
+                    onClick={() => setSelectedElement({ type: 'zone', index: i })}
+                    className={`flex items-center justify-between p-2 rounded-lg text-[10px] cursor-pointer transition ${
+                      selectedElement?.type === 'zone' && selectedElement.index === i 
+                        ? 'bg-amber-500/20 border border-amber-500/50' 
+                        : 'bg-[var(--pos-surface-inset)] border border-transparent'
+                    }`}
+                  >
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: zone.color || '#3b82f6' }} />
                       <span className="truncate text-slate-350 font-medium">{zone.name}</span>
                     </div>
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const updated = localPlan.zones.filter((_, idx) => idx !== i);
                         setLocalPlan({ ...localPlan, zones: updated });
+                        if (selectedElement?.type === 'zone' && selectedElement.index === i) {
+                          setSelectedElement(null);
+                        }
                         setIsDirty(true);
                       }}
                       className="text-red-400 hover:text-red-300 p-0.5 rounded hover:bg-red-500/10 transition"
@@ -1572,12 +1950,24 @@ export default function FloorPlanEditorPage() {
               </h3>
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {localPlan.texts?.map((t, i) => (
-                  <div key={`text-${i}`} className="flex items-center justify-between bg-[var(--pos-surface-inset)] p-2 rounded-lg text-[10px]">
+                  <div 
+                    key={`text-${i}`} 
+                    onClick={() => setSelectedElement({ type: 'text', index: i })}
+                    className={`flex items-center justify-between p-2 rounded-lg text-[10px] cursor-pointer transition ${
+                      selectedElement?.type === 'text' && selectedElement.index === i 
+                        ? 'bg-amber-500/20 border border-amber-500/50' 
+                        : 'bg-[var(--pos-surface-inset)] border border-transparent'
+                    }`}
+                  >
                     <span className="truncate flex-1 text-slate-350">Text: "{t.text}"</span>
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const updated = localPlan.texts.filter((_, idx) => idx !== i);
                         setLocalPlan({ ...localPlan, texts: updated });
+                        if (selectedElement?.type === 'text' && selectedElement.index === i) {
+                          setSelectedElement(null);
+                        }
                         setIsDirty(true);
                       }}
                       className="text-red-400 hover:text-red-300 p-0.5 rounded hover:bg-red-500/10 transition"
@@ -1587,12 +1977,24 @@ export default function FloorPlanEditorPage() {
                   </div>
                 ))}
                 {localPlan.lines?.map((line, i) => (
-                  <div key={`line-${i}`} className="flex items-center justify-between bg-[var(--pos-surface-inset)] p-2 rounded-lg text-[10px]">
+                  <div 
+                    key={`line-${i}`} 
+                    onClick={() => setSelectedElement({ type: 'line', index: i })}
+                    className={`flex items-center justify-between p-2 rounded-lg text-[10px] cursor-pointer transition ${
+                      selectedElement?.type === 'line' && selectedElement.index === i 
+                        ? 'bg-amber-500/20 border border-amber-500/50' 
+                        : 'bg-[var(--pos-surface-inset)] border border-transparent'
+                    }`}
+                  >
                     <span className="truncate flex-1 text-slate-350">Line: ({line.x1},{line.y1}) to ({line.x2},{line.y2})</span>
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const updated = localPlan.lines.filter((_, idx) => idx !== i);
                         setLocalPlan({ ...localPlan, lines: updated });
+                        if (selectedElement?.type === 'line' && selectedElement.index === i) {
+                          setSelectedElement(null);
+                        }
                         setIsDirty(true);
                       }}
                       className="text-red-400 hover:text-red-300 p-0.5 rounded hover:bg-red-500/10 transition"
@@ -1627,11 +2029,10 @@ export default function FloorPlanEditorPage() {
               <h4 className="text-[10px] font-semibold text-slate-400 mb-2 uppercase tracking-wider">Quick Guide</h4>
               <ul className="space-y-1 text-[10px] text-slate-500">
                 <li>• Shape active → Click stage to place table</li>
-                <li>• Drag tables to move on grid</li>
-                <li>• Use visual handles to resize/rotate tables</li>
+                <li>• Select and drag any item (Table, Zone, Label) to move</li>
+                <li>• Properties panel opens when selecting any item</li>
+                <li>• Press Backspace / Delete to remove selected element</li>
                 <li>• Hold Spacebar + drag stage to pan canvas</li>
-                <li>• Ctrl+Click table to multi-select</li>
-                <li>• ESC to clear shapes or drawing</li>
               </ul>
             </div>
           </div>
@@ -1670,23 +2071,25 @@ export default function FloorPlanEditorPage() {
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-[var(--pos-text-primary)]">{table.label}</span>
-                          {onPlan && (
-                            <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded border border-green-500/30">
-                              On Plan
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-[var(--pos-text-primary)]">{table.label}</span>
+                            {onPlan && (
+                              <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded border border-green-500/30">
+                                On Plan
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-500">
+                            <span className="flex items-center gap-1">
+                              <Users size={12} />
+                              {table.capacity || 4}
                             </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-500">
-                          <span className="flex items-center gap-1">
-                            <Users size={12} />
-                            {table.capacity || 4}
-                          </span>
-                          <span>•</span>
-                          <span className={table.active ? 'text-green-400' : 'text-slate-600'}>
-                            {table.active ? 'Active' : 'Inactive'}
-                          </span>
+                            <span>•</span>
+                            <span className={table.active ? 'text-green-400' : 'text-slate-600'}>
+                              {table.active ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       <Edit2 size={14} className="text-slate-500 group-hover:text-amber-400 transition" />
