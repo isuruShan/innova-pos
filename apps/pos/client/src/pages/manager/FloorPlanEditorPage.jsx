@@ -358,10 +358,17 @@ export default function FloorPlanEditorPage() {
     refetchInterval: 10000,
   });
 
+  // Reset local plan when selected store changes
+  useEffect(() => {
+    setLocalPlan(null);
+    setIsDirty(false);
+    setSelectedTable(null);
+    setSelectedTables([]);
+  }, [selectedStoreId]);
+
   // Initialize local plan when data loads
   useEffect(() => {
-    if (floorPlan && !localPlan) {
-      // Ensure tables array exists
+    if (floorPlan) {
       setLocalPlan({
         ...floorPlan,
         tables: floorPlan.tables || [],
@@ -369,13 +376,13 @@ export default function FloorPlanEditorPage() {
         lines: floorPlan.lines || [],
         texts: floorPlan.texts || [],
       });
+      setIsDirty(false);
     }
-  }, [floorPlan, localPlan]);
+  }, [floorPlan]);
 
   // Create default plan structure if none exists after loading
   useEffect(() => {
     if (!isLoading && !floorPlan && isStoreReady && !localPlan) {
-      // Create a temporary local plan while the API creates one
       setLocalPlan({
         name: 'Main Floor',
         gridWidth: 20,
