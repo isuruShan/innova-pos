@@ -262,6 +262,20 @@ export default function MerchantAddonsPage() {
     },
   });
 
+  const activateFreeTrialMutation = useMutation({
+    mutationFn: (code) => api.post(`/paid-addons/${encodeURIComponent(code)}/activate-free-trial`).then((r) => r.data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
+      toast.success(data?.message || 'Add-on activated successfully!');
+      closeFlow();
+    },
+    onError: (err) => {
+      setAddonApiError(err.response?.data?.message || 'Could not activate add-on');
+    },
+  });
+
   const handleStartTrial = (row) => {
     setTrialStartingCode(row.code);
     startTrialMutation.mutate(row.code);
@@ -627,6 +641,18 @@ export default function MerchantAddonsPage() {
                     className="w-full py-3 rounded-xl border border-gray-300 text-gray-800 text-sm font-semibold hover:bg-gray-50"
                   >
                     Close
+                  </button>
+                ) : tenant?.subscriptionStatus === 'trial' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddonApiError('');
+                      activateFreeTrialMutation.mutate(selectedAddon.code);
+                    }}
+                    disabled={activateFreeTrialMutation.isPending}
+                    className="w-full py-3 rounded-xl bg-brand-orange text-white text-sm font-semibold hover:bg-brand-orange-hover disabled:opacity-50"
+                  >
+                    {activateFreeTrialMutation.isPending ? 'Activating...' : 'Activate Free Add-on'}
                   </button>
                 ) : methodOptions.length === 0 ? (
                   <div className="flex items-start gap-2 text-amber-800 text-sm bg-amber-50 border border-amber-200 rounded-lg p-3">

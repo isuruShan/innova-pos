@@ -233,6 +233,56 @@ router.post('/:code/start-trial', authenticateJWT, authorize('merchant_admin'), 
   }
 });
 
+/** Activate add-on for free during the tenant's trial period */
+router.post('/:code/activate-free-trial', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
+  try {
+    const code = String(req.params.code || '').trim().toLowerCase();
+    let tenant = await Tenant.findById(req.tenantId);
+    if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+    if (tenant.subscriptionStatus !== 'trial') {
+      return res.status(400).json({ message: 'Tenant is not in trial period' });
+    }
+
+    const entitlementKey = entitlementKeyForCode(code);
+    if (!entitlementKey) {
+      return res.status(400).json({ message: 'Unknown add-on' });
+    }
+
+    const addon = await getAddonByCode(code);
+    if (!addon || !addon.isActive) {
+      return res.status(404).json({ message: 'Add-on not available' });
+    }
+
+    const now = new Date();
+    // Period ends when the general trial ends
+    const periodEndsAt = tenant.trialEndsAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
+    tenant.paidAddons = tenant.paidAddons || {};
+    tenant.paidAddons[entitlementKey] = {
+      active: true,
+      activatedAt: now,
+      amountPerCycle: 0,
+      currency: '',
+      periodEndsAt: periodEndsAt,
+      cancelAtPeriodEnd: false,
+    };
+    tenant.updatedBy = req.user.id;
+    await tenant.save();
+
+    res.json({
+      message: `${addon.name} activated for free until your trial ends!`,
+      periodEndsAt,
+      addon: {
+        code: addon.code,
+        name: addon.name,
+      },
+    });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {
     await ensureDefaultPaidAddons();

@@ -39,8 +39,8 @@ async function getAddonMerchantState(tenant, code) {
   const inTrial = isInTrialPeriod(row);
   const cancelScheduled = Boolean(row.cancelAtPeriodEnd && active);
   
-  // Can start trial if: not active, no pending receipt, and never had trial before
-  const canStartTrial = !active && !pendingReceipt && !row.trialActivatedAt;
+  // Can start trial if: not active, no pending receipt, never had trial before, and tenant is NOT in trial
+  const canStartTrial = (tenant.subscriptionStatus !== 'trial') && !active && !pendingReceipt && !row.trialActivatedAt;
   
   return {
     pendingVerification: Boolean(pendingReceipt),
