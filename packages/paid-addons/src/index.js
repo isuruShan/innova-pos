@@ -96,7 +96,7 @@ function isAccountingEffective(paidAddons) {
 }
 
 function isDualScreenEffective(paidAddons) {
-  return isPaidAddonEffective(paidAddons, 'dualScreen');
+  return true;
 }
 
 function isWhatsappEffective(paidAddons) {
