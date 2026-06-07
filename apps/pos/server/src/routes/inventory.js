@@ -18,7 +18,8 @@ router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), t
     }, { itemName: 1 });
     const items = await Inventory.find({ tenantId: req.tenantId, ...buildStoreFilter(req) })
       .sort(sort)
-      .populate('suppliers', 'name phone email');
+      .populate('suppliers', 'name phone email')
+      .populate('category', 'name description');
     res.json(items);
   } catch (err) {
     sendRouteError(res, err, { req });
@@ -29,7 +30,9 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
   try {
     const storeId = await resolveWriteStoreId(req);
     if (!storeId) return res.status(400).json({ message: 'No store available for inventory item creation' });
-    const item = await Inventory.create({ ...req.body, quantity: 0, tenantId: req.tenantId, storeId, createdBy: req.user.id });
+    let item = await Inventory.create({ ...req.body, quantity: 0, tenantId: req.tenantId, storeId, createdBy: req.user.id });
+    item = await item.populate('suppliers', 'name phone email');
+    item = await item.populate('category', 'name description');
     res.status(201).json(item);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -44,7 +47,9 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
       { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) },
       { ...updateData, lastUpdated: Date.now(), updatedBy: req.user.id },
       { new: true, runValidators: true }
-    ).populate('suppliers', 'name phone email');
+    )
+      .populate('suppliers', 'name phone email')
+      .populate('category', 'name description');
     if (!item) return res.status(404).json({ message: 'Inventory item not found' });
     res.json(item);
   } catch (err) {

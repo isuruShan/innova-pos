@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Plus, Edit2, Package, Check, X, AlertTriangle, Truck, Search,
-  LineChart as LineChartIcon, Calendar, User, Clock, SlidersHorizontal,
-  ChevronDown, ArrowUp, ArrowDown, LayoutGrid, List, Eye
+  Plus, Edit2, Package, X, AlertTriangle, Truck, Search,
+  LineChart as LineChartIcon, Calendar, User, SlidersHorizontal,
+  Eye, Trash2
 } from 'lucide-react';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend
+  CartesianGrid, Tooltip
 } from 'recharts';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -17,7 +17,6 @@ import Toast from '../../components/Toast';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { useStoreContext } from '../../context/StoreContext';
 import { InventoryTableSkeleton } from '../../components/StoreSkeletons';
-import SortableTh from '../../components/SortableTh';
 import { useListSort } from '../../hooks/useListSort';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import InventoryAdjustments from '../../components/inventory/InventoryAdjustments';
@@ -25,7 +24,7 @@ import PageHeader from '../../components/PageHeader';
 import ResponsiveTable from '../../components/ResponsiveTable';
 import ViewModeToggle from '../../components/ViewModeToggle';
 
-const EMPTY_FORM = { itemName: '', unit: 'pcs', quantity: '', minThreshold: '', suppliers: [] };
+const EMPTY_FORM = { itemName: '', unit: 'pcs', quantity: '', minThreshold: '', category: '', suppliers: [] };
 
 const PREDEFINED_UNITS = [
   { value: 'pcs', label: 'Pieces (pcs)' },
@@ -50,37 +49,7 @@ const getStockStatus = (qty, min) => {
   return { label: 'OK', variant: 'ok' };
 };
 
-function InlineEdit({ value, onSave }) {
-  const [editing, setEditing] = useState(false);
-  const [val, setVal] = useState(value);
 
-  const save = () => {
-    const n = parseFloat(val);
-    if (!isNaN(n) && n >= 0) { onSave(n); setEditing(false); }
-  };
-
-  if (!editing) {
-    return (
-      <button onClick={() => { setVal(value); setEditing(true); }}
-        className="text-[var(--pos-text-primary)] font-semibold hover:text-amber-400 transition">
-        {value}
-      </button>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-1">
-      <input type="number" min="0" value={val}
-        onChange={e => setVal(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
-        autoFocus
-        className="w-20 bg-[var(--pos-surface-inset)] border border-amber-500 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-sm focus:outline-none"
-      />
-      <button onClick={save} className="text-green-400 hover:text-green-300"><Check size={14} /></button>
-      <button onClick={() => setEditing(false)} className="text-slate-500 hover:text-slate-300"><X size={14} /></button>
-    </div>
-  );
-}
 
 function SupplierPills({ suppliers }) {
   if (!suppliers?.length) return <span className="text-slate-600 text-xs">—</span>;
@@ -122,6 +91,60 @@ export default function InventoryManagement() {
   const qc = useQueryClient();
   const { sort, order, toggleSort, sortParams } = useListSort('name', 'asc');
   const { toast, showToast, clearToast } = useToast();
+
+  // Category States
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
+  const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [categoryError, setCategoryError] = useState('');
+
+  // Category Queries
+  const { data: categories = [], isPending: categoriesPending } = useQuery({
+    queryKey: ['inventory-categories', selectedStoreId],
+    queryFn: () => api.get('/inventory-categories').then(r => r.data),
+    enabled: isStoreReady,
+  });
+
+  // Category Mutations
+  const createCategoryMutation = useMutation({
+    mutationFn: (data) => api.post('/inventory-categories', data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['inventory-categories'] });
+      setCategoryForm({ name: '', description: '' });
+      setCategoryError('');
+      showToast('Category created', 'success');
+    },
+    onError: (e) => {
+      setCategoryError(getApiErrorMessage(e, 'Failed to create category'));
+    },
+  });
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: ({ id, data }) => api.put(`/inventory-categories/${id}`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['inventory-categories'] });
+      qc.invalidateQueries({ queryKey: ['inventory'] });
+      setEditingCategory(null);
+      setCategoryError('');
+      showToast('Category updated', 'success');
+    },
+    onError: (e) => {
+      setCategoryError(getApiErrorMessage(e, 'Failed to update category'));
+    },
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (id) => api.delete(`/inventory-categories/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['inventory-categories'] });
+      qc.invalidateQueries({ queryKey: ['inventory'] });
+      showToast('Category deleted', 'success');
+    },
+    onError: (e) => {
+      showToast(getApiErrorMessage(e, 'Failed to delete category'), 'error');
+    },
+  });
 
   // Adjustment History States
   const [sessionStatus, setSessionStatus] = useState('all');
@@ -209,7 +232,10 @@ export default function InventoryManagement() {
 
   const openAdd = () => { 
     setEditing(null); 
-    setForm(EMPTY_FORM); 
+    setForm({
+      ...EMPTY_FORM,
+      category: selectedCategoryId && selectedCategoryId !== 'uncategorized' ? selectedCategoryId : '',
+    }); 
     setFormError(''); 
     setSlideOpen(true); 
     setSupplierSearch(''); 
@@ -223,6 +249,7 @@ export default function InventoryManagement() {
       unit: unitExists ? item.unit : 'other',
       quantity: item.quantity,
       minThreshold: item.minThreshold,
+      category: item.category?._id || item.category || '',
       suppliers: item.suppliers?.map(s => s._id) || [],
     });
     setCustomUnit(unitExists ? '' : item.unit);
@@ -239,14 +266,7 @@ export default function InventoryManagement() {
     setCustomUnit(''); 
   };
 
-  const toggleSupplier = (id) => {
-    setForm(f => ({
-      ...f,
-      suppliers: f.suppliers.includes(id)
-        ? f.suppliers.filter(s => s !== id)
-        : [...f.suppliers, id],
-    }));
-  };
+
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -258,6 +278,7 @@ export default function InventoryManagement() {
       itemName: form.itemName.trim(),
       unit: finalUnit,
       minThreshold: parseFloat(form.minThreshold),
+      category: form.category || null,
       suppliers: form.suppliers,
     };
 
@@ -287,6 +308,16 @@ export default function InventoryManagement() {
 
   const filtered = useMemo(() => {
     let result = items;
+    if (selectedCategoryId) {
+      if (selectedCategoryId === 'uncategorized') {
+        result = result.filter(item => !item.category);
+      } else {
+        result = result.filter(item => {
+          const catId = item.category?._id || item.category;
+          return String(catId) === String(selectedCategoryId);
+        });
+      }
+    }
     if (filter !== 'all') {
       result = result.filter(item => {
         const s = getStockStatus(item.quantity, item.minThreshold);
@@ -298,7 +329,7 @@ export default function InventoryManagement() {
       result = result.filter(item => item.itemName.toLowerCase().includes(q));
     }
     return result;
-  }, [items, filter, searchQuery]);
+  }, [items, filter, searchQuery, selectedCategoryId]);
 
   const filteredSessions = useMemo(() => {
     let result = sessions;
@@ -361,6 +392,7 @@ export default function InventoryManagement() {
             'View history of stock adjustments'
           }
           actions={activeTab === 'stock' ? [
+            { label: 'Manage Categories', icon: SlidersHorizontal, onClick: () => setManageCategoriesOpen(true) },
             { label: 'Add Item', icon: Plus, onClick: openAdd, primary: true },
           ] : []}
         />
@@ -389,214 +421,293 @@ export default function InventoryManagement() {
         {/* Tab Content */}
         {activeTab === 'stock' && (
           <>
-            {/* Standardized Search & Filter Header */}
-            <div className="flex flex-col sm:flex-row items-center gap-3 mb-6 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700">
-              <div className="relative flex-1 w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search inventory items by name..."
-                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg pl-10 pr-8 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-500"
-                />
-                {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
-              
-              <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
-              
-              <div className="relative self-end sm:self-auto">
-                <button
-                  onClick={() => setShowFilters(f => !f)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
-                    filter !== 'all'
-                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-405'
-                      : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <SlidersHorizontal size={14} />
-                  <span>Filters</span>
-                  {filter !== 'all' && (
-                    <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
-                      1
-                    </span>
-                  )}
-                </button>
-
-                {showFilters && (
-                  <div className="absolute right-0 mt-2 w-64 bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-2xl z-30 p-4 space-y-3">
-                    <div className="flex items-center justify-between border-b border-slate-700 pb-2">
-                      <span className="text-xs font-semibold text-slate-300">Status Filter</span>
-                      {filter !== 'all' && (
-                        <button onClick={() => setFilter('all')} className="text-[10px] text-amber-450 hover:underline">Clear</button>
-                      )}
+            {selectedCategoryId === null ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-[var(--pos-text-primary)]">Inventory Categories</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {/* Uncategorized Card */}
+                  <div
+                    onClick={() => setSelectedCategoryId('uncategorized')}
+                    className="cursor-pointer bg-[var(--pos-panel)] hover:bg-[var(--pos-surface-inset)] border border-slate-700/60 hover:border-amber-500/50 rounded-2xl p-5 transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg flex flex-col justify-between min-h-[140px]"
+                  >
+                    <div>
+                      <h4 className="font-bold text-base text-[var(--pos-text-primary)] mb-1">Uncategorized</h4>
+                      <p className="text-slate-405 text-xs line-clamp-2">Items without an assigned category</p>
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                      {[
-                        { key: 'all', label: 'All Statuses' },
-                        { key: 'ok', label: 'OK' },
-                        { key: 'low', label: 'Low Stock' },
-                        { key: 'critical', label: 'Critical' },
-                      ].map(f => (
-                        <button
-                          key={f.key}
-                          onClick={() => { setFilter(f.key); setShowFilters(false); }}
-                          className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
-                            filter === f.key
-                              ? 'bg-amber-500/15 text-amber-400 font-semibold'
-                              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                          }`}
-                        >
-                          {f.label}
-                        </button>
-                      ))}
+                    <div className="flex items-center justify-between mt-4 border-t border-slate-700/40 pt-3">
+                      <span className="text-xs text-slate-500 font-medium">Stock Items</span>
+                      <span className="bg-slate-755/50 text-slate-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-slate-700">
+                        {items.filter(item => !item.category).length}
+                      </span>
                     </div>
                   </div>
-                )}
-              </div>
-            </div>
 
-            {pageLoading ? (
-              <InventoryTableSkeleton />
-            ) : viewMode === 'table' ? (
-              <ResponsiveTable
-                rows={filtered}
-                rowKey={(item) => item._id}
-                loading={false}
-                onSort={toggleSort}
-                currentSort={sort}
-                currentOrder={order}
-                emptyState={
-                  <span className="flex flex-col items-center gap-2">
-                    <Package size={36} className="opacity-30" />
-                    No inventory items found
-                  </span>
-                }
-                columns={[
-                  {
-                    key: 'name', header: 'Item Name',
-                    mobilePrimary: true,
-                    sortField: 'name',
-                    render: (item) => <span className="font-medium text-[var(--pos-text-primary)]">{item.itemName}</span>,
-                  },
-                  {
-                    key: 'status', header: 'Status',
-                    mobileSecondary: true,
-                    render: (item) => {
-                      const status = getStockStatus(item.quantity, item.minThreshold);
-                      return <Badge label={status.label} variant={status.variant} />;
-                    },
-                  },
-                  {
-                    key: 'qty', header: 'Qty',
-                    mobileRight: true,
-                    className: 'text-right',
-                    headerClassName: 'text-right',
-                    sortField: 'quantity',
-                    render: (item) => (
-                      <span className="text-[var(--pos-text-primary)] font-semibold">{item.quantity}</span>
-                    ),
-                  },
-                  {
-                    key: 'unit', header: 'Unit',
-                    render: (item) => <span className="text-slate-400">{item.unit}</span>,
-                  },
-                  {
-                    key: 'threshold', header: 'Min',
-                    mobileLabel: 'Min Threshold',
-                    render: (item) => <span className="text-slate-400">{item.minThreshold}</span>,
-                  },
-                  {
-                    key: 'suppliers', header: 'Suppliers',
-                    render: (item) => <SupplierPills suppliers={item.suppliers} />,
-                  },
-                  {
-                    key: 'updated', header: 'Updated',
-                    sortField: 'createdAt',
-                    render: (item) => (
-                      <span className="text-slate-500 text-xs">
-                        {new Date(item.lastUpdated || item.updatedAt).toLocaleDateString()}
-                      </span>
-                    ),
-                  },
-                  {
-                    key: 'actions', header: '', mobileHide: true,
-                    render: (item) => (
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => setGraphItem(item)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-amber-400 hover:bg-slate-700 transition"
-                          title="View Stock Movements & Graph">
-                          <LineChartIcon size={13} />
-                        </button>
-                        <button onClick={() => openEdit(item)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition"
-                          title="Edit Item Details">
-                          <Edit2 size={13} />
-                        </button>
-                      </div>
-                    ),
-                  },
-                ]}
-              />
-            ) : (
-              filtered.length === 0 ? (
-                <div className="text-center py-16 bg-[var(--pos-panel)] rounded-xl border border-slate-700">
-                  <Package size={36} className="mx-auto opacity-30 mb-2 text-slate-400" />
-                  <p className="text-sm text-slate-500">No inventory items found</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {filtered.map((item) => {
-                    const status = getStockStatus(item.quantity, item.minThreshold);
-                    return (
-                      <div key={item._id} className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-3.5 flex flex-col justify-between hover:border-slate-600 transition shadow-lg">
-                        <div>
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <h4 className="text-[var(--pos-text-primary)] font-bold text-sm truncate">{item.itemName}</h4>
-                            <Badge label={status.label} variant={status.variant} className="text-[10px] px-1.5 py-0.5" />
+                  {/* Category Cards */}
+                  {categoriesPending ? (
+                    <div className="col-span-full py-12 text-center text-slate-500 text-sm">
+                      Loading categories...
+                    </div>
+                  ) : (
+                    categories.map(cat => {
+                      const count = items.filter(item => {
+                        const catId = item.category?._id || item.category;
+                        return String(catId) === String(cat._id);
+                      }).length;
+                      return (
+                        <div
+                          key={cat._id}
+                          onClick={() => setSelectedCategoryId(cat._id)}
+                          className="cursor-pointer bg-[var(--pos-panel)] hover:bg-[var(--pos-surface-inset)] border border-slate-700/60 hover:border-amber-500/50 rounded-2xl p-5 transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg flex flex-col justify-between min-h-[140px]"
+                        >
+                          <div>
+                            <h4 className="font-bold text-base text-[var(--pos-text-primary)] mb-1 truncate">{cat.name}</h4>
+                            <p className="text-slate-450 text-xs line-clamp-2">
+                              {cat.description || 'No description provided.'}
+                            </p>
                           </div>
-                          <div className="grid grid-cols-2 gap-2 mt-3 bg-[var(--pos-surface-inset)] rounded-lg p-2.5 text-xs border border-slate-800/60">
-                            <div>
-                              <p className="text-[10px] text-slate-500">Quantity</p>
-                              <p className="font-semibold text-slate-300">{item.quantity} {item.unit}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] text-slate-500">Min Threshold</p>
-                              <p className="font-semibold text-slate-300">{item.minThreshold} {item.unit}</p>
-                            </div>
-                          </div>
-                          <div className="mt-3">
-                            <p className="text-[10px] text-slate-500 mb-1">Suppliers</p>
-                            <SupplierPills suppliers={item.suppliers} />
+                          <div className="flex items-center justify-between mt-4 border-t border-slate-700/40 pt-3">
+                            <span className="text-xs text-slate-500 font-medium">Stock Items</span>
+                            <span className="bg-amber-500/10 text-amber-450 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                              {count}
+                            </span>
                           </div>
                         </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Back to Categories breadcrumb */}
+                <div className="flex items-center gap-2 mb-4 bg-[var(--pos-panel)] px-4 py-2.5 rounded-xl border border-slate-700/60 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategoryId(null)}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-amber-500 hover:text-amber-400 transition"
+                  >
+                    &larr; Back to Categories
+                  </button>
+                  <span className="text-slate-600 text-xs font-medium">/</span>
+                  <span className="text-xs font-medium text-[var(--pos-text-primary)] truncate">
+                    {selectedCategoryId === 'uncategorized'
+                      ? 'Uncategorized Items'
+                      : categories.find(c => c._id === selectedCategoryId)?.name || 'Category Items'}
+                  </span>
+                </div>
 
-                        <div className="mt-4 pt-3 border-t border-slate-850/60 flex items-center justify-between">
-                          <span className="text-[10px] text-slate-500">
-                            Updated: {new Date(item.lastUpdated || item.updatedAt).toLocaleDateString()}
+                {/* Standardized Search & Filter Header */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 mb-6 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700">
+                  <div className="relative flex-1 w-full">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search inventory items by name..."
+                      className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg pl-10 pr-8 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-500"
+                    />
+                    {searchQuery && (
+                      <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                  
+                  <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
+                  
+                  <div className="relative self-end sm:self-auto">
+                    <button
+                      onClick={() => setShowFilters(f => !f)}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
+                        filter !== 'all'
+                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-405'
+                          : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <SlidersHorizontal size={14} />
+                      <span>Filters</span>
+                      {filter !== 'all' && (
+                        <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
+                          1
+                        </span>
+                      )}
+                    </button>
+
+                    {showFilters && (
+                      <div className="absolute right-0 mt-2 w-64 bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-2xl z-30 p-4 space-y-3">
+                        <div className="flex items-center justify-between border-b border-slate-700 pb-2">
+                          <span className="text-xs font-semibold text-slate-300">Status Filter</span>
+                          {filter !== 'all' && (
+                            <button onClick={() => setFilter('all')} className="text-[10px] text-amber-450 hover:underline">Clear</button>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          {[
+                            { key: 'all', label: 'All Statuses' },
+                            { key: 'ok', label: 'OK' },
+                            { key: 'low', label: 'Low Stock' },
+                            { key: 'critical', label: 'Critical' },
+                          ].map(f => (
+                            <button
+                              key={f.key}
+                              onClick={() => { setFilter(f.key); setShowFilters(false); }}
+                              className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
+                                filter === f.key
+                                  ? 'bg-amber-500/15 text-amber-400 font-semibold'
+                                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                              }`}
+                            >
+                              {f.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {pageLoading ? (
+                  <InventoryTableSkeleton />
+                ) : viewMode === 'table' ? (
+                  <ResponsiveTable
+                    rows={filtered}
+                    rowKey={(item) => item._id}
+                    loading={false}
+                    onSort={toggleSort}
+                    currentSort={sort}
+                    currentOrder={order}
+                    emptyState={
+                      <span className="flex flex-col items-center gap-2">
+                        <Package size={36} className="opacity-30" />
+                        No inventory items found
+                      </span>
+                    }
+                    columns={[
+                      {
+                        key: 'name', header: 'Item Name',
+                        mobilePrimary: true,
+                        sortField: 'name',
+                        render: (item) => <span className="font-medium text-[var(--pos-text-primary)]">{item.itemName}</span>,
+                      },
+                      {
+                        key: 'status', header: 'Status',
+                        mobileSecondary: true,
+                        render: (item) => {
+                          const status = getStockStatus(item.quantity, item.minThreshold);
+                          return <Badge label={status.label} variant={status.variant} />;
+                        },
+                      },
+                      {
+                        key: 'qty', header: 'Qty',
+                        mobileRight: true,
+                        className: 'text-right',
+                        headerClassName: 'text-right',
+                        sortField: 'quantity',
+                        render: (item) => (
+                          <span className="text-[var(--pos-text-primary)] font-semibold">{item.quantity}</span>
+                        ),
+                      },
+                      {
+                        key: 'unit', header: 'Unit',
+                        render: (item) => <span className="text-slate-400">{item.unit}</span>,
+                      },
+                      {
+                        key: 'threshold', header: 'Min',
+                        mobileLabel: 'Min Threshold',
+                        render: (item) => <span className="text-slate-400">{item.minThreshold}</span>,
+                      },
+                      {
+                        key: 'suppliers', header: 'Suppliers',
+                        render: (item) => <SupplierPills suppliers={item.suppliers} />,
+                      },
+                      {
+                        key: 'updated', header: 'Updated',
+                        sortField: 'createdAt',
+                        render: (item) => (
+                          <span className="text-slate-500 text-xs">
+                            {new Date(item.lastUpdated || item.updatedAt).toLocaleDateString()}
                           </span>
+                        ),
+                      },
+                      {
+                        key: 'actions', header: '', mobileHide: true,
+                        render: (item) => (
                           <div className="flex items-center gap-1">
                             <button onClick={() => setGraphItem(item)}
-                              className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-amber-400 hover:bg-slate-700 transition"
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-amber-400 hover:bg-slate-700 transition"
                               title="View Stock Movements & Graph">
                               <LineChartIcon size={13} />
                             </button>
                             <button onClick={() => openEdit(item)}
-                              className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition"
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition"
                               title="Edit Item Details">
                               <Edit2 size={13} />
                             </button>
                           </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )
+                        ),
+                      },
+                    ]}
+                  />
+                ) : (
+                  filtered.length === 0 ? (
+                    <div className="text-center py-16 bg-[var(--pos-panel)] rounded-xl border border-slate-700">
+                      <Package size={36} className="mx-auto opacity-30 mb-2 text-slate-400" />
+                      <p className="text-sm text-slate-500">No inventory items found</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {filtered.map((item) => {
+                        const status = getStockStatus(item.quantity, item.minThreshold);
+                        return (
+                          <div key={item._id} className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-3.5 flex flex-col justify-between hover:border-slate-600 transition shadow-lg">
+                            <div>
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <h4 className="text-[var(--pos-text-primary)] font-bold text-sm truncate">{item.itemName}</h4>
+                                <Badge label={status.label} variant={status.variant} className="text-[10px] px-1.5 py-0.5" />
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 mt-3 bg-[var(--pos-surface-inset)] rounded-lg p-2.5 text-xs border border-slate-800/60">
+                                <div>
+                                  <p className="text-[10px] text-slate-500">Quantity</p>
+                                  <p className="font-semibold text-slate-300">{item.quantity} {item.unit}</p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] text-slate-500">Min Threshold</p>
+                                  <p className="font-semibold text-slate-300">{item.minThreshold} {item.unit}</p>
+                                </div>
+                              </div>
+                              <div className="mt-3">
+                                <p className="text-[10px] text-slate-500 mb-1">Suppliers</p>
+                                <SupplierPills suppliers={item.suppliers} />
+                              </div>
+                            </div>
+
+                            <div className="mt-4 pt-3 border-t border-slate-850/60 flex items-center justify-between">
+                              <span className="text-[10px] text-slate-500">
+                                Updated: {new Date(item.lastUpdated || item.updatedAt).toLocaleDateString()}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => setGraphItem(item)}
+                                  className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-amber-400 hover:bg-slate-700 transition"
+                                  title="View Stock Movements & Graph">
+                                  <LineChartIcon size={13} />
+                                </button>
+                                <button onClick={() => openEdit(item)}
+                                  className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition"
+                                  title="Edit Item Details">
+                                  <Edit2 size={13} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )
+                )}
+              </>
             )}
           </>
         )}
@@ -817,6 +928,18 @@ export default function InventoryManagement() {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Category</label>
+            <select value={form.category}
+              onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+              <option value="">None (Uncategorized)</option>
+              {categories.map(c => (
+                <option key={c._id} value={c._id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">Unit *</label>
             <select value={form.unit}
               onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
@@ -939,6 +1062,143 @@ export default function InventoryManagement() {
             </button>
           </div>
         </form>
+      </SlideOver>
+
+      {/* Category Management SlideOver */}
+      <SlideOver
+        open={manageCategoriesOpen}
+        onClose={() => {
+          setManageCategoriesOpen(false);
+          setEditingCategory(null);
+          setCategoryForm({ name: '', description: '' });
+          setCategoryError('');
+        }}
+        title="Manage Inventory Categories"
+      >
+        <div className="space-y-6">
+          {/* Add / Edit Form */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setCategoryError('');
+              if (!categoryForm.name.trim()) return setCategoryError('Category name is required');
+              if (editingCategory) {
+                updateCategoryMutation.mutate({ id: editingCategory._id, data: categoryForm });
+              } else {
+                createCategoryMutation.mutate(categoryForm);
+              }
+            }}
+            className="space-y-4 bg-[var(--pos-surface-inset)] border border-slate-700/50 rounded-2xl p-4"
+          >
+            <h4 className="text-sm font-semibold text-[var(--pos-text-primary)]">
+              {editingCategory ? 'Edit Category' : 'Create New Category'}
+            </h4>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Name *</label>
+              <input
+                type="text"
+                value={categoryForm.name}
+                onChange={e => setCategoryForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Sauces & Dressings"
+                required
+                className="w-full bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-650"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Description</label>
+              <textarea
+                value={categoryForm.description}
+                onChange={e => setCategoryForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="Brief description..."
+                rows={2}
+                className="w-full bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-650 resize-none"
+              />
+            </div>
+
+            {categoryError && (
+              <div className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-xl">
+                {categoryError}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              {editingCategory && (
+                <button
+                  type="button"
+                  onClick={() => { setEditingCategory(null); setCategoryForm({ name: '', description: '' }); }}
+                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-semibold py-1.5 rounded-xl transition text-xs"
+                >
+                  Cancel
+                </button>
+              )}
+              <button
+                type="submit"
+                disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
+                className="flex-1 bg-amber-500 hover:bg-amber-400 text-white font-semibold py-1.5 rounded-xl transition text-xs disabled:opacity-60"
+              >
+                {editingCategory ? 'Save' : 'Create'}
+              </button>
+            </div>
+          </form>
+
+          {/* List of Categories */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-[var(--pos-text-primary)] border-b border-slate-700/50 pb-2">
+              Existing Categories ({categories.length})
+            </h4>
+
+            {categoriesPending ? (
+              <div className="text-xs text-slate-500 text-center py-4">Loading categories...</div>
+            ) : categories.length === 0 ? (
+              <div className="text-xs text-slate-500 text-center py-4 bg-[var(--pos-panel)] border border-slate-700/40 rounded-xl">
+                No categories created yet.
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+                {categories.map(cat => (
+                  <div
+                    key={cat._id}
+                    className="flex items-start justify-between bg-[var(--pos-panel)] border border-slate-700/50 hover:border-slate-600 rounded-xl p-3 gap-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-[var(--pos-text-primary)] truncate">{cat.name}</p>
+                      {cat.description && (
+                        <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">{cat.description}</p>
+                      )}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingCategory(cat);
+                          setCategoryForm({ name: cat.name, description: cat.description || '' });
+                        }}
+                        className="p-1 text-slate-400 hover:text-amber-400 transition"
+                        title="Edit"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`Are you sure you want to delete "${cat.name}"? Linked items will become Uncategorized.`)) {
+                            deleteCategoryMutation.mutate(cat._id);
+                          }
+                        }}
+                        className="p-1 text-slate-400 hover:text-red-400 transition"
+                        title="Delete"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </SlideOver>
 
       {/* Stock Movements Graph & Table Modal */}

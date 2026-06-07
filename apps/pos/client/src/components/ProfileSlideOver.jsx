@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useRef, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Camera, Save } from 'lucide-react';
@@ -84,6 +85,7 @@ export default function ProfileSlideOver({ open, onClose }) {
   const pinMutation = useMutation({
     mutationFn: (body) => api.put('/users/me/approval-pin', body),
     onSuccess: () => {
+      updateUser({ ...user, hasApprovalPin: true });
       setPinCurrentPassword('');
       setNewPin('');
       setShowPinFields(false);
@@ -246,7 +248,7 @@ export default function ProfileSlideOver({ open, onClose }) {
           )}
         </div>
 
-        {user?.role === 'manager' && (
+        {(user?.role === 'manager' || user?.role === 'merchant_admin') && (
           <div className="rounded-xl border border-slate-700/60 p-4 space-y-3">
             <p className="text-sm font-medium text-[var(--pos-text-primary)]">Return approval passcode</p>
             <p className="text-xs text-slate-500">

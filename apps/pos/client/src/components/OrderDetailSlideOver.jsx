@@ -5,7 +5,7 @@ import api from '../api/axios';
 import { formatCurrency, formatDateTime as fmtDT } from '../utils/format';
 import SlideOver from './SlideOver';
 import Badge from './Badge';
-import { ORDER_TYPES, ORDER_TYPE_MAP } from './OrderTypeBadge';
+import { ORDER_TYPES, ORDER_TYPE_MAP, buildOrderTypes } from './OrderTypeBadge';
 import { useStoreContext } from '../context/StoreContext';
 import { useBranding } from '../context/BrandingContext';
 import { printReceipt, printKitchenTicket } from '../utils/receiptPrint';
@@ -562,7 +562,18 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
 
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
   const existingIds = new Set(items.map(i => String(i.menuItem)));
-  const activeType = ORDER_TYPE_MAP[orderType] || ORDER_TYPE_MAP['dine-in'];
+  const dynamicTypes = buildOrderTypes(partners);
+  const activeType = dynamicTypes.find(t => t.id === orderType) || 
+                     ORDER_TYPE_MAP[orderType] || 
+                     {
+                       id: orderType,
+                       label: orderType ? orderType.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Dine-In',
+                       icon: order?.orderTypeBranding?.icon || '🛵',
+                       bg: 'bg-emerald-500/10',
+                       border: 'border-emerald-500/30',
+                       color: order?.orderTypeBranding?.color || '#10b981',
+                       placeholder: `${orderType} order #`,
+                     };
 
   if (!order) return null;
 
@@ -647,7 +658,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
         <div>
           <p className="text-xs font-medium text-slate-400 mb-2">Order Type</p>
           <div className="grid grid-cols-2 gap-1.5">
-            {ORDER_TYPES.map(type => (
+            {dynamicTypes.map(type => (
               <button
                 key={type.id}
                 disabled={!isEditable}
@@ -667,13 +678,22 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
                     })
                   );
                 }}
+                style={
+                  orderType === type.id
+                    ? (type.color && type.color.startsWith('#') ? { backgroundColor: type.color } : {})
+                    : {}
+                }
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition ${
                   orderType === type.id
-                    ? `${type.activeBg} text-[var(--pos-selection-text)] border-transparent`
+                    ? `${!type.color || !type.color.startsWith('#') ? type.activeBg : ''} text-[var(--pos-selection-text)] border-transparent`
                     : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400'
                 } ${!isEditable ? 'opacity-60 cursor-not-allowed' : 'hover:border-slate-600'}`}
               >
-                <span>{type.icon}</span>
+                {type.logoUrl ? (
+                  <img src={type.logoUrl} alt={type.label} className="w-5 h-5 object-contain rounded-full" />
+                ) : (
+                  <span>{type.icon}</span>
+                )}
                 <span className="truncate">{type.label}</span>
               </button>
             ))}

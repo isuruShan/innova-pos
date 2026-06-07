@@ -6,6 +6,7 @@ const Inventory = require('../models/Inventory');
 const Supplier = require('../models/Supplier');
 const StockMovement = require('../models/StockMovement');
 const { protect, tenantScope } = require('../middleware/auth');
+const { recalculateInventoryCosts } = require('../utils/costCalculation');
 const { resolveSelectedStore, buildStoreFilter } = require('../middleware/storeScope');
 
 /**
@@ -308,6 +309,12 @@ router.post('/:id/confirm', protect, tenantScope, resolveSelectedStore, async (r
     await receipt.populate('purchaseOrderId', 'orderNumber');
     await receipt.populate('createdBy', 'name email');
     await receipt.populate('confirmedBy', 'name email');
+
+    // Run cost recalculation in background for all items in the receipt
+    const itemIds = receipt.items.map((i) => i.inventoryItemId);
+    recalculateInventoryCosts(tenantId, storeId, itemIds).catch((err) => {
+      console.error('Background cost calculation error:', err);
+    });
 
     res.json(receipt);
   } catch (error) {

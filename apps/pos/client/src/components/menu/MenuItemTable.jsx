@@ -40,7 +40,7 @@ export default function MenuItemTable({
                 <th className="w-10 px-2 py-3 bg-[var(--pos-panel)]" aria-label="Reorder" />
               )}
               <SortableTh label="Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} />
-              <SortableTh label="Category" field="category" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+              <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-left bg-[var(--pos-panel)]">Category</th>
               <SortableTh label="Price" field="price" currentSort={sort} currentOrder={order} onSort={toggleSort} align="right" />
               <SortableTh label="Created" field="createdAt" currentSort={sort} currentOrder={order} onSort={toggleSort} />
               <SortableTh label="Active" field="available" currentSort={sort} currentOrder={order} onSort={toggleSort} align="center" />

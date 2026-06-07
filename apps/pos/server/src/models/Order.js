@@ -50,7 +50,6 @@ const orderSchema = new mongoose.Schema(
     orderNumber: { type: Number },
     orderType: {
       type: String,
-      enum: ['dine-in', 'takeaway', 'uber-eats', 'pickme', 'delivery'],
       default: 'dine-in',
     },
     /** Display branding for order type (for partner logos/colors) */

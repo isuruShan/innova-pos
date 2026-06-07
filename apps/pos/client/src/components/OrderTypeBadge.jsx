@@ -81,7 +81,22 @@ export function buildOrderTypes(partners = []) {
 export const ORDER_TYPE_MAP = Object.fromEntries(ORDER_TYPES.map(t => [t.id, t]));
 
 export default function OrderTypeBadge({ orderType, tableNumber, reference, logoUrl, icon, color, size = 'sm' }) {
-  const type = ORDER_TYPE_MAP[orderType] || ORDER_TYPE_MAP['dine-in'];
+  let type = ORDER_TYPE_MAP[orderType];
+  if (!type) {
+    const label = orderType
+      ? orderType.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+      : 'Dine-In';
+    type = {
+      id: orderType,
+      label,
+      icon: icon || '🛵',
+      bg: 'bg-emerald-500/10',
+      border: 'border-emerald-500/30',
+      color: color || '#10b981',
+      placeholder: 'Order #',
+    };
+  }
+  
   const tooltipText = orderType === 'dine-in' && tableNumber
     ? `Table ${tableNumber}`
     : reference || type.label;

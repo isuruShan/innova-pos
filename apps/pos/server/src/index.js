@@ -84,6 +84,7 @@ app.use('/api/menu',       require('./routes/menu'));
 app.use('/api/orders',     require('./routes/orders'));
 app.use('/api/tables',     require('./routes/tables'));
 app.use('/api/inventory',  require('./routes/inventory'));
+app.use('/api/inventory-categories', require('./routes/inventoryCategories'));
 app.use('/api/inventory',  require('./routes/audit'));
 app.use('/api/ingredient-links', require('./routes/ingredientLinks'));
 app.use('/api/inventory-sessions', require('./routes/inventorySessions'));

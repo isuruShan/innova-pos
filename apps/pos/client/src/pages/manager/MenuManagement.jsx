@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Link2,
@@ -14,9 +14,9 @@ import Toast from '../../components/Toast';
 import MenuItemFormModal from '../../components/menu/MenuItemFormModal';
 import MenuItemTable from '../../components/menu/MenuItemTable';
 import ImportModal from '../../components/ImportModal';
+import ProfitabilityAnalytics from '../../components/menu/ProfitabilityAnalytics';
 import { COMBO_CATEGORY_NAME, isSelectableMenuCategory } from '../../constants/categories';
 import { useDragReorder, reorderByDrag } from '../../hooks/useDragReorder';
-import { useListSort } from '../../hooks/useListSort';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { formatCurrency, getItemDisplayPrice } from '../../utils/format';
@@ -81,9 +81,16 @@ function ComboItemsPreview({ comboItems }) {
 export default function MenuManagement() {
   const navigate = useNavigate();
   const { selectedStoreId, isStoreReady } = useStoreContext();
+  const [prevStoreId, setPrevStoreId] = useState(selectedStoreId);
+  if (selectedStoreId !== prevStoreId) {
+    setPrevStoreId(selectedStoreId);
+    setActiveCategory('All');
+    setMenuSearch('');
+  }
   const { data: paidAddons } = useTenantPaidAddons();
   const whatsappAddonActive = paidAddons?.whatsapp === true;
 
+  const [activeMenuTab, setActiveMenuTab] = useState('items'); // 'items' | 'profitability'
   const [activeCategory, setActiveCategory] = useState('All');
   const [formOpen, setFormOpen] = useState(false);
   const [catModalOpen, setCatModalOpen] = useState(false);
@@ -100,7 +107,6 @@ export default function MenuManagement() {
 
   const sort = useMemo(() => {
     if (sortCriteria === 'name-asc' || sortCriteria === 'name-desc') return 'name';
-    if (sortCriteria === 'category-asc' || sortCriteria === 'category-desc') return 'category';
     if (sortCriteria === 'price-asc' || sortCriteria === 'price-desc') return 'price';
     if (sortCriteria === 'newest' || sortCriteria === 'oldest') return 'createdAt';
     if (sortCriteria === 'status') return 'available';
@@ -108,7 +114,7 @@ export default function MenuManagement() {
   }, [sortCriteria]);
 
   const order = useMemo(() => {
-    if (sortCriteria === 'name-desc' || sortCriteria === 'category-desc' || sortCriteria === 'price-desc' || sortCriteria === 'newest') return 'desc';
+    if (sortCriteria === 'name-desc' || sortCriteria === 'price-desc' || sortCriteria === 'newest') return 'desc';
     return 'asc';
   }, [sortCriteria]);
 
@@ -116,9 +122,6 @@ export default function MenuManagement() {
     setSortCriteria((current) => {
       if (field === 'name') {
         return current === 'name-asc' ? 'name-desc' : 'name-asc';
-      }
-      if (field === 'category') {
-        return current === 'category-asc' ? 'category-desc' : 'category-asc';
       }
       if (field === 'price') {
         return current === 'price-asc' ? 'price-desc' : 'price-asc';
@@ -150,10 +153,7 @@ export default function MenuManagement() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['variant-criteria'] }),
   });
 
-  useEffect(() => {
-    setActiveCategory('All');
-    setMenuSearch('');
-  }, [selectedStoreId]);
+
 
   const { data: items = [], isPending: menuPending } = useQuery({
     queryKey: ['menu', selectedStoreId],
@@ -168,11 +168,11 @@ export default function MenuManagement() {
   });
 
   const menuLoading = !isStoreReady || menuPending || categoriesPending;
-  const activeCategories = allCategories.filter((c) => c.active);
-  const categoryNames = activeCategories.map((c) => c.name);
-  const selectableCategoryNames = activeCategories
+  const activeCategories = useMemo(() => allCategories.filter((c) => c.active), [allCategories]);
+  const categoryNames = useMemo(() => activeCategories.map((c) => c.name), [activeCategories]);
+  const selectableCategoryNames = useMemo(() => activeCategories
     .filter((c) => isSelectableMenuCategory(c.name))
-    .map((c) => c.name);
+    .map((c) => c.name), [activeCategories]);
 
   const reorderMenuMutation = useMutation({
     mutationFn: ({ ids, category }) => api.patch('/menu/reorder', { ids, category }),
@@ -286,7 +286,7 @@ export default function MenuManagement() {
     onSuccess: () => syncMenu(),
   });
 
-  const openAdd = () => {
+  const openAdd = useCallback(() => {
     setEditing(null);
     const defaultCategory =
       activeCategory !== 'All' && selectableCategoryNames.includes(activeCategory)
@@ -295,7 +295,7 @@ export default function MenuManagement() {
     setForm({ ...EMPTY_FORM, category: defaultCategory });
     setFormError('');
     setFormOpen(true);
-  };
+  }, [activeCategory, selectableCategoryNames]);
 
   const openEdit = (item) => {
     setEditing(item);
@@ -513,7 +513,8 @@ export default function MenuManagement() {
         // Clean up variant data if present (remove temporary IDs)
         if (item.hasVariants && item.variants) {
           item.variants = item.variants.map(v => {
-            const { _id, ...rest } = v; // Remove _id if present
+            const rest = { ...v };
+            delete rest._id;
             return rest;
           });
         }
@@ -577,188 +578,217 @@ export default function MenuManagement() {
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         <PageHeader
           title="Menu Items"
-          subtitle={`${items.length} items · ${items.filter((i) => i.isCombo).length} combos`}
-          actions={headerActions}
+          subtitle={
+            activeMenuTab === 'items'
+              ? `${items.length} items · ${items.filter((i) => i.isCombo).length} combos`
+              : 'Recipe costs and profitability analysis'
+          }
+          actions={activeMenuTab === 'items' ? headerActions : []}
         />
 
-        {/* Search + View Toggle */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 mb-4 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700">
-          <div className="relative flex-1 w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-            <input
-              type="text"
-              value={menuSearch}
-              onChange={(e) => setMenuSearch(e.target.value)}
-              placeholder="Search menu items…"
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg pl-10 pr-8 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-550"
-            />
-            {menuSearch && (
-              <button
-                type="button"
-                onClick={() => setMenuSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-          <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto w-full sm:w-auto justify-end">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-slate-500 font-semibold">Sort:</span>
-              <select
-                value={sortCriteria}
-                onChange={(e) => setSortCriteria(e.target.value)}
-                className="bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-350 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
-              >
-                <option value="custom">Drag Order / Default</option>
-                <option value="name-asc">Name (A-Z)</option>
-                <option value="name-desc">Name (Z-A)</option>
-                <option value="category-asc">Category (A-Z)</option>
-                <option value="category-desc">Category (Z-A)</option>
-                <option value="price-asc">Price (Low to High)</option>
-                <option value="price-desc">Price (High to Low)</option>
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="status">Availability</option>
-              </select>
-            </div>
-            <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg p-0.5">
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'table' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
-              >
-                <List size={14} /> Table
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('grid')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'grid' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
-              >
-                <LayoutGrid size={14} /> Grid
-              </button>
-            </div>
-          </div>
+        {/* Tab Navigation */}
+        <div className="flex gap-1 mb-6 border-b border-slate-700 overflow-x-auto no-scrollbar">
+          {[
+            { key: 'items', label: 'Menu Items' },
+            { key: 'profitability', label: 'Recipe Profitability' },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveMenuTab(tab.key)}
+              className={`px-4 py-2.5 text-sm font-medium transition border-b-2 whitespace-nowrap shrink-0 ${
+                activeMenuTab === tab.key
+                  ? 'border-amber-500 text-amber-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-355'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {/* Sticky Category Tabs */}
-        <div className="sticky top-[64px] z-20 bg-[var(--pos-page-bg)] py-3 border-b border-slate-700 mb-5">
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-            {filterTabs.map((cat) => (
-              <button key={cat} type="button" onClick={() => setActiveCategory(cat)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
-                  activeCategory === cat
-                    ? 'bg-amber-500 text-[var(--pos-selection-text)] shadow-lg shadow-amber-500/20'
-                    : 'text-slate-450 hover:text-[var(--pos-text-primary)] bg-[var(--pos-panel)] hover:bg-slate-800 border border-slate-700'
-                }`}>
-                {cat}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center justify-between mt-2">
-            {canDragProducts ? (
-              <p className="text-[11px] text-slate-500 flex items-center gap-1">
-                <GripVertical size={11} /> Drag products to reorder within {activeCategory}
-              </p>
-            ) : sortCriteria !== 'custom' ? (
-              <p className="text-[11px] text-slate-500">Drag to reorder is disabled when sorted. Switch back to "Drag Order / Default" to reorder.</p>
-            ) : (
-              <p className="text-[11px] text-slate-500">Select a category tab to drag and reorder products</p>
-            )}
-          </div>
-        </div>
-
-        {menuLoading ? (
-          <MenuGridSkeleton cards={viewMode === 'grid' ? 15 : 8} />
-        ) : viewMode === 'table' ? (
-          <MenuItemTable
-            items={displayed}
-            sort={sort}
-            order={order}
-            toggleSort={toggleSort}
-            canDrag={canDragProducts}
-            onEdit={openEdit}
-            onDelete={setDeleteTarget}
-            onToggleAvailable={(item) => toggleMutation.mutate({ id: item._id, available: !item.available })}
-            menuDragHandle={menuDragHandle}
-            menuDropTarget={menuDropTarget}
-            menuDragOver={menuDragOver}
-          />
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {displayed.length === 0 && (
-              <div className="col-span-full text-center text-slate-600 py-16">No items match your filters</div>
-            )}
-            {displayed.map((item) => {
-              const handleDrag = canDragProducts ? menuDragHandle(item._id) : {};
-              const dropTarget = canDragProducts ? menuDropTarget(item._id) : {};
-              return (
-                <div key={item._id}
-                  {...dropTarget}
-                  className={`bg-[var(--pos-panel)] rounded-2xl overflow-hidden border transition group ${
-                    item.isCombo ? 'border-amber-500/30 hover:border-amber-500/60' : 'border-slate-700/50 hover:border-slate-600'
-                  } ${menuDragOver(item._id) ? 'ring-2 ring-amber-500/60' : ''}`}>
-                  <div className="relative h-32 bg-slate-800 overflow-hidden">
-                    {canDragProducts && (
-                      <div
-                        {...handleDrag}
-                        className="absolute top-2 left-2 z-10 w-7 h-7 bg-slate-900/90 rounded-lg flex items-center justify-center text-slate-400 cursor-grab active:cursor-grabbing"
-                      >
-                        <GripVertical size={12} />
-                      </div>
-                    )}
-                    {(item.images?.[0]?.url || item.image) ? (
-                      <img src={item.images?.[0]?.url || item.image} alt={item.name} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80'; }} />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-3xl">
-                        {item.isCombo ? '🍱' : '🍔'}
-                      </div>
-                    )}
-                    {item.isCombo && (
-                      <div className={`absolute top-2 ${canDragProducts ? 'left-11' : 'left-2'}`}>
-                        <span className="flex items-center gap-1 bg-amber-500/90 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                          <Link2 size={10} /> Combo
-                        </span>
-                      </div>
-                    )}
-                    <div className="absolute top-2 right-2 transition flex gap-1">
-                      <button type="button" onClick={() => openEdit(item)}
-                        className="w-7 h-7 bg-slate-900 rounded-lg flex items-center justify-center text-slate-300 hover:text-[var(--pos-text-primary)]">
-                        <Edit2 size={12} />
-                      </button>
-                      <button type="button" onClick={() => setDeleteTarget(item)}
-                        className="w-7 h-7 bg-slate-900 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-400">
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="p-3">
-                    <p className="font-semibold text-[var(--pos-text-primary)] text-sm truncate" title={item.name}>{item.name}</p>
-                    <p className="text-xs text-slate-500 mb-1">{item.category}</p>
-                    {item.isCombo && <ComboItemsPreview comboItems={item.comboItems} />}
-                    <div className="flex items-center justify-between mt-1">
-                      {(() => {
-                        const { price, prefix, hasVariants } = getItemDisplayPrice(item);
-                        return (
-                          <span className="text-amber-400 font-bold">
-                            {prefix && <span className="text-slate-500 font-normal text-[10px]">{prefix}</span>}
-                            {formatCurrency(price)}
-                            {hasVariants && <span className="text-sky-400 text-[10px] ml-1">({item.variants?.length || 0} var.)</span>}
-                          </span>
-                        );
-                      })()}
-                      <button type="button"
-                        onClick={() => toggleMutation.mutate({ id: item._id, available: !item.available })}
-                        className={`flex items-center gap-1 text-xs font-medium transition ${item.available ? 'text-green-400' : 'text-slate-500'}`}>
-                        {item.available ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
-                        {item.available ? 'Active' : 'Hidden'}
-                      </button>
-                    </div>
-                  </div>
+        {activeMenuTab === 'items' ? (
+          <>
+            {/* Search + View Toggle */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 mb-4 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                <input
+                  type="text"
+                  value={menuSearch}
+                  onChange={(e) => setMenuSearch(e.target.value)}
+                  placeholder="Search menu items…"
+                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg pl-10 pr-8 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-555"
+                />
+                {menuSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setMenuSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-350"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto w-full sm:w-auto justify-end">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-slate-500 font-semibold">Sort:</span>
+                  <select
+                    value={sortCriteria}
+                    onChange={(e) => setSortCriteria(e.target.value)}
+                    className="bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-350 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                  >
+                    <option value="custom">Drag Order / Default</option>
+                    <option value="name-asc">Name (A-Z)</option>
+                    <option value="name-desc">Name (Z-A)</option>
+                    <option value="price-asc">Price (Low to High)</option>
+                    <option value="price-desc">Price (High to Low)</option>
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="status">Availability</option>
+                  </select>
                 </div>
-              );
-            })}
-          </div>
+                <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('table')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'table' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    <List size={14} /> Table
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('grid')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'grid' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    <LayoutGrid size={14} /> Grid
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Sticky Category Tabs */}
+            <div className="sticky top-[64px] z-20 bg-[var(--pos-page-bg)] py-3 border-b border-slate-700 mb-5">
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                {filterTabs.map((cat) => (
+                  <button key={cat} type="button" onClick={() => setActiveCategory(cat)}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
+                      activeCategory === cat
+                        ? 'bg-amber-500 text-[var(--pos-selection-text)] shadow-lg shadow-amber-500/20'
+                        : 'text-slate-450 hover:text-[var(--pos-text-primary)] bg-[var(--pos-panel)] hover:bg-slate-800 border border-slate-700'
+                    }`}>
+                    {cat}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                {canDragProducts ? (
+                  <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                    <GripVertical size={11} /> Drag products to reorder within {activeCategory}
+                  </p>
+                ) : sortCriteria !== 'custom' ? (
+                  <p className="text-[11px] text-slate-500">Drag to reorder is disabled when sorted. Switch back to "Drag Order / Default" to reorder.</p>
+                ) : (
+                  <p className="text-[11px] text-slate-500">Select a category tab to drag and reorder products</p>
+                )}
+              </div>
+            </div>
+
+            {menuLoading ? (
+              <MenuGridSkeleton cards={viewMode === 'grid' ? 15 : 8} />
+            ) : viewMode === 'table' ? (
+              <MenuItemTable
+                items={displayed}
+                sort={sort}
+                order={order}
+                toggleSort={toggleSort}
+                canDrag={canDragProducts}
+                onEdit={openEdit}
+                onDelete={setDeleteTarget}
+                onToggleAvailable={(item) => toggleMutation.mutate({ id: item._id, available: !item.available })}
+                menuDragHandle={menuDragHandle}
+                menuDropTarget={menuDropTarget}
+                menuDragOver={menuDragOver}
+              />
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {displayed.length === 0 && (
+                  <div className="col-span-full text-center text-slate-600 py-16">No items match your filters</div>
+                )}
+                {displayed.map((item) => {
+                  const handleDrag = canDragProducts ? menuDragHandle(item._id) : {};
+                  const dropTarget = canDragProducts ? menuDropTarget(item._id) : {};
+                  return (
+                    <div key={item._id}
+                      {...dropTarget}
+                      className={`bg-[var(--pos-panel)] rounded-2xl overflow-hidden border transition group ${
+                        item.isCombo ? 'border-amber-500/30 hover:border-amber-500/60' : 'border-slate-700/50 hover:border-slate-600'
+                      } ${menuDragOver(item._id) ? 'ring-2 ring-amber-500/60' : ''}`}>
+                      <div className="relative h-32 bg-slate-800 overflow-hidden">
+                        {canDragProducts && (
+                          <div
+                            {...handleDrag}
+                            className="absolute top-2 left-2 z-10 w-7 h-7 bg-slate-900/90 rounded-lg flex items-center justify-center text-slate-400 cursor-grab active:cursor-grabbing"
+                          >
+                            <GripVertical size={12} />
+                          </div>
+                        )}
+                        {(item.images?.[0]?.url || item.image) ? (
+                          <img src={item.images?.[0]?.url || item.image} alt={item.name} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80'; }} />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-3xl">
+                            {item.isCombo ? '🍱' : '🍔'}
+                          </div>
+                        )}
+                        {item.isCombo && (
+                          <div className={`absolute top-2 ${canDragProducts ? 'left-11' : 'left-2'}`}>
+                            <span className="flex items-center gap-1 bg-amber-500/90 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                              <Link2 size={10} /> Combo
+                            </span>
+                          </div>
+                        )}
+                        <div className="absolute top-2 right-2 transition flex gap-1">
+                          <button type="button" onClick={() => openEdit(item)}
+                            className="w-7 h-7 bg-slate-900 rounded-lg flex items-center justify-center text-slate-300 hover:text-[var(--pos-text-primary)]">
+                            <Edit2 size={12} />
+                          </button>
+                          <button type="button" onClick={() => setDeleteTarget(item)}
+                            className="w-7 h-7 bg-slate-900 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-400">
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="p-3">
+                        <p className="font-semibold text-[var(--pos-text-primary)] text-sm truncate" title={item.name}>{item.name}</p>
+                        <p className="text-xs text-slate-550 mb-1">{item.category}</p>
+                        {item.isCombo && <ComboItemsPreview comboItems={item.comboItems} />}
+                        <div className="flex items-center justify-between mt-1">
+                          {(() => {
+                            const { price, prefix, hasVariants } = getItemDisplayPrice(item);
+                            return (
+                              <span className="text-amber-400 font-bold">
+                                {prefix && <span className="text-slate-500 font-normal text-[10px]">{prefix}</span>}
+                                {formatCurrency(price)}
+                                {hasVariants && <span className="text-sky-400 text-[10px] ml-1">({item.variants?.length || 0} var.)</span>}
+                              </span>
+                            );
+                          })()}
+                          <button type="button"
+                            onClick={() => toggleMutation.mutate({ id: item._id, available: !item.available })}
+                            className={`flex items-center gap-1 text-xs font-medium transition ${item.available ? 'text-green-400' : 'text-slate-500'}`}>
+                            {item.available ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                            {item.available ? 'Active' : 'Hidden'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          <ProfitabilityAnalytics />
         )}
       </div>
 

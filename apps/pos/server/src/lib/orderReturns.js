@@ -37,7 +37,7 @@ async function verifyManagerApproval({ tenantId, managerId, secret, storeId }) {
   const manager = await User.findOne({
     _id: managerId,
     tenantId,
-    role: 'manager',
+    role: { $in: ['manager', 'merchant_admin'] },
     isActive: true,
   });
   if (!manager) {

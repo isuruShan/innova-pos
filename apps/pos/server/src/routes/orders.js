@@ -178,6 +178,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
 
     const {
       orderType = 'dine-in',
+      orderTypeBranding,
       tableNumber,
       tableId: tableIdRaw,
       reference,
@@ -428,6 +429,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
       tenantId: req.tenantId,
       storeId,
       orderType,
+      ...(orderTypeBranding ? { orderTypeBranding } : {}),
       tableNumber: resolvedTableLabel,
       ...(resolvedTableId ? { tableId: resolvedTableId } : {}),
       guestsCount: guestsCount !== undefined ? (Number(guestsCount) || null) : null,
@@ -580,8 +582,20 @@ router.put('/:id', protect, authorize('cashier', 'manager', 'merchant_admin'), t
         partner = await FoodmarketPartner.findOne({ tenantId: req.tenantId, isActive: true, name: { $regex: /uber/i } });
       } else if (orderType === 'pickme') {
         partner = await FoodmarketPartner.findOne({ tenantId: req.tenantId, isActive: true, name: { $regex: /pick(\s)?me/i } });
+      } else {
+        const allPartners = await FoodmarketPartner.find({ tenantId: req.tenantId, isActive: true }).lean();
+        partner = allPartners.find(p => p.name?.toLowerCase().replace(/\s+/g, '-') === orderType);
       }
       order.foodmarketPartnerId = partner ? partner._id : null;
+      if (partner) {
+        order.orderTypeBranding = {
+          logoUrl: partner.logoUrl || '',
+          icon: partner.icon || '🛵',
+          color: partner.color || '',
+        };
+      } else {
+        order.orderTypeBranding = undefined;
+      }
     }
 
     if (nextType === 'dine-in' && tableMgmt) {

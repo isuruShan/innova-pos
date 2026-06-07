@@ -59,7 +59,19 @@ async function resolveItemCategory(req, body, storeId) {
 
 router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
+    const Category = require('../models/Category');
+    const inactiveCategories = await Category.find({
+      tenantId: req.tenantId,
+      ...buildStoreFilter(req),
+      active: false,
+    }).select('name').lean();
+    const inactiveNames = inactiveCategories.map((c) => c.name);
+
     const filter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
+    if (inactiveNames.length > 0) {
+      filter.category = { $nin: inactiveNames };
+    }
+
     const sort = parseSortQuery(req, MENU_SORT_FIELDS, DEFAULT_MENU_SORT);
     const items = await MenuItem.find(filter).sort(sort).lean();
     const enriched = await attachFreshMenuImageUrls(items);
@@ -77,7 +89,26 @@ router.patch('/reorder', protect, authorize('manager', 'merchant_admin', 'supera
       filter.category = String(category).trim();
     }
     const count = await applyReorder(MenuItem, filter, ids, req.user.id);
-    const items = await MenuItem.find(filter).sort({ category: 1, sortOrder: 1, createdAt: -1 }).lean();
+
+    const Category = require('../models/Category');
+    const inactiveCategories = await Category.find({
+      tenantId: req.tenantId,
+      ...buildStoreFilter(req),
+      active: false,
+    }).select('name').lean();
+    const inactiveNames = inactiveCategories.map((c) => c.name);
+
+    const itemsFilter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
+    if (category !== undefined && category !== null && String(category).trim()) {
+      itemsFilter.category = String(category).trim();
+      if (inactiveNames.includes(itemsFilter.category)) {
+        itemsFilter.category = '__NON_EXISTENT__';
+      }
+    } else if (inactiveNames.length > 0) {
+      itemsFilter.category = { $nin: inactiveNames };
+    }
+
+    const items = await MenuItem.find(itemsFilter).sort({ category: 1, sortOrder: 1, createdAt: -1 }).lean();
     const enriched = await attachFreshMenuImageUrls(items);
     res.json({ message: 'Menu order updated', count, items: enriched });
   } catch (err) {

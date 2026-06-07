@@ -82,6 +82,11 @@ const tenantSettingsSchema = new mongoose.Schema(
       accentColor: { type: String, default: '' },
     },
     customerOtpVerificationEnabled: { type: Boolean, default: false },
+    inventoryCostingMethod: {
+      type: String,
+      enum: ['fifo', 'lifo', 'wac', 'last_cost'],
+      default: 'wac',
+    },
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

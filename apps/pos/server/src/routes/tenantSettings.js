@@ -53,6 +53,7 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
       returnsEnabled: Boolean(data.returnsEnabled),
       returnsRequireManagerApproval: data.returnsRequireManagerApproval !== false,
       customerOtpVerificationEnabled: Boolean(data.customerOtpVerificationEnabled),
+      inventoryCostingMethod: data.inventoryCostingMethod || 'wac',
       smsGatewayAllowed: Boolean(data.smsGatewayAllowed),
     };
 
@@ -88,6 +89,7 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
       printReceiptByDefault: false,
       receiptPrintAtStatus: 'placement',
       receiptPrintAtByOrderType: null,
+      inventoryCostingMethod: 'wac',
     });
   }
 });

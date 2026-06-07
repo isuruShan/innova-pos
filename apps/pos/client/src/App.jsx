@@ -9,6 +9,7 @@ import { CashierDraftOrdersProvider } from './context/CashierDraftOrdersContext'
 import { AlertProvider } from './context/AlertContext';
 import PosNotificationStream from './components/PosNotificationStream';
 import ForcePasswordResetGate from './components/auth/ForcePasswordResetGate';
+import ForcePinSetupGate from './components/auth/ForcePinSetupGate';
 
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
@@ -65,7 +66,11 @@ const RoleRoute = ({ children, roles }) => {
   if (user.subscriptionActive === false) return <SubscriptionBlocked />;
   const r = normalizeRole(user.role);
   if (!roles.some((allowed) => normalizeRole(allowed) === r)) return <Navigate to="/login" replace />;
-  return <ForcePasswordResetGate>{children}</ForcePasswordResetGate>;
+  return (
+    <ForcePasswordResetGate>
+      <ForcePinSetupGate>{children}</ForcePinSetupGate>
+    </ForcePasswordResetGate>
+  );
 };
 
 const RootRedirect = () => {

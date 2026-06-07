@@ -23,6 +23,7 @@ const buildPayload = (u, subscriptionActive = true) => ({
   defaultStoreId: u.defaultStoreId ? String(u.defaultStoreId) : null,
   profileImage: u.profileImage || '',
   isTemporaryPassword: u.isTemporaryPassword || false,
+  hasApprovalPin: Boolean(u.managerApprovalPin),
   subscriptionActive,
 });
 

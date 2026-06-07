@@ -95,10 +95,22 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
     const ctx = await loadTableSession(tenantId, storeId, tableId);
     if (ctx.error) return res.status(ctx.error.status).json({ message: ctx.error.message });
 
+    const categoryRowsRaw = await Category.find({
+      tenantId: ctx.ids.tenantId,
+      storeId: { $in: [ctx.ids.storeId, null] },
+      active: { $ne: false },
+    })
+      .sort({ sortOrder: 1, name: 1 })
+      .select('name sortOrder active imageUrl imageKey')
+      .lean();
+
+    const activeCategoryNames = categoryRowsRaw.map((c) => c.name);
+
     const menuFilter = {
       tenantId: ctx.ids.tenantId,
       storeId: { $in: [ctx.ids.storeId, null] },
       available: true,
+      category: { $in: activeCategoryNames },
     };
     const menuLimit = Math.min(500, Math.max(1, parseInt(req.query.menuLimit, 10) || 120));
     const menuSkip = Math.max(0, parseInt(req.query.menuSkip, 10) || 0);
@@ -111,15 +123,6 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
       .lean();
 
     const menuItems = await attachFreshMenuImageUrls(menuItemsRaw);
-
-    const categoryRowsRaw = await Category.find({
-      tenantId: ctx.ids.tenantId,
-      storeId: { $in: [ctx.ids.storeId, null] },
-      active: { $ne: false },
-    })
-      .sort({ sortOrder: 1, name: 1 })
-      .select('name sortOrder active imageUrl imageKey')
-      .lean();
 
     const categoryRows = await attachFreshCategoryUrls(categoryRowsRaw);
 

@@ -9,7 +9,7 @@ import { useListSort } from '../../hooks/useListSort';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import Badge from '../../components/Badge';
-import OrderTypeBadge from '../../components/OrderTypeBadge';
+import OrderTypeBadge, { buildOrderTypes } from '../../components/OrderTypeBadge';
 import OrderDetailSlideOver from '../../components/OrderDetailSlideOver';
 import ImportModal from '../../components/ImportModal';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
@@ -105,6 +105,17 @@ export default function OrdersView() {
       label: PAYMENT_LABELS[value] || formatPaymentTypeLabel(value),
     }));
   }, [selectedStore]);
+
+  const { data: partners = [] } = useQuery({
+    queryKey: ['foodmarket-partners'],
+    queryFn: () => api.get('/foodmarket-partners').then((r) => r.data),
+    enabled: isStoreReady,
+  });
+
+  const orderTypeOptions = useMemo(() => {
+    const dynamicTypes = buildOrderTypes(partners);
+    return dynamicTypes.map(t => ({ value: t.id, label: t.label }));
+  }, [partners]);
 
   // Build query params
   const params = useMemo(() => {
@@ -386,7 +397,7 @@ export default function OrdersView() {
             <div>
               <p className="text-xs font-medium text-slate-400 mb-2">Order Type</p>
               <div className="flex flex-wrap gap-2">
-                {ORDER_TYPE_OPTIONS.map(t => (
+                {orderTypeOptions.map(t => (
                   <button key={t.value} onClick={() => toggleFilter(orderTypeFilter, setOrderTypeFilter, t.value)}
                     className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
                       orderTypeFilter.includes(t.value)

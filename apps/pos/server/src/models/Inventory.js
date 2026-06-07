@@ -14,6 +14,16 @@ const inventorySchema = new mongoose.Schema(
     quantity: { type: Number, required: true, min: 0 },
     minThreshold: { type: Number, required: true, min: 0 },
     suppliers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' }],
+    category: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'InventoryCategory',
+      default: null,
+      index: true,
+    },
+    lastCost: { type: Number, default: 0 },
+    wacCost: { type: Number, default: 0 },
+    fifoCost: { type: Number, default: 0 },
+    lifoCost: { type: Number, default: 0 },
     lastUpdated: { type: Date, default: Date.now },
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

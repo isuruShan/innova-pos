@@ -17,7 +17,7 @@ router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), t
       filter.menuItemId = req.query.menuItemId;
     }
     const links = await IngredientLink.find(filter)
-      .populate('inventoryItemId', 'itemName unit quantity minThreshold')
+      .populate('inventoryItemId', 'itemName unit quantity minThreshold lastCost wacCost fifoCost lifoCost')
       .sort({ createdAt: 1 });
     res.json(links);
   } catch (err) {
@@ -39,7 +39,7 @@ router.get('/by-menu-items', protect, authorize('manager', 'merchant_admin', 'su
       tenantId: req.tenantId,
       ...buildStoreFilter(req),
       menuItemId: { $in: ids },
-    }).populate('inventoryItemId', 'itemName unit quantity minThreshold');
+    }).populate('inventoryItemId', 'itemName unit quantity minThreshold lastCost wacCost fifoCost lifoCost');
     
     // Group by menuItemId
     const grouped = {};
@@ -96,7 +96,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
     });
 
     const populated = await IngredientLink.findById(link._id)
-      .populate('inventoryItemId', 'itemName unit quantity minThreshold');
+      .populate('inventoryItemId', 'itemName unit quantity minThreshold lastCost wacCost fifoCost lifoCost');
 
     res.status(201).json(populated);
   } catch (err) {
@@ -127,7 +127,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
       { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) },
       update,
       { new: true, runValidators: true }
-    ).populate('inventoryItemId', 'itemName unit quantity minThreshold');
+    ).populate('inventoryItemId', 'itemName unit quantity minThreshold lastCost wacCost fifoCost lifoCost');
 
     if (!link) {
       return res.status(404).json({ message: 'Ingredient link not found' });

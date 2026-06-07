@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect, react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import api from '../api/axios';
 import { useAuth } from './AuthContext';
@@ -39,28 +40,74 @@ const DEFAULT_BRANDING = {
   receiptPrintAtByOrderType: { ...DEFAULT_RECEIPT_PRINT_AT_BY_ORDER_TYPE },
 };
 
+const getInitialBranding = () => {
+  if (typeof window !== 'undefined') {
+    try {
+      const userStored = localStorage.getItem('pos_user');
+      if (userStored) {
+        const stored = localStorage.getItem('pos_tenant_branding');
+        if (stored) {
+          return JSON.parse(stored);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return DEFAULT_BRANDING;
+};
+
 const BrandingContext = createContext(DEFAULT_BRANDING);
 
 export const BrandingProvider = ({ children }) => {
   const { user } = useAuth();
   const { theme } = useTheme();
-  const [branding, setBranding] = useState(DEFAULT_BRANDING);
+  const [branding, setBranding] = useState(getInitialBranding);
 
   const loadBranding = useCallback(async () => {
     if (!user?.tenantId) {
       setBranding(DEFAULT_BRANDING);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('pos_tenant_branding');
+        } catch {
+          // ignore
+        }
+      }
       return;
     }
     try {
       const { data } = await api.get('/tenant-settings');
       const merged = { ...DEFAULT_BRANDING, ...data };
       setBranding(merged);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('pos_tenant_branding', JSON.stringify(merged));
+        } catch {
+          // ignore
+        }
+      }
       setMerchantCurrencyFormat({
         currencySymbol: merged.currencySymbol,
         currency: merged.currency,
       });
     } catch {
-      setBranding(DEFAULT_BRANDING);
+      // Keep existing cached branding on transient load failure
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem('pos_tenant_branding');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            setMerchantCurrencyFormat({
+              currencySymbol: parsed.currencySymbol || DEFAULT_BRANDING.currencySymbol,
+              currency: parsed.currency || DEFAULT_BRANDING.currency,
+            });
+            return;
+          }
+        } catch {
+          // ignore
+        }
+      }
       setMerchantCurrencyFormat(DEFAULT_BRANDING);
     }
   }, [user?.tenantId]);

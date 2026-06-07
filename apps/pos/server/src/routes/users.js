@@ -70,7 +70,7 @@ router.get(
     try {
       const managers = await User.find({
         tenantId: req.tenantId,
-        role: 'manager',
+        role: { $in: ['manager', 'merchant_admin'] },
         isActive: true,
         ...storeAccessFilter(req.storeId),
       })
@@ -91,8 +91,8 @@ router.get(
   },
 );
 
-// PUT /users/me/approval-pin — manager sets return approval PIN
-router.put('/me/approval-pin', protect, authorize('manager'), tenantScope, async (req, res) => {
+// PUT /users/me/approval-pin — manager or admin sets return approval PIN
+router.put('/me/approval-pin', protect, authorize('manager', 'merchant_admin'), tenantScope, async (req, res) => {
   try {
     const { pin, currentPassword } = req.body || {};
     if (!currentPassword) return res.status(400).json({ message: 'Current password is required' });
