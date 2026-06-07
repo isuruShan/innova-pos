@@ -32,7 +32,7 @@ export function StoreProvider({ children }) {
       localStorage.setItem('admin_selected_store', '');
       return;
     }
-    const exists = stores.some((s) => String(s._id) === String(selectedStoreId));
+    const exists = selectedStoreId === 'all' || stores.some((s) => String(s._id) === String(selectedStoreId));
     if (!exists) {
       const fallback = stores[0]._id;
       setSelectedStoreId(fallback);
@@ -44,9 +44,9 @@ export function StoreProvider({ children }) {
     stores,
     selectedStoreId,
     selectStore,
-    isAllStores: false,
+    isAllStores: selectedStoreId === 'all',
     /** Menu/promotion builders need a concrete store when multiple exist */
-    isStoreReady: Boolean(user?.tenantId && stores.length > 0 && selectedStoreId),
+    isStoreReady: Boolean(user?.tenantId && (stores.length > 0 || selectedStoreId === 'all') && selectedStoreId),
   }), [stores, selectedStoreId, user?.tenantId]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

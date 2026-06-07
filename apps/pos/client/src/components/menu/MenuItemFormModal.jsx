@@ -988,6 +988,7 @@ export default function MenuItemFormModal({
   // Ingredients add fields
   const [selectedInventoryId, setSelectedInventoryId] = useState('');
   const [ingQuantity, setIngQuantity] = useState('');
+  const [ingWastagePercentage, setIngWastagePercentage] = useState('');
   const [ingVariantId, setIngVariantId] = useState('');
   const [ingError, setIngError] = useState('');
 
@@ -1017,6 +1018,7 @@ export default function MenuItemFormModal({
           const loaded = res.data.map(link => ({
             inventoryItemId: link.inventoryItemId?._id || link.inventoryItemId,
             quantity: link.quantity,
+            wastagePercentage: link.wastagePercentage || 0,
             unit: link.unit || link.inventoryItemId?.unit || '',
             variantId: link.variantId || null,
             itemName: link.inventoryItemId?.itemName || 'Unknown Item'
@@ -1055,6 +1057,7 @@ export default function MenuItemFormModal({
     const newIng = {
       inventoryItemId: selectedInventoryId,
       quantity: qty,
+      wastagePercentage: parseFloat(ingWastagePercentage) || 0,
       unit: inv.unit || '',
       variantId: ingVariantId || null,
       itemName: inv.itemName || 'Unknown Item'
@@ -1066,6 +1069,7 @@ export default function MenuItemFormModal({
     }));
     setSelectedInventoryId('');
     setIngQuantity('');
+    setIngWastagePercentage('');
     setIngVariantId('');
   };
 
@@ -1086,6 +1090,19 @@ export default function MenuItemFormModal({
       ingredients: (f.ingredients || []).map(i =>
         (i.inventoryItemId === inventoryItemId && i.variantId === (variantId || null))
           ? { ...i, quantity: val }
+          : i
+      )
+    }));
+  };
+
+  const handleUpdateIngredientWastage = (inventoryItemId, variantId, wastageStr) => {
+    const val = parseFloat(wastageStr);
+    if (isNaN(val) || val < 0) return;
+    setForm(f => ({
+      ...f,
+      ingredients: (f.ingredients || []).map(i =>
+        (i.inventoryItemId === inventoryItemId && i.variantId === (variantId || null))
+          ? { ...i, wastagePercentage: val }
           : i
       )
     }));
@@ -1374,7 +1391,7 @@ export default function MenuItemFormModal({
                 {inventoryItems.length > 0 ? (
                   <div className="bg-slate-900/40 border border-slate-850 rounded-xl p-3 space-y-3">
                     <p className="text-xs font-semibold text-slate-400">Link Ingredient Link</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <div>
                         <label className="block text-[10px] text-slate-500 mb-1">Inventory Item</label>
                         <select
@@ -1404,7 +1421,20 @@ export default function MenuItemFormModal({
                         />
                       </div>
 
-                      {form.hasVariants && (
+                      <div>
+                        <label className="block text-[10px] text-slate-500 mb-1">Wastage %</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={ingWastagePercentage}
+                          onChange={(e) => setIngWastagePercentage(e.target.value)}
+                          placeholder="0"
+                          className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        />
+                      </div>
+
+                      {form.hasVariants ? (
                         <div>
                           <label className="block text-[10px] text-slate-500 mb-1">Apply to Variant</label>
                           <select
@@ -1420,6 +1450,8 @@ export default function MenuItemFormModal({
                             ))}
                           </select>
                         </div>
+                      ) : (
+                        <div />
                       )}
                     </div>
 
@@ -1462,16 +1494,31 @@ export default function MenuItemFormModal({
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0.01"
-                                value={link.quantity}
-                                onChange={(e) => handleUpdateIngredientQty(link.inventoryItemId, link.variantId, e.target.value)}
-                                className="w-16 bg-slate-900 border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2 py-0.5 text-xs text-right focus:outline-none"
-                              />
-                              <span className="text-[10px] text-slate-500 w-10 truncate">{link.unit}</span>
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] text-slate-500">Qty:</span>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0.01"
+                                  value={link.quantity}
+                                  onChange={(e) => handleUpdateIngredientQty(link.inventoryItemId, link.variantId, e.target.value)}
+                                  className="w-16 bg-slate-900 border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2 py-0.5 text-xs text-right focus:outline-none"
+                                />
+                              </div>
+                              <span className="text-[10px] text-slate-500 w-8 truncate">{link.unit}</span>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] text-slate-500">Waste:</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={link.wastagePercentage || 0}
+                                  onChange={(e) => handleUpdateIngredientWastage(link.inventoryItemId, link.variantId, e.target.value)}
+                                  className="w-12 bg-slate-900 border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2 py-0.5 text-xs text-right focus:outline-none"
+                                />
+                                <span className="text-[10px] text-slate-500">%</span>
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveIngredient(link.inventoryItemId, link.variantId)}

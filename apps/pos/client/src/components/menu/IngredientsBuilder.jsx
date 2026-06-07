@@ -10,6 +10,7 @@ import api from '../../api/axios';
 export default function IngredientsBuilder({ menuItemId, storeId }) {
   const [selectedInventoryId, setSelectedInventoryId] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [wastagePercentage, setWastagePercentage] = useState('');
   const [addError, setAddError] = useState('');
   const qc = useQueryClient();
 
@@ -33,6 +34,7 @@ export default function IngredientsBuilder({ menuItemId, storeId }) {
       qc.invalidateQueries({ queryKey: ['ingredient-links', menuItemId] });
       setSelectedInventoryId('');
       setQuantity('');
+      setWastagePercentage('');
       setAddError('');
     },
     onError: (err) => setAddError(err.response?.data?.message || 'Failed to add ingredient'),
@@ -67,6 +69,7 @@ export default function IngredientsBuilder({ menuItemId, storeId }) {
       menuItemId,
       inventoryItemId: selectedInventoryId,
       quantity: qty,
+      wastagePercentage: parseFloat(wastagePercentage) || 0,
     });
   };
 
@@ -74,6 +77,13 @@ export default function IngredientsBuilder({ menuItemId, storeId }) {
     const qty = parseFloat(newQty);
     if (!isNaN(qty) && qty > 0) {
       updateLinkMutation.mutate({ id: linkId, data: { quantity: qty } });
+    }
+  };
+
+  const handleUpdateWastage = (linkId, newWaste) => {
+    const waste = parseFloat(newWaste);
+    if (!isNaN(waste) && waste >= 0) {
+      updateLinkMutation.mutate({ id: linkId, data: { wastagePercentage: waste } });
     }
   };
 
@@ -118,16 +128,31 @@ export default function IngredientsBuilder({ menuItemId, storeId }) {
                     Stock: {inv?.quantity || 0} {inv?.unit || ''}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    value={link.quantity}
-                    onChange={(e) => handleUpdateQuantity(link._id, e.target.value)}
-                    className="w-20 bg-slate-900 border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  />
-                  <span className="text-xs text-slate-500 w-12">{link.unit || inv?.unit || ''}</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-slate-500">Qty:</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={link.quantity}
+                      onChange={(e) => handleUpdateQuantity(link._id, e.target.value)}
+                      className="w-16 bg-slate-900 border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-sm text-right focus:outline-none"
+                    />
+                  </div>
+                  <span className="text-xs text-slate-500 w-8 truncate">{link.unit || inv?.unit || ''}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-slate-500">Waste:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={link.wastagePercentage || 0}
+                      onChange={(e) => handleUpdateWastage(link._id, e.target.value)}
+                      className="w-12 bg-slate-900 border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-sm text-right focus:outline-none"
+                    />
+                    <span className="text-xs text-slate-500">%</span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => handleRemove(link._id)}
@@ -170,7 +195,7 @@ export default function IngredientsBuilder({ menuItemId, storeId }) {
               ))}
             </select>
           </div>
-          <div className="w-24">
+          <div className="w-20">
             <label className="block text-xs text-slate-500 mb-1">Qty Used</label>
             <input
               type="number"
@@ -179,7 +204,19 @@ export default function IngredientsBuilder({ menuItemId, storeId }) {
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               placeholder="0.00"
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+            />
+          </div>
+          <div className="w-20">
+            <label className="block text-xs text-slate-500 mb-1">Wastage %</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={wastagePercentage}
+              onChange={(e) => setWastagePercentage(e.target.value)}
+              placeholder="0"
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
             />
           </div>
           <button

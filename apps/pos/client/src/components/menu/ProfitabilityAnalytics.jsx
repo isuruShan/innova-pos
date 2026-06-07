@@ -7,8 +7,8 @@ import { useStoreContext } from '../../context/StoreContext';
 
 const FORMULA_FIELDS = {
   wac: 'wacCost',
-  fifo: 'fifoCost',
-  lifo: 'lifoCost',
+  fifo: 'lifoCost',
+  lifo: 'fifoCost',
   last_cost: 'lastCost',
 };
 

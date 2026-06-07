@@ -112,6 +112,7 @@ export default function ReportsPortal() {
             onChange={(e) => selectStore(e.target.value)}
             className="w-full bg-white border border-gray-300 text-gray-800 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-teal/30"
           >
+            <option value="all">All Stores</option>
             {stores.map((s) => (
               <option key={s._id} value={s._id}>
                 {s.name}

@@ -65,7 +65,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
       return res.status(400).json({ message: 'No store available for ingredient link creation' });
     }
 
-    const { menuItemId, inventoryItemId, quantity, unit, variantId } = req.body;
+    const { menuItemId, inventoryItemId, quantity, unit, variantId, wastagePercentage } = req.body;
     
     if (!menuItemId || !inventoryItemId) {
       return res.status(400).json({ message: 'menuItemId and inventoryItemId are required' });
@@ -91,6 +91,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
       variantId: variantId || null,
       inventoryItemId,
       quantity,
+      wastagePercentage: typeof wastagePercentage === 'number' ? wastagePercentage : 0,
       unit: unit || invItem.unit,
       createdBy: req.user.id,
     });
@@ -113,7 +114,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
  */
 router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const { quantity, unit } = req.body;
+    const { quantity, unit, wastagePercentage } = req.body;
     
     if (quantity !== undefined && (typeof quantity !== 'number' || quantity < 0)) {
       return res.status(400).json({ message: 'quantity must be a non-negative number' });
@@ -121,6 +122,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
 
     const update = { updatedBy: req.user.id };
     if (quantity !== undefined) update.quantity = quantity;
+    if (wastagePercentage !== undefined) update.wastagePercentage = wastagePercentage;
     if (unit !== undefined) update.unit = unit;
 
     const link = await IngredientLink.findOneAndUpdate(

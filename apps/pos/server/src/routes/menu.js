@@ -152,7 +152,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
       const IngredientLink = require('../models/IngredientLink');
       const Inventory = require('../models/Inventory');
       for (const ing of req.body.ingredients) {
-        const { inventoryItemId, quantity, unit, variantId } = ing;
+        const { inventoryItemId, quantity, unit, variantId, wastagePercentage } = ing;
         if (inventoryItemId && typeof quantity === 'number') {
           const invItem = await Inventory.findOne({
             _id: inventoryItemId,
@@ -167,6 +167,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
               variantId: variantId || null,
               inventoryItemId,
               quantity,
+              wastagePercentage: typeof wastagePercentage === 'number' ? wastagePercentage : 0,
               unit: unit || invItem.unit,
               createdBy: req.user.id,
             });
@@ -222,7 +223,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
         menuItemId: item._id,
       });
       for (const ing of req.body.ingredients) {
-        const { inventoryItemId, quantity, unit, variantId } = ing;
+        const { inventoryItemId, quantity, unit, variantId, wastagePercentage } = ing;
         if (inventoryItemId && typeof quantity === 'number') {
           const invItem = await Inventory.findOne({
             _id: inventoryItemId,
@@ -237,6 +238,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
               variantId: variantId || null,
               inventoryItemId,
               quantity,
+              wastagePercentage: typeof wastagePercentage === 'number' ? wastagePercentage : 0,
               unit: unit || invItem.unit,
               createdBy: req.user.id,
             });

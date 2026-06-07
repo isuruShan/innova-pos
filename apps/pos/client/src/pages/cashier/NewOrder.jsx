@@ -675,6 +675,12 @@ export default function NewOrder() {
     prevStoreRef.current = selectedStoreId;
   }, [selectedStoreId]);
 
+  const { data: partners = [] } = useQuery({
+    queryKey: ['foodmarket-partners'],
+    queryFn: () => api.get('/foodmarket-partners').then((r) => r.data),
+    enabled: isStoreReady,
+  });
+
   const dynamicTypes = buildOrderTypes(partners);
   const activeType = dynamicTypes.find(t => t.id === orderType) || 
                      ORDER_TYPE_MAP[orderType] || 
@@ -820,12 +826,6 @@ export default function NewOrder() {
     queryFn: () =>
       api.get(`/customers/${selectedCustomer._id}`, { params: { loyalty: '1' } }).then((r) => r.data),
     enabled: isStoreReady && loyaltyAddonActive && !!selectedCustomer?._id,
-  });
-
-  const { data: partners = [] } = useQuery({
-    queryKey: ['foodmarket-partners'],
-    queryFn: () => api.get('/foodmarket-partners').then((r) => r.data),
-    enabled: isStoreReady,
   });
 
   const getPartnerForOrderType = (type, partnerList) => {
