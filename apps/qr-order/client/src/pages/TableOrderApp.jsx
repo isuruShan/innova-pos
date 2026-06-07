@@ -31,7 +31,10 @@ const MENU_FETCH_LIMIT = 500;
 
 function sessionPath(tenantId, storeId, tableId, query = {}) {
   const base = apiBase();
-  const path = `/api/public/table/${encodeURIComponent(tenantId)}/${encodeURIComponent(storeId)}/${encodeURIComponent(tableId)}`;
+  let path = `/api/public/table/${encodeURIComponent(tenantId)}/${encodeURIComponent(storeId)}/${encodeURIComponent(tableId)}`;
+  if (base.endsWith('/api') && path.startsWith('/api/')) {
+    path = path.slice(4);
+  }
   const qs = new URLSearchParams();
   if (query.menuSkip != null) qs.set('menuSkip', String(query.menuSkip));
   if (query.menuLimit != null) qs.set('menuLimit', String(query.menuLimit));
