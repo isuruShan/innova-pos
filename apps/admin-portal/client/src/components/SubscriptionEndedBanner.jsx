@@ -3,7 +3,7 @@ import { AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
 export default function SubscriptionEndedBanner() {
-  const [supportPhone, setSupportPhone] = useState('+94 77 123 4567');
+  const [supportPhone, setSupportPhone] = useState('+94 72 353 9443');
 
   useEffect(() => {
     axios.get('/api/platform-contact/public')
