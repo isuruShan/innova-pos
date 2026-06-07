@@ -122,7 +122,7 @@ router.post('/', serviceOrJwt, upload.single('file'), async (req, res) => {
         : Promise.resolve();
 
     await Promise.all([uploadToS3(uploadBuffer, key, uploadMime), azureWarm]);
-    const url = await getPresignedUrl(key, 3600);
+    const url = await getPresignedUrl(key, 86400);
 
     logger.info('File uploaded', { key, size: uploadSize, type: uploadType, mimeType: uploadMime });
 
@@ -147,7 +147,7 @@ router.post('/', serviceOrJwt, upload.single('file'), async (req, res) => {
  * POST /upload/presign
  */
 router.post('/presign', serviceOrJwt, async (req, res) => {
-  const { key, expiresIn = 3600 } = req.body;
+  const { key, expiresIn = 86400 } = req.body;
   if (!key) return res.status(400).json({ message: 'key is required' });
 
   const isService = req.headers['x-service-key'] && req.headers['x-service-key'] === process.env.INTERNAL_SERVICE_KEY;
@@ -174,7 +174,7 @@ router.post('/presign', serviceOrJwt, async (req, res) => {
  * Returns: { urls: { [key: string]: string | null } }
  */
 router.post('/presign-batch', serviceOrJwt, async (req, res) => {
-  const { keys, expiresIn = 3600 } = req.body;
+  const { keys, expiresIn = 86400 } = req.body;
   if (!Array.isArray(keys) || !keys.length) {
     return res.status(400).json({ message: 'keys array is required' });
   }

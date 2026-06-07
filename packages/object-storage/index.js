@@ -35,7 +35,7 @@ async function uploadObject(buffer, key, mimeType) {
   return impl.uploadObject(buffer, key, mimeType);
 }
 
-async function getPresignedUrl(key, expiresInSeconds = 3600) {
+async function getPresignedUrl(key, expiresInSeconds = 86400) {
   const { impl } = getProvider();
   return impl.getPresignedUrl(key, expiresInSeconds);
 }

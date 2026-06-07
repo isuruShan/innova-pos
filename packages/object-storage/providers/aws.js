@@ -21,7 +21,7 @@ async function uploadObject(buffer, key, mimeType) {
   return key;
 }
 
-async function getPresignedUrl(key, expiresInSeconds = 3600) {
+async function getPresignedUrl(key, expiresInSeconds = 86400) {
   if (!BUCKET) throw new Error('AWS_S3_BUCKET is not configured');
   const command = new GetObjectCommand({ Bucket: BUCKET, Key: key });
   return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });

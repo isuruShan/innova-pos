@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const { sendRouteError } = require('@innovapos/shared-middleware');
 const paths = require('../posPaths');
 
-const { attachFreshMenuImageUrls } = require(paths.menuItemImageUrls);
+const { attachFreshMenuImageUrls, attachFreshCategoryUrls } = require(paths.menuItemImageUrls);
 
 const CafeTable = require(paths.models.CafeTable);
 const Store = require(paths.models.Store);
@@ -112,7 +112,7 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
 
     const menuItems = await attachFreshMenuImageUrls(menuItemsRaw);
 
-    const categoryRows = await Category.find({
+    const categoryRowsRaw = await Category.find({
       tenantId: ctx.ids.tenantId,
       storeId: { $in: [ctx.ids.storeId, null] },
       active: { $ne: false },
@@ -120,6 +120,8 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
       .sort({ sortOrder: 1, name: 1 })
       .select('name sortOrder active imageUrl imageKey')
       .lean();
+
+    const categoryRows = await attachFreshCategoryUrls(categoryRowsRaw);
 
     const brandingDoc = await TenantSettings.findOne({ tenantId: ctx.ids.tenantId })
       .select(

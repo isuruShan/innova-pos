@@ -1,4 +1,4 @@
-const { presignObjectKey } = require('./s3Runtime');
+const { presignObjectKey, presignObjectKeys } = require('./s3Runtime');
 
 /**
  * Collect S3 keys from legacy single image + gallery `images[]`.
@@ -93,7 +93,28 @@ function normalizeMenuItemImages(body) {
   };
 }
 
+/**
+ * Presign keys and merge fresh URLs onto categories.
+ * @param {import('mongoose').LeanDocument<any>[]} categories
+ */
+async function attachFreshCategoryUrls(categories) {
+  if (!categories?.length) return categories;
+  const leans = categories.map((c) => (typeof c.toObject === 'function' ? c.toObject() : c));
+  const keys = leans.map((c) => c.imageKey).filter(Boolean);
+  if (!keys.length) return leans;
+
+  const urlByKey = await presignObjectKeys(keys, 86400);
+
+  return leans.map((c) => {
+    if (c.imageKey && urlByKey[c.imageKey]) {
+      c.imageUrl = urlByKey[c.imageKey];
+    }
+    return c;
+  });
+}
+
 module.exports = {
   attachFreshMenuImageUrls,
+  attachFreshCategoryUrls,
   normalizeMenuItemImages,
 };

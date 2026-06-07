@@ -42,7 +42,7 @@ async function getUserDelegationKeyCached(client) {
   const startsOn = new Date(now - 60 * 1000);
   const hours = Math.min(
     24,
-    Math.max(1, parseInt(process.env.AZURE_DELEGATION_KEY_HOURS || '1', 10) || 1),
+    Math.max(1, parseInt(process.env.AZURE_DELEGATION_KEY_HOURS || '24', 10) || 24),
   );
   const expiresOn = new Date(now + hours * 60 * 60 * 1000);
   const key = await client.getUserDelegationKey(startsOn, expiresOn);
@@ -65,7 +65,7 @@ async function uploadObject(buffer, key, mimeType) {
   return key;
 }
 
-async function getPresignedUrl(key, expiresInSeconds = 3600) {
+async function getPresignedUrl(key, expiresInSeconds = 86400) {
   const account = accountName();
   const container = containerName();
   const client = blobServiceClient();

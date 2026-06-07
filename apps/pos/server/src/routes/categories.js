@@ -1,5 +1,6 @@
 const express = require('express');
 const Category = require('../models/Category');
+const { attachFreshCategoryUrls } = require('../utils/menuItemImageUrls');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
 const { parseSortQuery } = require('../lib/listPagination');
@@ -41,7 +42,8 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
     if (all !== 'true') filter.active = true;
     const sort = parseSortQuery(req, CATEGORY_SORT_FIELDS, DEFAULT_CATEGORY_SORT);
     const categories = await Category.find(filter).sort(sort);
-    res.json(categories);
+    const enriched = await attachFreshCategoryUrls(categories);
+    res.json(enriched);
   } catch (err) {
     sendRouteError(res, err, { req });
   }
@@ -53,7 +55,8 @@ router.patch('/reorder', protect, authorize('manager', 'merchant_admin', 'supera
     const filter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
     const count = await applyReorder(Category, filter, ids, req.user.id);
     const categories = await Category.find(filter).sort({ sortOrder: 1, name: 1 });
-    res.json({ message: 'Category order updated', count, categories });
+    const enriched = await attachFreshCategoryUrls(categories);
+    res.json({ message: 'Category order updated', count, categories: enriched });
   } catch (err) {
     const status = err.status || 400;
     res.status(status).json({ message: err.message });
@@ -84,7 +87,8 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
       imageUrl: imageUrl || null,
       imageKey: imageKey || null,
     });
-    res.status(201).json(category);
+    const enriched = (await attachFreshCategoryUrls([category]))[0];
+    res.status(201).json(enriched);
   } catch (err) {
     if (err.code === 11000) return res.status(400).json({ message: 'Category already exists' });
     res.status(400).json({ message: err.message });
@@ -125,7 +129,8 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
         userId: req.user.id,
       });
     }
-    res.json(category);
+    const enriched = (await attachFreshCategoryUrls([category]))[0];
+    res.json(enriched);
   } catch (err) {
     if (err.code === 11000) return res.status(400).json({ message: 'Category name already exists' });
     res.status(400).json({ message: err.message });
