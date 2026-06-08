@@ -585,6 +585,10 @@ export default function NewOrder() {
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
   const [readySlideOrder, setReadySlideOrder] = useState(null);
+  const [gridCols, setGridCols] = useState(() => {
+    const saved = localStorage.getItem('pos_register_grid_cols');
+    return saved ? Number(saved) : 4;
+  });
 
   const qc = useQueryClient();
   const branding = useBranding();
@@ -1492,8 +1496,8 @@ export default function NewOrder() {
                 </button>
               ))}
             </div>
-            <div className="px-4 pb-3">
-              <div className="relative">
+            <div className="px-4 pb-3 flex items-center gap-3">
+              <div className="relative flex-1">
                 <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                   type="text"
@@ -1513,11 +1517,33 @@ export default function NewOrder() {
                   </button>
                 )}
               </div>
+
+              {/* Grid Column Selector */}
+              <div className="flex items-center gap-0.5 bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 shrink-0">
+                {[4, 5, 6].map((col) => (
+                  <button
+                    key={col}
+                    type="button"
+                    onClick={() => {
+                      setGridCols(col);
+                      localStorage.setItem('pos_register_grid_cols', col);
+                    }}
+                    title={`${col} Columns`}
+                    className={`px-2 py-1 text-xs font-bold rounded-md transition-colors ${
+                      gridCols === col
+                        ? 'bg-amber-500 text-[var(--pos-selection-text)] shadow-sm'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                    }`}
+                  >
+                    {col} Col
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           {/* Menu grid */}
-          <div className={`flex-1 overflow-y-auto ${isCompact ? 'p-2' : 'p-4'}`}>
+          <div className={`flex-1 overflow-y-auto ${isCompact || gridCols >= 5 ? 'p-2' : 'p-4'}`}>
             {menuLoading ? (
               <div className="p-1">
                 <MenuGridSkeleton />
@@ -1527,12 +1553,15 @@ export default function NewOrder() {
                 {menuSearch.trim() ? 'No items match your search' : 'No items in this category'}
               </div>
             ) : (
-              <div className={isCompact
-                ? 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 gap-2'
-                : 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-4 gap-3'
+              <div className={
+                gridCols === 4
+                  ? (isCompact ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3')
+                  : gridCols === 5
+                    ? (isCompact ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3')
+                    : (isCompact ? 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3')
               }>
                 {filtered.map(item => (
-                  <MenuCard key={item._id} item={item} onAdd={addToCart} compact={isCompact} orderType={orderType} partners={partners} getItemPrice={getItemPrice} />
+                  <MenuCard key={item._id} item={item} onAdd={addToCart} compact={isCompact || gridCols >= 5} orderType={orderType} partners={partners} getItemPrice={getItemPrice} />
                 ))}
               </div>
             )}
