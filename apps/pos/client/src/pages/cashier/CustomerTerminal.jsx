@@ -287,10 +287,6 @@ export default function CustomerTerminal() {
     return (
       <div 
         className="min-h-screen flex flex-col items-center justify-center font-sans bg-[#0B1220] text-slate-200"
-        style={{
-          backgroundColor: branding.bodyColor || '#0B1220',
-          color: branding.textColor || '#E2E8F0',
-        }}
       >
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
@@ -303,16 +299,11 @@ export default function CustomerTerminal() {
   if (paidAddons?.dualScreen !== true) {
     return (
       <div 
-        className="min-h-screen flex flex-col font-sans"
-        style={{
-          backgroundColor: branding.bodyColor || '#0B1220',
-          color: branding.textColor || '#E2E8F0',
-        }}
+        className="min-h-screen flex flex-col font-sans bg-[#0B1220] text-slate-200"
       >
         {/* Header bar */}
         <header 
-          className="px-6 py-4 flex items-center justify-between border-b border-slate-800/80"
-          style={{ backgroundColor: branding.headerBarColor || '#151F2E' }}
+          className="px-6 py-4 flex items-center justify-between border-b border-slate-800/80 bg-[#151F2E]"
         >
           <div className="flex items-center gap-4">
             {branding.logoUrl ? (
@@ -381,16 +372,11 @@ export default function CustomerTerminal() {
 
   return (
     <div 
-      className="min-h-screen flex flex-col font-sans"
-      style={{
-        backgroundColor: branding.bodyColor || '#0B1220',
-        color: branding.textColor || '#E2E8F0',
-      }}
+      className="min-h-screen flex flex-col font-sans bg-[#0B1220] text-slate-200"
     >
       {/* Header bar */}
       <header 
-        className="px-6 py-4 flex items-center justify-between border-b border-slate-800/80"
-        style={{ backgroundColor: branding.headerBarColor || '#151F2E' }}
+        className="px-6 py-4 flex items-center justify-between border-b border-slate-800/80 bg-[#151F2E]"
       >
         <div className="flex items-center gap-4">
           {branding.logoUrl ? (
@@ -513,7 +499,7 @@ export default function CustomerTerminal() {
                   Signed In
                 </span>
 
-                <p className="text-slate-450 text-xs uppercase tracking-widest font-bold mb-1">
+                <p className="text-slate-400 text-xs uppercase tracking-widest font-bold mb-1">
                   Welcome back
                 </p>
 
@@ -601,7 +587,7 @@ export default function CustomerTerminal() {
                       <>
                         {/* Mobile input with Country Selector */}
                         <div className="space-y-1">
-                          <label className="block text-xs font-semibold text-slate-455">Mobile Number</label>
+                          <label className="block text-xs font-semibold text-slate-400">Mobile Number</label>
                           <div className="flex gap-2">
                             <div className="relative shrink-0">
                               <select
