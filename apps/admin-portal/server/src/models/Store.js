@@ -31,6 +31,7 @@ const storeSchema = new mongoose.Schema(
     tableManagementEnabled: { type: Boolean, default: false },
     guestWaiterCallCooldownSeconds: { type: Number, default: 300, min: 30, max: 3600 },
     posMenuLayout: { type: String, enum: ['default', 'compact'], default: 'default' },
+    posMenuCols: { type: Number, enum: [4, 5, 6], default: 4 },
     whatsappSettings: {
       phoneNumberId: { type: String, default: '' },
       accessToken: { type: String, default: '' },

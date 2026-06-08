@@ -41,7 +41,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
     if (!store) return res.status(404).json({ message: 'Store not found' });
     if (!userStoreIds.includes(String(store._id))) return res.status(403).json({ message: 'Access denied for selected store' });
 
-    const { name, code, address, phone, paymentMethods, isActive, tableManagementEnabled, guestWaiterCallCooldownSeconds, posMenuLayout, cashDenominations } = req.body;
+    const { name, code, address, phone, paymentMethods, isActive, tableManagementEnabled, guestWaiterCallCooldownSeconds, posMenuLayout, posMenuCols, cashDenominations } = req.body;
     if (name !== undefined) store.name = String(name).trim();
     if (code !== undefined) store.code = String(code).trim().toUpperCase();
     if (address !== undefined) {
@@ -76,6 +76,10 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
     }
     if (posMenuLayout !== undefined && req.user.role !== 'cashier') {
       if (['default', 'compact'].includes(posMenuLayout)) store.posMenuLayout = posMenuLayout;
+    }
+    if (posMenuCols !== undefined && req.user.role !== 'cashier') {
+      const cols = parseInt(posMenuCols, 10);
+      if ([4, 5, 6].includes(cols)) store.posMenuCols = cols;
     }
     if (cashDenominations !== undefined && req.user.role !== 'cashier') {
       if (Array.isArray(cashDenominations)) {

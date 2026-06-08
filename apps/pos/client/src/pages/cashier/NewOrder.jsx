@@ -597,6 +597,15 @@ export default function NewOrder() {
   const selectedStore =
     stores.find((s) => String(s._id) === String(selectedStoreId)) || stores.find((s) => s.isDefault) || null;
 
+  useEffect(() => {
+    const saved = localStorage.getItem('pos_register_grid_cols');
+    if (saved) {
+      setGridCols(Number(saved));
+    } else if (selectedStore?.posMenuCols) {
+      setGridCols(selectedStore.posMenuCols);
+    }
+  }, [selectedStore?.posMenuCols]);
+
   const {
     activeDraft,
     patchActiveDraft,

@@ -508,19 +508,22 @@ function PosViewTab() {
   const { selectedStoreId, isStoreReady, stores } = useStoreContext();
   const store = stores.find((s) => String(s._id) === String(selectedStoreId));
   const [layout, setLayout] = useState(store?.posMenuLayout || 'default');
+  const [menuCols, setMenuCols] = useState(store?.posMenuCols || 4);
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     setLayout(store?.posMenuLayout || 'default');
+    setMenuCols(store?.posMenuCols || 4);
     setNotes(store?.cashDenominations || []);
-  }, [store?._id, store?.posMenuLayout, store?.cashDenominations]);
+  }, [store?._id, store?.posMenuLayout, store?.posMenuCols, store?.cashDenominations]);
 
   const saveMutation = useMutation({
-    mutationFn: ({ layoutVal, notesVal }) =>
+    mutationFn: ({ layoutVal, colsVal, notesVal }) =>
       api.put(`/stores/${selectedStoreId}`, {
         posMenuLayout: layoutVal,
+        posMenuCols: colsVal,
         cashDenominations: notesVal && notesVal.length > 0 ? notesVal : null,
       }),
     onSuccess: () => {
@@ -572,6 +575,32 @@ function PosViewTab() {
                 layout === opt.id ? 'text-amber-400' : 'text-[var(--pos-text-primary)]'
               }`}>{opt.label}</p>
               <p className="text-xs text-slate-500 mt-0.5">{opt.description}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-slate-700/50 pt-5 mt-5">
+        <h3 className="text-sm font-semibold text-[var(--pos-text-primary)] mb-1">
+          Cards Per Row
+        </h3>
+        <p className="text-xs text-slate-400 mb-3">
+          Choose how many menu items are displayed in a single row on the cashier grid layout (4, 5, or 6 columns).
+        </p>
+
+        <div className="flex gap-2">
+          {[4, 5, 6].map((cols) => (
+            <button
+              key={cols}
+              type="button"
+              onClick={() => setMenuCols(cols)}
+              className={`flex-1 py-3 px-4 rounded-xl border font-semibold text-sm text-center transition ${
+                menuCols === cols
+                  ? 'border-amber-500 bg-amber-500/10 text-amber-400'
+                  : 'border-slate-700 bg-[var(--pos-panel)] text-[var(--pos-text-secondary)] hover:border-slate-500'
+              }`}
+            >
+              {cols} Columns
             </button>
           ))}
         </div>
@@ -638,7 +667,7 @@ function PosViewTab() {
 
       <button
         type="button"
-        onClick={() => saveMutation.mutate({ layoutVal: layout, notesVal: notes })}
+        onClick={() => saveMutation.mutate({ layoutVal: layout, colsVal: menuCols, notesVal: notes })}
         disabled={saveMutation.isPending}
         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition mt-5 ${
           saved ? 'bg-green-500 text-white' : 'bg-amber-500 hover:bg-amber-400 text-white disabled:opacity-60'

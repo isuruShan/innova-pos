@@ -231,7 +231,7 @@ router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), t
     });
     if (!store) return res.status(404).json({ message: 'Store not found' });
 
-    const { name, code, address, phone, paymentMethods, isActive, tableManagementEnabled, guestWaiterCallCooldownSeconds, posMenuLayout, whatsappSettings } = body;
+    const { name, code, address, phone, paymentMethods, isActive, tableManagementEnabled, guestWaiterCallCooldownSeconds, posMenuLayout, posMenuCols, whatsappSettings } = body;
     if (name !== undefined) store.name = name.trim();
     if (whatsappSettings !== undefined) {
       store.whatsappSettings = {
@@ -278,6 +278,10 @@ router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), t
     }
     if (posMenuLayout !== undefined) {
       if (['default', 'compact'].includes(posMenuLayout)) store.posMenuLayout = posMenuLayout;
+    }
+    if (posMenuCols !== undefined) {
+      const cols = parseInt(posMenuCols, 10);
+      if ([4, 5, 6].includes(cols)) store.posMenuCols = cols;
     }
     if (isActive !== undefined) {
       const nextActive = Boolean(isActive);

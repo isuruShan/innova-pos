@@ -258,6 +258,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
     paymentMethods: ['cash'],
     isActive: true,
     posMenuLayout: 'default',
+    posMenuCols: 4,
   });
   const [editMeta, setEditMeta] = useState({ deactivatedBySuperadmin: false });
   const [editPhoneCountryIso, setEditPhoneCountryIso] = useState(DEFAULT_COUNTRY_CODE);
@@ -333,6 +334,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
       paymentMethods: store.paymentMethods?.length ? [...store.paymentMethods] : ['cash'],
       isActive: store.isActive !== false,
       posMenuLayout: store.posMenuLayout || 'default',
+      posMenuCols: store.posMenuCols || 4,
     };
   };
 
@@ -686,6 +688,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
         paymentMethods: [...editForm.paymentMethods],
         isActive: editForm.isActive,
         posMenuLayout: editForm.posMenuLayout,
+        posMenuCols: editForm.posMenuCols,
       },
     });
   };
@@ -1281,6 +1284,27 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                         editForm.posMenuLayout === opt.id ? 'text-brand-orange' : 'text-gray-800'
                       }`}>{opt.label}</span>
                       <span className="block text-xs text-gray-500 mt-0.5">{opt.sub}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">POS Cashier Cards Per Row</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[4, 5, 6].map((cols) => (
+                    <button
+                      key={cols}
+                      type="button"
+                      onClick={() => setEditForm((p) => ({ ...p, posMenuCols: cols }))}
+                      className={`text-center p-3 rounded-lg border-2 transition-colors ${
+                        editForm.posMenuCols === cols
+                          ? 'border-brand-orange bg-orange-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <span className={`block text-sm font-medium ${
+                        editForm.posMenuCols === cols ? 'text-brand-orange' : 'text-gray-800'
+                      }`}>{cols} Columns</span>
                     </button>
                   ))}
                 </div>
