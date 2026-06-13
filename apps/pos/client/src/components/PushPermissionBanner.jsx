@@ -2,18 +2,21 @@ import { useState, useEffect } from 'react';
 import { Bell, BellOff, X } from 'lucide-react';
 import { initializePushNotifications } from '../services/pushService';
 import { isConfigured } from '../services/firebase';
+import { useAuth } from '../context/AuthContext';
 
 const DISMISSED_KEY = 'pos_push_banner_dismissed';
 
 /**
  * Dismissible banner prompting users to enable push notifications.
  * Only renders when:
+ *  - User is logged in
  *  - Firebase is configured (VITE_FIREBASE_* env vars present)
  *  - Browser supports Notification API
  *  - Permission state is 'default' (not yet decided)
  *  - User hasn't dismissed the banner this session
  */
 export default function PushPermissionBanner() {
+  const { user } = useAuth();
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [enabled, setEnabled] = useState(false);
@@ -21,12 +24,13 @@ export default function PushPermissionBanner() {
   useEffect(() => {
     const dismissed = sessionStorage.getItem(DISMISSED_KEY);
     const shouldShow =
+      user &&
       isConfigured &&
       'Notification' in window &&
       Notification.permission === 'default' &&
       !dismissed;
     setVisible(shouldShow);
-  }, []);
+  }, [user]);
 
   if (!visible || enabled) return null;
 
