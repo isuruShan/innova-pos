@@ -72,7 +72,7 @@ export function AvatarMenu({ user, onLogout }) {
               <div className="p-2 space-y-0.5">
                 <button
                   onClick={openProfile}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition cursor-pointer"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition cursor-pointer"
                 >
                   <UserCircle size={15} className="text-slate-500" />
                   My Profile
@@ -82,7 +82,7 @@ export function AvatarMenu({ user, onLogout }) {
                   <Link
                     to="/manager/settings"
                     onClick={() => setOpen(false)}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition cursor-pointer"
                   >
                     <Settings size={15} className="text-slate-500" />
                     Settings
@@ -93,7 +93,7 @@ export function AvatarMenu({ user, onLogout }) {
                     href={getAdminUrl()}
                     target="_blank"
                     rel="noreferrer"
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition cursor-pointer"
                   >
                     <Settings size={15} className="text-slate-500" />
                     Admin Portal
@@ -318,8 +318,8 @@ function NavDropdown({
                   onClick={() => setOpen(false)}
                   className={`flex items-center gap-2.5 px-3 py-2.5 text-sm transition cursor-pointer ${
                     itemActive
-                      ? 'bg-[color-mix(in_srgb,var(--color-accent)_18%,transparent)] text-[var(--pos-text-primary)]'
-                      : 'text-slate-700 dark:text-slate-350 hover:bg-slate-700/20 dark:hover:bg-slate-700/60 hover:text-[var(--pos-text-primary)]'
+                      ? 'bg-[color-mix(in_srgb,var(--color-accent)_18%,transparent)] text-[var(--pos-text-primary)] font-semibold'
+                      : 'text-[var(--pos-text-primary)] hover:bg-slate-700/20 dark:hover:bg-slate-700/60'
                   }`}
                 >
                   {link.icon && <link.icon size={15} className="shrink-0 opacity-80" />}
