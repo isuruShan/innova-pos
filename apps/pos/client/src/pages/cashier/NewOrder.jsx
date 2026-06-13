@@ -27,7 +27,7 @@ import { compareSortValues, buildCategorySortMap, buildCategoryTabs, resolveMenu
 import { useBranding } from '../../context/BrandingContext';
 import { useStoreContext } from '../../context/StoreContext';
 import { MenuGridSkeleton } from '../../components/StoreSkeletons';
-import { printReceipt } from '../../utils/receiptPrint';
+import { printReceipt, printSplitReceipt } from '../../utils/receiptPrint';
 import { shouldPrintReceiptOnOrderCreated } from '../../utils/receiptPolicy';
 import { validateMobile, validateEmail } from '../../utils/customerValidation';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
@@ -978,12 +978,18 @@ export default function NewOrder() {
         createdOrder.paymentCollected !== false
       ) {
         try {
-          printReceipt(createdOrder, {
-            branding,
-            store: selectedStore,
-            paymentType: variables?.paymentType,
-            cashTender: variables?.cashTender,
-          });
+          if (variables?.paymentType === 'split' && variables?.printMode === 'separate' && Array.isArray(createdOrder.payments)) {
+            createdOrder.payments.forEach(p => {
+              printSplitReceipt(createdOrder, p, { branding, store: selectedStore });
+            });
+          } else {
+            printReceipt(createdOrder, {
+              branding,
+              store: selectedStore,
+              paymentType: variables?.paymentType,
+              cashTender: variables?.cashTender,
+            });
+          }
         } catch (err) {
           console.warn('[Receipt Print] Failed:', err);
           // Don't block order placement if printing fails
@@ -1217,7 +1223,7 @@ export default function NewOrder() {
   const nonDineInReference =
     orderType === 'takeaway' ? customerSearch.trim() : reference.trim();
 
-  const handlePaymentConfirm = ({ paymentType, paymentAmount, cashTender }) => {
+  const handlePaymentConfirm = ({ paymentType, paymentAmount, cashTender, payments, printMode }) => {
     if (!canPlace) return;
     
     // Get branding for the current order type
@@ -1245,6 +1251,8 @@ export default function NewOrder() {
       paymentType,
       paymentAmount,
       cashTender,
+      payments,
+      printMode,
       ...(activePartner ? { foodmarketPartnerId: activePartner._id } : {}),
       ...(selectedCustomer?._id ? { customerId: selectedCustomer._id } : {}),
       ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0

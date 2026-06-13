@@ -21,7 +21,7 @@ import { useStoreContext } from '../../context/StoreContext';
 import { useBranding } from '../../context/BrandingContext';
 import { formatCurrency } from '../../utils/format';
 import { KanbanSkeleton } from '../../components/StoreSkeletons';
-import { printReceipt, printKitchenTicket } from '../../utils/receiptPrint';
+import { printReceipt, printSplitReceipt, printKitchenTicket } from '../../utils/receiptPrint';
 import { shouldPrintReceiptForUpdatedOrder } from '../../utils/receiptPolicy';
 import PosDateField from '../../components/PosDateField';
 import { useAlert } from '../../context/AlertContext';
@@ -458,12 +458,18 @@ export default function OrderBoard() {
       // Skip printing for offline orders to avoid popup issues
       if (updatedOrder && !isOfflineOrder && (policyPrint || paidOnComplete)) {
         try {
-          printReceipt(updatedOrder, {
-            branding,
-            store: selectedStore,
-            paymentType: updatedOrder.paymentType,
-            cashTender: variables?.cashTender,
-          });
+          if (variables?.paymentType === 'split' && variables?.printMode === 'separate' && Array.isArray(updatedOrder.payments)) {
+            updatedOrder.payments.forEach(p => {
+              printSplitReceipt(updatedOrder, p, { branding, store: selectedStore });
+            });
+          } else {
+            printReceipt(updatedOrder, {
+              branding,
+              store: selectedStore,
+              paymentType: updatedOrder.paymentType,
+              cashTender: variables?.cashTender,
+            });
+          }
         } catch (err) {
           console.warn('[Receipt Print] Failed:', err);
         }
@@ -486,7 +492,7 @@ export default function OrderBoard() {
     mutation.mutate({ id: order._id, status: nextStatus });
   };
 
-  const handlePaymentConfirm = ({ paymentType, paymentAmount, cashTender }) => {
+  const handlePaymentConfirm = ({ paymentType, paymentAmount, cashTender, payments, printMode }) => {
     if (!completePaymentOrder) return;
     mutation.mutate({
       id: completePaymentOrder._id,
@@ -494,6 +500,8 @@ export default function OrderBoard() {
       paymentType,
       paymentAmount,
       cashTender,
+      payments,
+      printMode,
     });
     setCompletePaymentOrder(null);
   };

@@ -28,7 +28,7 @@ export default function SplitBillModal({
 }) {
   const branding = useBranding();
   const { selectedStore } = useStoreContext();
-  const [splitMode, setSplitMode] = useState('equal'); // 'equal', 'custom', 'item'
+  const [splitMode, setSplitMode] = useState('equal'); // 'equal', 'custom'
   const [payments, setPayments] = useState([]); // Array of { paymentType, amount, itemsPaid }
   
   // Equal Split Mode States
@@ -37,9 +37,10 @@ export default function SplitBillModal({
   // Custom Mode States
   const [currentAmountInput, setCurrentAmountInput] = useState('');
   
-  // Item Selection Mode States
-  const [selectedItems, setSelectedItems] = useState({}); // { [itemId]: qtySelected }
   const [currentPaymentType, setCurrentPaymentType] = useState(availablePaymentMethods[0] || 'cash');
+
+  // Receipt printing option: 'separate' (print individual split bills) or 'single' (print single consolidated bill)
+  const [printModeOption, setPrintModeOption] = useState('separate');
 
   // Total collected so far
   const totalCollected = useMemo(() => {
@@ -55,59 +56,9 @@ export default function SplitBillModal({
     setSplitMode('equal');
     setNumSplits(2);
     setCurrentAmountInput('');
-    setSelectedItems({});
     setCurrentPaymentType(availablePaymentMethods[0] || 'cash');
+    setPrintModeOption('separate');
   }, [open, total, availablePaymentMethods]);
-
-  // Proportional calculations for individual item checkout
-  const originalSubtotal = subtotal || items.reduce((sum, item) => sum + (item.price * item.qty), 0);
-  
-  const getSelectedItemsCalculations = useMemo(() => {
-    let sub = 0;
-    const selectedList = [];
-    Object.entries(selectedItems).forEach(([itemId, qty]) => {
-      const item = items.find(i => i.menuItem === itemId || i._id === itemId);
-      if (item && qty > 0) {
-        sub += item.price * qty;
-        selectedList.push({ itemId, qty });
-      }
-    });
-
-    const ratio = originalSubtotal > 0 ? sub / originalSubtotal : 0;
-    const itemDiscount = discountTotal * ratio;
-    const itemTax = taxAmount * ratio;
-    const itemService = serviceFeeAmount * ratio;
-    const itemTotal = Math.max(0, sub - itemDiscount + itemTax + itemService);
-
-    return {
-      subtotal: sub,
-      discount: itemDiscount,
-      tax: itemTax,
-      serviceFee: itemService,
-      total: itemTotal,
-      itemsPaid: selectedList,
-    };
-  }, [selectedItems, items, originalSubtotal, discountTotal, taxAmount, serviceFeeAmount]);
-
-  // Check how many of each item is remaining to be paid
-  const remainingItemQuantities = useMemo(() => {
-    const counts = {};
-    items.forEach(item => {
-      const id = item.menuItem || item._id;
-      counts[id] = item.qty;
-    });
-
-    // Subtract quantities already paid in previous split rows
-    payments.forEach(p => {
-      (p.itemsPaid || []).forEach(ip => {
-        if (counts[ip.itemId] !== undefined) {
-          counts[ip.itemId] = Math.max(0, counts[ip.itemId] - ip.qty);
-        }
-      });
-    });
-
-    return counts;
-  }, [items, payments]);
 
   const handleAddEqualPayment = (index, amount) => {
     const currentType = currentPaymentType;
@@ -138,36 +89,8 @@ export default function SplitBillModal({
     setCurrentAmountInput('');
   };
 
-  const handleAddItemPayment = () => {
-    const calcs = getSelectedItemsCalculations;
-    if (calcs.total <= 0) {
-      alert('Select at least one item to pay');
-      return;
-    }
-
-    setPayments(prev => [
-      ...prev,
-      {
-        paymentType: currentPaymentType,
-        amount: Number(calcs.total.toFixed(2)),
-        itemsPaid: calcs.itemsPaid,
-      }
-    ]);
-
-    // Reset selected items
-    setSelectedItems({});
-  };
-
   const handleRemovePayment = (index) => {
     setPayments(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleItemQtyChange = (itemId, change, max) => {
-    setSelectedItems(prev => {
-      const current = prev[itemId] || 0;
-      const next = Math.max(0, Math.min(max, current + change));
-      return { ...prev, [itemId]: next };
-    });
   };
 
   const handleConfirmAll = () => {
@@ -179,6 +102,7 @@ export default function SplitBillModal({
       paymentType: 'split',
       paymentAmount: total,
       payments,
+      printMode: printModeOption,
     });
   };
 
@@ -223,14 +147,6 @@ export default function SplitBillModal({
               }`}
             >
               Custom Amounts
-            </button>
-            <button
-              onClick={() => { setSplitMode('item'); setPayments([]); }}
-              className={`py-2.5 px-4 font-semibold text-sm border-b-2 transition cursor-pointer ${
-                splitMode === 'item' ? 'border-amber-500 text-amber-500' : 'border-transparent text-[var(--pos-text-muted)] hover:text-[var(--pos-text-primary)]'
-              }`}
-            >
-              Pay by Item
             </button>
           </div>
 
@@ -311,90 +227,6 @@ export default function SplitBillModal({
                     Add Split
                   </button>
                 </div>
-              </div>
-            )}
-
-            {splitMode === 'item' && (
-              <div className="space-y-4">
-                <p className="text-xs text-[var(--pos-text-secondary)]">Tally which items are being paid right now by this guest:</p>
-                
-                <div className="space-y-2 border border-[color-mix(in_srgb,var(--pos-text-primary)_10%,transparent)] bg-[var(--pos-surface-inset)] p-2 divide-y divide-[color-mix(in_srgb,var(--pos-text-primary)_10%,transparent)] rounded-xl">
-                  {items.map(item => {
-                    const id = item.menuItem || item._id;
-                    const maxQty = remainingItemQuantities[id] || 0;
-                    const currentSelected = selectedItems[id] || 0;
-                    
-                    if (maxQty === 0 && currentSelected === 0) return null;
-
-                    return (
-                      <div key={id} className="py-2.5 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-[var(--pos-text-primary)] truncate">{item.name}</p>
-                          <p className="text-xs text-[var(--pos-text-muted)]">
-                            {formatCurrency(item.price)} each • {maxQty} remaining
-                          </p>
-                        </div>
-
-                        <div className="flex items-center border border-[color-mix(in_srgb,var(--pos-text-primary)_12%,transparent)] bg-[var(--pos-surface-inset)] rounded-lg shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => handleItemQtyChange(id, -1, maxQty)}
-                            className="px-2.5 py-1 text-slate-500 hover:text-[var(--pos-text-primary)] font-bold text-sm cursor-pointer"
-                          >
-                            -
-                          </button>
-                          <span className="px-3 py-1 text-[var(--pos-text-primary)] font-bold font-mono text-xs">{currentSelected}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleItemQtyChange(id, 1, maxQty)}
-                            className="px-2.5 py-1 text-slate-500 hover:text-[var(--pos-text-primary)] font-bold text-sm cursor-pointer"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Selected sub-bill totals review */}
-                {getSelectedItemsCalculations.total > 0 && (
-                  <div className="mt-3 bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 space-y-1.5">
-                    <div className="flex justify-between text-xs text-[var(--pos-text-secondary)]">
-                      <span>Subtotal Selection</span>
-                      <span>{formatCurrency(getSelectedItemsCalculations.subtotal)}</span>
-                    </div>
-                    {getSelectedItemsCalculations.discount > 0 && (
-                      <div className="flex justify-between text-xs text-green-600 dark:text-green-400">
-                        <span>Selected Discounts</span>
-                        <span>-{formatCurrency(getSelectedItemsCalculations.discount)}</span>
-                      </div>
-                    )}
-                    {getSelectedItemsCalculations.tax > 0 && (
-                      <div className="flex justify-between text-xs text-[var(--pos-text-secondary)]">
-                        <span>Selected Taxes</span>
-                        <span>{formatCurrency(getSelectedItemsCalculations.tax)}</span>
-                      </div>
-                    )}
-                    {getSelectedItemsCalculations.serviceFee > 0 && (
-                      <div className="flex justify-between text-xs text-[var(--pos-text-secondary)]">
-                        <span>Selected Service Fees</span>
-                        <span>{formatCurrency(getSelectedItemsCalculations.serviceFee)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-baseline pt-1.5 border-t border-[color-mix(in_srgb,var(--pos-text-primary)_10%,transparent)] text-sm font-bold text-[var(--pos-text-primary)]">
-                      <span>Total for Selection</span>
-                      <span className="text-amber-600 dark:text-amber-400 text-base">{formatCurrency(getSelectedItemsCalculations.total)}</span>
-                    </div>
-                    
-                    <button
-                      onClick={handleAddItemPayment}
-                      className="w-full mt-2 h-10 bg-amber-500 hover:bg-amber-400 text-[var(--pos-selection-text)] font-bold rounded-lg transition cursor-pointer"
-                    >
-                      Collect Selected Items
-                    </button>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -501,6 +333,37 @@ export default function SplitBillModal({
               <span className={`font-mono text-lg ${remainingBalance <= 0.02 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-500'}`}>
                 {formatCurrency(remainingBalance)}
               </span>
+            </div>
+          </div>
+
+          {/* Print Option Selector */}
+          <div className="border-t border-[color-mix(in_srgb,var(--pos-text-primary)_10%,transparent)] pt-3 mt-3">
+            <span className="block text-xs font-bold text-[var(--pos-text-muted)] uppercase tracking-wide mb-2">
+              Receipt Print Mode
+            </span>
+            <div className="flex bg-[var(--pos-surface-inset)] p-0.5 rounded-xl border border-[color-mix(in_srgb,var(--pos-text-primary)_10%,transparent)]">
+              <button
+                type="button"
+                onClick={() => setPrintModeOption('separate')}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer text-center ${
+                  printModeOption === 'separate'
+                    ? 'bg-amber-500 text-[var(--pos-selection-text)] shadow-sm'
+                    : 'text-[var(--pos-text-muted)] hover:text-[var(--pos-text-primary)]'
+                }`}
+              >
+                Separate Bills
+              </button>
+              <button
+                type="button"
+                onClick={() => setPrintModeOption('single')}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer text-center ${
+                  printModeOption === 'single'
+                    ? 'bg-amber-500 text-[var(--pos-selection-text)] shadow-sm'
+                    : 'text-[var(--pos-text-muted)] hover:text-[var(--pos-text-primary)]'
+                }`}
+              >
+                Consolidated Bill
+              </button>
             </div>
           </div>
 
