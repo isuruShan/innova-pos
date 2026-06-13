@@ -130,6 +130,24 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
     source: 'phone',
   });
 
+  // Reset form when modal is opened
+  useEffect(() => {
+    if (isOpen) {
+      setForm({
+        guestName: '',
+        guestPhone: '',
+        guestEmail: '',
+        partySize: 2,
+        reservationDate: new Date().toISOString().split('T')[0],
+        reservationTime: '19:00',
+        tableId: '',
+        duration: 90,
+        specialRequests: '',
+        source: 'phone',
+      });
+    }
+  }, [isOpen]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const dateTime = new Date(`${form.reservationDate}T${form.reservationTime}`);

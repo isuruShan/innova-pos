@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Plus, Minus, Trash2, Save, Link2, Hash, AlertTriangle, Tag, CheckCircle, Loader2, Clock, XCircle, ChevronRight, Printer, Receipt } from 'lucide-react';
+import { X, Plus, Minus, Trash2, Save, Link2, Hash, AlertTriangle, Tag, CheckCircle, Loader2, Clock, XCircle, ChevronRight, Printer, Receipt, User, Phone, Mail } from 'lucide-react';
 import api from '../api/axios';
 import { formatCurrency, formatDateTime as fmtDT } from '../utils/format';
 import SlideOver from './SlideOver';
@@ -595,6 +595,38 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
           <span>Placed by {order.createdBy?.name || 'Guest / cashier'}</span>
           <span>{formatDateTime(order.createdAt)}</span>
         </div>
+
+        {/* Customer Information */}
+        {order.customerId && (
+          <div className="rounded-xl bg-slate-800/40 border border-slate-700/50 p-3.5 space-y-2 text-xs">
+            <div className="flex items-center gap-1.5 font-semibold text-slate-300 border-b border-slate-700/40 pb-2">
+              <User size={13} className="text-amber-400" />
+              <span>Customer Information</span>
+            </div>
+            <div className="space-y-1.5 pt-0.5 text-[var(--pos-text-primary)]">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400">Name</span>
+                <span className="text-slate-200 font-medium">{order.customerId.name}</span>
+              </div>
+              {order.customerId.mobile && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 flex items-center gap-1">
+                    <Phone size={10} className="text-slate-500" /> Phone
+                  </span>
+                  <span className="text-slate-200 font-mono">{order.customerId.mobile}</span>
+                </div>
+              )}
+              {order.customerId.email && (
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 flex items-center gap-1">
+                    <Mail size={10} className="text-slate-500" /> Email
+                  </span>
+                  <span className="text-slate-300 truncate max-w-[180px]">{order.customerId.email}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Uber Eats Details */}
         {order.orderType === 'uber-eats' && order.uberDetails && (

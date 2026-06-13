@@ -673,10 +673,6 @@ export default function NewOrder() {
   const deferPayment = tableMgmt && orderType === 'dine-in';
   const availablePaymentMethods = (selectedStore?.paymentMethods?.length ? selectedStore.paymentMethods : ['cash']);
 
-  useEffect(() => {
-    if (deferPayment) setSelectedLoyaltyRewardId('');
-  }, [deferPayment]);
-
   const prevStoreRef = useRef(selectedStoreId);
   useEffect(() => {
     if (prevStoreRef.current && prevStoreRef.current !== selectedStoreId) {
@@ -1257,7 +1253,7 @@ export default function NewOrder() {
       cashTender,
       ...(activePartner ? { foodmarketPartnerId: activePartner._id } : {}),
       ...(selectedCustomer?._id ? { customerId: selectedCustomer._id } : {}),
-      ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0 && !deferPayment
+      ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0
         ? { loyaltyRewardId: selectedLoyaltyRewardId }
         : {}),
       customerSessionId: activeDraft.customerSessionId,
@@ -1291,7 +1287,7 @@ export default function NewOrder() {
       guestsCount: activeDraft.guestsCount || null,
       ...(activePartner ? { foodmarketPartnerId: activePartner._id } : {}),
       ...(selectedCustomer?._id ? { customerId: selectedCustomer._id } : {}),
-      ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0 && !deferPayment
+      ...(selectedLoyaltyRewardId && selectedCustomer && loyaltyDiscountPoints > 0
         ? { loyaltyRewardId: selectedLoyaltyRewardId }
         : {}),
       customerSessionId: activeDraft.customerSessionId,
@@ -1759,15 +1755,9 @@ export default function NewOrder() {
                   <Gift size={12} className="text-amber-400" />
                   Loyalty reward (optional)
                 </label>
-                {deferPayment && (
-                  <p className="text-[11px] text-slate-500 mb-1.5">
-                    Point rewards are not available for pay-at-checkout table tabs — remove the reward or use a non-managed table number.
-                  </p>
-                )}
                 <select
                   value={selectedLoyaltyRewardId}
                   onChange={(e) => setSelectedLoyaltyRewardId(e.target.value)}
-                  disabled={deferPayment}
                   className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-3 py-2 text-sm text-[var(--pos-text-primary)] focus:outline-none focus:ring-2 focus:ring-amber-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="">None — earn points when order completes</option>

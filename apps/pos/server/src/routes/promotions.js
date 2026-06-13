@@ -176,7 +176,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
   }
 });
 
-router.post('/:id/approve', protect, authorize('merchant_admin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/:id/approve', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
   try {
     const existing = await Promotion.findOne(
       { _id: req.params.id, tenantId: req.tenantId }
@@ -221,7 +221,7 @@ router.post('/:id/approve', protect, authorize('merchant_admin'), tenantScope, r
   }
 });
 
-router.post('/:id/reject', protect, authorize('merchant_admin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/:id/reject', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
   try {
     const reason = String(req.body.rejectionReason || '').trim() || 'No reason provided';
     const existing = await Promotion.findOne(

@@ -287,7 +287,7 @@ export default function CustomersPage() {
 
       {pointsOpen && slide?._id ? (
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60"
+          className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-black/60"
           onClick={() => setPointsOpen(false)}
           role="presentation"
         >

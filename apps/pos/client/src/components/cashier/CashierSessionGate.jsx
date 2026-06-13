@@ -55,12 +55,28 @@ function SessionBreakdownSummary({
             <span className="text-slate-500">Cash sales</span>
             <span className="tabular-nums font-semibold text-amber-400">{formatCurrency(breakdown.cashSales ?? 0)}</span>
           </div>
+          {breakdown.cashRefunds > 0 && (
+            <div className="flex justify-between gap-2">
+              <span className="text-slate-500">Cash refunds</span>
+              <span className="tabular-nums font-medium text-rose-300/90">
+                − {formatCurrency(breakdown.cashRefunds)}
+              </span>
+            </div>
+          )}
           <div className="flex justify-between gap-2">
             <span className="text-slate-500">Card sales</span>
             <span className="tabular-nums font-medium text-[var(--pos-text-primary)]">
               {formatCurrency(breakdown.cardSales ?? 0)}
             </span>
           </div>
+          {breakdown.cardRefunds > 0 && (
+            <div className="flex justify-between gap-2">
+              <span className="text-slate-500">Card refunds</span>
+              <span className="tabular-nums font-medium text-rose-300/90">
+                − {formatCurrency(breakdown.cardRefunds)}
+              </span>
+            </div>
+          )}
           {breakdown.otherSales > 0 && (
             <div className="flex justify-between gap-2">
               <span className="text-slate-500">Other sales</span>
@@ -607,10 +623,22 @@ export default function CashierSessionGate({ children, requireSession = false })
                         <span className="text-slate-500">Cash sales</span>
                         <span className="font-semibold text-amber-400">{formatCurrency(closedSession.sessionCloseBreakdown.cashSales ?? 0)}</span>
                       </div>
+                      {closedSession.sessionCloseBreakdown.cashRefunds > 0 && (
+                        <div className="flex justify-between gap-2">
+                          <span className="text-slate-500">Cash refunds</span>
+                          <span className="font-medium text-rose-300/90">− {formatCurrency(closedSession.sessionCloseBreakdown.cashRefunds)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between gap-2">
                         <span className="text-slate-500">Card sales</span>
                         <span className="font-medium text-[var(--pos-text-primary)]">{formatCurrency(closedSession.sessionCloseBreakdown.cardSales ?? 0)}</span>
                       </div>
+                      {closedSession.sessionCloseBreakdown.cardRefunds > 0 && (
+                        <div className="flex justify-between gap-2">
+                          <span className="text-slate-500">Card refunds</span>
+                          <span className="font-medium text-rose-300/90">− {formatCurrency(closedSession.sessionCloseBreakdown.cardRefunds)}</span>
+                        </div>
+                      )}
                       {closedSession.varianceAmount != null && closedSession.varianceAmount !== 0 && (
                         <div className="flex justify-between gap-2">
                           <span className="text-slate-500">Variance</span>

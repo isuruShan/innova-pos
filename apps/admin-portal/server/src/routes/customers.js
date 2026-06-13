@@ -11,17 +11,31 @@ const { parsePageQuery, paginated, parseSortQuery } = require('../lib/listPagina
 
 const router = express.Router();
 
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 router.get('/', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
   try {
     const filter = { tenantId: req.tenantId };
     const { search } = req.query;
     if (search && String(search).trim()) {
       const q = String(search).trim();
-      filter.$or = [
-        { name: new RegExp(q, 'i') },
-        { email: new RegExp(q, 'i') },
-        { mobile: new RegExp(q, 'i') },
+      const escapedQ = escapeRegExp(q);
+      const orConditions = [
+        { name: new RegExp(escapedQ, 'i') },
+        { email: new RegExp(escapedQ, 'i') },
+        { mobile: new RegExp(escapedQ, 'i') },
       ];
+
+      const searchDigits = q.replace(/\D/g, '');
+      if (searchDigits.length > 0) {
+        orConditions.push({ mobileDigits: new RegExp(searchDigits, 'i') });
+        if (searchDigits.startsWith('0') && searchDigits.length > 1) {
+          orConditions.push({ mobileDigits: new RegExp(searchDigits.substring(1), 'i') });
+        }
+      }
+      filter.$or = orConditions;
     }
     const { page, limit, skip } = parsePageQuery(req, { defaultLimit: 25, maxLimit: 100 });
     const total = await Customer.countDocuments(filter);
@@ -143,6 +157,10 @@ router.put('/:id', protect, authorize('merchant_admin'), tenantScope, async (req
     const patch = { ...req.body, updatedBy: req.user.id };
     delete patch.lifetimePoints;
     delete patch.tenantId;
+    if (req.body.mobile !== undefined) {
+      const d = String(req.body.mobile || '').replace(/\D/g, '');
+      patch.mobileDigits = d.length >= 6 ? d : '';
+    }
     const c = await Customer.findOneAndUpdate(
       { _id: req.params.id, tenantId: req.tenantId },
       patch,

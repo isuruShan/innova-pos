@@ -31,7 +31,8 @@ function buildSessionOrderMatch(tenantId, storeId, cashierId, openedAt, endDate)
   return {
     tenantId: toOid(tenantId),
     storeId: toOid(storeId),
-    status: 'completed',
+    status: { $ne: 'cancelled' },
+    paymentCollected: true,
     updatedAt: { $gte: openedAt, $lte: endDate },
     $or: [
       { updatedBy: cashierOid },
@@ -42,8 +43,16 @@ function buildSessionOrderMatch(tenantId, storeId, cashierId, openedAt, endDate)
 
 async function aggregateSessionSalesBreakdown(tenantId, storeId, cashierId, openedAt, endDate) {
   const match = buildSessionOrderMatch(tenantId, storeId, cashierId, openedAt, endDate);
+  const cashierOid = toOid(cashierId);
 
-  const [totalsAgg, byPayment] = await Promise.all([
+  const returnsMatch = {
+    tenantId: toOid(tenantId),
+    storeId: toOid(storeId),
+    'returns.returnedBy': cashierOid,
+    'returns.returnedAt': { $gte: openedAt, $lte: endDate },
+  };
+
+  const [totalsAgg, byPayment, returnsAgg] = await Promise.all([
     Order.aggregate([
       { $match: match },
       {
@@ -64,12 +73,35 @@ async function aggregateSessionSalesBreakdown(tenantId, storeId, cashierId, open
         },
       },
     ]),
+    Order.aggregate([
+      { $match: returnsMatch },
+      { $unwind: '$returns' },
+      {
+        $match: {
+          'returns.returnedBy': cashierOid,
+          'returns.returnedAt': { $gte: openedAt, $lte: endDate },
+        },
+      },
+      {
+        $group: {
+          _id: { $ifNull: ['$paymentType', 'unknown'] },
+          refunded: { $sum: '$returns.refundAmount' },
+          cnt: { $sum: 1 },
+        },
+      },
+    ]),
   ]);
 
   const salesByPaymentType = (byPayment || []).map((r) => ({
     paymentType: String(r._id || 'unknown'),
     revenue: round2(r.revenue || 0),
     orderCount: r.cnt || 0,
+  }));
+
+  const refundsByPaymentType = (returnsAgg || []).map((r) => ({
+    paymentType: String(r._id || 'unknown'),
+    refunded: round2(r.refunded || 0),
+    refundsCount: r.cnt || 0,
   }));
 
   let cashSales = 0;
@@ -82,11 +114,25 @@ async function aggregateSessionSalesBreakdown(tenantId, storeId, cashierId, open
     else otherSales += row.revenue;
   }
 
+  let cashRefunds = 0;
+  let cardRefunds = 0;
+  let otherRefunds = 0;
+  for (const row of refundsByPaymentType) {
+    const pt = String(row.paymentType || '').toLowerCase();
+    if (pt === 'cash') cashRefunds += row.refunded;
+    else if (pt === 'card') cardRefunds += row.refunded;
+    else otherRefunds += row.refunded;
+  }
+
   return {
     salesByPaymentType,
+    refundsByPaymentType,
     cashSales: round2(cashSales),
     cardSales: round2(cardSales),
     otherSales: round2(otherSales),
+    cashRefunds: round2(cashRefunds),
+    cardRefunds: round2(cardRefunds),
+    otherRefunds: round2(otherRefunds),
     totalDiscounts: round2(totalsAgg[0]?.totalDiscounts || 0),
     orderCount: totalsAgg[0]?.orders || 0,
   };
@@ -160,8 +206,9 @@ router.get(
         Promise.resolve(sumCashMovements(session.cashMovements)),
       ]);
       const cashSalesSoFar = breakdown.cashSales;
+      const cashRefundsSoFar = breakdown.cashRefunds || 0;
       const expectedCashInDrawer = round2(
-        session.openingCashBalance + cashSalesSoFar + movementTotals.netCashMovements,
+        session.openingCashBalance + cashSalesSoFar - cashRefundsSoFar + movementTotals.netCashMovements,
       );
 
       return res.json(enrichSession(session, cashSalesSoFar, expectedCashInDrawer, breakdown, movementTotals));
@@ -269,8 +316,9 @@ router.post(
       );
       const movementTotals = sumCashMovements(session.cashMovements);
       const cashSalesSoFar = breakdown.cashSales;
+      const cashRefundsSoFar = breakdown.cashRefunds || 0;
       const expectedCashInDrawer = round2(
-        session.openingCashBalance + cashSalesSoFar + movementTotals.netCashMovements,
+        session.openingCashBalance + cashSalesSoFar - cashRefundsSoFar + movementTotals.netCashMovements,
       );
 
       res.status(201).json(enrichSession(session, cashSalesSoFar, expectedCashInDrawer, breakdown, movementTotals));
@@ -335,8 +383,9 @@ router.post(
       );
       const movementTotals = sumCashMovements(session.cashMovements);
       const cashSalesSoFar = breakdown.cashSales;
+      const cashRefundsSoFar = breakdown.cashRefunds || 0;
       const expectedCashInDrawer = round2(
-        session.openingCashBalance + cashSalesSoFar + movementTotals.netCashMovements,
+        session.openingCashBalance + cashSalesSoFar - cashRefundsSoFar + movementTotals.netCashMovements,
       );
 
       const lean = await CashierSession.findById(session._id).lean();
@@ -397,9 +446,10 @@ router.post(
         closedAt,
       );
       const cashSalesDuringSession = breakdown.cashSales;
+      const cashRefundsDuringSession = breakdown.cashRefunds || 0;
       const movementTotals = sumCashMovements(session.cashMovements);
       const expectedCashInDrawer = round2(
-        session.openingCashBalance + cashSalesDuringSession + movementTotals.netCashMovements,
+        session.openingCashBalance + cashSalesDuringSession - cashRefundsDuringSession + movementTotals.netCashMovements,
       );
       const varianceAmount = round2(counted - expectedCashInDrawer);
 
@@ -411,9 +461,13 @@ router.post(
 
       session.sessionCloseBreakdown = {
         salesByPaymentType: breakdown.salesByPaymentType,
+        refundsByPaymentType: breakdown.refundsByPaymentType,
         cashSales: breakdown.cashSales,
         cardSales: breakdown.cardSales,
         otherSales: breakdown.otherSales,
+        cashRefunds: breakdown.cashRefunds,
+        cardRefunds: breakdown.cardRefunds,
+        otherRefunds: breakdown.otherRefunds,
         totalDiscounts: breakdown.totalDiscounts,
         orderCount: breakdown.orderCount,
         cashInTotal: movementTotals.cashInTotal,
@@ -432,7 +486,7 @@ router.post(
       session.closingCountedCash = counted;
       session.floatAmount = floatAmount;
       session.expectedCashInDrawer = expectedCashInDrawer;
-      session.cashSalesDuringSession = cashSalesDuringSession;
+      session.cashSalesDuringSession = cashSalesDuringSession - cashRefundsDuringSession;
       session.varianceAmount = varianceAmount;
       session.varianceNotes = notes;
       await session.save();

@@ -145,7 +145,7 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
     }, { createdAt: -1 });
     const orders = await Order.find(filter)
       .populate('createdBy', 'name')
-      .populate('customerId', 'name phone email')
+      .populate('customerId', 'name mobile email')
       .sort(sort);
     res.json(orders);
   } catch (err) {
@@ -157,7 +157,8 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
 router.get('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) })
-      .populate('createdBy', 'name');
+      .populate('createdBy', 'name')
+      .populate('customerId', 'name mobile email');
     if (!order) return res.status(404).json({ message: 'Order not found' });
     res.json(order);
   } catch (err) {
@@ -226,12 +227,6 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
     }
 
     const deferPayment = orderType === 'dine-in' && tableMgmt;
-    if (deferPayment && loyaltyRewardId) {
-      return res.status(400).json({
-        message:
-          'Pay-at-table tabs cannot redeem loyalty rewards when opening the order. Remove the reward to continue.',
-      });
-    }
 
     const uniqueMenuIds = [...new Set(items.map((i) => String(i.menuItem)))];
     const menuDocsCount = await MenuItem.countDocuments({ _id: { $in: uniqueMenuIds }, tenantId: req.tenantId, storeId });
@@ -963,7 +958,7 @@ router.post(
 
       const populated = await Order.findById(order._id)
         .populate('createdBy', 'name')
-        .populate('customerId', 'name phone email');
+        .populate('customerId', 'name mobile email');
       res.json(populated);
     } catch (err) {
       sendRouteError(res, err, { req });

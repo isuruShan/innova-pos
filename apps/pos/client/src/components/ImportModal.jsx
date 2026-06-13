@@ -12,7 +12,7 @@ import { parseCSVFile, downloadCSV, arrayToCSV } from '../utils/csvExportImport'
  * @param {Function} props.onImport - Import handler (data, onProgress) => Promise
  * @param {string} props.templateName - Template filename for download
  */
-export default function ImportModal({ open, onClose, title, fields, onImport, templateName }) {
+export default function ImportModal({ open, onClose, title, fields, onImport, templateName, instructions }) {
   const fileRef = useRef(null);
   const [step, setStep] = useState(1); // 1: upload, 2: mapping, 3: progress
   const [file, setFile] = useState(null);
@@ -73,6 +73,7 @@ export default function ImportModal({ open, onClose, title, fields, onImport, te
   const downloadTemplate = () => {
     const headers = fields.map(f => f.label);
     const exampleRow = fields.map(f => {
+      if (f.example !== undefined) return f.example;
       if (f.type === 'boolean') return 'Yes';
       if (f.type === 'number') return '0';
       return 'Example';
@@ -207,11 +208,19 @@ export default function ImportModal({ open, onClose, title, fields, onImport, te
                 <p className="text-sm font-semibold text-amber-400 mb-2 flex items-center gap-2">
                   <AlertCircle size={16} /> Important Notes:
                 </p>
-                <ul className="text-xs text-slate-400 space-y-1 ml-6 list-disc">
-                  <li>Fields marked with * are required</li>
-                  <li>If import fails for some rows, an error file will be downloaded</li>
-                  <li>Fix the errors in the error file and re-import only those rows</li>
-                  <li>Import will not stop if some rows fail - all valid rows will be imported</li>
+                <ul className="text-xs text-slate-400 space-y-1.5 ml-6 list-disc">
+                  {instructions && instructions.length > 0 ? (
+                    instructions.map((inst, index) => (
+                      <li key={index}>{inst}</li>
+                    ))
+                  ) : (
+                    <>
+                      <li>Fields marked with * are required</li>
+                      <li>If import fails for some rows, an error file will be downloaded</li>
+                      <li>Fix the errors in the error file and re-import only those rows</li>
+                      <li>Import will not stop if some rows fail - all valid rows will be imported</li>
+                    </>
+                  )}
                 </ul>
               </div>
             </div>

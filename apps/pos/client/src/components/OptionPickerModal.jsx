@@ -602,7 +602,7 @@ export function CustomerPickerModal({
                     {selectedCustomer.name || 'Customer'}
                   </p>
                   <p className="text-xs text-slate-400 truncate mt-0.5">
-                    {selectedCustomer.email || selectedCustomer.mobile || 'No contact info'}
+                    {[selectedCustomer.mobile, selectedCustomer.email].filter(Boolean).join(' • ') || 'No contact info'}
                   </p>
                 </div>
                 <button
@@ -651,7 +651,7 @@ export function CustomerPickerModal({
                             {c.name || 'Customer'}
                           </p>
                           <p className="text-xs text-slate-500 truncate">
-                            {c.email || c.mobile || 'No contact info'}
+                            {[c.mobile, c.email].filter(Boolean).join(' • ') || 'No contact info'}
                           </p>
                         </div>
                       </button>

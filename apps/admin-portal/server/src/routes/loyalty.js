@@ -44,6 +44,11 @@ router.put('/config', authorize('merchant_admin'), async (req, res) => {
       pointsRetentionStartDate,
       retentionDowngradeToLevel1,
     } = req.body;
+
+    if (pointsRetentionMode && pointsRetentionMode !== 'none' && !pointsRetentionStartDate) {
+      return res.status(400).json({ message: 'Period start date is required when points retention is enabled' });
+    }
+
     const patch = {
       tenantId: req.tenantId,
       updatedBy: req.user.id,
@@ -190,6 +195,13 @@ router.get('/tiers', authorize('manager', 'merchant_admin'), async (req, res) =>
 
 router.post('/tiers', authorize('merchant_admin'), async (req, res) => {
   try {
+    const { level } = req.body;
+    if (level != null) {
+      const exists = await LoyaltyTier.findOne({ tenantId: req.tenantId, level: Number(level) });
+      if (exists) {
+        return res.status(400).json({ message: `Loyalty level ${level} already exists.` });
+      }
+    }
     const t = await LoyaltyTier.create({
       ...req.body,
       tenantId: req.tenantId,
@@ -203,6 +215,17 @@ router.post('/tiers', authorize('merchant_admin'), async (req, res) => {
 
 router.put('/tiers/:id', authorize('merchant_admin'), async (req, res) => {
   try {
+    const { level } = req.body;
+    if (level != null) {
+      const exists = await LoyaltyTier.findOne({
+        tenantId: req.tenantId,
+        level: Number(level),
+        _id: { $ne: req.params.id },
+      });
+      if (exists) {
+        return res.status(400).json({ message: `Loyalty level ${level} already exists.` });
+      }
+    }
     const t = await LoyaltyTier.findOneAndUpdate(
       { _id: req.params.id, tenantId: req.tenantId },
       { ...req.body, updatedBy: req.user.id },

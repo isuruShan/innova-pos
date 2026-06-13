@@ -168,6 +168,10 @@ export function printSessionReport(session, storeName, currencySymbol = 'Rs.') {
     .map((row) => `<tr><td>${escHtml(String(row.paymentType || ''))}</td><td class="num">${row.orders ?? 0}</td><td class="num">${fmt(row.revenue)}</td></tr>`)
     .join('');
 
+  const refundsByType = (bd.refundsByPaymentType || [])
+    .map((row) => `<tr><td>${escHtml(String(row.paymentType || ''))}</td><td class="num">${row.refundsCount ?? 0}</td><td class="num" style="color:#991b1b">− ${fmt(row.refunded)}</td></tr>`)
+    .join('');
+
   const movements = (bd.cashMovements || session?.cashMovements || [])
     .map((m) => {
       const isIn = (m.kind || '') === 'cash_in';
@@ -242,11 +246,18 @@ export function printSessionReport(session, storeName, currencySymbol = 'Rs.') {
     <tbody>${salesByType}</tbody>
   </table>` : ''}
 
+  ${refundsByType ? `<h2>Refunds by Payment Type</h2>
+  <table>
+    <thead><tr><th>Method</th><th style="text-align:right">Refunds Count</th><th style="text-align:right">Refunded</th></tr></thead>
+    <tbody>${refundsByType}</tbody>
+  </table>` : ''}
+
   <h2>Cash Drawer Reconciliation</h2>
   <table>
     <tbody>
       <tr><td>Opening Balance</td><td class="num">${openingBalance}</td></tr>
       <tr><td>Cash Sales</td><td class="num">${fmt(bd.cashSales)}</td></tr>
+      ${bd.cashRefunds > 0 ? `<tr><td>Cash Refunds</td><td class="num" style="color:#991b1b">− ${fmt(bd.cashRefunds)}</td></tr>` : ''}
       ${bd.cashInTotal > 0 ? `<tr><td>Cash In (movements)</td><td class="num">+ ${fmt(bd.cashInTotal)}</td></tr>` : ''}
       ${bd.cashOutTotal > 0 ? `<tr><td>Cash Out (movements)</td><td class="num">− ${fmt(bd.cashOutTotal)}</td></tr>` : ''}
       <tr style="background:#f5f5f5"><td style="font-weight:700">Expected in Drawer</td><td class="num" style="font-weight:700">${expectedCash}</td></tr>

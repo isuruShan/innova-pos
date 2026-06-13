@@ -33,7 +33,7 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-[600] flex items-center justify-center bg-black/50 p-4"
       role="dialog"
       aria-modal="true"
       onClick={(e) => { if (window.innerWidth >= 640 && e.target === e.currentTarget) onCancel?.(); }}

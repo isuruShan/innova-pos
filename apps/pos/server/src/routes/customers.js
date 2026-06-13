@@ -19,6 +19,10 @@ function normalizeEmail(s) {
   return String(s || '').trim().toLowerCase();
 }
 
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /** Match existing customer by normalized email or mobile digits (cross-format). */
 async function findExistingCustomerByContact(tenantId, emailNorm, mobileRaw) {
   if (emailNorm) {
@@ -56,11 +60,21 @@ router.get('/', protect, authorize('cashier', 'manager', 'merchant_admin'), tena
     const { search } = req.query;
     if (search && String(search).trim()) {
       const q = String(search).trim();
-      filter.$or = [
-        { name: new RegExp(q, 'i') },
-        { email: new RegExp(q, 'i') },
-        { mobile: new RegExp(q, 'i') },
+      const escapedQ = escapeRegExp(q);
+      const orConditions = [
+        { name: new RegExp(escapedQ, 'i') },
+        { email: new RegExp(escapedQ, 'i') },
+        { mobile: new RegExp(escapedQ, 'i') },
       ];
+
+      const searchDigits = q.replace(/\D/g, '');
+      if (searchDigits.length > 0) {
+        orConditions.push({ mobileDigits: new RegExp(searchDigits, 'i') });
+        if (searchDigits.startsWith('0') && searchDigits.length > 1) {
+          orConditions.push({ mobileDigits: new RegExp(searchDigits.substring(1), 'i') });
+        }
+      }
+      filter.$or = orConditions;
     }
     const sort = parseSortQuery(req, {
       name: 'name',
@@ -205,6 +219,10 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin'), tenantScope,
       delete patch.retentionStatus;
       delete patch.loyaltyTierOverrideLevel;
       delete patch.lastLoyaltyActivityAt;
+    }
+    if (req.body.mobile !== undefined) {
+      const d = String(req.body.mobile || '').replace(/\D/g, '');
+      patch.mobileDigits = d.length >= 6 ? d : '';
     }
     const c = await Customer.findOneAndUpdate(
       { _id: req.params.id, tenantId: req.tenantId },

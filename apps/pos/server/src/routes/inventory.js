@@ -30,7 +30,31 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
   try {
     const storeId = await resolveWriteStoreId(req);
     if (!storeId) return res.status(400).json({ message: 'No store available for inventory item creation' });
-    let item = await Inventory.create({ ...req.body, quantity: 0, tenantId: req.tenantId, storeId, createdBy: req.user.id });
+    
+    const initialQty = Number(req.body.quantity) || 0;
+    let item = await Inventory.create({
+      ...req.body,
+      quantity: initialQty,
+      tenantId: req.tenantId,
+      storeId,
+      createdBy: req.user.id
+    });
+
+    if (initialQty > 0) {
+      await StockMovement.create({
+        tenantId: req.tenantId,
+        storeId,
+        inventoryItemId: item._id,
+        type: 'opening',
+        quantity: initialQty,
+        previousQty: 0,
+        newQty: initialQty,
+        reason: 'opening_balance',
+        notes: 'Initial stock on item creation/import',
+        createdBy: req.user.id
+      });
+    }
+
     item = await item.populate('suppliers', 'name phone email');
     item = await item.populate('category', 'name description');
     res.status(201).json(item);

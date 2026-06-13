@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, Truck, Package, Search, X,
   Phone, Mail, MapPin, User, FileText, ChevronDown, ChevronRight, ArrowDown, ArrowUp,
-  SlidersHorizontal, List, LayoutGrid
+  SlidersHorizontal, List, LayoutGrid, Download, Upload
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -18,6 +18,13 @@ import PageHeader from '../../components/PageHeader';
 import Badge from '../../components/Badge';
 import ResponsiveTable from '../../components/ResponsiveTable';
 import ViewModeToggle from '../../components/ViewModeToggle';
+import ImportModal from '../../components/ImportModal';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import {
+  exportSuppliersToCSV,
+  getSupplierImportFields,
+  validateSupplierRow
+} from '../../utils/csvExportImport';
 
 const SUPPLIER_SORT_OPTIONS = [
   { value: 'name', label: 'Name' },
@@ -195,6 +202,8 @@ export default function SupplierManagement() {
   const [expandedId, setExpandedId] = useState(null);
   const [expandedItems, setExpandedItems] = useState({});
   const [search, setSearch] = useState('');
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [supplierToDelete, setSupplierToDelete] = useState(null);
   const [viewMode, setViewMode] = useState(() => {
     const saved = localStorage.getItem('view_mode_supplier_management');
     if (saved) return saved;
@@ -314,9 +323,51 @@ export default function SupplierManagement() {
   };
 
   const handleDelete = (id) => {
-    if (confirm('Delete this supplier? It will be unlinked from all inventory items.')) {
-      deleteMutation.mutate(id);
+    const supplier = suppliers.find(s => s._id === id);
+    if (supplier) {
+      setSupplierToDelete(supplier);
     }
+  };
+
+  const handleExportSuppliers = () => {
+    exportSuppliersToCSV(filteredSuppliers);
+  };
+
+  const handleImportSuppliers = async (csvData, mapping, onProgress) => {
+    const errors = [];
+    let successCount = 0;
+
+    for (let i = 0; i < csvData.length; i++) {
+      const row = csvData[i];
+      const { supplier, errors: rowErrors } = validateSupplierRow(row, mapping, i);
+
+      if (rowErrors.length > 0) {
+        errors.push({ rowIndex: i, message: rowErrors.join('; ') });
+        onProgress({ total: csvData.length, current: i + 1, errors });
+        continue;
+      }
+
+      try {
+        await api.post('/suppliers', supplier);
+        successCount++;
+      } catch (error) {
+        const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message;
+        errors.push({
+          rowIndex: i,
+          message: errorMsg
+        });
+      }
+
+      onProgress({ total: csvData.length, current: i + 1, errors });
+    }
+
+    invalidate();
+
+    return {
+      total: csvData.length,
+      success: successCount,
+      errors
+    };
   };
 
   const handleToggleItems = async (id) => {
@@ -345,6 +396,8 @@ export default function SupplierManagement() {
             : `${suppliers.length} supplier${suppliers.length !== 1 ? 's' : ''} registered`
           }
           actions={[
+            { label: 'Export', icon: Download, onClick: handleExportSuppliers },
+            { label: 'Import', icon: Upload, onClick: () => setImportModalOpen(true) },
             { label: 'Add Supplier', icon: Plus, onClick: openAdd, primary: true },
           ]}
         />
@@ -574,6 +627,41 @@ export default function SupplierManagement() {
           phoneError={phoneError}
         />
       </SlideOver>
+
+      <ConfirmDialog
+        open={supplierToDelete !== null}
+        title="Delete Supplier"
+        message={`Are you sure you want to delete supplier "${supplierToDelete?.name}"? It will be unlinked from all inventory items.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="delete"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (supplierToDelete) {
+            deleteMutation.mutate(supplierToDelete._id, {
+              onSuccess: () => {
+                setSupplierToDelete(null);
+              }
+            });
+          }
+        }}
+        onCancel={() => setSupplierToDelete(null)}
+      />
+
+      <ImportModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        title="Import Suppliers"
+        fields={getSupplierImportFields()}
+        onImport={handleImportSuppliers}
+        templateName="suppliers"
+        instructions={[
+          "Fields marked with * are required.",
+          "Phone: Format must be a valid phone number with country code (e.g. +94 77 123 4567).",
+          "Email: Must be a valid email format.",
+          "If some rows fail, a CSV error log will be automatically downloaded with instructions."
+        ]}
+      />
     </div>
   );
 }

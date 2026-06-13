@@ -226,17 +226,17 @@ export async function parseCSVFile(file) {
  */
 export function getMenuItemImportFields() {
   return [
-    { key: 'name', label: 'Name *', required: true, type: 'text' },
-    { key: 'category', label: 'Category *', required: true, type: 'text' },
-    { key: 'price', label: 'Price', required: false, type: 'number' },
-    { key: 'description', label: 'Description', required: false, type: 'text' },
-    { key: 'available', label: 'Available', required: false, type: 'boolean' },
-    { key: 'sortOrder', label: 'Sort Order', required: false, type: 'number' },
-    { key: 'hasVariants', label: 'Has Variants', required: false, type: 'boolean' },
-    { key: 'variantOptions', label: 'Variant Options', required: false, type: 'text' },
-    { key: 'variants', label: 'Variants', required: false, type: 'text' },
-    { key: 'defaultVariant', label: 'Default Variant', required: false, type: 'text' },
-    { key: 'imageUrl', label: 'Image URL', required: false, type: 'text' }
+    { key: 'name', label: 'Name *', required: true, type: 'text', example: 'Double Cheese Burger' },
+    { key: 'category', label: 'Category *', required: true, type: 'text', example: 'Burgers' },
+    { key: 'price', label: 'Price', required: false, type: 'number', example: '8.50' },
+    { key: 'description', label: 'Description', required: false, type: 'text', example: 'Two beef patties with cheddar cheese' },
+    { key: 'available', label: 'Available', required: false, type: 'boolean', example: 'Yes' },
+    { key: 'sortOrder', label: 'Sort Order', required: false, type: 'number', example: '1' },
+    { key: 'hasVariants', label: 'Has Variants', required: false, type: 'boolean', example: 'Yes' },
+    { key: 'variantOptions', label: 'Variant Options', required: false, type: 'text', example: 'Size:Regular,Large|Cheese:Cheddar,Swiss' },
+    { key: 'variants', label: 'Variants', required: false, type: 'text', example: 'Regular / Cheddar:8.50:1|Large / Cheddar:10.50:1|Regular / Swiss:9.00:1|Large / Swiss:11.00:1' },
+    { key: 'defaultVariant', label: 'Default Variant', required: false, type: 'text', example: 'Regular / Cheddar' },
+    { key: 'imageUrl', label: 'Image URL', required: false, type: 'text', example: 'https://example.com/burger.jpg' }
   ];
 }
 
@@ -517,3 +517,167 @@ export function validateOrderRow(row, mapping, rowIndex) {
 
   return { order: errors.length === 0 ? order : null, errors };
 }
+
+/**
+ * Export inventory to CSV
+ */
+export function exportInventoryToCSV(items) {
+  const headers = [
+    'Item Name',
+    'Category',
+    'Unit',
+    'Current Stock',
+    'Min Threshold',
+    'Suppliers'
+  ];
+  
+  const rows = items.map((item) => {
+    const categoryName = item.category?.name || item.category || '';
+    const supplierNames = item.suppliers?.map(s => s.name || s).join(', ') || '';
+    return [
+      item.itemName,
+      categoryName,
+      item.unit,
+      item.quantity || 0,
+      item.minThreshold || 0,
+      supplierNames
+    ];
+  });
+
+  const csvContent = arrayToCSV(headers, rows);
+  downloadCSV('inventory_items', csvContent);
+}
+
+/**
+ * Get inventory import field definitions
+ */
+export function getInventoryImportFields() {
+  return [
+    { key: 'itemName', label: 'Item Name *', required: true, type: 'text', example: 'Tomato Sauce' },
+    { key: 'category', label: 'Category', required: false, type: 'text', example: 'Ingredients' },
+    { key: 'unit', label: 'Unit *', required: true, type: 'text', example: 'kg' },
+    { key: 'quantity', label: 'Current Stock', required: false, type: 'number', example: '10' },
+    { key: 'minThreshold', label: 'Min Threshold *', required: true, type: 'number', example: '2' },
+    { key: 'suppliers', label: 'Suppliers', required: false, type: 'text', example: 'Supplier A, Supplier B' }
+  ];
+}
+
+/**
+ * Validate and transform inventory row
+ */
+export function validateInventoryRow(row, mapping, rowIndex) {
+  const errors = [];
+  const item = {};
+
+  // Item Name (required)
+  const itemName = row[mapping.itemName]?.trim();
+  if (!itemName) {
+    errors.push(`Row ${rowIndex + 1}: Item Name is required`);
+  } else {
+    item.itemName = itemName;
+  }
+
+  // Unit (required)
+  const unit = row[mapping.unit]?.trim();
+  if (!unit) {
+    errors.push(`Row ${rowIndex + 1}: Unit is required`);
+  } else {
+    item.unit = unit;
+  }
+
+  // Min Threshold (required)
+  const minThresholdStr = row[mapping.minThreshold]?.trim();
+  const minThreshold = parseFloat(minThresholdStr);
+  if (isNaN(minThreshold) || minThreshold < 0) {
+    errors.push(`Row ${rowIndex + 1}: Min Threshold must be a valid positive number`);
+  } else {
+    item.minThreshold = minThreshold;
+  }
+
+  // Current Stock / Quantity (optional, default to 0)
+  const quantityStr = row[mapping.quantity]?.trim();
+  if (quantityStr) {
+    const quantity = parseFloat(quantityStr);
+    if (isNaN(quantity) || quantity < 0) {
+      errors.push(`Row ${rowIndex + 1}: Current Stock must be a valid positive number`);
+    } else {
+      item.quantity = quantity;
+    }
+  } else {
+    item.quantity = 0;
+  }
+
+  // Category (optional)
+  item.category = row[mapping.category]?.trim() || '';
+
+  // Suppliers (optional) - comma-separated list
+  const suppliersStr = row[mapping.suppliers]?.trim() || '';
+  item.suppliersRaw = suppliersStr ? suppliersStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+  return { item: errors.length === 0 ? item : null, errors };
+}
+
+/**
+ * Export suppliers to CSV
+ */
+export function exportSuppliersToCSV(suppliers) {
+  const headers = [
+    'Name',
+    'Contact Person',
+    'Phone',
+    'Email',
+    'Address',
+    'Notes'
+  ];
+  
+  const rows = suppliers.map((s) => [
+    s.name,
+    s.contactPerson || '',
+    s.phone || '',
+    s.email || '',
+    s.address || '',
+    s.notes || ''
+  ]);
+
+  const csvContent = arrayToCSV(headers, rows);
+  downloadCSV('suppliers', csvContent);
+}
+
+/**
+ * Get supplier import field definitions
+ */
+export function getSupplierImportFields() {
+  return [
+    { key: 'name', label: 'Name *', required: true, type: 'text', example: 'Fresh Foods Co.' },
+    { key: 'contactPerson', label: 'Contact Person', required: false, type: 'text', example: 'John Smith' },
+    { key: 'phone', label: 'Phone', required: false, type: 'text', example: '+94 77 123 4567' },
+    { key: 'email', label: 'Email', required: false, type: 'text', example: 'orders@freshfoods.com' },
+    { key: 'address', label: 'Address', required: false, type: 'text', example: '123 Main St, Colombo' },
+    { key: 'notes', label: 'Notes', required: false, type: 'text', example: 'Weekly deliveries on Mondays' }
+  ];
+}
+
+/**
+ * Validate and transform supplier row
+ */
+export function validateSupplierRow(row, mapping, rowIndex) {
+  const errors = [];
+  const supplier = {};
+
+  // Name (required)
+  const name = row[mapping.name]?.trim();
+  if (!name) {
+    errors.push(`Row ${rowIndex + 1}: Name is required`);
+  } else {
+    supplier.name = name;
+  }
+
+  supplier.contactPerson = row[mapping.contactPerson]?.trim() || '';
+  supplier.phone = row[mapping.phone]?.trim() || '';
+  supplier.email = row[mapping.email]?.trim() || '';
+  supplier.address = row[mapping.address]?.trim() || '';
+  supplier.notes = row[mapping.notes]?.trim() || '';
+
+  return { supplier: errors.length === 0 ? supplier : null, errors };
+}
+

@@ -17,6 +17,14 @@ const loyaltyProgramConfigSchema = new mongoose.Schema(
     isEnabled: { type: Boolean, default: true },
     /** Days without loyalty activity before customer is flagged for admin review (null/0 = off) */
     pointsRetentionDays: { type: Number, default: null, min: 0 },
+    pointsRetentionMode: {
+      type: String,
+      enum: ['none', 'monthly', 'quarterly', 'yearly'],
+      default: 'none',
+    },
+    pointsRetentionStartDate: { type: Date, default: null },
+    retentionDowngradeToLevel1: { type: Boolean, default: false },
+    pointsRetentionLastProcessedEnd: { type: Date, default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true }

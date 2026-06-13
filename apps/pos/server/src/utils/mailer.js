@@ -20,6 +20,20 @@ const sendEmail = async ({ to, subject, html }) => {
   });
 };
 
+const sendPurchaseOrderEmail = async ({ to, subject, html, attachments, storeName, replyTo }) => {
+  const contact = await getPlatformContact().catch(() => null);
+  const wrapped = wrapEmailHtml(html, contact);
+  const t = getMailTransporter();
+  await t.sendMail({
+    from: `"${storeName}" <${process.env.EMAIL_FROM || 'innovasolutionslk@gmail.com'}>`,
+    to,
+    replyTo,
+    subject,
+    html: wrapped,
+    attachments,
+  });
+};
+
 const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
   await sendEmail({
     to,
@@ -34,4 +48,4 @@ const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
   });
 };
 
-module.exports = { sendEmail, sendPasswordResetEmail };
+module.exports = { sendEmail, sendPasswordResetEmail, sendPurchaseOrderEmail };

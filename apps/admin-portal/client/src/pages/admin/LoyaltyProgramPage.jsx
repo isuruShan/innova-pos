@@ -197,6 +197,12 @@ export default function LoyaltyProgramPage() {
             const start = document.getElementById('adm-pointsRetentionStartDate')?.value || '';
             const downgrade = document.getElementById('adm-retentionDowngrade')?.checked;
             const en = document.getElementById('adm-isEnabled');
+
+            if (mode !== 'none' && !start) {
+              toast.error('Period start date is required when points retention is enabled');
+              return;
+            }
+
             saveCfg.mutate({
               spendPerEarnBlock: Number(sp?.value) || 100,
               pointsPerEarnBlock: Number(pp?.value) ?? 1,

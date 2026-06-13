@@ -310,7 +310,7 @@ router.post(
         }
       }
 
-      // Link to customer if provided
+      // Link to customer if provided, or find/create
       let linkedCustomerId = null;
       if (customerId && mongoose.Types.ObjectId.isValid(customerId)) {
         const customer = await Customer.findOne({
@@ -318,6 +318,36 @@ router.post(
           tenantId: req.tenantId,
         });
         if (customer) linkedCustomerId = customer._id;
+      }
+
+      if (!linkedCustomerId) {
+        const cleanPhoneDigits = guestPhone.trim().replace(/\D/g, '');
+        let customer = null;
+        if (cleanPhoneDigits.length >= 6) {
+          customer = await Customer.findOne({
+            tenantId: req.tenantId,
+            mobileDigits: cleanPhoneDigits,
+          });
+        }
+        if (!customer && guestEmail?.trim()) {
+          customer = await Customer.findOne({
+            tenantId: req.tenantId,
+            email: guestEmail.trim().toLowerCase(),
+          });
+        }
+
+        if (!customer) {
+          customer = await Customer.create({
+            tenantId: req.tenantId,
+            storeId,
+            name: guestName.trim(),
+            mobile: guestPhone.trim(),
+            email: guestEmail?.trim().toLowerCase() || '',
+            createdBy: req.user.id,
+            lastLoyaltyActivityAt: new Date(),
+          });
+        }
+        linkedCustomerId = customer._id;
       }
 
       const reservation = await Reservation.create({
@@ -407,6 +437,46 @@ router.put(
           reservation[field] = req.body[field];
         }
       }
+
+      // Sync customer details or create new if changed
+      let linkedCustomerId = reservation.customerId;
+      const phoneChanged = req.body.guestPhone !== undefined && req.body.guestPhone.trim() !== reservation.guestPhone;
+      const emailChanged = req.body.guestEmail !== undefined && req.body.guestEmail.trim().toLowerCase() !== reservation.guestEmail;
+      
+      if (phoneChanged || emailChanged || !linkedCustomerId) {
+        const phoneToUse = req.body.guestPhone !== undefined ? req.body.guestPhone : reservation.guestPhone;
+        const emailToUse = req.body.guestEmail !== undefined ? req.body.guestEmail : reservation.guestEmail;
+        const nameToUse = req.body.guestName !== undefined ? req.body.guestName : reservation.guestName;
+        
+        const cleanPhoneDigits = phoneToUse.trim().replace(/\D/g, '');
+        let customer = null;
+        if (cleanPhoneDigits.length >= 6) {
+          customer = await Customer.findOne({
+            tenantId: req.tenantId,
+            mobileDigits: cleanPhoneDigits,
+          });
+        }
+        if (!customer && emailToUse?.trim()) {
+          customer = await Customer.findOne({
+            tenantId: req.tenantId,
+            email: emailToUse.trim().toLowerCase(),
+          });
+        }
+
+        if (!customer) {
+          customer = await Customer.create({
+            tenantId: req.tenantId,
+            storeId: reservation.storeId,
+            name: nameToUse.trim(),
+            mobile: phoneToUse.trim(),
+            email: emailToUse?.trim().toLowerCase() || '',
+            createdBy: req.user.id,
+            lastLoyaltyActivityAt: new Date(),
+          });
+        }
+        linkedCustomerId = customer._id;
+      }
+      reservation.customerId = linkedCustomerId;
 
       // Update table label if table changed
       if (req.body.tableId) {

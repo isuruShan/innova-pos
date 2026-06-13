@@ -868,6 +868,14 @@ export default function MenuManagement() {
         fields={getMenuItemImportFields()}
         onImport={handleImportMenuItems}
         templateName="menu_items"
+        instructions={[
+          "Fields marked with * are required.",
+          "Has Variants: Set to 'Yes' or 'No'. If 'Yes', leave Price blank and fill Variant Options & Variants columns.",
+          "Variant Options format: Name:value1,value2|Name2:value1,value2 (e.g., Size:Small,Large|Flavor:Vanilla,Mocha).",
+          "Variants format: OptionValue1 / OptionValue2:Price:Available|... (e.g., Small / Vanilla:4.50:1|Large / Vanilla:5.50:1). Price must be a number. Available must be 1 (active) or 0 (disabled). Use '/' as separator for attributes.",
+          "Default Variant: The exact name matching one of your defined variants (e.g., Small / Vanilla).",
+          "If some rows fail, a CSV error log will be automatically downloaded with instructions."
+        ]}
       />
 
       <Toast toast={toast} onDismiss={clearToast} />

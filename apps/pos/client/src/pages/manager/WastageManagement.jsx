@@ -2,7 +2,8 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Calendar, Package, Trash2, SlidersHorizontal, ChevronDown, X,
-  Search, FileText, AlertTriangle, Eye, CheckCircle, List, LayoutGrid, UtensilsCrossed
+  Search, FileText, AlertTriangle, Eye, CheckCircle, List, LayoutGrid, UtensilsCrossed,
+  ArrowUp, ArrowDown
 } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -56,6 +57,8 @@ export default function WastageManagement() {
   const [wastageType, setWastageType] = useState('spill_expiry_damage');
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
   const [items, setItems] = useState([]); // Array of { itemType: 'inventory', inventoryItemId: '', menuItemId: '', variantId: '', quantity: 1, reason: 'spillage' }
+  const [sortField, setSortField] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState('desc');
 
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
@@ -125,8 +128,30 @@ export default function WastageManagement() {
       result = result.filter(r => r.type === typeFilter);
     }
 
+    // 4. Sorting (default: createdAt descending)
+    result.sort((a, b) => {
+      let valA = a[sortField];
+      let valB = b[sortField];
+
+      // Handle nested or custom fields
+      if (sortField === 'itemsCount') {
+        valA = a.items?.length || 0;
+        valB = b.items?.length || 0;
+      } else if (sortField === 'createdBy') {
+        valA = a.createdBy?.name || '';
+        valB = b.createdBy?.name || '';
+      }
+
+      if (valA === undefined || valA === null) return 1;
+      if (valB === undefined || valB === null) return -1;
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
     return result;
-  }, [reports, search, fromDate, toDate, typeFilter]);
+  }, [reports, search, fromDate, toDate, typeFilter, sortField, sortOrder]);
 
   const openLogWastage = () => {
     setNotes('');
@@ -322,6 +347,27 @@ export default function WastageManagement() {
                 </div>
               )}
             </div>
+
+            <label htmlFor="wastage-sort" className="text-xs text-slate-500 shrink-0 ml-2">Sort</label>
+            <select
+              id="wastage-sort"
+              value={sortField}
+              onChange={(e) => setSortField(e.target.value)}
+              className="bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+            >
+              <option value="createdAt">Created Date</option>
+              <option value="date">Logged Date</option>
+              <option value="type">Wastage Type</option>
+              <option value="itemsCount">Items Count</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
+              className="p-1.5 rounded-lg bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-400 hover:text-white transition"
+              title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+            >
+              {sortOrder === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+            </button>
           </div>
         </div>
 

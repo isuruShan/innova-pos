@@ -21,5 +21,6 @@ const loyaltyTierSchema = new mongoose.Schema(
 );
 
 loyaltyTierSchema.index({ tenantId: 1, minLifetimePoints: 1 });
+loyaltyTierSchema.index({ tenantId: 1, level: 1 }, { unique: true });
 
 module.exports = mongoose.model('LoyaltyTier', loyaltyTierSchema);

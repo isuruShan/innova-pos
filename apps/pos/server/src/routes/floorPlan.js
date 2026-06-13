@@ -160,15 +160,18 @@ router.get('/status', resolveSelectedStore, async (req, res) => {
       .select('tableId status orderNumber createdAt total guestsCount')
       .lean();
 
-    // Get upcoming reservations
+    // Get upcoming reservations for today
     let upcomingReservations = [];
     try {
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
       upcomingReservations = await Reservation.find({
         tenantId: req.tenantId,
         storeId,
         tableId: { $ne: null },
-        status: { $in: ['confirmed', 'reminded', 'arrived', 'seated'] },
-        reservationTime: { $lte: twoHoursFromNow, $gte: new Date(now.getTime() - 30 * 60 * 1000) },
+        status: { $in: ['pending', 'confirmed', 'reminded', 'arrived', 'seated'] },
+        reservationTime: { $gte: startOfToday, $lte: endOfToday },
       })
         .select('tableId reservationTime partySize status guestName')
         .lean();

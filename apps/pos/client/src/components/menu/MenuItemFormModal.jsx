@@ -662,31 +662,6 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
             <p className="text-xs font-semibold text-slate-400">
               Pricing ({form.variants.length} variant{form.variants.length !== 1 ? 's' : ''})
             </p>
-            {activePartners?.length > 0 && (
-              <button
-                type="button"
-                title="Auto-fill all empty channel price fields using each partner's commission rate"
-                onClick={() => {
-                  const nextVariants = form.variants.map((v) => {
-                    if (!v.available) return v;
-                    const base = Number(v.price) || 0;
-                    const newChannelPrices = { ...(v.channelPrices || {}) };
-                    activePartners.forEach((partner) => {
-                      const existing = newChannelPrices[partner._id];
-                      if (existing == null || existing === '' || existing === undefined) {
-                        const suggested = calcCommissionPrice(base, partner);
-                        if (suggested !== '') newChannelPrices[partner._id] = suggested;
-                      }
-                    });
-                    return { ...v, channelPrices: newChannelPrices };
-                  });
-                  setForm((f) => ({ ...f, variants: nextVariants }));
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-600 hover:bg-sky-550 active:bg-sky-700 text-white shadow-md transition cursor-pointer"
-              >
-                ✦ Auto-fill from commission
-              </button>
-            )}
           </div>
 
           {showMatrix ? (
@@ -749,26 +724,8 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                                             }
                                           }}
                                           placeholder={suggested ? String(suggested) : 'base'}
-                                          className="w-full bg-slate-950 border border-sky-900/60 text-[var(--pos-text-primary)] rounded pl-1 pr-9 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-sky-500/50 placeholder-sky-900"
+                                          className="w-full bg-slate-950 border border-sky-900/60 text-[var(--pos-text-primary)] rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-sky-500/50 placeholder-sky-900"
                                         />
-                                        {suggested !== '' && suggested != null && (
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              const newChannelPrices = {
-                                                ...(v.channelPrices || {}),
-                                                [partner._id]: Number(suggested),
-                                              };
-                                              const vIdx = findVariantIndex(form.variants, size, flavor);
-                                              if (vIdx >= 0) {
-                                                patchVariant(vIdx, { channelPrices: newChannelPrices });
-                                              }
-                                            }}
-                                            className="absolute right-0.5 bg-sky-600 hover:bg-sky-550 active:bg-sky-700 text-white px-1 py-0.2 rounded text-[8px] font-bold transition cursor-pointer"
-                                          >
-                                            Fill
-                                          </button>
-                                        )}
                                       </div>
                                     </div>
                                   );
@@ -875,24 +832,6 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                         <div className="space-y-1.5 pt-1.5 border-t border-slate-800/60">
                           <div className="flex items-center justify-between flex-wrap gap-2">
                             <p className="text-[9px] font-semibold text-sky-400/80 uppercase tracking-wide">Channel prices</p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const base = Number(v.price) || 0;
-                                const newChannelPrices = { ...(v.channelPrices || {}) };
-                                activePartners.forEach((partner) => {
-                                  const existing = newChannelPrices[partner._id];
-                                  if (existing == null || existing === '' || existing === undefined) {
-                                    const suggested = calcCommissionPrice(base, partner);
-                                    if (suggested !== '') newChannelPrices[partner._id] = suggested;
-                                  }
-                                });
-                                patchVariant(idx, { channelPrices: newChannelPrices });
-                              }}
-                              className="px-2 py-0.5 rounded bg-sky-600 hover:bg-sky-550 text-white font-bold text-[9px] transition cursor-pointer shadow-sm"
-                            >
-                              Auto-fill
-                            </button>
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {activePartners.map((partner) => {
@@ -918,23 +857,8 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                                         patchVariant(idx, { channelPrices: newChannelPrices });
                                       }}
                                       placeholder={suggested ? String(suggested) : 'base price'}
-                                      className="w-full bg-slate-950 border border-sky-900/50 text-[var(--pos-text-primary)] rounded-lg pl-2 pr-10 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500/40 placeholder-sky-900/70"
+                                      className="w-full bg-slate-950 border border-sky-900/50 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500/40 placeholder-sky-900/70"
                                     />
-                                    {suggested !== '' && suggested != null && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const newChannelPrices = {
-                                            ...(v.channelPrices || {}),
-                                            [partner._id]: Number(suggested),
-                                          };
-                                          patchVariant(idx, { channelPrices: newChannelPrices });
-                                        }}
-                                        className="absolute right-1 bg-sky-600 hover:bg-sky-550 text-white px-1 py-0.2 rounded text-[8px] font-bold transition cursor-pointer"
-                                      >
-                                        Fill
-                                      </button>
-                                    )}
                                   </div>
                                 </div>
                               );
@@ -1108,6 +1032,37 @@ export default function MenuItemFormModal({
     }));
   };
 
+  const handleGlobalAutofill = () => {
+    if (form.hasVariants) {
+      const nextVariants = (form.variants || []).map((v) => {
+        const base = Number(v.price) || 0;
+        const newChannelPrices = { ...(v.channelPrices || {}) };
+        activePartners.forEach((partner) => {
+          const suggested = calcCommissionPrice(base, partner);
+          if (suggested !== '') {
+            newChannelPrices[partner._id] = suggested;
+          } else {
+            delete newChannelPrices[partner._id];
+          }
+        });
+        return { ...v, channelPrices: newChannelPrices };
+      });
+      setForm((f) => ({ ...f, variants: nextVariants }));
+    } else {
+      const base = Number(form.price) || 0;
+      const newChannelPrices = { ...(form.channelPrices || {}) };
+      activePartners.forEach((partner) => {
+        const suggested = calcCommissionPrice(base, partner);
+        if (suggested !== '') {
+          newChannelPrices[partner._id] = suggested;
+        } else {
+          delete newChannelPrices[partner._id];
+        }
+      });
+      setForm((f) => ({ ...f, channelPrices: newChannelPrices }));
+    }
+  };
+
   const footer = (
     <div className="flex gap-3">
       <button type="button" onClick={onClose}
@@ -1243,6 +1198,17 @@ export default function MenuItemFormModal({
 
         {activeTab === 'pricing' && (
           <div className="space-y-4">
+            {activePartners?.length > 0 && (
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={handleGlobalAutofill}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-550 active:bg-sky-700 text-white shadow-md transition cursor-pointer"
+                >
+                  ✦ Auto-fill all channel prices from commission
+                </button>
+              </div>
+            )}
             {form.isCombo && (
               <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-amber-500/20">
                 <p className="text-sm font-semibold text-amber-400 mb-3 flex items-center gap-1.5">
@@ -1275,25 +1241,6 @@ export default function MenuItemFormModal({
                     <p className="text-xs font-semibold text-sky-400">Channel Prices</p>
                     <p className="text-[10px] text-slate-500 mt-0.5">Leave blank to use the base price. Placeholder shows commission-suggested price.</p>
                   </div>
-                  <button
-                    type="button"
-                    title="Fill all empty channel prices using each partner's commission rate"
-                    onClick={() => {
-                      const base = Number(form.price) || 0;
-                      const newChannelPrices = { ...(form.channelPrices || {}) };
-                      activePartners.forEach((partner) => {
-                        const existing = newChannelPrices[partner._id];
-                        if (existing == null || existing === '' || existing === undefined) {
-                          const suggested = calcCommissionPrice(base, partner);
-                          if (suggested !== '') newChannelPrices[partner._id] = suggested;
-                        }
-                      });
-                      setForm((f) => ({ ...f, channelPrices: newChannelPrices }));
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-600 hover:bg-sky-550 active:bg-sky-700 text-white shadow-md transition cursor-pointer"
-                  >
-                    ✦ Auto-fill from commission
-                  </button>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {activePartners.map((partner) => {
@@ -1321,25 +1268,8 @@ export default function MenuItemFormModal({
                               }));
                             }}
                             placeholder={suggested ? String(suggested) : 'Use base price'}
-                            className="w-full bg-slate-900 border border-sky-900/50 text-[var(--pos-text-primary)] rounded-xl pl-3 pr-16 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500/40 placeholder-sky-900/70"
+                            className="w-full bg-slate-900 border border-sky-900/50 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500/40 placeholder-sky-900/70"
                           />
-                          {suggested !== '' && suggested != null && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setForm((f) => ({
-                                  ...f,
-                                  channelPrices: {
-                                    ...f.channelPrices,
-                                    [partner._id]: Number(suggested),
-                                  },
-                                }));
-                              }}
-                              className="absolute right-1.5 bg-sky-600 hover:bg-sky-550 active:bg-sky-700 text-white px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer"
-                            >
-                              Auto-fill
-                            </button>
-                          )}
                         </div>
                       </div>
                     );

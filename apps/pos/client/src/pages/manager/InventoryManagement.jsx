@@ -4,6 +4,7 @@ import {
   Plus, Edit2, Package, X, AlertTriangle, Truck, Search,
   LineChart as LineChartIcon, Calendar, User, SlidersHorizontal,
   Eye, Trash2, BarChart2, TrendingDown, TrendingUp, Layers,
+  Download, Upload
 } from 'lucide-react';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
@@ -23,6 +24,12 @@ import InventoryAdjustments from '../../components/inventory/InventoryAdjustment
 import PageHeader from '../../components/PageHeader';
 import ResponsiveTable from '../../components/ResponsiveTable';
 import ViewModeToggle from '../../components/ViewModeToggle';
+import ImportModal from '../../components/ImportModal';
+import {
+  exportInventoryToCSV,
+  getInventoryImportFields,
+  validateInventoryRow
+} from '../../utils/csvExportImport';
 
 const EMPTY_FORM = { itemName: '', unit: 'pcs', quantity: '', minThreshold: '', category: '', suppliers: [] };
 
@@ -87,6 +94,8 @@ export default function InventoryManagement() {
     setViewMode(mode);
     localStorage.setItem('view_mode_inventory_management', mode);
   };
+
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   const qc = useQueryClient();
   const { sort, order, toggleSort, sortParams } = useListSort('name', 'asc');
@@ -287,6 +296,147 @@ export default function InventoryManagement() {
 
 
 
+  const handleExportInventory = () => {
+    let itemsToExport = items;
+    if (selectedCategoryId) {
+      if (selectedCategoryId === 'uncategorized') {
+        itemsToExport = items.filter(item => !item.category);
+      } else {
+        itemsToExport = items.filter(item => {
+          const catId = item.category?._id || item.category;
+          return String(catId) === String(selectedCategoryId);
+        });
+      }
+    }
+    exportInventoryToCSV(itemsToExport);
+    showToast(`Exported ${itemsToExport.length} inventory items`, 'success');
+  };
+
+  const handleImportInventory = async (csvData, mapping, onProgress) => {
+    const errors = [];
+    let successCount = 0;
+    const createdCategories = new Set();
+    const createdSuppliersCount = { count: 0 };
+
+    // Map existing inventory categories (case-insensitive)
+    const existingCategoriesMap = new Map();
+    categories.forEach(cat => {
+      existingCategoriesMap.set(cat.name.toLowerCase(), cat);
+    });
+
+    // Map existing suppliers (case-insensitive)
+    const suppliersMap = new Map();
+    suppliers.forEach(sup => {
+      suppliersMap.set(sup.name.toLowerCase(), sup._id);
+    });
+
+    for (let i = 0; i < csvData.length; i++) {
+      const row = csvData[i];
+      const { item, errors: rowErrors } = validateInventoryRow(row, mapping, i);
+
+      if (rowErrors.length > 0) {
+        errors.push({ rowIndex: i, message: rowErrors.join('; ') });
+        onProgress({ total: csvData.length, current: i + 1, errors });
+        continue;
+      }
+
+      try {
+        // 1. Resolve/create category
+        if (item.category) {
+          const catLower = item.category.toLowerCase();
+          let cat = existingCategoriesMap.get(catLower);
+          
+          if (!cat) {
+            // Create the inventory category
+            try {
+              const res = await api.post('/inventory-categories', {
+                name: item.category,
+                description: 'Imported category'
+              });
+              cat = res.data;
+              existingCategoriesMap.set(catLower, cat);
+              createdCategories.add(item.category);
+            } catch (catErr) {
+              console.warn(`Failed to create inventory category "${item.category}":`, catErr.message);
+            }
+          }
+
+          if (cat) {
+            item.category = cat._id;
+          } else {
+            item.category = null;
+          }
+        } else {
+          item.category = null;
+        }
+
+        // 2. Resolve or create suppliers on-the-fly
+        if (item.suppliersRaw && item.suppliersRaw.length > 0) {
+          const resolvedSupplierIds = [];
+          for (const sName of item.suppliersRaw) {
+            const sNameLower = sName.toLowerCase();
+            let sId = suppliersMap.get(sNameLower);
+            
+            if (!sId) {
+              // Create the supplier on-the-fly
+              try {
+                const res = await api.post('/suppliers', { name: sName });
+                sId = res.data._id;
+                suppliersMap.set(sNameLower, sId);
+                createdSuppliersCount.count++;
+              } catch (supErr) {
+                console.warn(`Failed to create supplier "${sName}":`, supErr.message);
+              }
+            }
+            
+            if (sId) {
+              resolvedSupplierIds.push(sId);
+            }
+          }
+          item.suppliers = resolvedSupplierIds;
+        } else {
+          item.suppliers = [];
+        }
+        delete item.suppliersRaw;
+
+        // 3. Create the inventory item
+        await api.post('/inventory', item);
+        successCount++;
+      } catch (error) {
+        const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message;
+        errors.push({
+          rowIndex: i,
+          message: errorMsg
+        });
+      }
+
+      onProgress({ total: csvData.length, current: i + 1, errors });
+    }
+
+    // Refresh inventory, categories and suppliers after import
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ['inventory'] }),
+      qc.invalidateQueries({ queryKey: ['inventory-categories'] }),
+      qc.invalidateQueries({ queryKey: ['suppliers'] })
+    ]);
+
+    if (createdCategories.size > 0) {
+      const catList = Array.from(createdCategories).join(', ');
+      showToast(`Created ${createdCategories.size} new categories: ${catList}`, 'success');
+    }
+
+    if (createdSuppliersCount.count > 0) {
+      showToast(`Created ${createdSuppliersCount.count} new suppliers on-the-fly`, 'success');
+    }
+
+    return {
+      total: csvData.length,
+      success: successCount,
+      errors,
+      categoriesCreated: createdCategories.size
+    };
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setFormError('');
@@ -412,6 +562,8 @@ export default function InventoryManagement() {
             'View history of stock adjustments'
           }
           actions={activeTab === 'stock' ? [
+            { label: 'Export', icon: Download, onClick: handleExportInventory },
+            { label: 'Import', icon: Upload, onClick: () => setImportModalOpen(true) },
             { label: 'Manage Categories', icon: SlidersHorizontal, onClick: () => setManageCategoriesOpen(true) },
             { label: 'Add Item', icon: Plus, onClick: openAdd, primary: true },
           ] : activeTab === 'analytics' ? [
@@ -1640,6 +1792,22 @@ export default function InventoryManagement() {
         </div>
       )}
       
+      <ImportModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        title="Import Inventory Items"
+        fields={getInventoryImportFields()}
+        onImport={handleImportInventory}
+        templateName="inventory_items"
+        instructions={[
+          "Fields marked with * are required.",
+          "Unit: The stock unit of measure (e.g., kg, g, L, pcs, box).",
+          "Current Stock: Enter the starting stock value (number) for this item. Defaults to 0 if left blank.",
+          "Min Threshold: The minimum stock level before warning of critical stock (must be >= 0).",
+          "Suppliers: Comma-separated supplier names (e.g., Supplier A, Supplier B). If a supplier does not exist, it will be automatically created on-the-fly.",
+          "If some rows fail, a CSV error log will be automatically downloaded with instructions."
+        ]}
+      />
       {toast && <Toast message={toast.message} variant={toast.variant} onClose={clearToast} />}
     </div>
   );
