@@ -10,6 +10,20 @@
   --color-brand-brown-muted: #6d4c41;
 }
 
+:root {
+  --pos-page-bg: #f9fafb;
+  --pos-panel: #ffffff;
+  --pos-surface-inset: #f3f4f6;
+  --pos-text-primary: #111827;
+  --pos-selection-text: #ffffff;
+  --pos-text-secondary: #374151;
+  --pos-text-muted: #6b7280;
+  --pos-scrollbar-track: #f3f4f6;
+  --pos-scrollbar-thumb: #d1d5db;
+  --pos-scrollbar-thumb-hover: #9ca3af;
+  --pos-grid-line: rgba(0, 0, 0, 0.08);
+}
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;

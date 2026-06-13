@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ContactRound, Plus, Search, Pencil, Trash2 } from 'lucide-react';
 import api from '../../api/axios';
@@ -33,7 +33,8 @@ export default function CustomersAdminPage() {
   const [formErrors, setFormErrors] = useState({});
   const [page, setPage] = useState(1);
   const [confirmDeleteCustomer, setConfirmDeleteCustomer] = useState(null);
-  const { sort, order, toggleSort, sortParams } = useListSort('updatedAt', 'desc');
+  const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
+  const [pointsFilter, setPointsFilter] = useState('all');
   const [viewMode, setViewMode] = useState(() => {
     const saved = localStorage.getItem('view_mode_admin_customers');
     if (saved) return saved;
@@ -42,7 +43,7 @@ export default function CustomersAdminPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, sort, order]);
+  }, [search, sort, order, pointsFilter]);
 
   const { data: list = { items: [], page: 1, pages: 1, total: 0 }, isPending, isFetching } = useQuery({
     queryKey: ['admin-customers', search, page, sortParams],
@@ -60,6 +61,12 @@ export default function CustomersAdminPage() {
         .then((r) => unwrapPagedList(r.data)),
   });
   const rows = list.items || [];
+  const filteredRows = useMemo(() => {
+    if (pointsFilter === 'has-points') return rows.filter(r => (r.lifetimePoints ?? 0) > 0);
+    if (pointsFilter === 'high-points') return rows.filter(r => (r.lifetimePoints ?? 0) >= 500);
+    if (pointsFilter === 'no-points') return rows.filter(r => (r.lifetimePoints ?? 0) === 0);
+    return rows;
+  }, [rows, pointsFilter]);
 
   const { data: addonCatalog = [] } = useQuery({
     queryKey: ['merchant-addon-catalog'],
@@ -164,14 +171,26 @@ export default function CustomersAdminPage() {
       <LoyaltyAddonSubscribeBanner />
 
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name, email, mobile…"
-            className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm"
-          />
+        <div className="flex flex-col sm:flex-row gap-3 flex-1 max-w-2xl">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, email, mobile…"
+              className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm"
+            />
+          </div>
+          <select
+            value={pointsFilter}
+            onChange={(e) => setPointsFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none"
+          >
+            <option value="all">All Points</option>
+            <option value="has-points">Points &gt; 0</option>
+            <option value="high-points">Points &ge; 500</option>
+            <option value="no-points">No Points</option>
+          </select>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <ViewModeToggle mode={viewMode} setMode={(m) => { setViewMode(m); localStorage.setItem('view_mode_admin_customers', m); }} />
@@ -233,16 +252,25 @@ export default function CustomersAdminPage() {
               <thead className="bg-gray-50 text-gray-700 text-left">
                 <tr>
                   <SortableTh label="Customer" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                  <th className="px-4 py-3 font-medium text-gray-700">Mobile</th>
+                  <th className="px-4 py-3 font-medium text-gray-700">Email</th>
+                  <SortableTh label="Created" field="createdAt" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                  <SortableTh label="Updated" field="updatedAt" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                   <SortableTh label="Points" field="points" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                   <th className="px-4 py-3 font-medium text-right w-36">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {filteredRows.map((row) => (
                   <tr key={row._id} className="border-t border-gray-100">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{row.name || '—'}</div>
-                      <div className="text-xs text-gray-500">{row.email || row.mobile || '—'}</div>
+                    <td className="px-4 py-3 font-medium text-gray-900">{row.name || '—'}</td>
+                    <td className="px-4 py-3 text-gray-700">{row.mobile || '—'}</td>
+                    <td className="px-4 py-3 text-gray-700">{row.email || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                      {row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                      {row.updatedAt ? new Date(row.updatedAt).toLocaleDateString() : '—'}
                     </td>
                     <td className="px-4 py-3 tabular-nums text-gray-900">{row.lifetimePoints ?? 0}</td>
                     <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">

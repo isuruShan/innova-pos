@@ -1,8 +1,34 @@
 const express = require('express');
 const MenuItem = require('../models/MenuItem');
-const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
-const { resolveSelectedStore, buildStoreFilter } = require('../middleware/storeScope');
+const {
+  attachFreshMenuImageUrls,
+  normalizeMenuItemImages,
+} = require('../utils/menuItemImageUrls');
+const { protect, authorize, tenantScope } = require('../middleware/auth');
+const { emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
+const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
+const { roundMoney2 } = require('../utils/orderHelpers');
 const { parseSortQuery } = require('../lib/listPagination');
+const { getNextTopSortOrder, applyReorder } = require('../lib/sortOrderHelpers');
+const { buildItemStoreFilter, COMBO_CATEGORY_NAME, ensureComboCategory } = require('../lib/categoryHelpers');
+
+function sanitizeMenuPayload(body) {
+  if (!body || typeof body !== 'object') return body;
+  const next = { ...body };
+  if (next.price !== undefined && next.price !== null) {
+    next.price = roundMoney2(next.price);
+  }
+  if (Array.isArray(next.variants)) {
+    next.variants = next.variants.map((v) => {
+      const nextV = { ...v };
+      if (nextV.price !== undefined && nextV.price !== null) {
+        nextV.price = roundMoney2(nextV.price);
+      }
+      return nextV;
+    });
+  }
+  return next;
+}
 
 const router = express.Router();
 
@@ -14,43 +40,226 @@ const MENU_SORT_FIELDS = {
   createdAt: 'createdAt',
 };
 
-const DEFAULT_MENU_SORT = { category: 1, sortOrder: 1, name: 1 };
+const DEFAULT_MENU_SORT = { sortOrder: 1, createdAt: -1 };
 
-/** Read-only menu for promotion builder in admin portal */
-router.get('/', protect, authorize('merchant_admin'), tenantScope, resolveSelectedStore, async (req, res) => {
+async function resolveItemCategory(req, body, storeId) {
+  const payload = sanitizeMenuPayload(body);
+  if (payload.isCombo) {
+    await ensureComboCategory({ tenantId: req.tenantId, storeId, userId: req.user.id });
+    return COMBO_CATEGORY_NAME;
+  }
+  const category = body.category?.trim();
+  if (!category) {
+    const err = new Error('Category is required');
+    err.status = 400;
+    throw err;
+  }
+  return category;
+}
+
+router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
+    const Category = require('../models/Category');
+    const inactiveCategories = await Category.find({
+      tenantId: req.tenantId,
+      ...buildStoreFilter(req),
+      active: false,
+    }).select('name').lean();
+    const inactiveNames = inactiveCategories.map((c) => c.name);
+
     const filter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
+    if (inactiveNames.length > 0) {
+      filter.category = { $nin: inactiveNames };
+    }
+
     const sort = parseSortQuery(req, MENU_SORT_FIELDS, DEFAULT_MENU_SORT);
-    const items = await MenuItem.find(filter).sort(sort);
-    res.json(items);
+    const items = await MenuItem.find(filter).sort(sort).lean();
+    const enriched = await attachFreshMenuImageUrls(items);
+    res.json(enriched);
   } catch (err) {
     sendRouteError(res, err, { req });
   }
 });
 
-router.put('/:id', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+router.patch('/reorder', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const item = await MenuItem.findOne({ _id: req.params.id, tenantId: req.tenantId });
-    if (!item) return res.status(404).json({ message: 'Menu item not found' });
+    const { ids, category } = req.body;
+    const filter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
+    if (category !== undefined && category !== null && String(category).trim()) {
+      filter.category = String(category).trim();
+    }
+    const count = await applyReorder(MenuItem, filter, ids, req.user.id);
 
-    const updates = req.body;
-    for (const key of Object.keys(updates)) {
-      if (key.includes('.')) {
-        const parts = key.split('.');
-        let current = item;
-        for (let i = 0; i < parts.length - 1; i++) {
-          if (!current[parts[i]]) current[parts[i]] = {};
-          current = current[parts[i]];
+    const Category = require('../models/Category');
+    const inactiveCategories = await Category.find({
+      tenantId: req.tenantId,
+      ...buildStoreFilter(req),
+      active: false,
+    }).select('name').lean();
+    const inactiveNames = inactiveCategories.map((c) => c.name);
+
+    const itemsFilter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
+    if (category !== undefined && category !== null && String(category).trim()) {
+      itemsFilter.category = String(category).trim();
+      if (inactiveNames.includes(itemsFilter.category)) {
+        itemsFilter.category = '__NON_EXISTENT__';
+      }
+    } else if (inactiveNames.length > 0) {
+      itemsFilter.category = { $nin: inactiveNames };
+    }
+
+    const items = await MenuItem.find(itemsFilter).sort({ category: 1, sortOrder: 1, createdAt: -1 }).lean();
+    const enriched = await attachFreshMenuImageUrls(items);
+    res.json({ message: 'Menu order updated', count, items: enriched });
+  } catch (err) {
+    const status = err.status || 400;
+    res.status(status).json({ message: err.message });
+  }
+});
+
+router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+  try {
+    const storeId = await resolveWriteStoreId(req);
+    if (!storeId) return res.status(400).json({ message: 'No store available for menu item creation' });
+
+    const { images, image, imageKey } = normalizeMenuItemImages(req.body);
+    const payload = sanitizeMenuPayload(req.body);
+    const category = await resolveItemCategory(req, req.body, storeId);
+    payload.category = category;
+
+    const itemScope = {
+      tenantId: req.tenantId,
+      ...buildItemStoreFilter(storeId),
+      category,
+    };
+    const sortOrder = payload.sortOrder !== undefined && payload.sortOrder !== null
+      ? Number(payload.sortOrder) || 0
+      : await getNextTopSortOrder(MenuItem, itemScope);
+
+    const item = await MenuItem.create({
+      ...payload,
+      sortOrder,
+      images,
+      image,
+      imageKey,
+      tenantId: req.tenantId,
+      storeId,
+      createdBy: req.user.id,
+    });
+
+    // Create ingredient links if passed during creation
+    if (req.body.ingredients && Array.isArray(req.body.ingredients)) {
+      const IngredientLink = require('../models/IngredientLink');
+      const Inventory = require('../models/Inventory');
+      for (const ing of req.body.ingredients) {
+        const { inventoryItemId, quantity, unit, variantId, wastagePercentage } = ing;
+        if (inventoryItemId && typeof quantity === 'number') {
+          const invItem = await Inventory.findOne({
+            _id: inventoryItemId,
+            tenantId: req.tenantId,
+            storeId,
+          });
+          if (invItem) {
+            await IngredientLink.create({
+              tenantId: req.tenantId,
+              storeId,
+              menuItemId: item._id,
+              variantId: variantId || null,
+              inventoryItemId,
+              quantity,
+              wastagePercentage: typeof wastagePercentage === 'number' ? wastagePercentage : 0,
+              unit: unit || invItem.unit,
+              createdBy: req.user.id,
+            });
+          }
         }
-        current[parts[parts.length - 1]] = updates[key];
-        item.markModified(parts[0]);
-      } else {
-        item[key] = updates[key];
       }
     }
 
-    await item.save();
+    await emitAudit({ req, action: 'MENU_ITEM_CREATED', resource: 'MenuItem', resourceId: item._id });
+    res.status(201).json(item);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+  try {
+    const existing = await MenuItem.findOne({
+      _id: req.params.id,
+      tenantId: req.tenantId,
+      ...buildStoreFilter(req),
+    });
+    if (!existing) return res.status(404).json({ message: 'Menu item not found' });
+
+    const storeId = existing.storeId || (await resolveWriteStoreId(req));
+    const update = { ...sanitizeMenuPayload(req.body), updatedBy: req.user.id };
+
+    if (req.body.isCombo !== undefined || req.body.category !== undefined) {
+      const isCombo = req.body.isCombo !== undefined ? !!req.body.isCombo : existing.isCombo;
+      update.isCombo = isCombo;
+      update.category = await resolveItemCategory(req, { ...req.body, isCombo }, storeId);
+    }
+    const hasImageData = req.body?.images !== undefined || req.body?.image !== undefined || req.body?.imageKey !== undefined;
+    if (hasImageData) {
+      const { images, image, imageKey } = normalizeMenuItemImages(req.body);
+      update.images = images;
+      update.image = image;
+      update.imageKey = imageKey;
+    }
+    const item = await MenuItem.findOneAndUpdate(
+      { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) },
+      { $set: update },
+      { new: true, runValidators: true },
+    );
+    if (!item) return res.status(404).json({ message: 'Menu item not found' });
+
+    // Sync ingredient links if passed during update
+    if (req.body.ingredients && Array.isArray(req.body.ingredients)) {
+      const IngredientLink = require('../models/IngredientLink');
+      const Inventory = require('../models/Inventory');
+      await IngredientLink.deleteMany({
+        tenantId: req.tenantId,
+        menuItemId: item._id,
+      });
+      for (const ing of req.body.ingredients) {
+        const { inventoryItemId, quantity, unit, variantId, wastagePercentage } = ing;
+        if (inventoryItemId && typeof quantity === 'number') {
+          const invItem = await Inventory.findOne({
+            _id: inventoryItemId,
+            tenantId: req.tenantId,
+            storeId,
+          });
+          if (invItem) {
+            await IngredientLink.create({
+              tenantId: req.tenantId,
+              storeId,
+              menuItemId: item._id,
+              variantId: variantId || null,
+              inventoryItemId,
+              quantity,
+              wastagePercentage: typeof wastagePercentage === 'number' ? wastagePercentage : 0,
+              unit: unit || invItem.unit,
+              createdBy: req.user.id,
+            });
+          }
+        }
+      }
+    }
+
+    await emitAudit({ req, action: 'MENU_ITEM_UPDATED', resource: 'MenuItem', resourceId: item._id });
     res.json(item);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+  try {
+    const item = await MenuItem.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) });
+    if (!item) return res.status(404).json({ message: 'Menu item not found' });
+    await emitAudit({ req, action: 'MENU_ITEM_DELETED', resource: 'MenuItem', resourceId: req.params.id });
+    res.json({ message: 'Item deleted' });
   } catch (err) {
     sendRouteError(res, err, { req });
   }

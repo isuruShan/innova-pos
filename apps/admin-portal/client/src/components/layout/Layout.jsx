@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getPosUrl } from '@innovapos/app-urls';
 import {
   LayoutDashboard, Users, Palette, CreditCard, Building2,
-  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3, Sparkles, Landmark, Package, ShoppingBag, Percent, Search, MessageSquare, KeyRound
+  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3, Sparkles, Landmark, Package, ShoppingBag, Percent, Search, MessageSquare, KeyRound, Table
 } from 'lucide-react';
 import api from '../../api/axios';
 import NotificationBell from '../NotificationBell';
@@ -79,7 +79,38 @@ const ADMIN_NAV_GROUPS = [
           { label: 'Pending Stores', to: '/stores/pending' },
         ],
       },
-      { label: 'Inventory Sessions', icon: Package, to: '/inventory-sessions' },
+    ],
+  },
+  {
+    title: 'Operations',
+    items: [
+      { label: 'Menu Management', icon: ClipboardList, to: '/menu' },
+      {
+        label: 'Inventory',
+        icon: Package,
+        to: '/inventory',
+        subItems: [
+          { label: 'Stock Levels', to: '/inventory' },
+          { label: 'Suppliers', to: '/suppliers' },
+          { label: 'Purchase Orders', to: '/purchase-orders' },
+          { label: 'Goods Receipts', to: '/goods-receipts' },
+          { label: 'Wastage', to: '/wastage' },
+          { label: 'Stock Audit', to: '/stock-audit' },
+          { label: 'Stock Reconciliation', to: '/stock-reconciliation' },
+          { label: 'Inventory Sessions', to: '/inventory-sessions' },
+        ],
+      },
+      {
+        label: 'Table Management',
+        icon: Table,
+        to: '/tables',
+        subItems: [
+          { label: 'Tables & QRs', to: '/tables' },
+          { label: 'Floor Plan Editor', to: '/floor-plan/editor' },
+          { label: 'Floor Plan View', to: '/floor-plan' },
+          { label: 'Table Analytics', to: '/table-analytics' },
+        ],
+      },
     ],
   },
   {

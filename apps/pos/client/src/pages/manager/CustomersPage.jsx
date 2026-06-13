@@ -28,7 +28,7 @@ export default function CustomersPage() {
   const [formErrors, setFormErrors] = useState({});
   const [pointsOpen, setPointsOpen] = useState(false);
   const [pointsForm, setPointsForm] = useState({ lifetimePoints: '', note: '' });
-  const { sort, order, toggleSort, sortParams } = useListSort('updatedAt', 'desc');
+  const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
 
   const { data: rows = [], isPending } = useQuery({
     queryKey: ['customers', search, sortParams],
@@ -163,6 +163,7 @@ export default function CustomersPage() {
                   <th className="px-4 py-3">Mobile</th>
                   <th className="px-4 py-3">Email</th>
                   <SortableTh label="Updated" field="updatedAt" currentSort={sort} currentOrder={order} onSort={toggleSort} />
+                  <SortableTh label="Created" field="createdAt" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                   <SortableTh label="Points" field="points" currentSort={sort} currentOrder={order} onSort={toggleSort} />
                 </tr>
               </thead>
@@ -178,6 +179,9 @@ export default function CustomersPage() {
                     <td className="px-4 py-3 text-slate-400 truncate max-w-[180px]">{c.email || '—'}</td>
                     <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
                       {c.updatedAt ? new Date(c.updatedAt).toLocaleDateString() : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
+                      {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'}
                     </td>
                     <td className="px-4 py-3 text-amber-400 font-semibold">{c.lifetimePoints ?? 0}</td>
                   </tr>

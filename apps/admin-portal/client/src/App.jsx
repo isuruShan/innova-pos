@@ -52,6 +52,21 @@ import FoodmarketCommissionsPage from './pages/admin/FoodmarketCommissionsPage';
 import SessionReviewPage from './pages/admin/SessionReviewPage';
 import ReportsPortal from './pages/admin/ReportsPortal';
 import WhatsAppConfigPage from './pages/admin/WhatsAppConfigPage';
+
+// Migrated management pages
+import MenuManagement from './pages/admin/MenuManagement';
+import InventoryManagement from './pages/admin/InventoryManagement';
+import SupplierManagement from './pages/admin/SupplierManagement';
+import PurchaseOrders from './pages/admin/PurchaseOrders';
+import GoodsReceipts from './pages/admin/GoodsReceipts';
+import WastageManagement from './pages/admin/WastageManagement';
+import StockAudit from './pages/admin/StockAudit';
+import StockReconciliation from './pages/admin/StockReconciliation';
+import CafeTablesPage from './pages/admin/CafeTablesPage';
+import FloorPlanEditorPage from './pages/admin/FloorPlanEditorPage';
+import FloorPlanViewPage from './pages/admin/FloorPlanViewPage';
+import TableAnalyticsPage from './pages/admin/TableAnalyticsPage';
+
 const PrivateRoute = ({ children, roles }) => {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
@@ -244,6 +259,66 @@ export default function App() {
           <Route path="/customers" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><CustomersAdminPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/menu" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><MenuManagement /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/inventory" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><InventoryManagement /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/suppliers" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><SupplierManagement /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/purchase-orders" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><PurchaseOrders /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/goods-receipts" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><GoodsReceipts /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/wastage" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><WastageManagement /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/stock-audit" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><StockAudit /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/stock-reconciliation" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><StockReconciliation /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/tables" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><CafeTablesPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/floor-plan/editor" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><FloorPlanEditorPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/floor-plan" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><FloorPlanViewPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/table-analytics" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><TableAnalyticsPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/promotions" element={
