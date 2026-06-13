@@ -4,6 +4,18 @@ const Notification = require('../models/Notification');
 const { publishNotificationRefresh } = require('./notificationBus');
 const { sendPushNotification } = require('./pushNotifier');
 
+// Module-level logger; defaults to console until setLogger() is called at startup
+let _logger = console;
+
+/**
+ * Wire in the application Winston logger so push errors appear in the log files
+ * rather than being swallowed or going to raw stdout.
+ * Call this once from index.js after createLogger().
+ */
+function setNotificationLogger(logger) {
+  _logger = logger;
+}
+
 function castTenantId(tenantId) {
   if (tenantId == null) return tenantId;
   try {
@@ -24,7 +36,9 @@ async function createNotification(tenantId, userId, payload) {
   });
   publishNotificationRefresh(tenantId, [userId]);
   // Dispatch dynamic push notification
-  sendPushNotification(userId, payload).catch(() => {});
+  sendPushNotification(userId, payload, _logger).catch((err) => {
+    _logger.error('[notificationHelpers] createNotification push failed', { error: err.message });
+  });
   return doc;
 }
 
@@ -58,7 +72,9 @@ async function notifyMerchantAdmins(tenantId, payload, options = {}) {
   const targetIds = admins.map((a) => a._id);
   publishNotificationRefresh(tid, targetIds);
   // Dispatch push notifications to merchant admins
-  sendPushNotification(targetIds, payload).catch(() => {});
+  sendPushNotification(targetIds, payload, _logger).catch((err) => {
+    _logger.error('[notificationHelpers] notifyMerchantAdmins push failed', { error: err.message });
+  });
   return inserted;
 }
 
@@ -114,7 +130,9 @@ async function notifyPosStaffOrderStatusChange({
   const targetIds = targets.map((u) => u._id);
   publishNotificationRefresh(tid, targetIds);
   // Dispatch push notification to relevant staff
-  sendPushNotification(targetIds, { type: 'order_status_changed', title, body, meta: docs[0].meta }).catch(() => {});
+  sendPushNotification(targetIds, { type: 'order_status_changed', title, body, meta: docs[0].meta }, _logger).catch((err) => {
+    _logger.error('[notificationHelpers] notifyPosStaffOrderStatusChange push failed', { error: err.message });
+  });
   return inserted;
 }
 
@@ -173,7 +191,9 @@ async function notifyCashiersTableWaiterCall({
   const targetIds = targets.map((u) => u._id);
   publishNotificationRefresh(tid, targetIds);
   // Dispatch push notification to relevant cashier/manager staff
-  sendPushNotification(targetIds, { type: 'table_waiter_call', title, body, meta: docs[0].meta }).catch(() => {});
+  sendPushNotification(targetIds, { type: 'table_waiter_call', title, body, meta: docs[0].meta }, _logger).catch((err) => {
+    _logger.error('[notificationHelpers] notifyCashiersTableWaiterCall push failed', { error: err.message });
+  });
   return inserted;
 }
 
@@ -231,7 +251,9 @@ async function notifyCashiersQrOrderChange({ tenantId, storeId, tableLabel, orde
   const targetIds = targets.map((u) => u._id);
   publishNotificationRefresh(tid, targetIds);
   // Dispatch push notifications to targets
-  sendPushNotification(targetIds, { type: 'qr_order_updated', title, body, meta: docs[0].meta }).catch(() => {});
+  sendPushNotification(targetIds, { type: 'qr_order_updated', title, body, meta: docs[0].meta }, _logger).catch((err) => {
+    _logger.error('[notificationHelpers] notifyCashiersQrOrderChange push failed', { error: err.message });
+  });
   return inserted;
 }
 
@@ -277,11 +299,14 @@ async function notifyCashiersUberEatsOrder({ tenantId, storeId, order }) {
   const targetIds = targets.map((u) => u._id);
   publishNotificationRefresh(tid, targetIds);
   // Dispatch push notifications
-  sendPushNotification(targetIds, { type: 'uber_order_new', title, body, meta: docs[0].meta }).catch(() => {});
+  sendPushNotification(targetIds, { type: 'uber_order_new', title, body, meta: docs[0].meta }, _logger).catch((err) => {
+    _logger.error('[notificationHelpers] notifyCashiersUberEatsOrder push failed', { error: err.message });
+  });
   return inserted;
 }
 
 module.exports = {
+  setNotificationLogger,
   createNotification,
   notifyMerchantAdmins,
   notifyPosStaffOrderStatusChange,

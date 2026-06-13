@@ -27,6 +27,10 @@ const isProd = process.env.NODE_ENV === 'production';
 const { initNotificationBus } = require('./lib/notificationBus');
 await initNotificationBus(logger);
 
+// Wire logger into notification helpers so push errors surface in log files
+const { setNotificationLogger } = require('./lib/notificationHelpers');
+setNotificationLogger(logger);
+
 connectDB(logger);
 require('@innovapos/analytics-core');
 
