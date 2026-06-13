@@ -34,6 +34,9 @@ const userSchema = new mongoose.Schema(
     // Tracking
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+
+    // Firebase Cloud Messaging push notification tokens (one per registered browser/device)
+    fcmTokens: [{ type: String, index: true }],
   },
   { timestamps: true }
 );

@@ -10,6 +10,8 @@ import { AlertProvider } from './context/AlertContext';
 import PosNotificationStream from './components/PosNotificationStream';
 import ForcePasswordResetGate from './components/auth/ForcePasswordResetGate';
 import ForcePinSetupGate from './components/auth/ForcePinSetupGate';
+import PushPermissionBanner from './components/PushPermissionBanner';
+
 
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
@@ -105,7 +107,9 @@ export default function App() {
               <AlertProvider>
                 <CashierDraftOrdersProvider>
               <PosNotificationStream />
+              <PushPermissionBanner />
               <BrowserRouter>
+
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />

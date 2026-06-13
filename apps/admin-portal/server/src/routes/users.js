@@ -4,6 +4,8 @@ const User = require('../models/User');
 const { authenticateJWT, authorize, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { childLogger } = require('@innovapos/logger');
 const { sendWelcomeEmail, sendAdminResetPasswordEmail } = require('../utils/mailer');
+const { createNotification } = require('../lib/notificationHelpers');
+
 const { presignObjectKey, presignObjectKeys } = require('../utils/s3Runtime');
 const { parsePageQuery, paginated, parseSortQuery } = require('../lib/listPagination');
 const { quoteCreateUser, quoteAssignStores } = require('../lib/userLicenseQuote');
@@ -302,6 +304,13 @@ router.post('/:id/reset-password', authenticateJWT, authorize('merchant_admin', 
         adminName,
         businessName,
       });
+      // Push notification paired with the email — rule: every email gets a push
+      createNotification(user.tenantId, user._id, {
+        type: 'password_reset_by_admin',
+        title: '🔐 Password reset by admin',
+        body: `${adminName} has reset your password for ${businessName || 'Cafinity'}. Check your email for the temporary password.`,
+        meta: { resourceType: 'user', resourceId: String(user._id) },
+      }).catch(() => {});
       res.json({ message: 'Password reset and email sent', welcomeEmailSent: true });
     } catch (emailErr) {
       logger.error('Password reset email failed', { error: emailErr.message, to: user.email });
@@ -311,6 +320,7 @@ router.post('/:id/reset-password', authenticateJWT, authorize('merchant_admin', 
         welcomeEmailSent: false,
       });
     }
+
   } catch (err) {
     sendRouteError(res, err, { req });
   }

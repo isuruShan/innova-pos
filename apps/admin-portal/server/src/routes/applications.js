@@ -10,6 +10,8 @@ const TenantSettings = require('../models/TenantSettings');
 const { getPreset } = require('@innovapos/pos-theme-presets');
 const { authenticateJWT, authorize, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { sendWelcomeEmail, sendRejectionEmail } = require('../utils/mailer');
+const { notifySuperAdmins, createNotification } = require('../lib/notificationHelpers');
+
 const { childLogger } = require('@innovapos/logger');
 const { allocateStoreCode, formatStoreAddressFromApplication } = require('../lib/storeProvisioning');
 
@@ -301,6 +303,14 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
       } catch (emailErr) {
         logger.error('Rejection email failed', { error: emailErr.message, to: application.personal.email });
       }
+      // Push to superadmins confirming the rejection action was taken
+      notifySuperAdmins(null, {
+        type: 'application_rejected',
+        title: 'Application rejected',
+        body: `Application from ${application.personal.firstName} ${application.personal.lastName} was rejected.`,
+        meta: { resourceType: 'application', resourceId: String(application._id) },
+      }).catch(() => {});
+
 
       await emitAudit({
         req,
@@ -461,6 +471,22 @@ router.put('/:id/status', authenticateJWT, authorize('superadmin'), async (req, 
           to: adminUser.email,
         });
       }
+
+      // Push to the new merchant admin welcoming them (paired with the welcome email)
+      createNotification(tenant._id, adminUser._id, {
+        type: 'account_approved',
+        title: '🎉 Your merchant account is ready!',
+        body: `Welcome to Cafinity, ${adminUser.name}! Your account for ${tenant.businessName} is now active.`,
+        meta: { resourceType: 'tenant', resourceId: String(tenant._id) },
+      }).catch(() => {});
+      // Push to superadmins confirming the approval
+      notifySuperAdmins(tenant._id, {
+        type: 'application_approved',
+        title: 'Application approved',
+        body: `${tenant.businessName} has been approved. Tenant and admin user created.`,
+        meta: { resourceType: 'tenant', resourceId: String(tenant._id) },
+      }).catch(() => {});
+
 
       await emitAudit({
         req,

@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import api from '../api/axios';
+import { silentRegisterIfGranted, unregisterPushNotifications } from '../services/pushService';
 
 const AuthContext = createContext(null);
 
@@ -12,19 +13,28 @@ export const AuthProvider = ({ children }) => {
     } catch { return null; }
   });
 
+  // Silently re-register FCM token on mount if permission already granted
+  useEffect(() => {
+    if (user) {
+      silentRegisterIfGranted().catch(() => {});
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const login = useCallback(async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
     localStorage.setItem('admin_token', data.token);
     if (data.refreshToken) localStorage.setItem('admin_refresh_token', data.refreshToken);
     localStorage.setItem('admin_user', JSON.stringify(data.user));
-    // Commit before navigation so PrivateRoute sees user (avoids bounce back to /login)
     flushSync(() => {
       setUser(data.user);
     });
+    // Silently register FCM token if permission already granted
+    silentRegisterIfGranted().catch(() => {});
     return data.user;
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    await unregisterPushNotifications().catch(() => {});
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_refresh_token');
     localStorage.removeItem('admin_user');

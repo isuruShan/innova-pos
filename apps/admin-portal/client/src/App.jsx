@@ -9,6 +9,8 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import SubscriptionExpiredPage from './pages/SubscriptionExpiredPage';
 import Layout from './components/layout/Layout';
 import ForcePasswordResetGate from './components/auth/ForcePasswordResetGate';
+import PushPermissionBanner from './components/PushPermissionBanner';
+
 
 // Superadmin pages
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
@@ -85,7 +87,9 @@ export default function App() {
       <AuthProvider>
         <StoreProvider>
           <TenantCurrencyProvider>
+          <PushPermissionBanner />
           <Routes>
+
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />

@@ -1,88 +1,92 @@
-const CACHE_NAME = 'cafinity-admin-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-];
+/**
+ * Admin Portal Service Worker
+ *
+ * Handles:
+ *  1. App shell caching
+ *  2. Firebase Cloud Messaging background push notifications
+ */
 
-// Install event - cache assets
+try {
+  importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-app-compat.js');
+  importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging-compat.js');
+
+  self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'FIREBASE_CONFIG' && !self.__fcmInitialised) {
+      const cfg = event.data.config;
+      if (cfg && cfg.apiKey && cfg.projectId) {
+        firebase.initializeApp(cfg);
+        const messaging = firebase.messaging();
+
+        messaging.onBackgroundMessage((payload) => {
+          const { title = 'Notification', body = '' } = payload.notification || {};
+          self.registration.showNotification(title, {
+            body,
+            icon: '/logo-2.png',
+            badge: '/logo-2.png',
+            data: payload.data || {},
+            tag: payload.data?.type || 'admin-notification',
+            renotify: true,
+          });
+        });
+
+        self.__fcmInitialised = true;
+      }
+    }
+
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+      self.skipWaiting();
+    }
+  });
+} catch (e) {
+  console.warn('[SW] Firebase messaging not available:', e.message);
+}
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      if (list.length > 0) return list[0].focus();
+      return clients.openWindow('/');
+    })
+  );
+});
+
+const CACHE_NAME = 'cafinity-admin-v2';
+const urlsToCache = ['/', '/index.html'];
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('[Service Worker] Caching app shell');
-        return cache.addAll(urlsToCache);
-      })
+      .then((cache) => cache.addAll(urlsToCache))
       .then(() => self.skipWaiting())
   );
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('[Service Worker] Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+    caches.keys().then((names) =>
+      Promise.all(names.map((n) => n !== CACHE_NAME && caches.delete(n)))
+    ).then(() => self.clients.claim())
   );
 });
 
-// Fetch event - network first, fall back to cache
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') {
-    return;
-  }
-
-  // Skip API requests - always go to network
-  if (event.request.url.includes('/api/')) {
-    return;
-  }
+  if (event.request.method !== 'GET') return;
+  if (event.request.url.includes('/api/')) return;
 
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clone the response
-        const responseToCache = response.clone();
-
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         return response;
       })
-      .catch(() => {
-        // If network fails, try cache
-        return caches.match(event.request).then((response) => {
-          if (response) {
-            return response;
-          }
-
-          // If not in cache and offline, return index.html for SPA routing
-          if (event.request.mode === 'navigate') {
-            return caches.match('/index.html');
-          }
-
-          return new Response('Offline', {
-            status: 503,
-            statusText: 'Service Unavailable',
-            headers: new Headers({
-              'Content-Type': 'text/plain'
-            })
-          });
-        });
-      })
+      .catch(() =>
+        caches.match(event.request).then((cached) => {
+          if (cached) return cached;
+          if (event.request.mode === 'navigate') return caches.match('/index.html');
+          return new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
+        })
+      )
   );
-});
-
-// Handle messages from clients
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
 });

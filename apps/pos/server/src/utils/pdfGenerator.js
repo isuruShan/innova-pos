@@ -4,10 +4,11 @@ const PDFDocument = require('pdfkit');
  * Generates a professional Purchase Order PDF buffer using pdfkit.
  * @param {Object} order - The Purchase Order document
  * @param {Object} supplier - The Supplier document
- * @param {Object} store - The Store/Merchant document
+ * @param {Object} store - The Store document
+ * @param {string} merchantName - The Merchant (Tenant) name
  * @returns {Promise<Buffer>}
  */
-function generatePurchaseOrderPDF(order, supplier, store) {
+function generatePurchaseOrderPDF(order, supplier, store, merchantName) {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ size: 'A4', margin: 40 });
@@ -29,7 +30,7 @@ function generatePurchaseOrderPDF(order, supplier, store) {
       const topY = doc.y;
       doc.fillColor('#1e293b').font('Helvetica-Bold').fontSize(12).text('FROM (Merchant):', 40, topY);
       doc.font('Helvetica').fontSize(10).fillColor('#334155');
-      doc.text(store.name || 'Merchant');
+      doc.text(merchantName || store.name || 'Merchant');
       if (store.phone) doc.text(`Phone: ${store.phone}`);
       if (store.address) {
         const addr = store.address;
@@ -58,11 +59,9 @@ function generatePurchaseOrderPDF(order, supplier, store) {
       const tableTop = doc.y;
       doc.rect(40, tableTop, 515, 20).fill('#f1f5f9');
       doc.fillColor('#475569').font('Helvetica-Bold').fontSize(9);
-      doc.text('Item Name', 50, tableTop + 5, { width: 200 });
-      doc.text('Unit', 260, tableTop + 5, { width: 60, align: 'center' });
-      doc.text('Qty', 330, tableTop + 5, { width: 50, align: 'right' });
-      doc.text('Unit Price', 390, tableTop + 5, { width: 70, align: 'right' });
-      doc.text('Total', 470, tableTop + 5, { width: 75, align: 'right' });
+      doc.text('Item Name', 50, tableTop + 5, { width: 300 });
+      doc.text('Unit', 370, tableTop + 5, { width: 80, align: 'center' });
+      doc.text('Qty', 470, tableTop + 5, { width: 60, align: 'right' });
       
       let currentY = tableTop + 20;
 
@@ -72,27 +71,16 @@ function generatePurchaseOrderPDF(order, supplier, store) {
         // Draw row border
         doc.moveTo(40, currentY).lineTo(555, currentY).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
 
-        const itemTotal = (item.orderedQty || 0) * (item.unitPrice || 0);
-
-        doc.text(item.itemName || '—', 50, currentY + 6, { width: 200 });
-        doc.text(item.unit || '—', 260, currentY + 6, { width: 60, align: 'center' });
-        doc.text(String(item.orderedQty || 0), 330, currentY + 6, { width: 50, align: 'right' });
-        doc.text(`$${(item.unitPrice || 0).toFixed(2)}`, 390, currentY + 6, { width: 70, align: 'right' });
-        doc.text(`$${itemTotal.toFixed(2)}`, 470, currentY + 6, { width: 75, align: 'right' });
+        doc.text(item.itemName || '—', 50, currentY + 6, { width: 300 });
+        doc.text(item.unit || '—', 370, currentY + 6, { width: 80, align: 'center' });
+        doc.text(String(item.orderedQty || 0), 470, currentY + 6, { width: 60, align: 'right' });
 
         currentY += 25;
       });
 
       // Draw table bottom border
       doc.moveTo(40, currentY).lineTo(555, currentY).strokeColor('#cbd5e1').lineWidth(1).stroke();
-      currentY += 10;
-
-      // Total amount
-      doc.fontSize(11).fillColor('#1e293b').font('Helvetica-Bold');
-      doc.text('Total Amount:', 350, currentY, { width: 110, align: 'right' });
-      doc.text(`$${(order.totalAmount || 0).toFixed(2)}`, 470, currentY, { width: 75, align: 'right' });
-
-      currentY += 30;
+      currentY += 20;
 
       // Notes
       if (order.notes) {

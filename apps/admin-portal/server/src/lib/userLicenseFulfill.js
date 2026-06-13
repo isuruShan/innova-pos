@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Store = require('../models/Store');
 const PaymentReceipt = require('../models/PaymentReceipt');
 const { sendWelcomeEmail } = require('../utils/mailer');
+const { createNotification } = require('./notificationHelpers');
 const { emitAudit } = require('@innovapos/shared-middleware');
 const { endTenantTrialOnPaidPurchase } = require('./subscriptionActivation');
 
@@ -76,6 +77,13 @@ async function fulfillCreateUser(tenantId, payload, meta = {}) {
 
   // Fire-and-forget — welcome email must not block the response
   sendWelcomeEmail({ to: user.email, name: user.name, tempPassword, loginUrl, role: user.role }).catch(() => {});
+
+  createNotification(tenantId, user._id, {
+    type: 'account_created',
+    title: '🎉 Welcome to Cafinity!',
+    body: `Hello ${user.name}! Your account has been created with temporary login details. Check your email.`,
+    meta: { resourceType: 'user', resourceId: String(user._id) },
+  }).catch(() => {});
 
   return { user, tempPassword };
 }

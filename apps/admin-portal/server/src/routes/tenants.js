@@ -507,10 +507,11 @@ router.post('/:id/temporary-activation/activate-one-day', authenticateJWT, autho
     tenant.temporaryActivationExpiryEndDate = null;
     await tenant.save();
 
-    // Email merchant admins about temporary activation.
-    const merchantAdmins = await User.find({ tenantId: tenant._id, role: 'merchant_admin', isActive: true }).select('email').lean();
-    await Promise.all(
-      merchantAdmins.map((a) =>
+    // Email + push merchant admins about temporary activation.
+    const merchantAdmins = await User.find({ tenantId: tenant._id, role: 'merchant_admin', isActive: true }).select('_id email').lean();
+    await Promise.all([
+      // Emails
+      ...merchantAdmins.map((a) =>
         sendEmail({
           to: a.email,
           subject: 'Temporary one-day activation — Cafinity',
@@ -520,7 +521,15 @@ router.post('/:id/temporary-activation/activate-one-day', authenticateJWT, autho
             <p>Please upload / pay to reactivate your subscription permanently.</p>`,
         }).catch(() => {}),
       ),
-    );
+      // Push notification (notifyMerchantAdmins dispatches in-app + FCM push)
+      notifyMerchantAdmins(tenant._id, {
+        type: 'temporary_activation_granted',
+        title: '✅ One-day activation granted',
+        body: `Your account has temporary access until ${tenant.temporaryActivationUntil.toDateString()}. Please renew your subscription.`,
+        meta: { resourceType: 'tenant', resourceId: String(tenant._id) },
+      }).catch(() => {}),
+    ]);
+
 
     await emitAudit({
       req,

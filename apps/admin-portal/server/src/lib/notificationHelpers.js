@@ -1,6 +1,18 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const { sendPushNotification } = require('./pushNotifier');
+
+// Module-level logger — defaults to console until setNotificationLogger() is called at startup
+let _logger = console;
+
+/**
+ * Wire in the application Winston logger.
+ * Call once from index.js after createLogger().
+ */
+function setNotificationLogger(logger) {
+  _logger = logger;
+}
 
 function castTenantId(tenantId) {
   if (tenantId == null) return tenantId;
@@ -12,7 +24,7 @@ function castTenantId(tenantId) {
 }
 
 async function createNotification(tenantId, userId, payload) {
-  return Notification.create({
+  const doc = await Notification.create({
     tenantId: castTenantId(tenantId),
     userId,
     type: payload.type,
@@ -20,6 +32,10 @@ async function createNotification(tenantId, userId, payload) {
     body: payload.body || '',
     meta: payload.meta || {},
   });
+  sendPushNotification(userId, payload, _logger).catch((err) => {
+    _logger.error('[notificationHelpers] createNotification push failed', { error: err.message });
+  });
+  return doc;
 }
 
 async function notifyMerchantAdmins(tenantId, payload, options = {}) {
@@ -47,7 +63,12 @@ async function notifyMerchantAdmins(tenantId, payload, options = {}) {
     meta: payload.meta || {},
   }));
 
-  return Notification.insertMany(docs);
+  const inserted = await Notification.insertMany(docs);
+  const targetIds = admins.map((a) => a._id);
+  sendPushNotification(targetIds, payload, _logger).catch((err) => {
+    _logger.error('[notificationHelpers] notifyMerchantAdmins push failed', { error: err.message });
+  });
+  return inserted;
 }
 
 async function notifySuperAdmins(tenantId, payload, options = {}) {
@@ -74,10 +95,16 @@ async function notifySuperAdmins(tenantId, payload, options = {}) {
     meta: payload.meta || {},
   }));
 
-  return Notification.insertMany(docs);
+  const inserted = await Notification.insertMany(docs);
+  const targetIds = supers.map((u) => u._id);
+  sendPushNotification(targetIds, payload, _logger).catch((err) => {
+    _logger.error('[notificationHelpers] notifySuperAdmins push failed', { error: err.message });
+  });
+  return inserted;
 }
 
 module.exports = {
+  setNotificationLogger,
   createNotification,
   notifyMerchantAdmins,
   notifySuperAdmins,

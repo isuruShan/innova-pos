@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import { flushSync } from 'react-dom';
 import api from '../api/axios';
 import { processSyncQueue } from '../offline/sync';
+import { silentRegisterIfGranted, unregisterPushNotifications } from '../services/pushService';
 
 const AuthContext = createContext(null);
 
@@ -35,6 +36,13 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
+  // On mount, silently re-register FCM token if permission already granted
+  useEffect(() => {
+    if (user) {
+      silentRegisterIfGranted().catch(() => {});
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const login = useCallback(async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
     localStorage.setItem('pos_token', data.token);
@@ -45,10 +53,14 @@ export const AuthProvider = ({ children }) => {
       setUser(normalized);
     });
     processSyncQueue().catch(() => {});
+    // Silently register FCM token if user has previously granted permission
+    silentRegisterIfGranted().catch(() => {});
     return normalized;
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    // Unregister push token before clearing session
+    await unregisterPushNotifications().catch(() => {});
     localStorage.removeItem('pos_token');
     localStorage.removeItem('pos_refresh_token');
     localStorage.removeItem('pos_user');

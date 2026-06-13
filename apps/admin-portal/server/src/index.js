@@ -26,7 +26,8 @@ const Tenant = require('./models/Tenant');
 const Subscription = require('./models/Subscription');
 const User = require('./models/User');
 const { sendEmail } = require('./utils/mailer');
-const { notifySuperAdmins, notifyMerchantAdmins } = require('./lib/notificationHelpers');
+const { setNotificationLogger, notifySuperAdmins, notifyMerchantAdmins } = require('./lib/notificationHelpers');
+
 const { applyDuePendingPlanSwitches } = require('./lib/subscriptionActivation');
 const { processLoyaltyRetentionPeriods } = require('./lib/processLoyaltyRetention');
 const { startAnlySyncScheduler, registerOrderArchiveModel } = require('@innovapos/analytics-core');
@@ -35,6 +36,10 @@ const { initializeArchiveDb } = require('./lib/archiveDb');
 const app = express();
 const logger = createLogger('admin-portal-server');
 app.locals.logger = logger;
+
+// Wire logger into notification helpers so push errors appear in log files
+setNotificationLogger(logger);
+
 
 connectDB(logger);
 const { OrderArchive } = initializeArchiveDb(logger);
@@ -103,6 +108,8 @@ app.use('/api/tenant-settings', require('./routes/tenantSettings'));
 app.use('/api/merchant-uber',   require('./routes/merchant-uber'));
 app.use('/api/google-business', require('./routes/googleBusiness'));
 app.use('/api/users',           require('./routes/users'));
+app.use('/api/users',           require('./routes/pushTokens'));
+
 app.use('/api/user-licensing', require('./routes/userLicensing'));
 app.use('/api/stores',          require('./routes/stores'));
 app.use('/api/cashier-sessions', require('./routes/cashier-sessions'));

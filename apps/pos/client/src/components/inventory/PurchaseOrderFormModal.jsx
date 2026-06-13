@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { X, Plus, Trash2, Lightbulb, Calendar, Package, Download, FileText } from 'lucide-react';
 import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
+import { useBranding } from '../../context/BrandingContext';
 import { formatCurrency } from '../../utils/format';
 import InventorySearchSelect from './InventorySearchSelect';
 import AddInventoryItemDrawer from './AddInventoryItemDrawer';
@@ -18,6 +19,7 @@ export default function PurchaseOrderFormModal({
   readOnly = false,
 }) {
   const { isStoreReady } = useStoreContext();
+  const branding = useBranding();
   const [supplierId, setSupplierId] = useState('');
   const [items, setItems] = useState([]);
   const [expectedDate, setExpectedDate] = useState('');
@@ -162,20 +164,17 @@ export default function PurchaseOrderFormModal({
     const csvContent = [
       ['Purchase Order Details'],
       ['Order Number', editing.orderNumber || ''],
+      ['Merchant', branding.businessName || 'Merchant'],
       ['Supplier', supplierName],
       ['Expected Date', expectedDate || ''],
       ['Notes', notes || ''],
       [],
-      ['Item Name', 'Quantity', 'Unit', 'Unit Price', 'Subtotal'],
+      ['Item Name', 'Quantity', 'Unit'],
       ...items.map(item => [
         item.itemName,
         item.orderedQty,
-        item.unit,
-        item.unitPrice,
-        item.orderedQty * item.unitPrice
-      ]),
-      [],
-      ['Total Amount', totalAmount]
+        item.unit
+      ])
     ].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -200,8 +199,6 @@ export default function PurchaseOrderFormModal({
         <td style="padding: 10px; border-bottom: 1px solid #ddd;">${item.itemName}</td>
         <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right;">${item.orderedQty}</td>
         <td style="padding: 10px; border-bottom: 1px solid #ddd;">${item.unit}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right;">${formatCurrency(item.unitPrice)}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right; font-weight: bold;">${formatCurrency(item.orderedQty * item.unitPrice)}</td>
       </tr>
     `).join('');
 
@@ -218,7 +215,6 @@ export default function PurchaseOrderFormModal({
             .meta-block p { margin: 0; font-size: 16px; font-weight: 500; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
             th { background-color: #f5f5f5; text-align: left; padding: 10px; font-weight: 600; border-bottom: 2px solid #ddd; }
-            .total-row { font-size: 18px; font-weight: bold; }
             .notes { margin-top: 40px; padding: 15px; background: #f9f9f9; border-left: 4px solid #ccc; font-size: 14px; }
             @media print {
               body { padding: 20px; }
@@ -233,7 +229,7 @@ export default function PurchaseOrderFormModal({
               <div style="font-size: 16px; color: #666; margin-top: 5px;">Order #: ${editing.orderNumber || ''}</div>
             </div>
             <div style="text-align: right;">
-              <div style="font-size: 18px; font-weight: bold;">SplitSecond POS</div>
+              <div style="font-size: 18px; font-weight: bold;">${branding.businessName || 'Merchant'}</div>
               <div style="font-size: 12px; color: #666;">Date: ${new Date().toLocaleDateString()}</div>
             </div>
           </div>
@@ -255,16 +251,10 @@ export default function PurchaseOrderFormModal({
                 <th>Item Name</th>
                 <th style="text-align: right;">Quantity</th>
                 <th>Unit</th>
-                <th style="text-align: right;">Unit Price</th>
-                <th style="text-align: right;">Subtotal</th>
               </tr>
             </thead>
             <tbody>
               ${itemsHtml}
-              <tr class="total-row">
-                <td colspan="4" style="padding: 15px 10px; text-align: right;">Total Amount:</td>
-                <td style="padding: 15px 10px; text-align: right; color: #d97706;">${formatCurrency(totalAmount)}</td>
-              </tr>
             </tbody>
           </table>
 

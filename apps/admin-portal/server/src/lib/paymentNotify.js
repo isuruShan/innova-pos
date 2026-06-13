@@ -195,19 +195,31 @@ async function notifyPaymentVerified(receipt, tenant, extra = {}) {
   const tenantId = tenant?._id || tenant;
   await emailSuperadminsPaymentEvent(receipt, tenant, 'verified', extra);
 
-  const merchantAdmins = await User.find({ tenantId, role: 'merchant_admin', isActive: true }).select('email').lean();
+  const merchantAdmins = await User.find({ tenantId, role: 'merchant_admin', isActive: true }).select('_id email').lean();
   const ctx = await enrichReceiptContext(receipt, tenant);
   const html = buildPaymentReceiptEmailHtml(receipt, tenant, { ...ctx, event: 'verified' });
-  await Promise.all(
-    merchantAdmins.map((a) =>
+
+  // Email + push notification to merchant admins (push via notifyMerchantAdmins)
+  const kind = receiptKindLabel(receipt);
+  await Promise.all([
+    // Emails
+    ...merchantAdmins.map((a) =>
       sendEmail({
         to: a.email,
         subject: 'Payment verified — Cafinity',
         html,
       }).catch(() => {}),
     ),
-  );
+    // Push — notifyMerchantAdmins dispatches both in-app + FCM push
+    notifyMerchantAdmins(tenantId, {
+      type: 'payment_verified',
+      title: '✅ Payment verified',
+      body: `Your ${kind} payment has been verified and your subscription is active.`,
+      meta: { resourceType: 'tenant', resourceId: String(tenantId), receiptId: String(receipt._id) },
+    }).catch(() => {}),
+  ]);
 }
+
 
 module.exports = {
   buildPaymentReceiptEmailHtml,
