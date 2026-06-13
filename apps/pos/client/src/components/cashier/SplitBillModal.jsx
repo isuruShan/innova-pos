@@ -24,7 +24,7 @@ export default function SplitBillModal({
   discountTotal = 0,
   taxAmount = 0,
   serviceFeeAmount = 0,
-  onPrintSplitReceipt = null, // Callback to print individual split receipt
+  onPrintSplitReceipt = null,
 }) {
   const branding = useBranding();
   const { selectedStore } = useStoreContext();
@@ -110,7 +110,6 @@ export default function SplitBillModal({
   }, [items, payments]);
 
   const handleAddEqualPayment = (index, amount) => {
-    // Collect all equal parts sequentially
     const currentType = currentPaymentType;
     setPayments(prev => [
       ...prev,
@@ -186,21 +185,21 @@ export default function SplitBillModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[160] bg-black/80 flex items-center justify-center p-3 sm:p-4 font-sans">
-      <div className="w-full max-w-4xl bg-[#0F172A] border border-slate-700 rounded-none p-5 sm:p-6 shadow-2xl flex flex-col md:flex-row gap-6 max-h-[95vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[160] bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 font-sans">
+      <div className="w-full max-w-4xl bg-[var(--pos-panel)] border border-[color-mix(in_srgb,var(--pos-text-primary)_12%,transparent)] rounded-none p-5 sm:p-6 shadow-2xl flex flex-col md:flex-row gap-6 max-h-[95vh] overflow-y-auto">
         
         {/* Left Side: Order items & Payment Splits status */}
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex justify-between items-start">
             <div>
-              <h3 className="text-white font-bold text-xl sm:text-2xl tracking-tight">Split Bill</h3>
-              <p className="text-xs text-slate-400 mt-1">
+              <h3 className="text-[var(--pos-text-primary)] font-bold text-xl sm:text-2xl tracking-tight">Split Bill</h3>
+              <p className="text-xs text-[var(--pos-text-secondary)] mt-1">
                 Order #{orderNumber} {tableNumber && `• Table ${tableNumber}`}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/20 dark:hover:bg-slate-800 transition cursor-pointer"
               aria-label="Close modal"
             >
               <X size={20} />
@@ -208,27 +207,27 @@ export default function SplitBillModal({
           </div>
 
           {/* Split Mode Tabs */}
-          <div className="flex border-b border-slate-800 mt-4">
+          <div className="flex border-b border-[color-mix(in_srgb,var(--pos-text-primary)_10%,transparent)] mt-4">
             <button
               onClick={() => { setSplitMode('equal'); setPayments([]); }}
-              className={`py-2.5 px-4 font-semibold text-sm border-b-2 transition ${
-                splitMode === 'equal' ? 'border-amber-500 text-amber-500' : 'border-transparent text-slate-400 hover:text-slate-200'
+              className={`py-2.5 px-4 font-semibold text-sm border-b-2 transition cursor-pointer ${
+                splitMode === 'equal' ? 'border-amber-500 text-amber-500' : 'border-transparent text-[var(--pos-text-muted)] hover:text-[var(--pos-text-primary)]'
               }`}
             >
               Split Equally
             </button>
             <button
               onClick={() => { setSplitMode('custom'); setPayments([]); }}
-              className={`py-2.5 px-4 font-semibold text-sm border-b-2 transition ${
-                splitMode === 'custom' ? 'border-amber-500 text-amber-500' : 'border-transparent text-slate-400 hover:text-slate-200'
+              className={`py-2.5 px-4 font-semibold text-sm border-b-2 transition cursor-pointer ${
+                splitMode === 'custom' ? 'border-amber-500 text-amber-500' : 'border-transparent text-[var(--pos-text-muted)] hover:text-[var(--pos-text-primary)]'
               }`}
             >
               Custom Amounts
             </button>
             <button
               onClick={() => { setSplitMode('item'); setPayments([]); }}
-              className={`py-2.5 px-4 font-semibold text-sm border-b-2 transition ${
-                splitMode === 'item' ? 'border-amber-500 text-amber-500' : 'border-transparent text-slate-400 hover:text-slate-200'
+              className={`py-2.5 px-4 font-semibold text-sm border-b-2 transition cursor-pointer ${
+                splitMode === 'item' ? 'border-amber-500 text-amber-500' : 'border-transparent text-[var(--pos-text-muted)] hover:text-[var(--pos-text-primary)]'
               }`}
             >
               Pay by Item
@@ -240,20 +239,20 @@ export default function SplitBillModal({
             {splitMode === 'equal' && (
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
-                  <label className="text-sm font-semibold text-slate-300">Number of splits:</label>
-                  <div className="flex items-center border border-slate-700 bg-slate-900 rounded-lg">
+                  <label className="text-sm font-semibold text-[var(--pos-text-secondary)]">Number of splits:</label>
+                  <div className="flex items-center border border-[color-mix(in_srgb,var(--pos-text-primary)_12%,transparent)] bg-[var(--pos-surface-inset)] rounded-lg">
                     <button
                       type="button"
                       onClick={() => setNumSplits(prev => Math.max(2, prev - 1))}
-                      className="px-3 py-1.5 text-slate-400 hover:text-white font-bold"
+                      className="px-3 py-1.5 text-slate-500 hover:text-[var(--pos-text-primary)] font-bold cursor-pointer"
                     >
                       -
                     </button>
-                    <span className="px-4 py-1.5 text-white font-bold font-mono">{numSplits}</span>
+                    <span className="px-4 py-1.5 text-[var(--pos-text-primary)] font-bold font-mono">{numSplits}</span>
                     <button
                       type="button"
                       onClick={() => setNumSplits(prev => Math.min(20, prev + 1))}
-                      className="px-3 py-1.5 text-slate-400 hover:text-white font-bold"
+                      className="px-3 py-1.5 text-slate-500 hover:text-[var(--pos-text-primary)] font-bold cursor-pointer"
                     >
                       +
                     </button>
@@ -265,19 +264,19 @@ export default function SplitBillModal({
                     const share = total / numSplits;
                     const isCollected = payments[i] !== undefined;
                     return (
-                      <div key={i} className="flex justify-between items-center p-3 rounded-xl border border-slate-800 bg-slate-900/50">
-                        <span className="text-sm font-semibold text-slate-300">Guest {i + 1} Share</span>
+                      <div key={i} className="flex justify-between items-center p-3 rounded-xl border border-[color-mix(in_srgb,var(--pos-text-primary)_10%,transparent)] bg-[var(--pos-surface-inset)]">
+                        <span className="text-sm font-semibold text-[var(--pos-text-secondary)]">Guest {i + 1} Share</span>
                         <div className="flex items-center gap-3">
-                          <span className="text-base font-bold font-mono text-white">{formatCurrency(share)}</span>
+                          <span className="text-base font-bold font-mono text-[var(--pos-text-primary)]">{formatCurrency(share)}</span>
                           {isCollected ? (
-                            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400">
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 bg-green-500/10 border border-green-500/30 rounded-lg text-green-600 dark:text-green-400">
                               <CheckCircle size={12} />
                               {formatMethodLabel(payments[i].paymentType)}
                             </span>
                           ) : (
                             <button
                               onClick={() => handleAddEqualPayment(i, share)}
-                              className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-lg transition"
+                              className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-[var(--pos-selection-text)] text-xs font-bold rounded-lg transition cursor-pointer"
                             >
                               Pay Now
                             </button>
@@ -301,12 +300,12 @@ export default function SplitBillModal({
                       value={currentAmountInput}
                       onChange={(e) => setCurrentAmountInput(e.target.value)}
                       placeholder={remainingBalance.toFixed(2)}
-                      className="w-full h-11 border border-slate-700 bg-slate-900 text-white font-bold rounded-xl px-3 focus:outline-none focus:border-amber-500"
+                      className="w-full h-11 border border-[color-mix(in_srgb,var(--pos-text-primary)_12%,transparent)] bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] font-bold rounded-xl px-3 focus:outline-none focus:border-amber-500"
                     />
                   </div>
                   <button
                     onClick={handleAddCustomPayment}
-                    className="h-11 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl flex items-center gap-1 transition self-end"
+                    className="h-11 px-4 bg-amber-500 hover:bg-amber-400 text-[var(--pos-selection-text)] font-bold rounded-xl flex items-center gap-1 transition self-end cursor-pointer"
                   >
                     <Plus size={16} />
                     Add Split
@@ -317,9 +316,9 @@ export default function SplitBillModal({
 
             {splitMode === 'item' && (
               <div className="space-y-4">
-                <p className="text-xs text-slate-400">Tally which items are being paid right now by this guest:</p>
+                <p className="text-xs text-[var(--pos-text-secondary)]">Tally which items are being paid right now by this guest:</p>
                 
-                <div className="space-y-2 border border-slate-800 rounded-xl bg-slate-900/40 p-2 divide-y divide-slate-800">
+                <div className="space-y-2 border border-[color-mix(in_srgb,var(--pos-text-primary)_10%,transparent)] bg-[var(--pos-surface-inset)] p-2 divide-y divide-[color-mix(in_srgb,var(--pos-text-primary)_10%,transparent)] rounded-xl">
                   {items.map(item => {
                     const id = item.menuItem || item._id;
                     const maxQty = remainingItemQuantities[id] || 0;
@@ -330,25 +329,25 @@ export default function SplitBillModal({
                     return (
                       <div key={id} className="py-2.5 flex items-center justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-200 truncate">{item.name}</p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-sm font-semibold text-[var(--pos-text-primary)] truncate">{item.name}</p>
+                          <p className="text-xs text-[var(--pos-text-muted)]">
                             {formatCurrency(item.price)} each • {maxQty} remaining
                           </p>
                         </div>
 
-                        <div className="flex items-center border border-slate-700 bg-slate-900 rounded-lg shrink-0">
+                        <div className="flex items-center border border-[color-mix(in_srgb,var(--pos-text-primary)_12%,transparent)] bg-[var(--pos-surface-inset)] rounded-lg shrink-0">
                           <button
                             type="button"
                             onClick={() => handleItemQtyChange(id, -1, maxQty)}
-                            className="px-2.5 py-1 text-slate-400 hover:text-white font-bold text-sm"
+                            className="px-2.5 py-1 text-slate-500 hover:text-[var(--pos-text-primary)] font-bold text-sm cursor-pointer"
                           >
                             -
                           </button>
-                          <span className="px-3 py-1 text-white font-bold font-mono text-xs">{currentSelected}</span>
+                          <span className="px-3 py-1 text-[var(--pos-text-primary)] font-bold font-mono text-xs">{currentSelected}</span>
                           <button
                             type="button"
                             onClick={() => handleItemQtyChange(id, 1, maxQty)}
-                            className="px-2.5 py-1 text-slate-400 hover:text-white font-bold text-sm"
+                            className="px-2.5 py-1 text-slate-500 hover:text-[var(--pos-text-primary)] font-bold text-sm cursor-pointer"
                           >
                             +
                           </button>
@@ -361,36 +360,36 @@ export default function SplitBillModal({
                 {/* Selected sub-bill totals review */}
                 {getSelectedItemsCalculations.total > 0 && (
                   <div className="mt-3 bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 space-y-1.5">
-                    <div className="flex justify-between text-xs text-slate-400">
+                    <div className="flex justify-between text-xs text-[var(--pos-text-secondary)]">
                       <span>Subtotal Selection</span>
                       <span>{formatCurrency(getSelectedItemsCalculations.subtotal)}</span>
                     </div>
                     {getSelectedItemsCalculations.discount > 0 && (
-                      <div className="flex justify-between text-xs text-green-400">
+                      <div className="flex justify-between text-xs text-green-600 dark:text-green-400">
                         <span>Selected Discounts</span>
                         <span>-{formatCurrency(getSelectedItemsCalculations.discount)}</span>
                       </div>
                     )}
                     {getSelectedItemsCalculations.tax > 0 && (
-                      <div className="flex justify-between text-xs text-slate-400">
+                      <div className="flex justify-between text-xs text-[var(--pos-text-secondary)]">
                         <span>Selected Taxes</span>
                         <span>{formatCurrency(getSelectedItemsCalculations.tax)}</span>
                       </div>
                     )}
                     {getSelectedItemsCalculations.serviceFee > 0 && (
-                      <div className="flex justify-between text-xs text-slate-400">
+                      <div className="flex justify-between text-xs text-[var(--pos-text-secondary)]">
                         <span>Selected Service Fees</span>
                         <span>{formatCurrency(getSelectedItemsCalculations.serviceFee)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between items-baseline pt-1.5 border-t border-slate-800 text-sm font-bold text-white">
+                    <div className="flex justify-between items-baseline pt-1.5 border-t border-[color-mix(in_srgb,var(--pos-text-primary)_10%,transparent)] text-sm font-bold text-[var(--pos-text-primary)]">
                       <span>Total for Selection</span>
-                      <span className="text-amber-400 text-base">{formatCurrency(getSelectedItemsCalculations.total)}</span>
+                      <span className="text-amber-600 dark:text-amber-400 text-base">{formatCurrency(getSelectedItemsCalculations.total)}</span>
                     </div>
                     
                     <button
                       onClick={handleAddItemPayment}
-                      className="w-full mt-2 h-10 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition"
+                      className="w-full mt-2 h-10 bg-amber-500 hover:bg-amber-400 text-[var(--pos-selection-text)] font-bold rounded-lg transition cursor-pointer"
                     >
                       Collect Selected Items
                     </button>
@@ -402,8 +401,8 @@ export default function SplitBillModal({
 
           {/* Payment Method Selector (For current additions) */}
           {splitMode !== 'equal' && remainingBalance > 0 && (
-            <div className="mt-4 pt-4 border-t border-slate-800">
-              <span className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+            <div className="mt-4 pt-4 border-t border-[color-mix(in_srgb,var(--pos-text-primary)_10%,transparent)]">
+              <span className="block text-xs font-bold text-[var(--pos-text-muted)] uppercase tracking-wide mb-2">
                 Active Payment Method
               </span>
               <div className="flex flex-wrap gap-2">
@@ -412,10 +411,10 @@ export default function SplitBillModal({
                     key={m}
                     type="button"
                     onClick={() => setCurrentPaymentType(m)}
-                    className={`h-9 px-4 rounded-xl text-xs font-bold border transition ${
+                    className={`h-9 px-4 rounded-xl text-xs font-bold border transition cursor-pointer ${
                       currentPaymentType === m
-                        ? 'border-amber-500 bg-amber-500/10 text-amber-400'
-                        : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600'
+                        ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                        : 'border-slate-600 bg-[var(--pos-surface-inset)] text-slate-700 dark:text-slate-200 hover:border-slate-500'
                     }`}
                   >
                     {formatMethodLabel(m)}
@@ -427,19 +426,19 @@ export default function SplitBillModal({
         </div>
 
         {/* Right Side: Ledger summary of collected payments */}
-        <div className="w-full md:w-80 bg-slate-900/60 border border-slate-800 p-4 flex flex-col rounded-xl shrink-0">
-          <h4 className="text-sm font-bold text-slate-300 uppercase tracking-wider border-b border-slate-800 pb-2">
+        <div className="w-full md:w-80 bg-[var(--pos-surface-inset)] border border-[color-mix(in_srgb,var(--pos-text-primary)_10%,transparent)] p-4 flex flex-col rounded-xl shrink-0">
+          <h4 className="text-sm font-bold text-[var(--pos-text-secondary)] uppercase tracking-wider border-b border-[color-mix(in_srgb,var(--pos-text-primary)_10%,transparent)] pb-2">
             Collected Transactions
           </h4>
           
           <div className="flex-1 overflow-y-auto space-y-2 mt-3 min-h-[150px]">
             {payments.length === 0 ? (
-              <p className="text-xs text-slate-500 italic text-center py-8">No payments registered yet</p>
+              <p className="text-xs text-[var(--pos-text-muted)] italic text-center py-8">No payments registered yet</p>
             ) : (
               payments.map((p, idx) => (
-                <div key={idx} className="p-3 bg-[#0F172A] border border-slate-800 rounded-xl space-y-1">
+                <div key={idx} className="p-3 bg-[var(--pos-panel)] border border-[color-mix(in_srgb,var(--pos-text-primary)_8%,transparent)] rounded-xl space-y-1">
                   <div className="flex justify-between items-center">
-                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                    <span className="text-xs font-semibold text-[var(--pos-text-secondary)] uppercase tracking-wide">
                       {idx + 1}. {formatMethodLabel(p.paymentType)}
                     </span>
                     <div className="flex items-center gap-1.5">
@@ -462,14 +461,14 @@ export default function SplitBillModal({
                             alert('Failed to print split receipt');
                           }
                         }}
-                        className="p-1 rounded text-slate-500 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+                        className="p-1 rounded text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 transition cursor-pointer"
                         title="Print receipt for this split"
                       >
                         <Printer size={13} />
                       </button>
                       <button
                         onClick={() => handleRemovePayment(idx)}
-                        className="p-1 rounded text-slate-500 hover:text-red-400 hover:bg-slate-800 transition cursor-pointer"
+                        className="p-1 rounded text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-700/50 transition cursor-pointer"
                         title="Delete split"
                       >
                         <Trash2 size={13} />
@@ -477,10 +476,10 @@ export default function SplitBillModal({
                     </div>
                   </div>
                   <div className="flex justify-between items-baseline">
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-[var(--pos-text-muted)]">
                       {p.itemsPaid?.length > 0 ? `${p.itemsPaid.length} selected item(s)` : 'General split'}
                     </span>
-                    <span className="text-sm font-bold text-white font-mono">{formatCurrency(p.amount)}</span>
+                    <span className="text-sm font-bold text-[var(--pos-text-primary)] font-mono">{formatCurrency(p.amount)}</span>
                   </div>
                 </div>
               ))
@@ -488,18 +487,18 @@ export default function SplitBillModal({
           </div>
 
           {/* Balancing Ledger */}
-          <div className="border-t border-slate-800 pt-3 mt-3 space-y-2 text-xs">
-            <div className="flex justify-between text-slate-400">
+          <div className="border-t border-[color-mix(in_srgb,var(--pos-text-primary)_10%,transparent)] pt-3 mt-3 space-y-2 text-xs">
+            <div className="flex justify-between text-[var(--pos-text-secondary)]">
               <span>Total Due</span>
-              <span className="font-mono text-sm text-slate-200">{formatCurrency(total)}</span>
+              <span className="font-mono text-sm text-[var(--pos-text-primary)]">{formatCurrency(total)}</span>
             </div>
-            <div className="flex justify-between text-green-400">
+            <div className="flex justify-between text-green-600 dark:text-green-400">
               <span>Paid So Far</span>
               <span className="font-mono text-sm font-bold">-{formatCurrency(totalCollected)}</span>
             </div>
-            <div className="flex justify-between items-baseline pt-2 border-t border-slate-800 text-sm font-bold text-white">
+            <div className="flex justify-between items-baseline pt-2 border-t border-[color-mix(in_srgb,var(--pos-text-primary)_10%,transparent)] text-sm font-bold text-[var(--pos-text-primary)]">
               <span>Remaining Balance</span>
-              <span className={`font-mono text-lg ${remainingBalance <= 0.02 ? 'text-green-400' : 'text-amber-500'}`}>
+              <span className={`font-mono text-lg ${remainingBalance <= 0.02 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-500'}`}>
                 {formatCurrency(remainingBalance)}
               </span>
             </div>
@@ -510,7 +509,7 @@ export default function SplitBillModal({
             <button
               onClick={handleConfirmAll}
               disabled={remainingBalance > 0.02}
-              className="w-full h-11 bg-green-500 hover:bg-green-400 text-white font-bold rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-500/10"
+              className="w-full h-11 bg-green-500 hover:bg-green-400 text-[var(--pos-selection-text)] font-bold rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-500/10 cursor-pointer"
             >
               <CheckCircle size={16} />
               Complete Checkout
