@@ -775,22 +775,38 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
           message: 'Payment must be collected at the register before this order can be completed.',
         });
       }
-      const { paymentType: pt, paymentAmount: pa } = req.body || {};
-      if (!pt || pt === 'pending') {
-        return res.status(400).json({
-          message: 'Collect payment before completing — choose how the guest paid (cash, card, etc.).',
-        });
+      const { paymentType: pt, paymentAmount: pa, payments: bodyPayments } = req.body || {};
+      
+      if (Array.isArray(bodyPayments) && bodyPayments.length > 0) {
+        order.payments = bodyPayments;
+        const totalPaid = bodyPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+        const expected = Number(order.totalAmount || 0);
+        if (totalPaid + 0.005 < expected) {
+          return res.status(400).json({
+            message: `Total split payments of ${totalPaid.toFixed(2)} do not cover the order total of ${expected.toFixed(2)}.`,
+          });
+        }
+        order.paymentType = 'split';
+        order.paymentAmount = totalPaid;
+        order.paymentCollected = true;
+      } else {
+        if (!pt || pt === 'pending') {
+          return res.status(400).json({
+            message: 'Collect payment before completing — choose how the guest paid (cash, card, etc.).',
+          });
+        }
+        const expected = Number(order.totalAmount || 0);
+        const paid = Number(pa != null ? pa : expected);
+        if (!Number.isFinite(paid) || paid + 0.005 < expected) {
+          return res.status(400).json({
+            message: `Collect ${expected.toFixed(2)} before completing this order.`,
+          });
+        }
+        order.payments = [{ paymentType: pt, amount: paid }];
+        order.paymentType = pt;
+        order.paymentAmount = paid;
+        order.paymentCollected = true;
       }
-      const expected = Number(order.totalAmount || 0);
-      const paid = Number(pa != null ? pa : expected);
-      if (!Number.isFinite(paid) || paid + 0.005 < expected) {
-        return res.status(400).json({
-          message: `Collect ${expected.toFixed(2)} before completing this order.`,
-        });
-      }
-      order.paymentType = pt;
-      order.paymentAmount = paid;
-      order.paymentCollected = true;
     }
 
     order.status = nextStatus;

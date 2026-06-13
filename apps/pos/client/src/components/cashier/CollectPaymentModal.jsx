@@ -4,6 +4,7 @@ import { formatCurrency } from '../../utils/format';
 import OrderTypeBadge from '../OrderTypeBadge';
 import { useBranding } from '../../context/BrandingContext';
 import useSwipeDismiss from '../../hooks/useSwipeDismiss';
+import SplitBillModal from './SplitBillModal';
 
 function formatMethodLabel(method) {
   const label = String(method || '').replace(/_/g, ' ');
@@ -46,12 +47,14 @@ export default function CollectPaymentModal({
   const [paymentType, setPaymentType] = useState(initialPaymentType || availablePaymentMethods[0] || 'cash');
   const [cashReceivedInput, setCashReceivedInput] = useState('');
   const [addedNotes, setAddedNotes] = useState([]);
+  const [showSplitModal, setShowSplitModal] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setPaymentType(initialPaymentType || availablePaymentMethods[0] || 'cash');
     setCashReceivedInput(Number(total || 0).toFixed(2));
     setAddedNotes([]);
+    setShowSplitModal(false);
   }, [open, total, availablePaymentMethods, initialPaymentType]);
 
   const resolvedDenominations = useMemo(() => {
@@ -198,10 +201,10 @@ export default function CollectPaymentModal({
                   setPaymentType(method);
                   if (method === 'cash') setCashReceivedInput(Number(total || 0).toFixed(2));
                 }}
-                className={`min-h-[52px] rounded-2xl px-4 text-base font-semibold border-2 transition active:scale-[0.99] ${
+                className={`min-h-[52px] rounded-2xl px-4 text-base font-semibold border-2 transition active:scale-[0.99] cursor-pointer ${
                   active
-                    ? 'border-amber-500 bg-amber-500/15 text-[var(--pos-selection-text)] ring-2 ring-amber-500/40'
-                    : 'border-slate-600 bg-[var(--pos-surface-inset)] text-slate-200 hover:border-slate-500'
+                    ? 'border-amber-500 bg-amber-500/15 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/40'
+                    : 'border-slate-600 bg-[var(--pos-surface-inset)] text-slate-700 dark:text-slate-200 hover:border-slate-500'
                 }`}
               >
                 {formatMethodLabel(method)}
@@ -249,13 +252,13 @@ export default function CollectPaymentModal({
                   {addedNotes.map((note, idx) => (
                     <span
                       key={`${note}-${idx}`}
-                      className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 bg-amber-500/15 border border-amber-500/30 rounded-lg text-amber-400"
+                      className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 bg-amber-500/15 border border-amber-500/30 rounded-lg text-amber-450"
                     >
                       {branding?.currencySymbol || 'Rs.'} {note}
                       <button
                         type="button"
                         onClick={() => handleRemoveNote(idx)}
-                        className="hover:text-red-400 font-bold ml-0.5 focus:outline-none"
+                        className="hover:text-red-400 font-bold ml-0.5 focus:outline-none cursor-pointer"
                       >
                         ✕
                       </button>
@@ -267,7 +270,7 @@ export default function CollectPaymentModal({
                       setAddedNotes([]);
                       setCashReceivedInput('');
                     }}
-                    className="text-xs text-slate-500 hover:text-slate-350 font-semibold px-2 py-1 focus:outline-none ml-auto"
+                    className="text-xs text-slate-500 hover:text-slate-350 font-semibold px-2 py-1 focus:outline-none ml-auto cursor-pointer"
                   >
                     Clear all
                   </button>
@@ -283,7 +286,7 @@ export default function CollectPaymentModal({
                       key={note}
                       type="button"
                       onClick={() => handleAddNote(note)}
-                      className="min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700/80 active:scale-95 border border-slate-700/60 hover:border-amber-500/50 text-slate-300 hover:text-white text-sm font-bold transition flex items-center justify-center gap-0.5 shadow-sm focus:outline-none"
+                      className="min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700/80 active:scale-95 border border-slate-700/60 hover:border-amber-500/50 text-slate-300 hover:text-white text-sm font-bold transition flex items-center justify-center gap-0.5 shadow-sm focus:outline-none cursor-pointer"
                     >
                       <span className="text-[10px] text-slate-500 font-normal">{branding?.currencySymbol || 'Rs.'}</span>
                       <span>{note}</span>
@@ -294,16 +297,16 @@ export default function CollectPaymentModal({
 
               {cashChange != null && (
                 <div className="flex justify-between items-center text-lg bg-green-500/10 border border-green-500/25 rounded-xl px-4 py-3">
-                  <span className="text-green-300 font-medium">Change due</span>
-                  <span className="text-green-400 font-bold text-xl tabular-nums">
+                  <span className="text-green-600 dark:text-green-300 font-medium">Change due</span>
+                  <span className="text-green-700 dark:text-green-400 font-bold text-xl tabular-nums">
                     {formatCurrency(cashChange)}
                   </span>
                 </div>
               )}
               {cashBalanceDue != null && (
                 <div className="flex justify-between items-center text-lg bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3">
-                  <span className="text-amber-200 font-medium">Balance due</span>
-                  <span className="text-amber-300 font-bold text-xl tabular-nums">
+                  <span className="text-amber-700 dark:text-amber-200 font-medium">Balance due</span>
+                  <span className="text-amber-600 dark:text-amber-300 font-bold text-xl tabular-nums">
                     {formatCurrency(cashBalanceDue)}
                   </span>
                 </div>
@@ -312,25 +315,56 @@ export default function CollectPaymentModal({
           )}
         </div>
 
-        <div className="mt-6 flex flex-col-reverse sm:flex-row gap-3">
+        <div className="mt-6 flex flex-col gap-3">
           <button
             type="button"
-            onClick={onClose}
-            disabled={isPending}
-            className="flex-1 min-h-[54px] rounded-2xl border-2 border-slate-600 text-slate-200 text-lg font-semibold hover:bg-slate-800/80 transition disabled:opacity-60"
+            onClick={() => setShowSplitModal(true)}
+            className="w-full min-h-[50px] rounded-2xl border-2 border-amber-500 bg-amber-500/10 text-amber-400 text-base font-bold hover:bg-amber-500/25 transition shrink-0 cursor-pointer"
           >
-            Cancel
+            Split this Bill / Payment
           </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={isPending || (paymentType === 'cash' && cashBalanceDue != null)}
-            className="flex-1 min-h-[54px] rounded-2xl bg-green-500 hover:bg-green-400 disabled:opacity-60 text-white text-lg font-bold shadow-lg shadow-green-500/25 transition"
-          >
-            {isPending ? 'Processing…' : confirmLabel}
-          </button>
+          <div className="flex flex-col-reverse sm:flex-row gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isPending}
+              className="flex-1 min-h-[54px] rounded-2xl border-2 border-slate-600 text-slate-200 text-lg font-semibold hover:bg-slate-800/80 transition disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={isPending || (paymentType === 'cash' && cashBalanceDue != null)}
+              className="flex-1 min-h-[54px] rounded-2xl bg-green-500 hover:bg-green-400 disabled:opacity-60 text-white text-lg font-bold shadow-lg shadow-green-500/25 transition"
+            >
+              {isPending ? 'Processing…' : confirmLabel}
+            </button>
+          </div>
         </div>
       </div>
+
+      {showSplitModal && (
+        <SplitBillModal
+          open={showSplitModal}
+          onClose={() => setShowSplitModal(false)}
+          onConfirm={(splitPayload) => {
+            setShowSplitModal(false);
+            onClose();
+            onConfirm?.(splitPayload);
+          }}
+          total={total}
+          items={items}
+          availablePaymentMethods={availablePaymentMethods}
+          orderNumber={orderNumber}
+          tableNumber={tableNumber}
+          reference={reference}
+          subtotal={subtotal}
+          discountTotal={discountTotal}
+          taxAmount={taxAmount}
+          serviceFeeAmount={serviceFeeAmount}
+        />
+      )}
     </div>
   );
 }

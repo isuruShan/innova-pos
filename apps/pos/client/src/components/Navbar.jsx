@@ -46,7 +46,7 @@ export function AvatarMenu({ user, onLogout }) {
       <div ref={ref} className="relative">
         <button
           onClick={() => setOpen(v => !v)}
-          className="ring-2 ring-transparent hover:ring-white/20 rounded-full transition"
+          className="ring-2 ring-transparent hover:ring-white/20 rounded-full transition cursor-pointer"
           title={user.name}
         >
           <AvatarDisplay user={user} size="sm" />
@@ -72,7 +72,7 @@ export function AvatarMenu({ user, onLogout }) {
               <div className="p-2 space-y-0.5">
                 <button
                   onClick={openProfile}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition cursor-pointer"
                 >
                   <UserCircle size={15} className="text-slate-500" />
                   My Profile
@@ -82,7 +82,7 @@ export function AvatarMenu({ user, onLogout }) {
                   <Link
                     to="/manager/settings"
                     onClick={() => setOpen(false)}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition cursor-pointer"
                   >
                     <Settings size={15} className="text-slate-500" />
                     Settings
@@ -93,7 +93,7 @@ export function AvatarMenu({ user, onLogout }) {
                     href={getAdminUrl()}
                     target="_blank"
                     rel="noreferrer"
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-[var(--pos-text-primary)] hover:bg-slate-700/50 rounded-lg transition cursor-pointer"
                   >
                     <Settings size={15} className="text-slate-500" />
                     Admin Portal
@@ -103,7 +103,7 @@ export function AvatarMenu({ user, onLogout }) {
                 <div className="border-t border-slate-700/40 pt-1 mt-1">
                   <button
                     onClick={() => { setOpen(false); onLogout(); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:text-red-200 hover:bg-red-600/25 rounded-lg transition"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 hover:bg-red-500/10 dark:hover:text-red-200 dark:hover:bg-red-600/25 rounded-lg transition cursor-pointer"
                   >
                     <LogOut size={15} />
                     Sign Out
@@ -146,7 +146,7 @@ function StoreSwitcher({ stores, selectedStoreId, selectStore }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 sm:gap-2 pl-2 pr-1.5 py-1.5 sm:pl-3 sm:pr-2.5 sm:py-2 min-h-[34px] sm:min-h-[42px] rounded-lg sm:rounded-xl border text-left transition shadow-sm max-w-[110px] xs:max-w-[150px] sm:max-w-[280px] bg-[var(--pos-surface-inset)] border-[color-mix(in_srgb,var(--pos-text-primary)_22%,transparent)] hover:bg-[var(--pos-panel)] hover:border-[color-mix(in_srgb,var(--color-accent)_55%,transparent)]"
+        className="flex items-center gap-1 sm:gap-2 pl-2 pr-1.5 py-1.5 sm:pl-3 sm:pr-2.5 sm:py-2 min-h-[34px] sm:min-h-[42px] rounded-lg sm:rounded-xl border text-left transition shadow-sm max-w-[110px] xs:max-w-[150px] sm:max-w-[280px] bg-[var(--pos-surface-inset)] border-[color-mix(in_srgb,var(--pos-text-primary)_22%,transparent)] hover:bg-[var(--pos-panel)] hover:border-[color-mix(in_srgb,var(--color-accent)_55%,transparent)] cursor-pointer"
         style={{ color: 'var(--color-text)' }}
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -184,7 +184,7 @@ function StoreSwitcher({ stores, selectedStoreId, selectStore }) {
                         selectStore(store._id);
                         setOpen(false);
                       }}
-                      className={`w-full flex items-center gap-3 px-3 py-3 text-left text-sm transition min-h-[48px] ${
+                      className={`w-full flex items-center gap-3 px-3 py-3 text-left text-sm transition min-h-[48px] cursor-pointer ${
                         active
                           ? 'bg-[color-mix(in_srgb,var(--color-selection)_22%,transparent)] text-[var(--pos-text-primary)]'
                           : 'text-[var(--pos-text-primary)] hover:bg-[color-mix(in_srgb,var(--pos-text-primary)_8%,transparent)]'
@@ -287,7 +287,7 @@ function NavDropdown({
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+        className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition cursor-pointer ${
           active ? '' : 'hover:bg-white/10'
         }`}
         style={
@@ -316,10 +316,10 @@ function NavDropdown({
                   to={link.to}
                   role="menuitem"
                   onClick={() => setOpen(false)}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 text-sm transition ${
+                  className={`flex items-center gap-2.5 px-3 py-2.5 text-sm transition cursor-pointer ${
                     itemActive
                       ? 'bg-[color-mix(in_srgb,var(--color-accent)_18%,transparent)] text-[var(--pos-text-primary)]'
-                      : 'text-slate-300 hover:bg-slate-700/60 hover:text-[var(--pos-text-primary)]'
+                      : 'text-slate-700 dark:text-slate-350 hover:bg-slate-700/20 dark:hover:bg-slate-700/60 hover:text-[var(--pos-text-primary)]'
                   }`}
                 >
                   {link.icon && <link.icon size={15} className="shrink-0 opacity-80" />}

@@ -98,6 +98,16 @@ const orderSchema = new mongoose.Schema(
     serviceFeeAmount: { type: Number, default: 0 },
     paymentType: { type: String, default: 'cash' },
     paymentAmount: { type: Number, default: 0 },
+    payments: [{
+      paymentType: { type: String, required: true },
+      amount: { type: Number, required: true },
+      paidAt: { type: Date, default: Date.now },
+      transactionId: { type: String, default: '' },
+      itemsPaid: [{
+        itemId: { type: mongoose.Schema.Types.ObjectId },
+        qty: { type: Number },
+      }],
+    }],
     /** false = tab / pay at completion (dine-in with table management) */
     paymentCollected: { type: Boolean, default: true },
     totalAmount: { type: Number, required: true },

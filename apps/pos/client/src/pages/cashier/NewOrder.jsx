@@ -585,10 +585,7 @@ export default function NewOrder() {
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
   const [readySlideOrder, setReadySlideOrder] = useState(null);
-  const [gridCols, setGridCols] = useState(() => {
-    const saved = localStorage.getItem('pos_register_grid_cols');
-    return saved ? Number(saved) : 4;
-  });
+  const [gridCols, setGridCols] = useState(4);
 
   const qc = useQueryClient();
   const branding = useBranding();
@@ -598,10 +595,7 @@ export default function NewOrder() {
     stores.find((s) => String(s._id) === String(selectedStoreId)) || stores.find((s) => s.isDefault) || null;
 
   useEffect(() => {
-    const saved = localStorage.getItem('pos_register_grid_cols');
-    if (saved) {
-      setGridCols(Number(saved));
-    } else if (selectedStore?.posMenuCols) {
+    if (selectedStore?.posMenuCols) {
       setGridCols(selectedStore.posMenuCols);
     }
   }, [selectedStore?.posMenuCols]);
@@ -1521,28 +1515,6 @@ export default function NewOrder() {
                     ×
                   </button>
                 )}
-              </div>
-
-              {/* Grid Column Selector */}
-              <div className="flex items-center gap-0.5 bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 shrink-0">
-                {[4, 5, 6].map((col) => (
-                  <button
-                    key={col}
-                    type="button"
-                    onClick={() => {
-                      setGridCols(col);
-                      localStorage.setItem('pos_register_grid_cols', col);
-                    }}
-                    title={`${col} Columns`}
-                    className={`px-2 py-1 text-xs font-bold rounded-md transition-colors ${
-                      gridCols === col
-                        ? 'bg-amber-500 text-[var(--pos-selection-text)] shadow-sm'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-                    }`}
-                  >
-                    {col} Col
-                  </button>
-                ))}
               </div>
             </div>
           </div>
