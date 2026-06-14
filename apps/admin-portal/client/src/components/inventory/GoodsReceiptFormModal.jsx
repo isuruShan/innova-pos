@@ -590,26 +590,26 @@ export default function GoodsReceiptFormModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => {
         if (window.innerWidth >= 640 && e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="bg-[var(--pos-panel)] rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto border border-slate-700"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto border border-gray-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-[var(--pos-panel)] border-b border-slate-700 px-6 py-4 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
           <div>
-            <h2 className="text-xl font-bold text-[var(--pos-text-primary)]">{title}</h2>
-            {editing && <p className="text-sm text-slate-500 mt-0.5">{editing.receiptNumber}</p>}
+            <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+            {editing && <p className="text-sm text-gray-500 mt-0.5">{editing.receiptNumber}</p>}
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={isPending}
-            className="w-9 h-9 bg-slate-700/50 hover:bg-slate-600 rounded-lg flex items-center justify-center text-slate-300 hover:text-white transition disabled:opacity-50"
+            className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center text-gray-500 hover:text-gray-900 transition disabled:opacity-50"
           >
             <X size={18} />
           </button>
@@ -619,14 +619,14 @@ export default function GoodsReceiptFormModal({
           {/* Purchase Order Selection (for receipts only, when not editing) */}
           {!editing && !createFromPO && (
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
-                <FileText size={14} />
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <FileText size={14} className="text-gray-400" />
                 Link to Purchase Order (Optional)
               </label>
               <select
                 value={purchaseOrderId}
                 onChange={(e) => handlePOChange(e.target.value)}
-                className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange"
                 disabled={isPending || readOnly}
               >
                 <option value="">None (standalone {isReceipt ? 'receipt' : 'return'})</option>
@@ -648,13 +648,13 @@ export default function GoodsReceiptFormModal({
 
           {/* Supplier Selection */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Supplier <span className="text-red-400">*</span>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Supplier <span className="text-red-500">*</span>
             </label>
             <select
               value={supplierId}
               onChange={(e) => setSupplierId(e.target.value)}
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange"
               disabled={isPending || !!purchaseOrderId || readOnly}
             >
               <option value="">Select a supplier</option>
@@ -668,15 +668,15 @@ export default function GoodsReceiptFormModal({
 
           {/* Receipt Date */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
-              <Calendar size={14} />
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <Calendar size={14} className="text-gray-400" />
               {isReceipt ? 'Receipt' : 'Return'} Date
             </label>
             <input
               type="date"
               value={receiptDate}
               onChange={(e) => setReceiptDate(e.target.value)}
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-orange/20 focus:border-brand-orange"
               disabled={isPending || readOnly}
             />
           </div>
@@ -684,15 +684,15 @@ export default function GoodsReceiptFormModal({
           {/* Items Section */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                <Package size={14} />
-                Items <span className="text-red-400">*</span>
+              <label className="text-sm font-medium text-gray-750 flex items-center gap-2">
+                <Package size={14} className="text-gray-400" />
+                Items <span className="text-red-500">*</span>
               </label>
               {!purchaseOrderId && !readOnly && (
                 <button
                   type="button"
                   onClick={handleAddItem}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg text-xs font-medium transition"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-orange/10 hover:bg-brand-orange/20 text-brand-orange rounded-lg text-xs font-medium transition"
                   disabled={isPending}
                 >
                   <Plus size={13} />
@@ -702,7 +702,7 @@ export default function GoodsReceiptFormModal({
             </div>
 
             {items.length === 0 ? (
-              <div className="bg-[var(--pos-surface-inset)] rounded-lg p-6 text-center text-slate-500 text-sm">
+              <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-400 text-sm border border-gray-200">
                 No items added yet. {purchaseOrderId ? 'Select a purchase order to load items.' : 'Click "Add Item" to get started.'}
               </div>
             ) : (
@@ -710,12 +710,12 @@ export default function GoodsReceiptFormModal({
                 {items.map((item, index) => (
                   <div
                     key={index}
-                    className="bg-[var(--pos-surface-inset)] rounded-lg p-4 border border-slate-700"
+                    className="bg-gray-50 rounded-lg p-4 border border-gray-200"
                   >
                     <div className="grid grid-cols-12 gap-3">
                       {/* Inventory Item */}
-                      <div className="col-span-12 md:col-span-4">
-                        <label className="block text-xs text-slate-500 mb-1">Item</label>
+                      <div className="col-span-12 md:col-span-5 lg:col-span-4">
+                        <label className="block text-xs text-gray-500 mb-1">Item</label>
                         <InventorySearchSelect
                           value={item.inventoryItemId}
                           inventory={filteredInventory}
@@ -729,53 +729,53 @@ export default function GoodsReceiptFormModal({
                       {isReceipt ? (
                         <>
                           {item.orderedQty > 0 && (
-                            <div className="col-span-4 md:col-span-2">
-                              <label className="block text-xs text-slate-500 mb-1">Ordered</label>
+                            <div className="col-span-6 sm:col-span-3 md:col-span-1 lg:col-span-1">
+                              <label className="block text-xs text-gray-500 mb-1">Ordered</label>
                               <input
                                 type="number"
                                 value={item.orderedQty}
                                 readOnly
-                                className="w-full bg-slate-800 border border-slate-700 text-slate-400 rounded-lg px-3 py-2 text-sm cursor-not-allowed"
+                                className="w-full bg-gray-105 border border-gray-200 text-gray-500 rounded-lg px-3 py-2 text-sm cursor-not-allowed"
                               />
                             </div>
                           )}
-                          <div className={`col-span-4 ${item.orderedQty > 0 ? 'md:col-span-2' : 'md:col-span-2'}`}>
-                            <label className="block text-xs text-slate-500 mb-1">Received</label>
+                          <div className={`col-span-6 ${item.orderedQty > 0 ? 'sm:col-span-3 md:col-span-2 lg:col-span-1' : 'sm:col-span-3 md:col-span-2 lg:col-span-1'}`}>
+                            <label className="block text-xs text-gray-500 mb-1">Received</label>
                             <input
                               type="number"
                               min="0"
                               step="1"
                               value={item.receivedQty}
                               onChange={(e) => handleItemChange(index, 'receivedQty', e.target.value)}
-                              className="w-full bg-slate-800 border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange"
                               disabled={isPending || readOnly}
                             />
                           </div>
-                          <div className="col-span-4 md:col-span-2">
-                            <label className="block text-xs text-slate-500 mb-1">Rejected</label>
+                          <div className="col-span-6 sm:col-span-3 md:col-span-2 lg:col-span-1">
+                            <label className="block text-xs text-gray-500 mb-1">Rejected</label>
                             <input
                               type="number"
                               min="0"
                               step="1"
                               value={item.rejectedQty}
                               onChange={(e) => handleItemChange(index, 'rejectedQty', e.target.value)}
-                              className="w-full bg-slate-800 border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange"
                               disabled={isPending || readOnly}
                             />
                           </div>
-                          <div className="col-span-4 md:col-span-2">
-                            <label className="block text-xs text-green-400 mb-1">Accepted</label>
+                          <div className="col-span-6 sm:col-span-3 md:col-span-2 lg:col-span-1">
+                            <label className="block text-xs text-green-600 mb-1">Accepted</label>
                             <input
                               type="number"
                               value={item.acceptedQty}
                               readOnly
-                              className="w-full bg-green-500/10 border border-green-500/30 text-green-400 rounded-lg px-3 py-2 text-sm font-medium cursor-not-allowed"
+                              className="w-full bg-green-50 border border-green-200 text-green-700 rounded-lg px-3 py-2 text-sm font-medium cursor-not-allowed"
                             />
                           </div>
                         </>
                       ) : (
-                        <div className="col-span-6 md:col-span-3">
-                          <label className="block text-xs text-red-400 mb-1">
+                        <div className="col-span-6 sm:col-span-5 md:col-span-3 lg:col-span-3">
+                          <label className="block text-xs text-red-600 mb-1">
                             Return Qty {item.maxReturnQty !== undefined && `(Max: ${item.maxReturnQty})`}
                           </label>
                           <input
@@ -784,33 +784,33 @@ export default function GoodsReceiptFormModal({
                             step="1"
                             value={item.receivedQty}
                             onChange={(e) => handleItemChange(index, 'receivedQty', e.target.value)}
-                            className="w-full bg-slate-800 border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange"
                             disabled={isPending || readOnly}
                           />
                         </div>
                       )}
 
                       {/* Unit Price */}
-                      <div className={`col-span-${isReceipt ? '5' : '6'} md:col-span-2`}>
-                        <label className="block text-xs text-slate-500 mb-1">Unit Price</label>
+                      <div className={`col-span-8 sm:col-span-4 ${isReceipt ? 'md:col-span-2 lg:col-span-2' : 'md:col-span-2 lg:col-span-3'}`}>
+                        <label className="block text-xs text-gray-500 mb-1">Unit Price</label>
                         <input
                           type="number"
                           min="0"
                           step="0.01"
                           value={item.unitPrice}
                           onChange={(e) => handleItemChange(index, 'unitPrice', e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange"
                           disabled={isPending || readOnly}
                         />
                       </div>
 
                       {/* Delete Button */}
                       {!purchaseOrderId && !readOnly && (
-                        <div className="col-span-3 md:col-span-1 flex items-end">
+                        <div className={`col-span-4 ${isReceipt ? 'sm:col-span-2 md:col-span-1 lg:col-span-1' : 'sm:col-span-2 md:col-span-1 lg:col-span-1'} flex items-end`}>
                           <button
                             type="button"
                             onClick={() => handleRemoveItem(index)}
-                            className="w-full h-[38px] bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg flex items-center justify-center transition"
+                            className="w-full h-[38px] bg-red-50 hover:bg-red-100 text-red-655 border border-red-200 rounded-lg flex items-center justify-center transition"
                             disabled={isPending}
                           >
                             <Trash2 size={14} />
@@ -822,7 +822,7 @@ export default function GoodsReceiptFormModal({
                     {/* Rejection Reason (for receipts with rejected items) */}
                     {isReceipt && item.rejectedQty > 0 && (
                       <div className="mt-3">
-                        <label className="block text-xs text-red-400 mb-1 flex items-center gap-1">
+                        <label className="block text-xs text-red-650 mb-1 flex items-center gap-1">
                           <AlertTriangle size={11} />
                           Rejection Reason
                         </label>
@@ -831,7 +831,7 @@ export default function GoodsReceiptFormModal({
                           value={item.rejectionReason}
                           onChange={(e) => handleItemChange(index, 'rejectionReason', e.target.value)}
                           placeholder="Damaged, expired, wrong item, etc."
-                          className="w-full bg-red-500/10 border border-red-500/30 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder-slate-600"
+                          className="w-full bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder-red-300"
                           disabled={isPending || readOnly}
                         />
                       </div>
@@ -845,16 +845,16 @@ export default function GoodsReceiptFormModal({
           {/* Return Reason (for returns) */}
           {!isReceipt && (
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
-                <AlertTriangle size={14} className="text-red-400" />
-                Return Reason <span className="text-red-400">*</span>
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <AlertTriangle size={14} className="text-red-500" />
+                Return Reason <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={returnReason}
                 onChange={(e) => setReturnReason(e.target.value)}
                 rows={2}
                 placeholder="Reason for returning these items..."
-                className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500 resize-none"
+                className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-orange placeholder-gray-400 resize-none"
                 disabled={isPending || readOnly}
               />
             </div>
@@ -862,24 +862,24 @@ export default function GoodsReceiptFormModal({
 
           {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Notes</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
               placeholder="Optional notes..."
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500 resize-none"
+              className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-orange placeholder-gray-400 resize-none"
               disabled={isPending || readOnly}
             />
           </div>
 
           {/* Total Amount */}
           {items.length > 0 && (
-            <div className={`${isReceipt ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'} border rounded-lg p-4 flex items-center justify-between`}>
-              <span className="text-sm font-medium text-slate-300">
+            <div className={`${isReceipt ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'} border rounded-lg p-4 flex items-center justify-between`}>
+              <span className="text-sm font-medium text-gray-600">
                 Total {isReceipt ? 'Receipt' : 'Return'} Value
               </span>
-              <span className={`text-xl font-bold ${isReceipt ? 'text-green-400' : 'text-red-400'}`}>
+              <span className="text-xl font-bold">
                 {formatCurrency(totalAmount)}
               </span>
             </div>
@@ -887,7 +887,7 @@ export default function GoodsReceiptFormModal({
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
+            <div className="bg-red-50 border border-red-200 text-red-650 rounded-lg px-4 py-3 text-sm">
               {error}
             </div>
           )}
@@ -914,7 +914,7 @@ export default function GoodsReceiptFormModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition"
+                className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition"
               >
                 Close
               </button>
@@ -925,14 +925,14 @@ export default function GoodsReceiptFormModal({
                 type="button"
                 onClick={onClose}
                 disabled={isPending}
-                className="flex-1 px-4 py-2.5 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700/50 transition disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-750 bg-white rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isPending}
-                className="flex-1 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-white font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2.5 bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isPending ? 'Saving...' : editing ? 'Update' : 'Create Draft'}
               </button>

@@ -199,6 +199,7 @@ export default function TableAnalyticsPage() {
     start: new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0],
     end: today.toISOString().split('T')[0],
   });
+  const [activePreset, setActivePreset] = useState('month');
 
   // Fetch summary KPIs
   const { data: summary, isLoading: summaryLoading } = useQuery({
@@ -249,6 +250,7 @@ export default function TableAnalyticsPage() {
 
   // Quick date range presets
   const setPreset = (preset) => {
+    setActivePreset(preset);
     const end = new Date();
     let start;
     switch (preset) {
@@ -307,7 +309,11 @@ export default function TableAnalyticsPage() {
                 <button
                   key={preset.key}
                   onClick={() => setPreset(preset.key)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap text-gray-500 hover:bg-slate-700/50 transition-colors"
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                    activePreset === preset.key
+                      ? 'bg-brand-orange text-white'
+                      : 'text-gray-650 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
                 >
                   {preset.label}
                 </button>
@@ -319,14 +325,20 @@ export default function TableAnalyticsPage() {
               <input
                 type="date"
                 value={dateRange.start}
-                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                onChange={(e) => {
+                  setDateRange({ ...dateRange, start: e.target.value });
+                  setActivePreset('');
+                }}
                 className="bg-transparent text-sm text-gray-900 outline-none"
               />
               <span className="text-gray-400">–</span>
               <input
                 type="date"
                 value={dateRange.end}
-                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                onChange={(e) => {
+                  setDateRange({ ...dateRange, end: e.target.value });
+                  setActivePreset('');
+                }}
                 className="bg-transparent text-sm text-gray-900 outline-none"
               />
             </div>

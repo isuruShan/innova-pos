@@ -656,17 +656,19 @@ export default function ReservationsPage() {
       />
 
       {/* Date Picker & Stats */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-xl border border-gray-200">
-        <div className="flex items-center gap-2">
-          <button onClick={() => changeDate(-1)} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition">
-            <ChevronLeft size={16} className="text-gray-650" />
-          </button>
-          <span className="text-sm font-semibold text-gray-800 min-w-[140px] text-center">
-            {selectedDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-          </span>
-          <button onClick={() => changeDate(1)} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition">
-            <ChevronRight size={16} className="text-gray-650" />
-          </button>
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-gray-200">
+        <div className="flex items-center justify-between sm:justify-start gap-2 w-full md:w-auto">
+          <div className="flex items-center gap-2">
+            <button onClick={() => changeDate(-1)} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition">
+              <ChevronLeft size={16} className="text-gray-650" />
+            </button>
+            <span className="text-sm font-semibold text-gray-800 min-w-[120px] sm:min-w-[140px] text-center">
+              {selectedDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
+            <button onClick={() => changeDate(1)} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition">
+              <ChevronRight size={16} className="text-gray-650" />
+            </button>
+          </div>
           <button
             onClick={() => setSelectedDate(new Date())}
             className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-150 hover:bg-gray-200 text-gray-700 transition"
@@ -675,7 +677,7 @@ export default function ReservationsPage() {
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-2 text-xs">
+        <div className="flex flex-wrap gap-2 text-xs w-full md:w-auto justify-start md:justify-end">
           <span className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 font-semibold border border-gray-200">
             Total: <strong className="ml-0.5">{stats.total}</strong>
           </span>
@@ -692,7 +694,7 @@ export default function ReservationsPage() {
       </div>
 
       {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 bg-white p-3 rounded-xl border border-gray-200">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-white p-3 rounded-xl border border-gray-200">
         <div className="relative flex-1 w-full">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -704,7 +706,7 @@ export default function ReservationsPage() {
           />
         </div>
 
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+        <div className="flex items-center justify-between sm:justify-start gap-1 bg-gray-100 rounded-lg p-1 w-full sm:w-auto">
           {[
             { value: 'all', label: 'All' },
             { value: 'pending', label: 'Pending' },
@@ -714,7 +716,7 @@ export default function ReservationsPage() {
             <button
               key={opt.value}
               onClick={() => setFilterStatus(opt.value)}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition flex-1 text-center sm:flex-initial ${
                 filterStatus === opt.value
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-500 hover:text-gray-800'

@@ -719,7 +719,7 @@ export default function MenuManagement() {
             </div>
 
             {/* Sticky Category Tabs */}
-            <div className="sticky top-[64px] z-20 bg-gray-50 py-3 border-b border-gray-200 mb-5">
+            <div className="sticky top-[-16px] sm:top-[-24px] z-20 bg-gray-50 pt-[16px] sm:pt-[24px] pb-3 border-b border-gray-200 mb-5">
               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                 {filterTabs.map((cat) => (
                   <button key={cat} type="button" onClick={() => setActiveCategory(cat)}

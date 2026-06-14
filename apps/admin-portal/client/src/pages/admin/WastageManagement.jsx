@@ -268,7 +268,7 @@ export default function WastageManagement() {
         />
 
         {/* Search + Filter controls */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-white p-3 rounded-xl border border-gray-200/50 items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-white p-3 rounded-xl border border-gray-200/50 items-stretch sm:items-center justify-between">
           {stores.length > 0 && (
             <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto">
               <span className="text-xs text-gray-500 font-semibold">Store:</span>
@@ -521,8 +521,8 @@ export default function WastageManagement() {
                 {sortedAndFiltered.map((report) => (
                   <div key={report._id} className="bg-white border border-gray-200/50 rounded-xl p-3.5 flex flex-col justify-between hover:border-gray-300 transition">
                     <div>
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
+                        <div className="flex-1 min-w-0">
                           <Badge
                             label={TYPE_LABELS[report.type] || report.type}
                             variant={report.type === 'end_of_day' ? 'info' : 'critical'}
@@ -535,10 +535,11 @@ export default function WastageManagement() {
                         </div>
                         <button
                           onClick={() => setActiveReport(report)}
-                          className="p-1.5 rounded-lg bg-gray-50 border border-gray-250 text-gray-700 hover:bg-gray-100 transition"
+                          className="p-1.5 rounded-lg bg-gray-50 border border-gray-250 text-gray-700 hover:bg-gray-100 transition w-full sm:w-auto flex items-center justify-center gap-1.5 sm:justify-start"
                           title="View Details"
                         >
                           <Eye size={14} />
+                          <span className="sm:hidden text-xs font-semibold">View Details</span>
                         </button>
                       </div>
 

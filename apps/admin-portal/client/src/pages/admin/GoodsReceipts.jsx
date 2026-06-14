@@ -328,7 +328,7 @@ export default function GoodsReceipts() {
           ))}
         </div>
         {/* Search + Filter button + Sort */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-white p-3 rounded-xl border border-gray-200/50 items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-white p-3 rounded-xl border border-gray-200/50 items-stretch sm:items-center justify-between">
           {stores.length > 0 && (
             <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto">
               <span className="text-xs text-gray-500 font-semibold">Store:</span>
@@ -355,7 +355,7 @@ export default function GoodsReceipts() {
               className="flex-1 bg-transparent text-gray-900 text-sm focus:outline-none placeholder-slate-650"
             />
             {search && (
-              <button onClick={() => setSearch('')}><X size={13} className="text-gray-400 hover:text-white" /></button>
+              <button onClick={() => setSearch('')}><X size={13} className="text-gray-400 hover:text-gray-900" /></button>
             )}
           </div>
 
@@ -641,8 +641,8 @@ export default function GoodsReceipts() {
                       key={receipt._id}
                       className="bg-white border border-gray-200/50 rounded-xl p-3.5 hover:border-gray-300 transition flex flex-col justify-between"
                     >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1.5">
                             <h3 className="text-base font-semibold text-gray-900">
                               {receipt.receiptNumber}
@@ -666,20 +666,20 @@ export default function GoodsReceipts() {
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5 sm:justify-end">
                           <button
                             type="button"
                             onClick={() => openView(receipt)}
-                            className="p-1 bg-gray-50 hover:bg-gray-100 border border-gray-205 rounded-lg text-gray-700 transition"
+                            className="p-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-205 rounded-lg text-gray-700 transition"
                             title="View Details"
                           >
-                            <Eye size={12} />
+                            <Eye size={13} />
                           </button>
                           {receipt.status === 'draft' && (
                             <button
                               type="button"
                               onClick={() => setConfirmTarget(receipt)}
-                              className="p-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 text-green-400 rounded-lg text-[10px] font-semibold transition"
+                              className="px-2.5 py-1 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 text-green-455 border border-green-500/20 rounded-lg text-xs font-semibold transition"
                             >
                               Confirm
                             </button>
@@ -688,18 +688,18 @@ export default function GoodsReceipts() {
                             <button
                               type="button"
                               onClick={() => openEdit(receipt)}
-                              className="p-1 bg-gray-50 hover:bg-gray-100 border border-gray-205 rounded-lg text-gray-700 transition"
+                              className="p-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-205 rounded-lg text-gray-700 transition"
                             >
-                              <Edit2 size={12} />
+                              <Edit2 size={13} />
                             </button>
                           )}
                           {receipt.status === 'draft' && (
                             <button
                               type="button"
                               onClick={() => setDeleteTarget(receipt)}
-                              className="p-1 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg text-red-500 transition"
+                              className="p-1.5 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg text-red-500 transition"
                             >
-                              <Trash2 size={12} />
+                              <Trash2 size={13} />
                             </button>
                           )}
                         </div>
