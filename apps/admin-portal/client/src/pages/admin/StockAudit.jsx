@@ -14,7 +14,7 @@ import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import ViewModeToggle from '../../components/ViewModeToggle';
 
 export default function StockAudit() {
-  const { selectedStoreId, isStoreReady } = useStoreContext();
+  const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
 
@@ -129,7 +129,7 @@ export default function StockAudit() {
   const pageLoading = !isStoreReady || itemsLoading;
 
   return (
-    <div className="min-h-screen bg-[var(--pos-page-bg)]">
+    <div className="min-h-screen bg-gray-50">
       
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         <PageHeader
@@ -160,7 +160,7 @@ export default function StockAudit() {
         />
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-slate-700 overflow-x-auto no-scrollbar">
+        <div className="flex gap-2 mb-6 border-b border-gray-200 overflow-x-auto no-scrollbar">
           {[
             { key: 'audit', label: 'Stock Audit' },
             { key: 'consumption', label: 'Consumption Report' },
@@ -170,8 +170,8 @@ export default function StockAudit() {
               onClick={() => setActiveTab(tab.key)}
               className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap transition border-b-2 ${
                 activeTab === tab.key
-                  ? 'border-amber-500 text-amber-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-300'
+                  ? 'border-amber-500 text-brand-orange'
+                  : 'border-transparent text-gray-500 hover:text-slate-300'
               }`}
             >
               {tab.label}
@@ -184,21 +184,37 @@ export default function StockAudit() {
         ) : (
           <>
             {/* Search Bar / Refresh */}
-            <div className="flex items-center gap-3 mb-6 bg-[var(--pos-panel)] rounded-xl border border-slate-700 p-4">
+            <div className="flex items-center gap-3 mb-6 bg-white rounded-xl border border-gray-200 p-4">
+              {stores.length > 0 && (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-xs text-gray-500 font-semibold">Store:</span>
+                  <select
+                    value={selectedStoreId || ''}
+                    onChange={(e) => selectStore(e.target.value)}
+                    className="bg-gray-50 border border-gray-300 text-gray-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+                  >
+                    {stores.map((s) => (
+                      <option key={s._id} value={s._id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   placeholder="Search inventory items..."
-                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500"
+                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500"
                 />
               </div>
               <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
               <button
                 onClick={() => refetch()}
-                className="p-2 rounded-lg border border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)] hover:bg-slate-800 transition"
+                className="p-2 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-900 hover:bg-slate-800 transition"
                 title="Refresh List"
               >
                 <RefreshCw size={16} />
@@ -207,9 +223,9 @@ export default function StockAudit() {
 
             {/* Overview of Adjustments Bar */}
             {pendingAdjustments.length > 0 && (
-              <div className="mb-6 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="mb-6 bg-brand-orange/10 border border-amber-500/30 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="text-sm text-slate-300">
-                  You have <span className="font-semibold text-amber-400">{pendingAdjustments.length}</span> unsaved item count adjustments.
+                  You have <span className="font-semibold text-brand-orange">{pendingAdjustments.length}</span> unsaved item count adjustments.
                 </div>
                 <button
                   onClick={() => setPhysicalCounts({})}
@@ -223,7 +239,7 @@ export default function StockAudit() {
             {/* Audit Table */}
             {pageLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 size={32} className="animate-spin text-amber-400" />
+                <Loader2 size={32} className="animate-spin text-brand-orange" />
               </div>
             ) : viewMode === 'table' ? (
               <ResponsiveTable
@@ -245,13 +261,13 @@ export default function StockAudit() {
                     header: 'Item Name',
                     mobilePrimary: true,
                     sortField: 'itemName',
-                    render: (item) => <span className="font-medium text-[var(--pos-text-primary)]">{item.itemName}</span>,
+                    render: (item) => <span className="font-medium text-gray-900">{item.itemName}</span>,
                   },
                   {
                     key: 'unit',
                     header: 'Unit',
                     sortField: 'unit',
-                    render: (item) => <span className="text-slate-400">{item.unit}</span>,
+                    render: (item) => <span className="text-gray-500">{item.unit}</span>,
                   },
                   {
                     key: 'systemQty',
@@ -276,12 +292,12 @@ export default function StockAudit() {
                             placeholder="Enter count"
                             value={val}
                             onChange={(e) => handleCountChange(item._id, e.target.value)}
-                            className="w-28 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 text-right"
+                            className="w-28 bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-2.5 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 text-right"
                           />
                           {val !== '' && (
                             <button
                               onClick={() => handleClearRow(item._id)}
-                              className="text-slate-500 hover:text-slate-300 transition"
+                              className="text-gray-400 hover:text-slate-300 transition"
                               title="Clear Count"
                             >
                               <X size={14} />
@@ -299,9 +315,9 @@ export default function StockAudit() {
                     sortField: 'variance',
                     render: (item) => {
                       const val = physicalCounts[item._id];
-                      if (val === undefined || val === '') return <span className="text-slate-500">—</span>;
+                      if (val === undefined || val === '') return <span className="text-gray-400">—</span>;
                       const variance = parseFloat(val) - item.quantity;
-                      const color = variance === 0 ? 'text-slate-400' : variance > 0 ? 'text-green-400' : 'text-red-400';
+                      const color = variance === 0 ? 'text-gray-500' : variance > 0 ? 'text-green-400' : 'text-red-400';
                       return (
                         <span className={`font-semibold ${color}`}>
                           {variance > 0 ? '+' : ''}{Math.round(variance * 100) / 100}
@@ -313,18 +329,18 @@ export default function StockAudit() {
               />
             ) : (
               sortedItems.length === 0 ? (
-                <div className="text-center py-16 bg-[var(--pos-panel)] rounded-xl border border-slate-700">
-                  <Package size={36} className="mx-auto opacity-30 mb-2 text-slate-400" />
-                  <p className="text-sm text-slate-500">No inventory items found</p>
+                <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
+                  <Package size={36} className="mx-auto opacity-30 mb-2 text-gray-500" />
+                  <p className="text-sm text-gray-400">No inventory items found</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {sortedItems.map((item) => {
                     const val = physicalCounts[item._id] !== undefined ? physicalCounts[item._id] : '';
-                    let varianceContent = <span className="text-slate-500">—</span>;
+                    let varianceContent = <span className="text-gray-400">—</span>;
                     if (val !== undefined && val !== '') {
                       const variance = parseFloat(val) - item.quantity;
-                      const color = variance === 0 ? 'text-slate-400' : variance > 0 ? 'text-green-400' : 'text-red-400';
+                      const color = variance === 0 ? 'text-gray-500' : variance > 0 ? 'text-green-400' : 'text-red-400';
                       varianceContent = (
                         <span className={`font-semibold ${color}`}>
                           {variance > 0 ? '+' : ''}{Math.round(variance * 100) / 100}
@@ -332,17 +348,17 @@ export default function StockAudit() {
                       );
                     }
                     return (
-                      <div key={item._id} className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-3.5 flex flex-col justify-between hover:border-slate-600 transition">
+                      <div key={item._id} className="bg-white border border-gray-200/50 rounded-xl p-3.5 flex flex-col justify-between hover:border-gray-300 transition">
                         <div>
-                          <h4 className="text-[var(--pos-text-primary)] font-semibold text-sm truncate">{item.itemName}</h4>
+                          <h4 className="text-gray-900 font-semibold text-sm truncate">{item.itemName}</h4>
                           <p className="text-slate-550 text-xs mt-0.5">Unit: {item.unit}</p>
-                          <div className="grid grid-cols-2 gap-2 mt-3 bg-[var(--pos-surface-inset)] rounded-lg p-2 text-xs border border-slate-800/60">
+                          <div className="grid grid-cols-2 gap-2 mt-3 bg-gray-50 rounded-lg p-2 text-xs border border-slate-800/60">
                             <div>
-                              <p className="text-[10px] text-slate-500">System Qty</p>
+                              <p className="text-[10px] text-gray-400">System Qty</p>
                               <p className="font-semibold text-slate-300">{item.quantity}</p>
                             </div>
                             <div>
-                              <p className="text-[10px] text-slate-500">Variance</p>
+                              <p className="text-[10px] text-gray-400">Variance</p>
                               <p className="font-semibold">{varianceContent}</p>
                             </div>
                           </div>
@@ -356,12 +372,12 @@ export default function StockAudit() {
                             placeholder="Enter count"
                             value={val}
                             onChange={(e) => handleCountChange(item._id, e.target.value)}
-                            className="flex-1 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-right"
+                            className="flex-1 bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-right"
                           />
                           {val !== '' && (
                             <button
                               onClick={() => handleClearRow(item._id)}
-                              className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-500 hover:text-slate-350 rounded-lg transition"
+                              className="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-slate-350 rounded-lg transition"
                               title="Clear Count"
                             >
                               <X size={14} />

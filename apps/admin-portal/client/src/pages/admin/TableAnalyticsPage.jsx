@@ -10,7 +10,7 @@ import FilterPanel from '../../components/FilterPanel';
 
 function KPICard({ icon: Icon, label, value, unit, trend, trendLabel, color = 'amber' }) {
   const colorClasses = {
-    amber: 'text-amber-400 bg-amber-500/20',
+    amber: 'text-brand-orange bg-brand-orange/20',
     teal: 'text-teal-400 bg-teal-500/20',
     purple: 'text-purple-400 bg-purple-500/20',
     blue: 'text-blue-400 bg-blue-500/20',
@@ -19,7 +19,7 @@ function KPICard({ icon: Icon, label, value, unit, trend, trendLabel, color = 'a
   const iconClass = colorClasses[color] || colorClasses.amber;
 
   return (
-    <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4">
+    <div className="bg-white border border-gray-200 rounded-xl p-4">
       <div className="flex items-start justify-between">
         <div className={`p-2 rounded-lg ${iconClass}`}>
           <Icon size={20} />
@@ -35,12 +35,12 @@ function KPICard({ icon: Icon, label, value, unit, trend, trendLabel, color = 'a
           </div>
         )}
       </div>
-      <p className="text-2xl font-bold text-[var(--pos-text-primary)] mt-3">
+      <p className="text-2xl font-bold text-gray-900 mt-3">
         {value}
-        {unit && <span className="text-sm font-normal text-slate-400 ml-1">{unit}</span>}
+        {unit && <span className="text-sm font-normal text-gray-500 ml-1">{unit}</span>}
       </p>
-      <p className="text-sm text-slate-400 mt-1">{label}</p>
-      {trendLabel && <p className="text-xs text-slate-500 mt-0.5">{trendLabel}</p>}
+      <p className="text-sm text-gray-500 mt-1">{label}</p>
+      {trendLabel && <p className="text-xs text-gray-400 mt-0.5">{trendLabel}</p>}
     </div>
   );
 }
@@ -48,7 +48,7 @@ function KPICard({ icon: Icon, label, value, unit, trend, trendLabel, color = 'a
 function HourlyHeatmap({ data }) {
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-40 text-slate-500">
+      <div className="flex items-center justify-center h-40 text-gray-400">
         No hourly data available
       </div>
     );
@@ -90,7 +90,7 @@ function HourlyHeatmap({ data }) {
               >
                 {hour.sessions}
               </div>
-              <span className="text-[10px] text-slate-500">{hour.hour}:00</span>
+              <span className="text-[10px] text-gray-400">{hour.hour}:00</span>
             </div>
           );
         })}
@@ -114,10 +114,10 @@ function TableBreakdownRow({ table, maxRevenue }) {
   const revenuePerHour = totalHours > 0 ? totalRevenue / totalHours : 0;
 
   return (
-    <div className="flex items-center gap-4 py-2 border-b border-slate-700/30 last:border-b-0">
-      <div className="w-16 font-medium text-[var(--pos-text-primary)]">{table.tableLabel || 'Unknown'}</div>
+    <div className="flex items-center gap-4 py-2 border-b border-gray-200/30 last:border-b-0">
+      <div className="w-16 font-medium text-gray-900">{table.tableLabel || 'Unknown'}</div>
       <div className="flex-1">
-        <div className="flex items-center gap-2 text-sm text-slate-400">
+        <div className="flex items-center gap-2 text-sm text-gray-500">
           <span className="flex items-center gap-1">
             <Users size={12} /> {sessions}
           </span>
@@ -130,16 +130,16 @@ function TableBreakdownRow({ table, maxRevenue }) {
         </div>
         <div className="mt-1 h-2 bg-slate-700/50 rounded-full overflow-hidden">
           <div
-            className="h-full bg-amber-500 rounded-full"
+            className="h-full bg-brand-orange rounded-full"
             style={{ width: `${revenueWidth}%` }}
           />
         </div>
       </div>
       <div className="text-right min-w-[80px]">
-        <p className="font-semibold text-[var(--pos-text-primary)]">
+        <p className="font-semibold text-gray-900">
           ${totalRevenue.toFixed(0)}
         </p>
-        <p className="text-xs text-slate-500">${revenuePerHour.toFixed(0)}/hr</p>
+        <p className="text-xs text-gray-400">${revenuePerHour.toFixed(0)}/hr</p>
       </div>
     </div>
   );
@@ -148,7 +148,7 @@ function TableBreakdownRow({ table, maxRevenue }) {
 function DayPartChart({ data }) {
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-40 text-slate-500">
+      <div className="flex items-center justify-center h-40 text-gray-400">
         No day part data available
       </div>
     );
@@ -159,7 +159,7 @@ function DayPartChart({ data }) {
     breakfast: 'bg-yellow-500',
     morning: 'bg-yellow-500',
     lunch: 'bg-orange-500',
-    afternoon: 'bg-amber-500',
+    afternoon: 'bg-brand-orange',
     dinner: 'bg-red-500',
     late_night: 'bg-purple-500',
   };
@@ -179,10 +179,10 @@ function DayPartChart({ data }) {
               title={`${sessions} sessions, $${avgRevenue.toFixed(0)} avg`}
             />
             <div className="text-center">
-              <p className="text-xs font-medium text-[var(--pos-text-primary)] capitalize">
+              <p className="text-xs font-medium text-gray-900 capitalize">
                 {part.dayPart.replace('_', ' ')}
               </p>
-              <p className="text-[10px] text-slate-500">{sessions}</p>
+              <p className="text-[10px] text-gray-400">{sessions}</p>
             </div>
           </div>
         );
@@ -276,7 +276,7 @@ export default function TableAnalyticsPage() {
 
   if (!isStoreReady) {
     return (
-      <div className="min-h-screen flex flex-col bg-[var(--pos-page-bg)]">
+      <div className="min-h-screen flex flex-col bg-gray-50">
                 <div className="flex-1 flex items-center justify-center">
           <p className="text-amber-300">Select a store in the header first.</p>
         </div>
@@ -285,19 +285,19 @@ export default function TableAnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--pos-page-bg)]">
+    <div className="min-h-screen flex flex-col bg-gray-50">
       
       <div className="flex-1 flex flex-col p-4 gap-4 overflow-y-auto">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <BarChart3 size={24} className="text-amber-400" />
-          <h1 className="text-xl font-bold text-[var(--pos-text-primary)]">Table Analytics</h1>
+          <BarChart3 size={24} className="text-brand-orange" />
+          <h1 className="text-xl font-bold text-gray-900">Table Analytics</h1>
         </div>
 
         {/* Date Range Filter */}
         <FilterPanel summary={`${dateRange.start} → ${dateRange.end}`}>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-1 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 overflow-x-auto no-scrollbar">
               {[
                 { key: 'today', label: 'Today' },
                 { key: 'week', label: '7 Days' },
@@ -307,27 +307,27 @@ export default function TableAnalyticsPage() {
                 <button
                   key={preset.key}
                   onClick={() => setPreset(preset.key)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap text-slate-400 hover:bg-slate-700/50 transition-colors"
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap text-gray-500 hover:bg-slate-700/50 transition-colors"
                 >
                   {preset.label}
                 </button>
               ))}
             </div>
 
-            <div className="flex items-center gap-2 bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl px-3 py-2">
-              <Calendar size={14} className="text-slate-400" />
+            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2">
+              <Calendar size={14} className="text-gray-500" />
               <input
                 type="date"
                 value={dateRange.start}
                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                className="bg-transparent text-sm text-[var(--pos-text-primary)] outline-none"
+                className="bg-transparent text-sm text-gray-900 outline-none"
               />
-              <span className="text-slate-500">–</span>
+              <span className="text-gray-400">–</span>
               <input
                 type="date"
                 value={dateRange.end}
                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                className="bg-transparent text-sm text-[var(--pos-text-primary)] outline-none"
+                className="bg-transparent text-sm text-gray-900 outline-none"
               />
             </div>
           </div>
@@ -366,18 +366,18 @@ export default function TableAnalyticsPage() {
         {/* Charts Row */}
         <div className="grid lg:grid-cols-2 gap-4">
           {/* Hourly Heatmap */}
-          <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4">
-            <h3 className="font-semibold text-[var(--pos-text-primary)] mb-4 flex items-center gap-2">
-              <Clock size={18} className="text-amber-400" />
+          <div className="bg-white border border-gray-200 rounded-xl p-4">
+            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Clock size={18} className="text-brand-orange" />
               Hourly Occupancy
             </h3>
             <HourlyHeatmap data={hourly} />
           </div>
 
           {/* Day Part Breakdown */}
-          <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4">
-            <h3 className="font-semibold text-[var(--pos-text-primary)] mb-4 flex items-center gap-2">
-              <Utensils size={18} className="text-amber-400" />
+          <div className="bg-white border border-gray-200 rounded-xl p-4">
+            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Utensils size={18} className="text-brand-orange" />
               Sessions by Day Part
             </h3>
             <DayPartChart data={dayParts} />
@@ -385,17 +385,17 @@ export default function TableAnalyticsPage() {
         </div>
 
         {/* Table Breakdown */}
-        <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4">
-          <h3 className="font-semibold text-[var(--pos-text-primary)] mb-4 flex items-center gap-2">
-            <Table size={18} className="text-amber-400" />
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Table size={18} className="text-brand-orange" />
             Performance by Table
           </h3>
           {byTableLoading ? (
-            <div className="flex items-center justify-center h-40 text-slate-400">
+            <div className="flex items-center justify-center h-40 text-gray-500">
               Loading...
             </div>
           ) : byTable.length === 0 ? (
-            <div className="flex items-center justify-center h-40 text-slate-500">
+            <div className="flex items-center justify-center h-40 text-gray-400">
               No table data available
             </div>
           ) : (
@@ -413,21 +413,21 @@ export default function TableAnalyticsPage() {
 
         {/* Additional Metrics */}
         <div className="grid md:grid-cols-3 gap-4">
-          <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4">
-            <h4 className="text-sm text-slate-400 mb-2">Total Revenue</h4>
-            <p className="text-2xl font-bold text-[var(--pos-text-primary)]">
+          <div className="bg-white border border-gray-200 rounded-xl p-4">
+            <h4 className="text-sm text-gray-500 mb-2">Total Revenue</h4>
+            <p className="text-2xl font-bold text-gray-900">
               ${(summary?.totalRevenue || 0).toFixed(0)}
             </p>
           </div>
-          <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4">
-            <h4 className="text-sm text-slate-400 mb-2">Avg Party Size</h4>
-            <p className="text-2xl font-bold text-[var(--pos-text-primary)]">
+          <div className="bg-white border border-gray-200 rounded-xl p-4">
+            <h4 className="text-sm text-gray-500 mb-2">Avg Party Size</h4>
+            <p className="text-2xl font-bold text-gray-900">
               {(summary?.avgPartySize || 0).toFixed(1)}
             </p>
           </div>
-          <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4">
-            <h4 className="text-sm text-slate-400 mb-2">Total Covers</h4>
-            <p className="text-2xl font-bold text-[var(--pos-text-primary)]">
+          <div className="bg-white border border-gray-200 rounded-xl p-4">
+            <h4 className="text-sm text-gray-500 mb-2">Total Covers</h4>
+            <p className="text-2xl font-bold text-gray-900">
               {summary?.totalCovers || 0}
             </p>
           </div>

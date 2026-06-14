@@ -24,7 +24,7 @@ const TYPE_COLORS = {
 };
 
 const STATUS_COLORS = {
-  draft: 'text-slate-400 bg-slate-500/10',
+  draft: 'text-gray-500 bg-slate-500/10',
   confirmed: 'text-green-400 bg-green-500/10',
 };
 
@@ -36,7 +36,7 @@ const GRN_SORT_OPTIONS = [
 ];
 
 export default function GoodsReceipts() {
-  const { selectedStoreId, isStoreReady } = useStoreContext();
+  const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const [activeTab, setActiveTab] = useState('receipts');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -276,21 +276,21 @@ export default function GoodsReceipts() {
   }, [purchaseOrders, receipts]);
 
   return (
-    <div className="min-h-screen bg-[var(--pos-page-bg)]">
+    <div className="min-h-screen bg-gray-50">
       
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--pos-text-primary)]">Goods Receipts & Returns</h1>
-            <p className="text-slate-500 text-sm mt-1">
+            <h1 className="text-2xl font-bold text-gray-900">Goods Receipts & Returns</h1>
+            <p className="text-gray-400 text-sm mt-1">
               {stats.receipts.total} receipt{stats.receipts.total !== 1 ? 's' : ''} · {stats.returns.total} return{stats.returns.total !== 1 ? 's' : ''}
             </p>
           </div>
           <button
             type="button"
             onClick={openAdd}
-            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/20 text-sm"
+            className="flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/20 text-sm"
           >
             <Plus size={16} />
             {activeTab === 'receipts' ? 'New GRN' : 'Add Return'}
@@ -298,7 +298,7 @@ export default function GoodsReceipts() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-slate-700/50 overflow-x-auto no-scrollbar">
+        <div className="flex gap-2 mb-6 border-b border-gray-200/50 overflow-x-auto no-scrollbar">
           {[
             { key: 'receipts', label: 'Receipts', count: stats.receipts.total },
             { key: 'returns', label: 'Returns', count: stats.returns.total },
@@ -308,8 +308,8 @@ export default function GoodsReceipts() {
               onClick={() => setActiveTab(tab.key)}
               className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap transition border-b-2 ${
                 activeTab === tab.key
-                  ? 'border-amber-500 text-amber-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-300'
+                  ? 'border-amber-500 text-brand-orange'
+                  : 'border-transparent text-gray-500 hover:text-slate-300'
               }`}
             >
               {tab.label} {tab.count > 0 && `(${tab.count})`}
@@ -317,18 +317,34 @@ export default function GoodsReceipts() {
           ))}
         </div>
         {/* Search + Filter button + Sort */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700/50 items-center justify-between">
-          <div className="flex-1 w-full flex items-center gap-2 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2">
-            <Search size={15} className="text-slate-500 flex-shrink-0" />
+        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-white p-3 rounded-xl border border-gray-200/50 items-center justify-between">
+          {stores.length > 0 && (
+            <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto">
+              <span className="text-xs text-gray-500 font-semibold">Store:</span>
+              <select
+                value={selectedStoreId || ''}
+                onChange={(e) => selectStore(e.target.value)}
+                className="bg-gray-50 border border-gray-300 text-gray-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer w-full sm:w-auto"
+              >
+                {stores.map((s) => (
+                  <option key={s._id} value={s._id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="flex-1 w-full flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+            <Search size={15} className="text-gray-400 flex-shrink-0" />
             <input
               type="text"
               placeholder="Search by number, supplier, notes, PO..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-650"
+              className="flex-1 bg-transparent text-gray-900 text-sm focus:outline-none placeholder-slate-650"
             />
             {search && (
-              <button onClick={() => setSearch('')}><X size={13} className="text-slate-500 hover:text-white" /></button>
+              <button onClick={() => setSearch('')}><X size={13} className="text-gray-400 hover:text-white" /></button>
             )}
           </div>
 
@@ -341,14 +357,14 @@ export default function GoodsReceipts() {
                 onClick={() => setShowFilters(f => !f)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
                   (fromDate || toDate || statusFilter.length > 0)
-                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 font-semibold'
-                    : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-white'
+                    ? 'bg-brand-orange/15 border-amber-500/30 text-brand-orange font-semibold'
+                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-white'
                 }`}
               >
                 <SlidersHorizontal size={14} />
                 <span>Filters</span>
                 {(fromDate || toDate || statusFilter.length > 0) && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
+                  <span className="absolute -top-1.5 -right-1.5 bg-brand-orange text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
                     {(fromDate || toDate ? 1 : 0) + statusFilter.length}
                   </span>
                 )}
@@ -356,8 +372,8 @@ export default function GoodsReceipts() {
               </button>
 
               {showFilters && (
-                <div className="absolute right-0 mt-2 w-64 bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-2xl z-30 p-4 space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-700 pb-2">
+                <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-2xl z-30 p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-gray-200 pb-2">
                     <span className="text-xs font-semibold text-slate-350">Filters</span>
                     {(fromDate || toDate || statusFilter.length > 0) && (
                       <button
@@ -384,8 +400,8 @@ export default function GoodsReceipts() {
                             )}
                             className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
                               active
-                                ? 'bg-amber-500/15 text-amber-400 font-semibold border-l-2 border-amber-500'
-                                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                ? 'bg-brand-orange/15 text-brand-orange font-semibold border-l-2 border-amber-500'
+                                : 'text-gray-500 hover:bg-slate-800 hover:text-white'
                             }`}
                           >
                             <span className="capitalize">{status}</span>
@@ -400,21 +416,21 @@ export default function GoodsReceipts() {
                     <p className="text-[11px] font-semibold text-slate-455 uppercase tracking-wider mb-2">Date Range</p>
                     <div className="space-y-2">
                       <div>
-                        <label className="text-[10px] text-slate-500 block mb-1">From</label>
+                        <label className="text-[10px] text-gray-400 block mb-1">From</label>
                         <PosDateField
                           value={fromDate}
                           onChange={setFromDate}
                           max={toDate}
-                          className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] text-slate-500 block mb-1">To</label>
+                        <label className="text-[10px] text-gray-400 block mb-1">To</label>
                         <PosDateField
                           value={toDate}
                           onChange={setToDate}
                           min={fromDate}
-                          className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
                         />
                       </div>
                     </div>
@@ -428,7 +444,7 @@ export default function GoodsReceipts() {
               id="grn-sort"
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
             >
               {GRN_SORT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -437,7 +453,7 @@ export default function GoodsReceipts() {
             <button
               type="button"
               onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-              className="p-1.5 rounded-lg bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-400 hover:text-white transition"
+              className="p-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-white transition"
               title={order === 'asc' ? 'Ascending' : 'Descending'}
             >
               {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
@@ -454,7 +470,7 @@ export default function GoodsReceipts() {
                   <AlertCircle size={18} className="text-sky-400" />
                   <h3 className="text-sm font-semibold text-sky-400">Pending Purchase Orders</h3>
                 </div>
-                <p className="text-xs text-slate-400 mb-3">
+                <p className="text-xs text-gray-500 mb-3">
                   {pendingPOs.length} order{pendingPOs.length !== 1 ? 's' : ''} awaiting goods receipt
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -470,7 +486,7 @@ export default function GoodsReceipts() {
                     </button>
                   ))}
                   {pendingPOs.length > 3 && (
-                    <span className="text-xs text-slate-500 flex items-center px-2">
+                    <span className="text-xs text-gray-400 flex items-center px-2">
                       +{pendingPOs.length - 3} more
                     </span>
                   )}
@@ -486,7 +502,7 @@ export default function GoodsReceipts() {
         ) : receipts.filter((r) => r.type === (activeTab === 'receipts' ? 'receipt' : 'return')).length === 0 ? (
           <div className="text-center py-16">
             <Package size={48} className="mx-auto mb-4 text-slate-650 opacity-40" />
-            <p className="text-slate-500 text-lg mb-2">
+            <p className="text-gray-400 text-lg mb-2">
               No {activeTab === 'receipts' ? 'receipts' : 'returns'} found
             </p>
             <p className="text-slate-600 text-sm mb-6">
@@ -497,7 +513,7 @@ export default function GoodsReceipts() {
             <button
               type="button"
               onClick={openAdd}
-              className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-5 py-2.5 rounded-xl transition"
+              className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold px-5 py-2.5 rounded-xl transition"
             >
               <Plus size={16} />
               Create {activeTab === 'receipts' ? 'Receipt' : 'Return'}
@@ -520,7 +536,7 @@ export default function GoodsReceipts() {
                   {
                     key: 'receiptNumber', header: 'GRN Number',
                     mobilePrimary: true,
-                    render: (r) => <span className="font-semibold text-[var(--pos-text-primary)]">{r.receiptNumber}</span>,
+                    render: (r) => <span className="font-semibold text-gray-900">{r.receiptNumber}</span>,
                   },
                   {
                     key: 'status', header: 'Status',
@@ -539,14 +555,14 @@ export default function GoodsReceipts() {
                   },
                   {
                     key: 'date', header: 'Date',
-                    render: (r) => <span className="text-slate-400">{formatDate(r.receiptDate)}</span>,
+                    render: (r) => <span className="text-gray-500">{formatDate(r.receiptDate)}</span>,
                   },
                   {
                     key: 'items', header: 'Items / Qty',
                     render: (r) => {
                       const totalQty = r.items.reduce((sum, item) => sum + (r.type === 'receipt' ? item.acceptedQty : item.receivedQty), 0);
                       return (
-                        <span className="text-slate-400 text-xs">
+                        <span className="text-gray-500 text-xs">
                           {r.items.length} items ({totalQty} units)
                         </span>
                       );
@@ -565,7 +581,7 @@ export default function GoodsReceipts() {
                         <button
                           type="button"
                           onClick={() => openView(r)}
-                          className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition"
+                          className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-gray-500 hover:text-white transition"
                           title="View Details"
                         >
                           <Eye size={13} />
@@ -583,7 +599,7 @@ export default function GoodsReceipts() {
                           <button
                             type="button"
                             onClick={() => openEdit(r)}
-                            className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition"
+                            className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-gray-500 hover:text-white transition"
                           >
                             <Edit2 size={13} />
                           </button>
@@ -592,7 +608,7 @@ export default function GoodsReceipts() {
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(r)}
-                            className="p-1.5 bg-slate-800 hover:bg-red-500/10 rounded-lg text-slate-400 hover:text-red-400 transition"
+                            className="p-1.5 bg-slate-800 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition"
                           >
                             <Trash2 size={13} />
                           </button>
@@ -612,17 +628,17 @@ export default function GoodsReceipts() {
                   return (
                     <div
                       key={receipt._id}
-                      className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-3.5 hover:border-slate-600 transition flex flex-col justify-between"
+                      className="bg-white border border-gray-200/50 rounded-xl p-3.5 hover:border-gray-300 transition flex flex-col justify-between"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1.5">
-                            <h3 className="text-base font-semibold text-[var(--pos-text-primary)]">
+                            <h3 className="text-base font-semibold text-gray-900">
                               {receipt.receiptNumber}
                             </h3>
                             <Badge label={receipt.status} variant={receipt.status === 'confirmed' ? 'ok' : 'low'} className="text-[10px] px-1.5 py-0.5" />
                           </div>
-                          <div className="space-y-1 text-xs text-slate-400">
+                          <div className="space-y-1 text-xs text-gray-500">
                             <p className="flex items-center gap-1 font-medium text-slate-350">
                               <Package size={12} className="text-purple-400 shrink-0" />
                               {receipt.supplierId?.name || 'Unknown Supplier'}
@@ -634,7 +650,7 @@ export default function GoodsReceipts() {
                               </p>
                             )}
                             <p className="flex items-center gap-1 text-[11px]">
-                              <Calendar size={12} className="text-slate-500 shrink-0" />
+                              <Calendar size={12} className="text-gray-400 shrink-0" />
                               {formatDate(receipt.receiptDate)}
                             </p>
                           </div>
@@ -643,7 +659,7 @@ export default function GoodsReceipts() {
                           <button
                             type="button"
                             onClick={() => openView(receipt)}
-                            className="p-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition"
+                            className="p-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-gray-500 hover:text-white transition"
                             title="View Details"
                           >
                             <Eye size={12} />
@@ -661,7 +677,7 @@ export default function GoodsReceipts() {
                             <button
                               type="button"
                               onClick={() => openEdit(receipt)}
-                              className="p-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition"
+                              className="p-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-gray-500 hover:text-white transition"
                             >
                               <Edit2 size={12} />
                             </button>
@@ -679,25 +695,25 @@ export default function GoodsReceipts() {
                       </div>
 
                       {/* Items Summary */}
-                      <div className="bg-[var(--pos-surface-inset)] rounded-lg p-2.5 mt-2">
+                      <div className="bg-gray-50 rounded-lg p-2.5 mt-2">
                         <div className="grid grid-cols-3 gap-2 text-[11px] mb-2">
                           <div>
-                            <p className="text-slate-500">Items</p>
+                            <p className="text-gray-400">Items</p>
                             <p className="font-semibold text-slate-300">{totalItems}</p>
                           </div>
                           <div>
-                            <p className="text-slate-500">Quantity</p>
+                            <p className="text-gray-400">Quantity</p>
                             <p className="font-semibold text-slate-300">{totalQty}</p>
                           </div>
                           <div>
-                            <p className="text-slate-500">Total</p>
+                            <p className="text-gray-400">Total</p>
                             <p className="font-bold text-amber-455">{formatCurrency(receipt.totalAmount)}</p>
                           </div>
                         </div>
 
                         {/* Items List (collapsed) */}
                         <details className="group border-t border-slate-800/40 pt-1.5">
-                          <summary className="text-[10px] text-amber-450 hover:text-amber-400 cursor-pointer font-medium list-none flex items-center gap-1 justify-between">
+                          <summary className="text-[10px] text-amber-450 hover:text-brand-orange cursor-pointer font-medium list-none flex items-center gap-1 justify-between">
                             <span>Details ({totalItems} items)</span>
                             <span className="group-open:rotate-90 transition">▶</span>
                           </summary>
@@ -711,7 +727,7 @@ export default function GoodsReceipts() {
                                 <div className="flex items-center gap-2">
                                   {receipt.type === 'receipt' ? (
                                     <>
-                                      <span className="text-slate-500">Rcvd: {item.receivedQty}</span>
+                                      <span className="text-gray-400">Rcvd: {item.receivedQty}</span>
                                       <span className="text-green-455">Acpt: {item.acceptedQty}</span>
                                     </>
                                   ) : (

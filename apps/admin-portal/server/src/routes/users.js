@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const User = require('../models/User');
-const { authenticateJWT, authorize, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
+const { authenticateJWT, authorize, tenantScope, emitAudit, sendRouteError } = require('@innovapos/shared-middleware');
 const { childLogger } = require('@innovapos/logger');
 const { sendWelcomeEmail, sendAdminResetPasswordEmail } = require('../utils/mailer');
 const { createNotification } = require('../lib/notificationHelpers');
@@ -34,7 +34,7 @@ async function attachFreshProfileImages(users) {
 }
 
 // GET /users
-router.get('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), async (req, res) => {
+router.get('/', authenticateJWT, tenantScope, authorize('merchant_admin', 'superadmin'), async (req, res) => {
   try {
     const tenantId = req.user.role === 'superadmin' ? (req.query.tenantId || req.tenantId) : req.tenantId;
     if (!tenantId) return res.status(400).json({ message: 'tenantId required' });
@@ -90,7 +90,7 @@ router.get('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), asyn
 });
 
 // POST /users — merchant admin only; paid seats via user-licensing checkout
-router.post('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), async (req, res) => {
+router.post('/', authenticateJWT, tenantScope, authorize('merchant_admin', 'superadmin'), async (req, res) => {
   const logger = childLogger(req.app.locals.logger, req);
   try {
     const { name, email, role, storeIds, defaultStoreId } = req.body;
@@ -158,7 +158,7 @@ router.post('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), asy
 });
 
 // PUT /users/:id
-router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), async (req, res) => {
+router.put('/:id', authenticateJWT, tenantScope, authorize('merchant_admin', 'superadmin'), async (req, res) => {
   try {
     const tenantId = req.user.role === 'superadmin' ? undefined : req.tenantId;
     const filter = { _id: req.params.id };
@@ -241,7 +241,7 @@ router.put('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), a
   }
 });
 
-router.delete('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin'), async (req, res) => {
+router.delete('/:id', authenticateJWT, tenantScope, authorize('merchant_admin', 'superadmin'), async (req, res) => {
   try {
     const tenantId = req.user.role === 'superadmin' ? undefined : req.tenantId;
     const filter = { _id: req.params.id };
@@ -270,7 +270,7 @@ router.delete('/:id', authenticateJWT, authorize('merchant_admin', 'superadmin')
   }
 });
 
-router.post('/:id/reset-password', authenticateJWT, authorize('merchant_admin', 'superadmin'), async (req, res) => {
+router.post('/:id/reset-password', authenticateJWT, tenantScope, authorize('merchant_admin', 'superadmin'), async (req, res) => {
   const logger = childLogger(req.app.locals.logger, req);
   try {
     const tenantId = req.user.role === 'superadmin' ? undefined : req.tenantId;

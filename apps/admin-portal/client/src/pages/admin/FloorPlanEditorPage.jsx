@@ -262,57 +262,57 @@ function TableEditModal({ isOpen, onClose, table, qrOrderEnabled, tenantId, stor
       }}
     >
       <div
-        className="bg-[var(--pos-panel)] rounded-2xl border border-slate-700 max-w-md w-full p-6"
+        className="bg-white rounded-2xl border border-gray-200 max-w-md w-full p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-[var(--pos-text-primary)]">Edit Table</h3>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition">
+          <h3 className="text-lg font-bold text-gray-900">Edit Table</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-slate-300 transition">
             <X size={20} />
           </button>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm text-slate-400 block mb-1.5">Table Name *</label>
+            <label className="text-sm text-gray-500 block mb-1.5">Table Name *</label>
             <input
               type="text"
               maxLength={20}
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
-            <p className="text-xs text-slate-500 mt-1">{label.length}/20 characters</p>
+            <p className="text-xs text-gray-400 mt-1">{label.length}/20 characters</p>
           </div>
 
           <div>
-            <label className="text-sm text-slate-400 block mb-1.5">Capacity *</label>
+            <label className="text-sm text-gray-500 block mb-1.5">Capacity *</label>
             <input
               type="number"
               min={1}
               max={20}
               value={capacity}
               onChange={(e) => setCapacity(parseInt(e.target.value) || 1)}
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
 
           {qrOrderEnabled && qrSrc ? (
-            <div className="border border-slate-700 rounded-lg p-4 bg-[var(--pos-surface-inset)]">
+            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
               <p className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
                 <QrCode size={16} /> QR Code for Guest Ordering
               </p>
               <div className="bg-white p-2 rounded-lg inline-block">
                 <img src={qrSrc} alt="QR Code" width={200} height={200} />
               </div>
-              <p className="text-xs text-slate-500 mt-2 break-all font-mono">{qrUrl}</p>
+              <p className="text-xs text-gray-400 mt-2 break-all font-mono">{qrUrl}</p>
             </div>
           ) : (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
-              <p className="text-sm font-semibold text-amber-400 mb-1.5 flex items-center gap-2">
+            <div className="bg-brand-orange/10 border border-amber-500/30 rounded-lg p-4">
+              <p className="text-sm font-semibold text-brand-orange mb-1.5 flex items-center gap-2">
                 <QrCode size={16} /> QR Ordering Not Enabled
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-gray-500">
                 Enable QR ordering in the admin portal (Subscriptions → Add-ons) to generate QR codes that let guests order directly from their phones.
               </p>
             </div>
@@ -335,7 +335,7 @@ function TableEditModal({ isOpen, onClose, table, qrOrderEnabled, tenantId, stor
             <button
               onClick={handleSubmit}
               disabled={saving}
-              className="flex-1 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-4 py-2.5 rounded-lg transition text-sm disabled:opacity-50"
+              className="flex-1 bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold px-4 py-2.5 rounded-lg transition text-sm disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
@@ -351,7 +351,7 @@ export default function FloorPlanEditorPage() {
   const navigate = useNavigate();
   const { data: paidAddons } = useTenantPaidAddons();
   const qrOrderEnabled = paidAddons?.qrOrdering === true;
-  const { selectedStoreId, isStoreReady, stores } = useStoreContext();
+  const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const { user } = useAuth();
   const canvasRef = useRef(null);
   const draggedTableRef = useRef(null);
@@ -611,7 +611,7 @@ export default function FloorPlanEditorPage() {
       qc.invalidateQueries({ queryKey: ['floor-plan'] });
       setIsDirty(false);
       setErrorMessage(null);
-      navigate('/manager/floor-plan');
+      navigate('/floor-plan');
     },
     onError: (err) => {
       const message = err.response?.data?.message || 'Failed to save floor plan';
@@ -1121,7 +1121,7 @@ export default function FloorPlanEditorPage() {
 
   if (!isStoreReady) {
     return (
-      <div className="min-h-screen flex flex-col bg-[var(--pos-page-bg)]">
+      <div className="min-h-screen flex flex-col bg-gray-50">
                 <div className="flex-1 flex items-center justify-center">
           <p className="text-amber-300">Select a store in the header first.</p>
         </div>
@@ -1130,19 +1130,19 @@ export default function FloorPlanEditorPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-[var(--pos-page-bg)] overflow-hidden">
+    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
       
       <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4 overflow-hidden min-h-0">
         {/* Main Canvas Area */}
         <div className="flex-1 flex flex-col gap-4 overflow-hidden min-h-0">
           {/* Toolbar */}
-          <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-3 flex flex-wrap items-center gap-3 shrink-0">
+          <div className="bg-white border border-gray-200 rounded-xl p-3 flex flex-wrap items-center gap-3 shrink-0">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setSelectedShape(null)}
                 className={`p-2 rounded-lg transition-colors ${
                   selectedShape === null
-                    ? 'bg-amber-500 text-white'
+                    ? 'bg-brand-orange text-white'
                     : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                 }`}
                 title="Select / Move mode"
@@ -1150,14 +1150,14 @@ export default function FloorPlanEditorPage() {
                 <Move size={16} />
               </button>
               <div className="h-6 w-px bg-slate-700 mx-1" />
-              <span className="text-xs text-slate-400">Add Table:</span>
+              <span className="text-xs text-gray-500">Add Table:</span>
               {SHAPES.map((shape) => (
                 <button
                   key={shape.id}
                   onClick={() => setSelectedShape(shape.id)}
                   className={`p-2 rounded-lg transition-colors ${
                     selectedShape === shape.id
-                      ? 'bg-amber-500 text-white'
+                      ? 'bg-brand-orange text-white'
                       : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                   }`}
                   title={shape.label}
@@ -1166,11 +1166,11 @@ export default function FloorPlanEditorPage() {
                 </button>
               ))}
               <div className="h-6 w-px bg-slate-700 mx-1" />
-              <span className="text-xs text-slate-400 font-medium">Design:</span>
+              <span className="text-xs text-gray-500 font-medium">Design:</span>
               <button
                 onClick={() => setSelectedShape('line')}
                 className={`p-2 rounded-lg transition-colors ${
-                  selectedShape === 'line' ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  selectedShape === 'line' ? 'bg-brand-orange text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                 }`}
                 title="Draw Straight Line"
               >
@@ -1179,7 +1179,7 @@ export default function FloorPlanEditorPage() {
               <button
                 onClick={() => setSelectedShape('text')}
                 className={`p-2 rounded-lg transition-colors ${
-                  selectedShape === 'text' ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  selectedShape === 'text' ? 'bg-brand-orange text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                 }`}
                 title="Add Text Label"
               >
@@ -1188,7 +1188,7 @@ export default function FloorPlanEditorPage() {
               <button
                 onClick={() => setSelectedShape('hall')}
                 className={`p-2 rounded-lg transition-colors ${
-                  selectedShape === 'hall' ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  selectedShape === 'hall' ? 'bg-brand-orange text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                 }`}
                 title="Define Hall / Area"
               >
@@ -1206,7 +1206,7 @@ export default function FloorPlanEditorPage() {
               >
                 <ZoomOut size={16} />
               </button>
-              <span className="text-xs text-slate-400 min-w-[3rem] text-center">
+              <span className="text-xs text-gray-500 min-w-[3rem] text-center">
                 {Math.round(zoom * 100)}%
               </span>
               <button
@@ -1223,7 +1223,7 @@ export default function FloorPlanEditorPage() {
             <button
               onClick={() => setShowGrid(!showGrid)}
               className={`p-2 rounded-lg transition-colors ${
-                showGrid ? 'bg-amber-500/30 text-amber-400' : 'bg-slate-700 text-slate-300'
+                showGrid ? 'bg-brand-orange/30 text-brand-orange' : 'bg-slate-700 text-slate-300'
               }`}
               title="Toggle grid"
             >
@@ -1233,7 +1233,7 @@ export default function FloorPlanEditorPage() {
             <button
               onClick={() => setShowCapacity(!showCapacity)}
               className={`p-2 rounded-lg transition-colors ${
-                showCapacity ? 'bg-amber-500/30 text-amber-400' : 'bg-slate-700 text-slate-300'
+                showCapacity ? 'bg-brand-orange/30 text-brand-orange' : 'bg-slate-700 text-slate-300'
               }`}
               title="Show capacity & chairs"
             >
@@ -1252,8 +1252,8 @@ export default function FloorPlanEditorPage() {
             </button>
 
             <Link
-              to="/manager/floor-plan"
-              className="px-4 py-2 rounded-lg bg-slate-700 text-slate-350 hover:bg-slate-600 font-semibold text-sm flex items-center gap-2 transition border border-slate-600"
+              to="/floor-plan"
+              className="px-4 py-2 rounded-lg bg-slate-700 text-slate-350 hover:bg-slate-600 font-semibold text-sm flex items-center gap-2 transition border border-gray-300"
             >
               Exit Editor
             </Link>
@@ -1261,7 +1261,7 @@ export default function FloorPlanEditorPage() {
             <button
               onClick={handleSave}
               disabled={!isDirty || saveMutation.isPending}
-              className="px-4 py-2 rounded-lg bg-amber-500 text-white font-semibold text-sm flex items-center gap-2 disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-brand-orange text-white font-semibold text-sm flex items-center gap-2 disabled:opacity-50"
             >
               <Save size={14} />
               {saveMutation.isPending ? 'Saving...' : 'Save Layout'}
@@ -1271,14 +1271,14 @@ export default function FloorPlanEditorPage() {
           {/* Canvas Wrapper */}
           <div
             ref={canvasRef}
-            className={`flex-1 bg-[var(--pos-page-bg)] border border-slate-700/60 rounded-xl overflow-auto min-h-0 relative select-none ${
+            className={`flex-1 bg-gray-50 border border-gray-200 rounded-xl overflow-auto min-h-0 relative select-none ${
               isStageDraggable ? 'cursor-grab active:cursor-grabbing' : ''
             }`}
             onDrop={handleCanvasDrop}
             onDragOver={handleCanvasDragOver}
           >
             {isLoading ? (
-              <div className="flex items-center justify-center h-full text-slate-400">
+              <div className="flex items-center justify-center h-full text-gray-500">
                 Loading floor plan...
               </div>
             ) : plan ? (
@@ -1481,7 +1481,7 @@ export default function FloorPlanEditorPage() {
                 </Layer>
               </Stage>
             ) : (
-              <div className="flex items-center justify-center h-full text-slate-400">
+              <div className="flex items-center justify-center h-full text-gray-500">
                 No floor plan found
               </div>
             )}
@@ -1489,9 +1489,9 @@ export default function FloorPlanEditorPage() {
             {/* Quick Helper overlay */}
             {!isLoading && planTablesWithLabels.length === 0 && !isDragOver && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="text-center text-slate-500 bg-slate-900 p-6 rounded-xl border border-slate-700/50">
-                  <Plus size={40} className="mx-auto mb-2 opacity-50 text-amber-400 animate-bounce" />
-                  <p className="text-sm text-amber-400 font-semibold">Click canvas (with shape selected) to place tables</p>
+                <div className="text-center text-gray-400 bg-white p-6 rounded-xl border border-gray-200/50">
+                  <Plus size={40} className="mx-auto mb-2 opacity-50 text-brand-orange animate-bounce" />
+                  <p className="text-sm text-brand-orange font-semibold">Click canvas (with shape selected) to place tables</p>
                   <p className="text-xs mt-1">Drag unplaced tables from the sidebar</p>
                   <p className="text-xs mt-1">Hold SPACEBAR + drag mouse to pan canvas</p>
                 </div>
@@ -1504,11 +1504,24 @@ export default function FloorPlanEditorPage() {
         <div className="w-full lg:w-72 flex flex-col gap-4 overflow-y-auto shrink-0 min-h-0">
           {/* Multi-Select Actions */}
           {selectedTables.length > 0 && (
-            <div className="bg-[var(--pos-panel)] border border-amber-500/60 rounded-xl p-4 space-y-3">
-              <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm">
+            <div className="bg-white border border-amber-500/60 rounded-xl p-4 space-y-3">
+              <h3 className="font-semibold text-gray-900 text-sm">
                 {selectedTables.length} Table{selectedTables.length > 1 ? 's' : ''} Selected
               </h3>
               <div className="flex gap-2">
+            {stores.length > 0 && (
+              <select
+                value={selectedStoreId || ''}
+                onChange={(e) => selectStore(e.target.value)}
+                className="bg-white border border-gray-300 text-gray-700 rounded-lg px-2.5 py-1 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+              >
+                {stores.map((s) => (
+                  <option key={s._id} value={s._id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            )}
                 <button
                   onClick={() => setSelectedTables([])}
                   className="flex-1 px-3 py-2 rounded-lg bg-slate-700 text-slate-350 hover:bg-slate-600 text-xs"
@@ -1528,13 +1541,13 @@ export default function FloorPlanEditorPage() {
 
           {/* Selected Table Properties */}
           {selectedTable && (
-            <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4 space-y-4">
-              <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm flex items-center justify-between">
+            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
+              <h3 className="font-semibold text-gray-900 text-sm flex items-center justify-between">
                 Table Properties
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setSelectedElement(null)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-350 hover:bg-slate-800 transition"
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-slate-350 hover:bg-slate-800 transition"
                     title="Close properties panel"
                   >
                     <X size={12} />
@@ -1558,7 +1571,7 @@ export default function FloorPlanEditorPage() {
 
               <div className="space-y-3">
                 <div>
-                  <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Shape</label>
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Shape</label>
                   <div className="flex gap-2 mt-1">
                     {SHAPES.map((shape) => (
                       <button
@@ -1566,7 +1579,7 @@ export default function FloorPlanEditorPage() {
                         onClick={() => handleUpdateSelectedProperty('shape', shape.id)}
                         className={`p-2 rounded-lg transition-colors ${
                           selectedTable.shape === shape.id
-                            ? 'bg-amber-500 text-white'
+                            ? 'bg-brand-orange text-white'
                             : 'bg-slate-700 text-slate-300 hover:bg-slate-650'
                         }`}
                         title={shape.label}
@@ -1579,38 +1592,38 @@ export default function FloorPlanEditorPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Width (Cells)</label>
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Width (Cells)</label>
                     <input
                       type="number"
                       min={1}
                       max={6}
                       value={selectedTable.width}
                       onChange={(e) => handleUpdateSelectedProperty('width', Math.max(1, Number(e.target.value)))}
-                      className="w-full mt-1 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-gray-50 text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Height (Cells)</label>
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Height (Cells)</label>
                     <input
                       type="number"
                       min={1}
                       max={6}
                       value={selectedTable.height}
                       onChange={(e) => handleUpdateSelectedProperty('height', Math.max(1, Number(e.target.value)))}
-                      className="w-full mt-1 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-gray-50 text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Capacity</label>
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Capacity</label>
                   <input
                     type="number"
                     min={1}
                     max={20}
                     value={selectedTable.capacity}
                     onChange={(e) => handleUpdateSelectedProperty('capacity', Math.max(1, Number(e.target.value)))}
-                    className="w-full mt-1 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-gray-50 text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
 
@@ -1627,19 +1640,19 @@ export default function FloorPlanEditorPage() {
 
           {/* Selected Zone Properties */}
           {selectedZone && (
-            <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4 space-y-4">
-              <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm flex items-center justify-between">
+            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
+              <h3 className="font-semibold text-gray-900 text-sm flex items-center justify-between">
                 Zone Properties
                 <button
                   onClick={() => setSelectedElement(null)}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-350 hover:bg-slate-800 transition"
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-slate-350 hover:bg-slate-800 transition"
                 >
                   <X size={12} />
                 </button>
               </h3>
               <div className="space-y-3">
                 <div>
-                  <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Zone Name</label>
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Zone Name</label>
                   <input
                     type="text"
                     value={selectedZone.name}
@@ -1650,12 +1663,12 @@ export default function FloorPlanEditorPage() {
                       setLocalPlan({ ...localPlan, zones: updated });
                       setIsDirty(true);
                     }}
-                    className="w-full mt-1 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-gray-50 text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Width</label>
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Width</label>
                     <input
                       type="number"
                       min={1}
@@ -1667,11 +1680,11 @@ export default function FloorPlanEditorPage() {
                         setLocalPlan({ ...localPlan, zones: updated });
                         setIsDirty(true);
                       }}
-                      className="w-full mt-1 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none"
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-gray-50 text-gray-900 focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Height</label>
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Height</label>
                     <input
                       type="number"
                       min={1}
@@ -1683,12 +1696,12 @@ export default function FloorPlanEditorPage() {
                         setLocalPlan({ ...localPlan, zones: updated });
                         setIsDirty(true);
                       }}
-                      className="w-full mt-1 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none"
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-gray-50 text-gray-900 focus:outline-none"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Color</label>
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Color</label>
                   <div className="flex gap-1.5 mt-1">
                     {['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'].map((c) => (
                       <button
@@ -1724,19 +1737,19 @@ export default function FloorPlanEditorPage() {
 
           {/* Selected Text Properties */}
           {selectedText && (
-            <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4 space-y-4">
-              <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm flex items-center justify-between">
+            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
+              <h3 className="font-semibold text-gray-900 text-sm flex items-center justify-between">
                 Label Properties
                 <button
                   onClick={() => setSelectedElement(null)}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-350 hover:bg-slate-800 transition"
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-slate-350 hover:bg-slate-800 transition"
                 >
                   <X size={12} />
                 </button>
               </h3>
               <div className="space-y-3">
                 <div>
-                  <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Text Content</label>
+                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Text Content</label>
                   <input
                     type="text"
                     value={selectedText.text}
@@ -1747,12 +1760,12 @@ export default function FloorPlanEditorPage() {
                       setLocalPlan({ ...localPlan, texts: updated });
                       setIsDirty(true);
                     }}
-                    className="w-full mt-1 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full mt-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-gray-50 text-gray-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Font Size</label>
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Font Size</label>
                     <select
                       value={selectedText.fontSize || 12}
                       onChange={(e) => {
@@ -1762,7 +1775,7 @@ export default function FloorPlanEditorPage() {
                         setLocalPlan({ ...localPlan, texts: updated });
                         setIsDirty(true);
                       }}
-                      className="w-full mt-1 border border-slate-700 rounded-lg px-2 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none"
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-gray-50 text-gray-900 focus:outline-none"
                     >
                       {[10, 12, 14, 16, 20, 24].map((s) => (
                         <option key={s} value={s}>{s}px</option>
@@ -1770,7 +1783,7 @@ export default function FloorPlanEditorPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Color</label>
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Color</label>
                     <select
                       value={selectedText.color || '#f8fafc'}
                       onChange={(e) => {
@@ -1780,7 +1793,7 @@ export default function FloorPlanEditorPage() {
                         setLocalPlan({ ...localPlan, texts: updated });
                         setIsDirty(true);
                       }}
-                      className="w-full mt-1 border border-slate-700 rounded-lg px-2 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none"
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-gray-50 text-gray-900 focus:outline-none"
                     >
                       {DECORATION_COLORS.map((c) => (
                         <option key={c.value} value={c.value}>{c.name}</option>
@@ -1806,12 +1819,12 @@ export default function FloorPlanEditorPage() {
 
           {/* Selected Line Properties */}
           {selectedLine && (
-            <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4 space-y-4">
-              <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm flex items-center justify-between">
+            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
+              <h3 className="font-semibold text-gray-900 text-sm flex items-center justify-between">
                 Line Properties
                 <button
                   onClick={() => setSelectedElement(null)}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-350 hover:bg-slate-800 transition"
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-slate-350 hover:bg-slate-800 transition"
                 >
                   <X size={12} />
                 </button>
@@ -1819,7 +1832,7 @@ export default function FloorPlanEditorPage() {
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Thickness</label>
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Thickness</label>
                     <select
                       value={selectedLine.thickness || 2}
                       onChange={(e) => {
@@ -1829,7 +1842,7 @@ export default function FloorPlanEditorPage() {
                         setLocalPlan({ ...localPlan, lines: updated });
                         setIsDirty(true);
                       }}
-                      className="w-full mt-1 border border-slate-700 rounded-lg px-2 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none"
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-gray-50 text-gray-900 focus:outline-none"
                     >
                       {[1, 2, 4, 6, 8].map((t) => (
                         <option key={t} value={t}>{t}px</option>
@@ -1837,7 +1850,7 @@ export default function FloorPlanEditorPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Color</label>
+                    <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">Color</label>
                     <select
                       value={selectedLine.color || '#94a3b8'}
                       onChange={(e) => {
@@ -1847,7 +1860,7 @@ export default function FloorPlanEditorPage() {
                         setLocalPlan({ ...localPlan, lines: updated });
                         setIsDirty(true);
                       }}
-                      className="w-full mt-1 border border-slate-700 rounded-lg px-2 py-1.5 text-xs bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] focus:outline-none"
+                      className="w-full mt-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-gray-50 text-gray-900 focus:outline-none"
                     >
                       {DECORATION_COLORS.map((c) => (
                         <option key={c.value} value={c.value}>{c.name}</option>
@@ -1872,13 +1885,13 @@ export default function FloorPlanEditorPage() {
           )}
 
           {/* Unplaced Tables */}
-          <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4">
-            <h3 className="font-semibold text-[var(--pos-text-primary)] text-sm mb-3 flex items-center gap-2">
-              <Plus size={14} className="text-amber-400" />
+          <div className="bg-white border border-gray-200 rounded-xl p-4">
+            <h3 className="font-semibold text-gray-900 text-sm mb-3 flex items-center gap-2">
+              <Plus size={14} className="text-brand-orange" />
               Add Tables
             </h3>
             {unplacedTables.length === 0 ? (
-              <p className="text-xs text-slate-500">All tables are on the floor plan.</p>
+              <p className="text-xs text-gray-400">All tables are on the floor plan.</p>
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {unplacedTables.map((table) => (
@@ -1894,9 +1907,9 @@ export default function FloorPlanEditorPage() {
                     onDragEnd={() => { draggedTableRef.current = null; }}
                     className="flex items-center gap-3 p-2 rounded-lg bg-slate-700/50 cursor-grab hover:bg-slate-700 active:cursor-grabbing"
                   >
-                    <Move size={12} className="text-slate-500" />
-                    <span className="text-xs text-[var(--pos-text-primary)]">{table.label}</span>
-                    <span className="text-[10px] text-slate-500 ml-auto flex items-center gap-1">
+                    <Move size={12} className="text-gray-400" />
+                    <span className="text-xs text-gray-900">{table.label}</span>
+                    <span className="text-[10px] text-gray-400 ml-auto flex items-center gap-1">
                       <Users size={10} /> {table.capacity || 4}
                     </span>
                   </div>
@@ -1907,8 +1920,8 @@ export default function FloorPlanEditorPage() {
 
           {/* Halls & Areas Manager */}
           {localPlan?.zones && localPlan.zones.length > 0 && (
-            <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4 space-y-3">
-              <h3 className="font-semibold text-[var(--pos-text-primary)] text-xs">
+            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+              <h3 className="font-semibold text-gray-900 text-xs">
                 Halls & Areas
               </h3>
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
@@ -1918,8 +1931,8 @@ export default function FloorPlanEditorPage() {
                     onClick={() => setSelectedElement({ type: 'zone', index: i })}
                     className={`flex items-center justify-between p-2 rounded-lg text-[10px] cursor-pointer transition ${
                       selectedElement?.type === 'zone' && selectedElement.index === i 
-                        ? 'bg-amber-500/20 border border-amber-500/50' 
-                        : 'bg-[var(--pos-surface-inset)] border border-transparent'
+                        ? 'bg-brand-orange/20 border border-amber-500/50' 
+                        : 'bg-gray-50 border border-transparent'
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -1948,8 +1961,8 @@ export default function FloorPlanEditorPage() {
 
           {/* Decorations Panel */}
           {((localPlan?.lines && localPlan.lines.length > 0) || (localPlan?.texts && localPlan.texts.length > 0)) && (
-            <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4 space-y-3">
-              <h3 className="font-semibold text-[var(--pos-text-primary)] text-xs">
+            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+              <h3 className="font-semibold text-gray-900 text-xs">
                 Floor Decorations
               </h3>
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
@@ -1959,8 +1972,8 @@ export default function FloorPlanEditorPage() {
                     onClick={() => setSelectedElement({ type: 'text', index: i })}
                     className={`flex items-center justify-between p-2 rounded-lg text-[10px] cursor-pointer transition ${
                       selectedElement?.type === 'text' && selectedElement.index === i 
-                        ? 'bg-amber-500/20 border border-amber-500/50' 
-                        : 'bg-[var(--pos-surface-inset)] border border-transparent'
+                        ? 'bg-brand-orange/20 border border-amber-500/50' 
+                        : 'bg-gray-50 border border-transparent'
                     }`}
                   >
                     <span className="truncate flex-1 text-slate-350">Text: "{t.text}"</span>
@@ -1986,8 +1999,8 @@ export default function FloorPlanEditorPage() {
                     onClick={() => setSelectedElement({ type: 'line', index: i })}
                     className={`flex items-center justify-between p-2 rounded-lg text-[10px] cursor-pointer transition ${
                       selectedElement?.type === 'line' && selectedElement.index === i 
-                        ? 'bg-amber-500/20 border border-amber-500/50' 
-                        : 'bg-[var(--pos-surface-inset)] border border-transparent'
+                        ? 'bg-brand-orange/20 border border-amber-500/50' 
+                        : 'bg-gray-50 border border-transparent'
                     }`}
                   >
                     <span className="truncate flex-1 text-slate-350">Line: ({line.x1},{line.y1}) to ({line.x2},{line.y2})</span>
@@ -2012,26 +2025,26 @@ export default function FloorPlanEditorPage() {
           )}
 
           {/* Legend */}
-          <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl p-4">
-            <h3 className="font-semibold text-[var(--pos-text-primary)] text-xs mb-3">Status Legend</h3>
+          <div className="bg-white border border-gray-200 rounded-xl p-4">
+            <h3 className="font-semibold text-gray-900 text-xs mb-3">Status Legend</h3>
             <div className="space-y-2 text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded bg-[#10766e]" />
-                <span className="text-slate-400">Available</span>
+                <span className="text-gray-500">Available</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded bg-red-500" />
-                <span className="text-slate-400">Occupied</span>
+                <span className="text-gray-500">Occupied</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded bg-yellow-500" />
-                <span className="text-slate-400">Reserved</span>
+                <span className="text-gray-500">Reserved</span>
               </div>
             </div>
             
-            <div className="mt-4 pt-4 border-t border-slate-700/60">
-              <h4 className="text-[10px] font-semibold text-slate-400 mb-2 uppercase tracking-wider">Quick Guide</h4>
-              <ul className="space-y-1 text-[10px] text-slate-500">
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <h4 className="text-[10px] font-semibold text-gray-500 mb-2 uppercase tracking-wider">Quick Guide</h4>
+              <ul className="space-y-1 text-[10px] text-gray-400">
                 <li>• Shape active → Click stage to place table</li>
                 <li>• Select and drag any item (Table, Zone, Label) to move</li>
                 <li>• Properties panel opens when selecting any item</li>
@@ -2045,15 +2058,15 @@ export default function FloorPlanEditorPage() {
 
       {/* Table List Sidebar */}
       {showTableList && (
-        <div className="fixed right-0 top-0 bottom-0 w-80 bg-[var(--pos-panel)] border-l border-slate-700 shadow-2xl z-[60] overflow-y-auto">
-          <div className="p-4 border-b border-slate-700 flex justify-between items-center sticky top-0 bg-[var(--pos-panel)] z-10">
-            <h3 className="font-bold text-[var(--pos-text-primary)] flex items-center gap-2">
+        <div className="fixed right-0 top-0 bottom-0 w-80 bg-white border-l border-gray-200 shadow-2xl z-[60] overflow-y-auto">
+          <div className="p-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
+            <h3 className="font-bold text-gray-900 flex items-center gap-2">
               <List size={18} />
               All Tables ({tables.length})
             </h3>
             <button 
               onClick={() => setShowTableList(false)} 
-              className="text-slate-500 hover:text-slate-300 transition p-1 rounded-lg hover:bg-slate-700"
+              className="text-gray-400 hover:text-slate-300 transition p-1 rounded-lg hover:bg-slate-700"
             >
               <X size={20} />
             </button>
@@ -2061,7 +2074,7 @@ export default function FloorPlanEditorPage() {
           <div className="p-4 space-y-2">
             {tables.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-slate-500 text-sm">No tables created yet.</p>
+                <p className="text-gray-400 text-sm">No tables created yet.</p>
                 <p className="text-slate-600 text-xs mt-1">Add tables from the Café Tables page.</p>
               </div>
             ) : (
@@ -2070,21 +2083,21 @@ export default function FloorPlanEditorPage() {
                 return (
                   <div
                     key={table._id}
-                    className="bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg p-3 hover:border-amber-500/50 transition cursor-pointer group"
+                    className="bg-gray-50 border border-gray-200 rounded-lg p-3 hover:border-amber-500/50 transition cursor-pointer group"
                     onClick={() => setEditingTableId(table._id)}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-[var(--pos-text-primary)]">{table.label}</span>
+                            <span className="font-medium text-gray-900">{table.label}</span>
                             {onPlan && (
                               <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded border border-green-500/30">
                                 On Plan
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-500">
+                          <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-400">
                             <span className="flex items-center gap-1">
                               <Users size={12} />
                               {table.capacity || 4}
@@ -2096,7 +2109,7 @@ export default function FloorPlanEditorPage() {
                           </div>
                         </div>
                       </div>
-                      <Edit2 size={14} className="text-slate-500 group-hover:text-amber-400 transition" />
+                      <Edit2 size={14} className="text-gray-400 group-hover:text-brand-orange transition" />
                     </div>
                   </div>
                 );

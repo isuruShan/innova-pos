@@ -140,57 +140,57 @@ function TableEditModal({ isOpen, onClose, table, qrOrderEnabled, tenantId, stor
       }}
     >
       <div
-        className="bg-[var(--pos-panel)] rounded-2xl border border-slate-700 max-w-md w-full p-6"
+        className="bg-white rounded-2xl border border-gray-200 max-w-md w-full p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-[var(--pos-text-primary)]">Edit Table</h3>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition">
+          <h3 className="text-lg font-bold text-gray-900">Edit Table</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-slate-300 transition">
             <X size={20} />
           </button>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm text-slate-400 block mb-1.5">Table Name *</label>
+            <label className="text-sm text-gray-500 block mb-1.5">Table Name *</label>
             <input
               type="text"
               maxLength={20}
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
-            <p className="text-xs text-slate-500 mt-1">{label.length}/20 characters</p>
+            <p className="text-xs text-gray-400 mt-1">{label.length}/20 characters</p>
           </div>
 
           <div>
-            <label className="text-sm text-slate-400 block mb-1.5">Capacity *</label>
+            <label className="text-sm text-gray-500 block mb-1.5">Capacity *</label>
             <input
               type="number"
               min={1}
               max={20}
               value={capacity}
               onChange={(e) => setCapacity(parseInt(e.target.value) || 1)}
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
 
           {qrOrderEnabled && qrSrc ? (
-            <div className="border border-slate-700 rounded-lg p-4 bg-[var(--pos-surface-inset)]">
+            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
               <p className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
                 <QrCode size={16} /> QR Code for Guest Ordering
               </p>
               <div className="bg-white p-2 rounded-lg inline-block">
                 <img src={qrSrc} alt="QR Code" width={200} height={200} />
               </div>
-              <p className="text-xs text-slate-500 mt-2 break-all font-mono">{qrUrl}</p>
+              <p className="text-xs text-gray-400 mt-2 break-all font-mono">{qrUrl}</p>
             </div>
           ) : (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
-              <p className="text-sm font-semibold text-amber-400 mb-1.5 flex items-center gap-2">
+            <div className="bg-brand-orange/10 border border-amber-500/30 rounded-lg p-4">
+              <p className="text-sm font-semibold text-brand-orange mb-1.5 flex items-center gap-2">
                 <QrCode size={16} /> QR Ordering Not Enabled
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-gray-500">
                 Enable QR ordering in the admin portal (Subscriptions → Add-ons) to generate QR codes that let guests order directly from their phones.
               </p>
             </div>
@@ -213,7 +213,7 @@ function TableEditModal({ isOpen, onClose, table, qrOrderEnabled, tenantId, stor
             <button
               onClick={handleSubmit}
               disabled={saving}
-              className="flex-1 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-4 py-2.5 rounded-lg transition text-sm disabled:opacity-50"
+              className="flex-1 bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold px-4 py-2.5 rounded-lg transition text-sm disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
@@ -225,7 +225,7 @@ function TableEditModal({ isOpen, onClose, table, qrOrderEnabled, tenantId, stor
 }
 
 export default function FloorPlanViewPage() {
-  const { selectedStoreId, isStoreReady, stores } = useStoreContext();
+  const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const selectedStore = stores.find((s) => String(s._id) === String(selectedStoreId));
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -287,7 +287,7 @@ export default function FloorPlanViewPage() {
 
   if (!isStoreReady) {
     return (
-      <div className="min-h-screen flex flex-col bg-[var(--pos-page-bg)]">
+      <div className="min-h-screen flex flex-col bg-gray-50">
                 <div className="flex-1 flex items-center justify-center">
           <p className="text-amber-300">Select a store in the header first.</p>
         </div>
@@ -296,13 +296,13 @@ export default function FloorPlanViewPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-[var(--pos-page-bg)] overflow-hidden">
+    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
       
       <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden min-h-0">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-xl font-bold text-[var(--pos-text-primary)] flex items-center gap-2">
-            <Utensils size={24} className="text-amber-400" />
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <Utensils size={24} className="text-brand-orange" />
             Floor Plan
           </h1>
           <div className="flex items-center gap-2">
@@ -314,8 +314,8 @@ export default function FloorPlanViewPage() {
               Tables List
             </button>
             <Link
-              to="/manager/floor-plan/edit"
-              className="px-4 py-2 rounded-lg bg-amber-500 text-white font-semibold flex items-center gap-2 hover:bg-amber-600"
+              to="/floor-plan/editor"
+              className="px-4 py-2 rounded-lg bg-brand-orange text-white font-semibold flex items-center gap-2 hover:bg-amber-600"
             >
               <Edit3 size={18} />
               Edit Layout
@@ -325,40 +325,40 @@ export default function FloorPlanViewPage() {
 
         {/* Stats */}
         <div className="flex flex-wrap gap-4">
-          <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl px-5 py-3 flex items-center gap-3">
+          <div className="bg-white border border-gray-200 rounded-xl px-5 py-3 flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-slate-400" />
             <div>
-              <p className="text-xs text-slate-400">Total Tables</p>
-              <p className="text-xl font-bold text-[var(--pos-text-primary)]">{stats.total}</p>
+              <p className="text-xs text-gray-500">Total Tables</p>
+              <p className="text-xl font-bold text-gray-900">{stats.total}</p>
             </div>
           </div>
-          <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl px-5 py-3 flex items-center gap-3">
+          <div className="bg-white border border-gray-200 rounded-xl px-5 py-3 flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-green-500" />
             <div>
-              <p className="text-xs text-slate-400">Available</p>
+              <p className="text-xs text-gray-500">Available</p>
               <p className="text-xl font-bold text-green-400">{stats.available}</p>
             </div>
           </div>
-          <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl px-5 py-3 flex items-center gap-3">
+          <div className="bg-white border border-gray-200 rounded-xl px-5 py-3 flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
             <div>
-              <p className="text-xs text-slate-400">Occupied</p>
+              <p className="text-xs text-gray-500">Occupied</p>
               <p className="text-xl font-bold text-red-400">{stats.occupied}</p>
             </div>
           </div>
-          <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl px-5 py-3 flex items-center gap-3">
+          <div className="bg-white border border-gray-200 rounded-xl px-5 py-3 flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-yellow-500" />
             <div>
-              <p className="text-xs text-slate-400">Reserved</p>
+              <p className="text-xs text-gray-500">Reserved</p>
               <p className="text-xl font-bold text-yellow-400">{stats.reserved}</p>
             </div>
           </div>
         </div>
 
         {/* Floor Plan Canvas */}
-        <div className="flex-1 bg-[var(--pos-panel)] border border-slate-700/60 rounded-xl overflow-auto p-4 min-h-0">
+        <div className="flex-1 bg-white border border-gray-200 rounded-xl overflow-auto p-4 min-h-0">
           {isLoading ? (
-            <div className="flex items-center justify-center h-full text-slate-400">
+            <div className="flex items-center justify-center h-full text-gray-500">
               Loading floor plan...
             </div>
           ) : floorPlan ? (
@@ -421,8 +421,8 @@ export default function FloorPlanViewPage() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
-              <AlertCircle size={32} className="text-slate-500" />
+            <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-2">
+              <AlertCircle size={32} className="text-gray-400" />
               <p>No floor plan configured. Go to Floor Plan Editor to set one up.</p>
             </div>
           )}
@@ -431,15 +431,15 @@ export default function FloorPlanViewPage() {
 
       {/* Table List Sidebar */}
       {showTableList && (
-        <div className="fixed right-0 top-0 bottom-0 w-80 bg-[var(--pos-panel)] border-l border-slate-700 shadow-2xl z-[60] overflow-y-auto">
-          <div className="p-4 border-b border-slate-700 flex justify-between items-center sticky top-0 bg-[var(--pos-panel)] z-10">
-            <h3 className="font-bold text-[var(--pos-text-primary)] flex items-center gap-2">
+        <div className="fixed right-0 top-0 bottom-0 w-80 bg-white border-l border-gray-200 shadow-2xl z-[60] overflow-y-auto">
+          <div className="p-4 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10">
+            <h3 className="font-bold text-gray-900 flex items-center gap-2">
               <List size={18} />
               All Tables ({tables.length})
             </h3>
             <button 
               onClick={() => setShowTableList(false)} 
-              className="text-slate-500 hover:text-slate-300 transition p-1 rounded-lg hover:bg-slate-700"
+              className="text-gray-400 hover:text-slate-300 transition p-1 rounded-lg hover:bg-slate-700"
             >
               <X size={20} />
             </button>
@@ -447,7 +447,7 @@ export default function FloorPlanViewPage() {
           <div className="p-4 space-y-2">
             {tables.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-slate-500 text-sm">No tables created yet.</p>
+                <p className="text-gray-400 text-sm">No tables created yet.</p>
                 <p className="text-slate-600 text-xs mt-1">Add tables from the Café Tables page.</p>
               </div>
             ) : (
@@ -456,20 +456,20 @@ export default function FloorPlanViewPage() {
                 return (
                   <div
                     key={table._id}
-                    className="bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg p-3 hover:border-amber-500/50 transition cursor-pointer group"
+                    className="bg-gray-50 border border-gray-200 rounded-lg p-3 hover:border-amber-500/50 transition cursor-pointer group"
                     onClick={() => setEditingTableId(table._id)}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-[var(--pos-text-primary)]">{table.label}</span>
+                          <span className="font-medium text-gray-900">{table.label}</span>
                           {onPlan && (
                             <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded border border-green-500/30">
                               On Plan
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-500">
+                        <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-400">
                           <span className="flex items-center gap-1">
                             <Users size={12} />
                             {table.capacity || 4}
@@ -480,7 +480,7 @@ export default function FloorPlanViewPage() {
                           </span>
                         </div>
                       </div>
-                      <Edit3 size={14} className="text-slate-500 group-hover:text-amber-400 transition" />
+                      <Edit3 size={14} className="text-gray-400 group-hover:text-brand-orange transition" />
                     </div>
                   </div>
                 );

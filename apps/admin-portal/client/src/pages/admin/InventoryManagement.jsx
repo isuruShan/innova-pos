@@ -71,7 +71,7 @@ function SupplierPills({ suppliers }) {
 }
 
 export default function InventoryManagement() {
-  const { selectedStoreId, isStoreReady } = useStoreContext();
+  const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const [activeTab, setActiveTab] = useState('stock');
   const [slideOpen, setSlideOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -537,8 +537,9 @@ export default function InventoryManagement() {
   }, [filteredSessions, sessionSort, sessionOrder]);
 
   const lowCount = items.filter(i => getStockStatus(i.quantity, i.minThreshold).variant !== 'ok').length;
-  const isPending = createMutation.isPending || updateMutation.isPending;  return (
-    <div className="min-h-screen bg-[var(--pos-page-bg)]">
+  const isPending = createMutation.isPending || updateMutation.isPending;
+  return (
+    <div className="min-h-screen bg-gray-50">
       
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         <PageHeader
@@ -569,25 +570,43 @@ export default function InventoryManagement() {
         />
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 border-b border-slate-700 overflow-x-auto no-scrollbar">
-          {[
-            { key: 'stock', label: 'Stock Levels' },
-            { key: 'adjustments', label: 'Adjustments' },
-            { key: 'sessions', label: 'Adjustment History' },
-            { key: 'analytics', label: 'Analytics' },
-          ].map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`px-3 sm:px-4 py-2.5 text-sm font-medium transition border-b-2 whitespace-nowrap shrink-0 ${
-                activeTab === tab.key
-                  ? 'border-amber-500 text-amber-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-350'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-gray-200">
+          <div className="flex gap-1 overflow-x-auto no-scrollbar pb-2 sm:pb-0">
+            {[
+              { key: 'stock', label: 'Stock Levels' },
+              { key: 'adjustments', label: 'Adjustments' },
+              { key: 'sessions', label: 'Adjustment History' },
+              { key: 'analytics', label: 'Analytics' },
+            ].map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-3 sm:px-4 py-2.5 text-sm font-medium transition border-b-2 whitespace-nowrap shrink-0 ${
+                  activeTab === tab.key
+                    ? 'border-amber-500 text-brand-orange'
+                    : 'border-transparent text-gray-500 hover:text-slate-350'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {stores.length > 0 && (
+            <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto pb-2 sm:pb-0">
+              <span className="text-xs text-gray-500 font-semibold font-sans">Store:</span>
+              <select
+                value={selectedStoreId || ''}
+                onChange={(e) => selectStore(e.target.value)}
+                className="bg-white border border-gray-300 text-gray-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+              >
+                {stores.map((s) => (
+                  <option key={s._id} value={s._id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Tab Content */}
@@ -596,21 +615,21 @@ export default function InventoryManagement() {
             {selectedCategoryId === null ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-[var(--pos-text-primary)]">Inventory Categories</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Inventory Categories</h3>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {/* Uncategorized Card */}
                   <div
                     onClick={() => setSelectedCategoryId('uncategorized')}
-                    className="cursor-pointer bg-[var(--pos-panel)] hover:bg-[var(--pos-surface-inset)] border border-slate-700/60 hover:border-amber-500/50 rounded-2xl p-5 transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg flex flex-col justify-between min-h-[140px]"
+                    className="cursor-pointer bg-white hover:bg-gray-50 border border-gray-200 hover:border-amber-500/50 rounded-2xl p-5 transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg flex flex-col justify-between min-h-[140px]"
                   >
                     <div>
-                      <h4 className="font-bold text-base text-[var(--pos-text-primary)] mb-1">Uncategorized</h4>
+                      <h4 className="font-bold text-base text-gray-900 mb-1">Uncategorized</h4>
                       <p className="text-slate-405 text-xs line-clamp-2">Items without an assigned category</p>
                     </div>
-                    <div className="flex items-center justify-between mt-4 border-t border-slate-700/40 pt-3">
-                      <span className="text-xs text-slate-500 font-medium">Stock Items</span>
-                      <span className="bg-slate-755/50 text-slate-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-slate-700">
+                    <div className="flex items-center justify-between mt-4 border-t border-gray-200/40 pt-3">
+                      <span className="text-xs text-gray-400 font-medium">Stock Items</span>
+                      <span className="bg-slate-755/50 text-slate-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-gray-200">
                         {items.filter(item => !item.category).length}
                       </span>
                     </div>
@@ -618,7 +637,7 @@ export default function InventoryManagement() {
 
                   {/* Category Cards */}
                   {categoriesPending ? (
-                    <div className="col-span-full py-12 text-center text-slate-500 text-sm">
+                    <div className="col-span-full py-12 text-center text-gray-400 text-sm">
                       Loading categories...
                     </div>
                   ) : (
@@ -631,17 +650,17 @@ export default function InventoryManagement() {
                         <div
                           key={cat._id}
                           onClick={() => setSelectedCategoryId(cat._id)}
-                          className="cursor-pointer bg-[var(--pos-panel)] hover:bg-[var(--pos-surface-inset)] border border-slate-700/60 hover:border-amber-500/50 rounded-2xl p-5 transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg flex flex-col justify-between min-h-[140px]"
+                          className="cursor-pointer bg-white hover:bg-gray-50 border border-gray-200 hover:border-amber-500/50 rounded-2xl p-5 transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg flex flex-col justify-between min-h-[140px]"
                         >
                           <div>
-                            <h4 className="font-bold text-base text-[var(--pos-text-primary)] mb-1 truncate">{cat.name}</h4>
+                            <h4 className="font-bold text-base text-gray-900 mb-1 truncate">{cat.name}</h4>
                             <p className="text-slate-450 text-xs line-clamp-2">
                               {cat.description || 'No description provided.'}
                             </p>
                           </div>
-                          <div className="flex items-center justify-between mt-4 border-t border-slate-700/40 pt-3">
-                            <span className="text-xs text-slate-500 font-medium">Stock Items</span>
-                            <span className="bg-amber-500/10 text-amber-450 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                          <div className="flex items-center justify-between mt-4 border-t border-gray-200/40 pt-3">
+                            <span className="text-xs text-gray-400 font-medium">Stock Items</span>
+                            <span className="bg-brand-orange/10 text-amber-450 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-amber-500/20">
                               {count}
                             </span>
                           </div>
@@ -654,16 +673,16 @@ export default function InventoryManagement() {
             ) : (
               <>
                 {/* Back to Categories breadcrumb */}
-                <div className="flex items-center gap-2 mb-4 bg-[var(--pos-panel)] px-4 py-2.5 rounded-xl border border-slate-700/60 w-fit">
+                <div className="flex items-center gap-2 mb-4 bg-white px-4 py-2.5 rounded-xl border border-gray-200 w-fit">
                   <button
                     type="button"
                     onClick={() => setSelectedCategoryId(null)}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-amber-500 hover:text-amber-400 transition"
+                    className="flex items-center gap-1.5 text-xs font-semibold text-amber-500 hover:text-brand-orange transition"
                   >
                     &larr; Back to Categories
                   </button>
                   <span className="text-slate-600 text-xs font-medium">/</span>
-                  <span className="text-xs font-medium text-[var(--pos-text-primary)] truncate">
+                  <span className="text-xs font-medium text-gray-900 truncate">
                     {selectedCategoryId === 'uncategorized'
                       ? 'Uncategorized Items'
                       : categories.find(c => c._id === selectedCategoryId)?.name || 'Category Items'}
@@ -671,18 +690,18 @@ export default function InventoryManagement() {
                 </div>
 
                 {/* Standardized Search & Filter Header */}
-                <div className="flex flex-col sm:flex-row items-center gap-3 mb-6 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700">
+                <div className="flex flex-col sm:flex-row items-center gap-3 mb-6 bg-white p-3 rounded-xl border border-gray-200">
                   <div className="relative flex-1 w-full">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search inventory items by name..."
-                      className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg pl-10 pr-8 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-500"
+                      className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg pl-10 pr-8 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-500"
                     />
                     {searchQuery && (
-                      <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                      <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-slate-300">
                         <X size={14} />
                       </button>
                     )}
@@ -695,22 +714,22 @@ export default function InventoryManagement() {
                       onClick={() => setShowFilters(f => !f)}
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
                         filter !== 'all'
-                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-405'
-                          : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-white'
+                          ? 'bg-brand-orange/10 border-amber-500/30 text-amber-405'
+                          : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-white'
                       }`}
                     >
                       <SlidersHorizontal size={14} />
                       <span>Filters</span>
                       {filter !== 'all' && (
-                        <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
+                        <span className="absolute -top-1.5 -right-1.5 bg-brand-orange text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
                           1
                         </span>
                       )}
                     </button>
 
                     {showFilters && (
-                      <div className="absolute right-0 mt-2 w-64 bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-2xl z-30 p-4 space-y-3">
-                        <div className="flex items-center justify-between border-b border-slate-700 pb-2">
+                      <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-2xl z-30 p-4 space-y-3">
+                        <div className="flex items-center justify-between border-b border-gray-200 pb-2">
                           <span className="text-xs font-semibold text-slate-300">Status Filter</span>
                           {filter !== 'all' && (
                             <button onClick={() => setFilter('all')} className="text-[10px] text-amber-450 hover:underline">Clear</button>
@@ -728,8 +747,8 @@ export default function InventoryManagement() {
                               onClick={() => { setFilter(f.key); setShowFilters(false); }}
                               className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
                                 filter === f.key
-                                  ? 'bg-amber-500/15 text-amber-400 font-semibold'
-                                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                  ? 'bg-brand-orange/15 text-brand-orange font-semibold'
+                                  : 'text-gray-500 hover:bg-slate-800 hover:text-white'
                               }`}
                             >
                               {f.label}
@@ -762,7 +781,7 @@ export default function InventoryManagement() {
                         key: 'name', header: 'Item Name',
                         mobilePrimary: true,
                         sortField: 'name',
-                        render: (item) => <span className="font-medium text-[var(--pos-text-primary)]">{item.itemName}</span>,
+                        render: (item) => <span className="font-medium text-gray-900">{item.itemName}</span>,
                       },
                       {
                         key: 'status', header: 'Status',
@@ -779,17 +798,17 @@ export default function InventoryManagement() {
                         headerClassName: 'text-right',
                         sortField: 'quantity',
                         render: (item) => (
-                          <span className="text-[var(--pos-text-primary)] font-semibold">{item.quantity}</span>
+                          <span className="text-gray-900 font-semibold">{item.quantity}</span>
                         ),
                       },
                       {
                         key: 'unit', header: 'Unit',
-                        render: (item) => <span className="text-slate-400">{item.unit}</span>,
+                        render: (item) => <span className="text-gray-500">{item.unit}</span>,
                       },
                       {
                         key: 'threshold', header: 'Min',
                         mobileLabel: 'Min Threshold',
-                        render: (item) => <span className="text-slate-400">{item.minThreshold}</span>,
+                        render: (item) => <span className="text-gray-500">{item.minThreshold}</span>,
                       },
                       {
                         key: 'suppliers', header: 'Suppliers',
@@ -799,7 +818,7 @@ export default function InventoryManagement() {
                         key: 'updated', header: 'Updated',
                         sortField: 'createdAt',
                         render: (item) => (
-                          <span className="text-slate-500 text-xs">
+                          <span className="text-gray-400 text-xs">
                             {new Date(item.lastUpdated || item.updatedAt).toLocaleDateString()}
                           </span>
                         ),
@@ -809,12 +828,12 @@ export default function InventoryManagement() {
                         render: (item) => (
                           <div className="flex items-center gap-1">
                             <button onClick={() => setGraphItem(item)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-amber-400 hover:bg-slate-700 transition"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-brand-orange hover:bg-slate-700 transition"
                               title="View Stock Movements & Graph">
                               <LineChartIcon size={13} />
                             </button>
                             <button onClick={() => openEdit(item)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-slate-700 transition"
                               title="Edit Item Details">
                               <Edit2 size={13} />
                             </button>
@@ -825,49 +844,49 @@ export default function InventoryManagement() {
                   />
                 ) : (
                   filtered.length === 0 ? (
-                    <div className="text-center py-16 bg-[var(--pos-panel)] rounded-xl border border-slate-700">
-                      <Package size={36} className="mx-auto opacity-30 mb-2 text-slate-400" />
-                      <p className="text-sm text-slate-500">No inventory items found</p>
+                    <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
+                      <Package size={36} className="mx-auto opacity-30 mb-2 text-gray-500" />
+                      <p className="text-sm text-gray-400">No inventory items found</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                       {filtered.map((item) => {
                         const status = getStockStatus(item.quantity, item.minThreshold);
                         return (
-                          <div key={item._id} className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-3.5 flex flex-col justify-between hover:border-slate-600 transition shadow-lg">
+                          <div key={item._id} className="bg-white border border-gray-200/50 rounded-xl p-3.5 flex flex-col justify-between hover:border-gray-300 transition shadow-lg">
                             <div>
                               <div className="flex items-start justify-between gap-2 mb-2">
-                                <h4 className="text-[var(--pos-text-primary)] font-bold text-sm truncate">{item.itemName}</h4>
+                                <h4 className="text-gray-900 font-bold text-sm truncate">{item.itemName}</h4>
                                 <Badge label={status.label} variant={status.variant} className="text-[10px] px-1.5 py-0.5" />
                               </div>
-                              <div className="grid grid-cols-2 gap-2 mt-3 bg-[var(--pos-surface-inset)] rounded-lg p-2.5 text-xs border border-slate-800/60">
+                              <div className="grid grid-cols-2 gap-2 mt-3 bg-gray-50 rounded-lg p-2.5 text-xs border border-slate-800/60">
                                 <div>
-                                  <p className="text-[10px] text-slate-500">Quantity</p>
+                                  <p className="text-[10px] text-gray-400">Quantity</p>
                                   <p className="font-semibold text-slate-300">{item.quantity} {item.unit}</p>
                                 </div>
                                 <div>
-                                  <p className="text-[10px] text-slate-500">Min Threshold</p>
+                                  <p className="text-[10px] text-gray-400">Min Threshold</p>
                                   <p className="font-semibold text-slate-300">{item.minThreshold} {item.unit}</p>
                                 </div>
                               </div>
                               <div className="mt-3">
-                                <p className="text-[10px] text-slate-500 mb-1">Suppliers</p>
+                                <p className="text-[10px] text-gray-400 mb-1">Suppliers</p>
                                 <SupplierPills suppliers={item.suppliers} />
                               </div>
                             </div>
 
                             <div className="mt-4 pt-3 border-t border-slate-850/60 flex items-center justify-between">
-                              <span className="text-[10px] text-slate-500">
+                              <span className="text-[10px] text-gray-400">
                                 Updated: {new Date(item.lastUpdated || item.updatedAt).toLocaleDateString()}
                               </span>
                               <div className="flex items-center gap-1">
                                 <button onClick={() => setGraphItem(item)}
-                                  className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-amber-400 hover:bg-slate-700 transition"
+                                  className="p-1.5 rounded-lg bg-slate-800 text-gray-500 hover:text-brand-orange hover:bg-slate-700 transition"
                                   title="View Stock Movements & Graph">
                                   <LineChartIcon size={13} />
                                 </button>
                                 <button onClick={() => openEdit(item)}
-                                  className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition"
+                                  className="p-1.5 rounded-lg bg-slate-800 text-gray-500 hover:text-white hover:bg-slate-700 transition"
                                   title="Edit Item Details">
                                   <Edit2 size={13} />
                                 </button>
@@ -890,18 +909,18 @@ export default function InventoryManagement() {
         {activeTab === 'sessions' && (
           <>
             {/* Standardized Search & Filter Header */}
-            <div className="flex flex-col sm:flex-row items-center gap-3 mb-6 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700">
+            <div className="flex flex-col sm:flex-row items-center gap-3 mb-6 bg-white p-3 rounded-xl border border-gray-200">
               <div className="relative flex-1 w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input
                   type="text"
                   value={sessionSearch}
                   onChange={(e) => setSessionSearch(e.target.value)}
                   placeholder="Search sessions by user or notes..."
-                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg pl-10 pr-8 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-500"
+                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg pl-10 pr-8 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-500"
                 />
                 {sessionSearch && (
-                  <button onClick={() => setSessionSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-350">
+                  <button onClick={() => setSessionSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-slate-350">
                     <X size={14} />
                   </button>
                 )}
@@ -916,22 +935,22 @@ export default function InventoryManagement() {
                     onClick={() => setShowSessionFilters(f => !f)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
                       sessionStatus !== 'all'
-                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                        : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-white'
+                        ? 'bg-brand-orange/10 border-amber-500/30 text-brand-orange'
+                        : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-white'
                     }`}
                   >
                     <SlidersHorizontal size={14} />
                     <span>Filters</span>
                     {sessionStatus !== 'all' && (
-                      <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
+                      <span className="absolute -top-1.5 -right-1.5 bg-brand-orange text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
                         1
                       </span>
                     )}
                   </button>
 
                   {showSessionFilters && (
-                    <div className="absolute right-0 mt-2 w-56 bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-2xl z-30 p-4 space-y-3">
-                      <div className="flex items-center justify-between border-b border-slate-700 pb-2">
+                    <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-2xl z-30 p-4 space-y-3">
+                      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
                         <span className="text-xs font-semibold text-slate-300">Session Status</span>
                         {sessionStatus !== 'all' && (
                           <button onClick={() => setSessionStatus('all')} className="text-[10px] text-amber-450 hover:underline">Clear</button>
@@ -948,8 +967,8 @@ export default function InventoryManagement() {
                             onClick={() => { setSessionStatus(st.key); setShowSessionFilters(false); }}
                             className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
                               sessionStatus === st.key
-                                ? 'bg-amber-500/15 text-amber-400 font-semibold'
-                                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                ? 'bg-brand-orange/15 text-brand-orange font-semibold'
+                                : 'text-gray-500 hover:bg-slate-800 hover:text-white'
                             }`}
                           >
                             {st.label}
@@ -964,11 +983,11 @@ export default function InventoryManagement() {
 
             {/* Content Lists */}
             {sessionsPending ? (
-              <div className="text-center py-12 text-slate-500">Loading history...</div>
+              <div className="text-center py-12 text-gray-400">Loading history...</div>
             ) : sortedSessions.length === 0 ? (
-              <div className="text-center py-16 bg-[var(--pos-panel)] rounded-xl border border-slate-700">
-                <Package size={36} className="mx-auto opacity-30 mb-2 text-slate-400" />
-                <p className="text-sm text-slate-500">No adjustment sessions found</p>
+              <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
+                <Package size={36} className="mx-auto opacity-30 mb-2 text-gray-500" />
+                <p className="text-sm text-gray-400">No adjustment sessions found</p>
               </div>
             ) : sessionViewMode === 'table' ? (
               <ResponsiveTable
@@ -983,7 +1002,7 @@ export default function InventoryManagement() {
                     key: 'started', header: 'Date Started',
                     sortField: 'createdAt',
                     render: (sess) => (
-                      <span className="text-xs text-[var(--pos-text-primary)] font-medium">
+                      <span className="text-xs text-gray-900 font-medium">
                         {new Date(sess.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                       </span>
                     ),
@@ -1001,7 +1020,7 @@ export default function InventoryManagement() {
                     key: 'changes', header: 'Changes',
                     sortField: 'adjustments',
                     render: (sess) => (
-                      <span className="text-xs text-amber-400 font-bold">
+                      <span className="text-xs text-brand-orange font-bold">
                         {sess.adjustmentCount} adjustments
                       </span>
                     ),
@@ -1010,7 +1029,7 @@ export default function InventoryManagement() {
                     key: 'qtyChanged', header: 'Total Quantity',
                     sortField: 'totalQty',
                     render: (sess) => (
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-gray-500">
                         {sess.totalQuantityChanged} units
                       </span>
                     ),
@@ -1019,7 +1038,7 @@ export default function InventoryManagement() {
                     key: 'status', header: 'Status',
                     sortField: 'status',
                     render: (sess) => (
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${sess.status === 'active' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-slate-550/15 text-slate-400'}`}>
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${sess.status === 'active' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-slate-550/15 text-gray-500'}`}>
                         {sess.status}
                       </span>
                     ),
@@ -1027,7 +1046,7 @@ export default function InventoryManagement() {
                   {
                     key: 'notes', header: 'Notes',
                     render: (sess) => (
-                      <span className="text-xs text-slate-500 italic max-w-xs truncate block" title={sess.notes}>
+                      <span className="text-xs text-gray-400 italic max-w-xs truncate block" title={sess.notes}>
                         {sess.notes || '—'}
                       </span>
                     ),
@@ -1036,7 +1055,7 @@ export default function InventoryManagement() {
                     key: 'actions', header: '',
                     render: (sess) => (
                       <button onClick={() => setActiveSessionDetails(sess)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-slate-800 transition"
                         title="View Session Details">
                         <Eye size={14} />
                       </button>
@@ -1047,33 +1066,33 @@ export default function InventoryManagement() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {sortedSessions.map((sess) => (
-                  <div key={sess._id} className="bg-[var(--pos-panel)] border border-slate-700 rounded-xl p-3.5 flex flex-col justify-between hover:border-slate-600 transition">
+                  <div key={sess._id} className="bg-white border border-gray-200 rounded-xl p-3.5 flex flex-col justify-between hover:border-gray-300 transition">
                     <div>
                       <div className="flex justify-between items-start gap-2 mb-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${sess.status === 'active' ? 'bg-green-500/10 text-green-400' : 'bg-slate-800 text-slate-400'}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${sess.status === 'active' ? 'bg-green-500/10 text-green-400' : 'bg-slate-800 text-gray-500'}`}>
                           {sess.status}
                         </span>
-                        <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                        <span className="text-[10px] text-gray-400 flex items-center gap-1">
                           <Calendar size={10} />
                           {new Date(sess.createdAt).toLocaleDateString()}
                         </span>
                       </div>
-                      <p className="text-xs text-[var(--pos-text-primary)] font-bold flex items-center gap-1.5 mt-1.5">
-                        <User size={12} className="text-slate-500" />
+                      <p className="text-xs text-gray-900 font-bold flex items-center gap-1.5 mt-1.5">
+                        <User size={12} className="text-gray-400" />
                         {sess.userId?.name || 'Staff'}
                       </p>
-                      <div className="grid grid-cols-2 gap-2 mt-3 bg-[var(--pos-surface-inset)] rounded-lg p-2 border border-slate-800">
+                      <div className="grid grid-cols-2 gap-2 mt-3 bg-gray-50 rounded-lg p-2 border border-slate-800">
                         <div>
-                          <p className="text-[9px] uppercase text-slate-500 tracking-wide font-medium">Changes</p>
-                          <p className="text-xs font-bold text-amber-400">{sess.adjustmentCount}</p>
+                          <p className="text-[9px] uppercase text-gray-400 tracking-wide font-medium">Changes</p>
+                          <p className="text-xs font-bold text-brand-orange">{sess.adjustmentCount}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] uppercase text-slate-500 tracking-wide font-medium">Total Qty</p>
+                          <p className="text-[9px] uppercase text-gray-400 tracking-wide font-medium">Total Qty</p>
                           <p className="text-xs font-bold text-slate-350">{sess.totalQuantityChanged}</p>
                         </div>
                       </div>
                       {sess.notes && (
-                        <p className="text-xs text-slate-500 italic mt-2.5 border-t border-slate-800/40 pt-2 line-clamp-1">{sess.notes}</p>
+                        <p className="text-xs text-gray-400 italic mt-2.5 border-t border-slate-800/40 pt-2 line-clamp-1">{sess.notes}</p>
                       )}
                     </div>
                     <button onClick={() => setActiveSessionDetails(sess)}
@@ -1117,15 +1136,15 @@ export default function InventoryManagement() {
             <div className="space-y-6">
               {/* Date range selector */}
               <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-400 font-medium">Period:</span>
+                <span className="text-xs text-gray-500 font-medium">Period:</span>
                 {[7, 14, 30, 90].map(d => (
                   <button
                     key={d}
                     onClick={() => setAnalyticsDays(d)}
                     className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
                       analyticsDays === d
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-slate-800 text-slate-400 hover:text-white border border-slate-700'
+                        ? 'bg-brand-orange text-white'
+                        : 'bg-slate-800 text-gray-500 hover:text-white border border-gray-200'
                     }`}
                   >
                     {d}d
@@ -1144,8 +1163,8 @@ export default function InventoryManagement() {
                   <div key={stat.label} className={`rounded-xl border p-4 flex items-start gap-3 ${stat.bg}`}>
                     <stat.icon size={20} className={`shrink-0 mt-0.5 ${stat.color}`} />
                     <div>
-                      <p className="text-xl font-bold text-[var(--pos-text-primary)]">{stat.value}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{stat.label}</p>
+                      <p className="text-xl font-bold text-gray-900">{stat.value}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{stat.label}</p>
                     </div>
                   </div>
                 ))}
@@ -1153,12 +1172,12 @@ export default function InventoryManagement() {
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Category Breakdown Pie */}
-                <div className="bg-[var(--pos-panel)] rounded-xl border border-slate-700 p-4">
-                  <h3 className="text-sm font-semibold text-[var(--pos-text-primary)] mb-4 flex items-center gap-2">
-                    <BarChart2 size={15} className="text-amber-400" /> Items by Category
+                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <BarChart2 size={15} className="text-brand-orange" /> Items by Category
                   </h3>
                   {catData.length === 0 ? (
-                    <p className="text-center text-sm text-slate-500 py-8">No category data</p>
+                    <p className="text-center text-sm text-gray-400 py-8">No category data</p>
                   ) : (
                     <ResponsiveContainer width="100%" height={220}>
                       <PieChart>
@@ -1191,30 +1210,30 @@ export default function InventoryManagement() {
                 </div>
 
                 {/* Low Stock Items Table */}
-                <div className="bg-[var(--pos-panel)] rounded-xl border border-slate-700 p-4">
-                  <h3 className="text-sm font-semibold text-[var(--pos-text-primary)] mb-4 flex items-center gap-2">
+                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <AlertTriangle size={15} className="text-yellow-400" /> Items Needing Attention
                   </h3>
                   {outOfStock.length + lowStock.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-10 gap-2">
                       <TrendingUp size={28} className="text-green-400 opacity-70" />
-                      <p className="text-sm text-slate-400">All items are well stocked!</p>
+                      <p className="text-sm text-gray-500">All items are well stocked!</p>
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-[200px] overflow-y-auto">
                       {[...outOfStock, ...lowStock].map(item => {
                         const status = getStockStatus(item.quantity, item.minThreshold);
                         return (
-                          <div key={item._id} className="flex items-center justify-between gap-2 bg-[var(--pos-surface-inset)] border border-slate-800 rounded-lg px-3 py-2">
+                          <div key={item._id} className="flex items-center justify-between gap-2 bg-gray-50 border border-slate-800 rounded-lg px-3 py-2">
                             <div className="min-w-0">
-                              <p className="text-xs font-semibold text-[var(--pos-text-primary)] truncate">{item.itemName}</p>
-                              <p className="text-[10px] text-slate-500">{item.category?.name || 'Uncategorized'}</p>
+                              <p className="text-xs font-semibold text-gray-900 truncate">{item.itemName}</p>
+                              <p className="text-[10px] text-gray-400">{item.category?.name || 'Uncategorized'}</p>
                             </div>
                             <div className="text-right shrink-0">
                               <p className={`text-xs font-bold ${status.variant === 'critical' ? 'text-red-400' : 'text-yellow-400'}`}>
                                 {item.quantity} {item.unit}
                               </p>
-                              <p className="text-[10px] text-slate-500">min: {item.minThreshold}</p>
+                              <p className="text-[10px] text-gray-400">min: {item.minThreshold}</p>
                             </div>
                           </div>
                         );
@@ -1225,21 +1244,21 @@ export default function InventoryManagement() {
               </div>
 
               {/* Consumption Chart */}
-              <div className="bg-[var(--pos-panel)] rounded-xl border border-slate-700 p-4">
+              <div className="bg-white rounded-xl border border-gray-200 p-4">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-[var(--pos-text-primary)] flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                     <LineChartIcon size={15} className="text-purple-400" /> Top Consumed Ingredients (last {analyticsDays} days)
                   </h3>
                   {consumptionReport && (
-                    <span className="text-xs text-slate-500">{consumptionReport.summary?.totalOrders || 0} orders</span>
+                    <span className="text-xs text-gray-400">{consumptionReport.summary?.totalOrders || 0} orders</span>
                   )}
                 </div>
                 {consumptionPending ? (
-                  <div className="flex items-center justify-center h-40 text-slate-500 text-sm">Loading...</div>
+                  <div className="flex items-center justify-center h-40 text-gray-400 text-sm">Loading...</div>
                 ) : consumptionItems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-40 gap-2">
                     <LineChartIcon size={28} className="text-slate-600 opacity-50" />
-                    <p className="text-sm text-slate-500">No consumption data for this period</p>
+                    <p className="text-sm text-gray-400">No consumption data for this period</p>
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={220}>
@@ -1275,14 +1294,14 @@ export default function InventoryManagement() {
             <input type="text" value={form.itemName}
               onChange={e => setForm(f => ({ ...f, itemName: e.target.value }))}
               placeholder="e.g. Burger Buns" required
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
+              className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">Category</label>
             <select value={form.category}
               onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+              className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
               <option value="">None (Uncategorized)</option>
               {categories.map(c => (
                 <option key={c._id} value={c._id}>{c.name}</option>
@@ -1295,7 +1314,7 @@ export default function InventoryManagement() {
             <select value={form.unit}
               onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
               required
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+              className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
               {PREDEFINED_UNITS.map(u => (
                 <option key={u.value} value={u.value}>{u.label}</option>
               ))}
@@ -1307,7 +1326,7 @@ export default function InventoryManagement() {
                 onChange={e => setCustomUnit(e.target.value)}
                 placeholder="Enter custom unit (e.g. tray, dozen)"
                 required
-                className="mt-2 w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+                className="mt-2 w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
               />
             )}
           </div>
@@ -1317,8 +1336,8 @@ export default function InventoryManagement() {
             <input type="number" min="0" step="0.01" value={form.minThreshold}
               onChange={e => setForm(f => ({ ...f, minThreshold: e.target.value }))}
               placeholder="e.g. 50" required
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
-            <p className="text-xs text-slate-500 mt-1">Alert when quantity drops below this value</p>
+              className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
+            <p className="text-xs text-gray-400 mt-1">Alert when quantity drops below this value</p>
           </div>
 
           {/* Supplier binding */}
@@ -1327,7 +1346,7 @@ export default function InventoryManagement() {
               <span className="flex items-center gap-1.5"><Truck size={13} /> Suppliers</span>
             </label>
             {suppliers.length === 0 ? (
-              <p className="text-xs text-slate-500 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-4 py-3">
+              <p className="text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
                 No suppliers added yet. Add suppliers from the Suppliers page first.
               </p>
             ) : (
@@ -1361,17 +1380,17 @@ export default function InventoryManagement() {
                 {/* Searchable dropdown */}
                 <div className="relative">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                     <input
                       type="text"
                       value={supplierSearch}
                       onChange={e => setSupplierSearch(e.target.value)}
                       placeholder="Search suppliers to add..."
-                      className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+                      className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
                     />
                   </div>
                   {supplierSearch && filteredSuppliers.length > 0 && (
-                    <div className="absolute z-10 mt-1 w-full bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                    <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
                       {filteredSuppliers
                         .filter(s => !form.suppliers.includes(s._id))
                         .map(s => (
@@ -1382,11 +1401,11 @@ export default function InventoryManagement() {
                               setForm(f => ({ ...f, suppliers: [...f.suppliers, s._id] }));
                               setSupplierSearch('');
                             }}
-                            className="w-full text-left px-4 py-2.5 hover:bg-slate-700/50 transition flex items-center gap-2 text-sm text-[var(--pos-text-primary)]"
+                            className="w-full text-left px-4 py-2.5 hover:bg-slate-700/50 transition flex items-center gap-2 text-sm text-gray-900"
                           >
                             <Truck size={14} className="text-purple-400" />
                             <span>{s.name}</span>
-                            {s.contact && <span className="text-slate-500 text-xs ml-auto">{s.contact}</span>}
+                            {s.contact && <span className="text-gray-400 text-xs ml-auto">{s.contact}</span>}
                           </button>
                         ))}
                     </div>
@@ -1404,11 +1423,11 @@ export default function InventoryManagement() {
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={closeSlide}
-              className="flex-1 bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-semibold py-2.5 rounded-xl transition text-sm">
+              className="flex-1 bg-slate-700 hover:bg-slate-600 text-gray-900 font-semibold py-2.5 rounded-xl transition text-sm">
               Cancel
             </button>
             <button type="submit" disabled={isPending}
-              className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl transition text-sm">
+              className="flex-1 bg-brand-orange hover:bg-brand-orange-hover disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl transition text-sm">
               {isPending ? 'Saving...' : (editing ? 'Save Changes' : 'Add Item')}
             </button>
           </div>
@@ -1439,32 +1458,32 @@ export default function InventoryManagement() {
                 createCategoryMutation.mutate(categoryForm);
               }
             }}
-            className="space-y-4 bg-[var(--pos-surface-inset)] border border-slate-700/50 rounded-2xl p-4"
+            className="space-y-4 bg-gray-50 border border-gray-200/50 rounded-2xl p-4"
           >
-            <h4 className="text-sm font-semibold text-[var(--pos-text-primary)]">
+            <h4 className="text-sm font-semibold text-gray-900">
               {editingCategory ? 'Edit Category' : 'Create New Category'}
             </h4>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Name *</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Name *</label>
               <input
                 type="text"
                 value={categoryForm.name}
                 onChange={e => setCategoryForm(f => ({ ...f, name: e.target.value }))}
                 placeholder="e.g. Sauces & Dressings"
                 required
-                className="w-full bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-650"
+                className="w-full bg-white border border-gray-200 text-gray-900 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-650"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Description</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Description</label>
               <textarea
                 value={categoryForm.description}
                 onChange={e => setCategoryForm(f => ({ ...f, description: e.target.value }))}
                 placeholder="Brief description..."
                 rows={2}
-                className="w-full bg-[var(--pos-panel)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-650 resize-none"
+                className="w-full bg-white border border-gray-200 text-gray-900 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-650 resize-none"
               />
             </div>
 
@@ -1479,7 +1498,7 @@ export default function InventoryManagement() {
                 <button
                   type="button"
                   onClick={() => { setEditingCategory(null); setCategoryForm({ name: '', description: '' }); }}
-                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-semibold py-1.5 rounded-xl transition text-xs"
+                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-gray-900 font-semibold py-1.5 rounded-xl transition text-xs"
                 >
                   Cancel
                 </button>
@@ -1487,7 +1506,7 @@ export default function InventoryManagement() {
               <button
                 type="submit"
                 disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}
-                className="flex-1 bg-amber-500 hover:bg-amber-400 text-white font-semibold py-1.5 rounded-xl transition text-xs disabled:opacity-60"
+                className="flex-1 bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold py-1.5 rounded-xl transition text-xs disabled:opacity-60"
               >
                 {editingCategory ? 'Save' : 'Create'}
               </button>
@@ -1496,14 +1515,14 @@ export default function InventoryManagement() {
 
           {/* List of Categories */}
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-[var(--pos-text-primary)] border-b border-slate-700/50 pb-2">
+            <h4 className="text-sm font-semibold text-gray-900 border-b border-gray-200/50 pb-2">
               Existing Categories ({categories.length})
             </h4>
 
             {categoriesPending ? (
-              <div className="text-xs text-slate-500 text-center py-4">Loading categories...</div>
+              <div className="text-xs text-gray-400 text-center py-4">Loading categories...</div>
             ) : categories.length === 0 ? (
-              <div className="text-xs text-slate-500 text-center py-4 bg-[var(--pos-panel)] border border-slate-700/40 rounded-xl">
+              <div className="text-xs text-gray-400 text-center py-4 bg-white border border-gray-200/40 rounded-xl">
                 No categories created yet.
               </div>
             ) : (
@@ -1511,12 +1530,12 @@ export default function InventoryManagement() {
                 {categories.map(cat => (
                   <div
                     key={cat._id}
-                    className="flex items-start justify-between bg-[var(--pos-panel)] border border-slate-700/50 hover:border-slate-600 rounded-xl p-3 gap-3"
+                    className="flex items-start justify-between bg-white border border-gray-200/50 hover:border-gray-300 rounded-xl p-3 gap-3"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-[var(--pos-text-primary)] truncate">{cat.name}</p>
+                      <p className="text-xs font-semibold text-gray-900 truncate">{cat.name}</p>
                       {cat.description && (
-                        <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">{cat.description}</p>
+                        <p className="text-[10px] text-gray-500 line-clamp-1 mt-0.5">{cat.description}</p>
                       )}
                     </div>
                     <div className="flex gap-1 shrink-0">
@@ -1526,7 +1545,7 @@ export default function InventoryManagement() {
                           setEditingCategory(cat);
                           setCategoryForm({ name: cat.name, description: cat.description || '' });
                         }}
-                        className="p-1 text-slate-400 hover:text-amber-400 transition"
+                        className="p-1 text-gray-500 hover:text-brand-orange transition"
                         title="Edit"
                       >
                         <Edit2 size={13} />
@@ -1538,7 +1557,7 @@ export default function InventoryManagement() {
                             deleteCategoryMutation.mutate(cat._id);
                           }
                         }}
-                        className="p-1 text-slate-400 hover:text-red-400 transition"
+                        className="p-1 text-gray-500 hover:text-red-400 transition"
                         title="Delete"
                       >
                         <Trash2 size={13} />
@@ -1555,24 +1574,24 @@ export default function InventoryManagement() {
       {/* Stock Movements Graph & Table Modal */}
       {graphItem && (
         <div
-          className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-gray-50/80 flex items-center justify-center z-50 p-4"
           onClick={(e) => {
             if (window.innerWidth >= 640 && e.target === e.currentTarget) setGraphItem(null);
           }}
         >
           <div
-            className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col"
+            className="bg-white border border-gray-200 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-800 p-4 sm:p-5">
               <div>
-                <h2 className="text-lg font-bold text-[var(--pos-text-primary)]">Stock Movements & History</h2>
-                <p className="text-xs text-slate-400 mt-1">
-                  Historical stock levels and audit logs for <span className="font-semibold text-amber-400">{graphItem.itemName}</span> ({graphItem.unit})
+                <h2 className="text-lg font-bold text-gray-900">Stock Movements & History</h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  Historical stock levels and audit logs for <span className="font-semibold text-brand-orange">{graphItem.itemName}</span> ({graphItem.unit})
                 </p>
               </div>
-              <button onClick={() => setGraphItem(null)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition">
+              <button onClick={() => setGraphItem(null)} className="p-2 hover:bg-slate-800 rounded-xl text-gray-500 hover:text-white transition">
                 <X size={18} />
               </button>
             </div>
@@ -1580,17 +1599,17 @@ export default function InventoryManagement() {
             {/* Modal Content */}
             <div className="p-4 sm:p-6 space-y-6 flex-1">
               {itemMovementsPending ? (
-                <div className="text-center py-12 text-slate-500">Loading movement history...</div>
+                <div className="text-center py-12 text-gray-400">Loading movement history...</div>
               ) : itemMovements.length === 0 ? (
-                <div className="text-center py-12 bg-[var(--pos-surface-inset)] rounded-xl border border-slate-800">
+                <div className="text-center py-12 bg-gray-50 rounded-xl border border-slate-800">
                   <Package size={40} className="mx-auto text-slate-600 opacity-35 mb-2" />
-                  <p className="text-sm text-slate-500">No stock movements recorded for this item yet.</p>
+                  <p className="text-sm text-gray-400">No stock movements recorded for this item yet.</p>
                 </div>
               ) : (
                 <>
                   {/* Recharts Graph Container */}
-                  <div className="bg-[var(--pos-surface-inset)] border border-slate-800 rounded-2xl p-4">
-                    <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Stock Level Trend (Last 50 changes)</h3>
+                  <div className="bg-gray-50 border border-slate-800 rounded-2xl p-4">
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Stock Level Trend (Last 50 changes)</h3>
                     <div className="h-64 sm:h-72 w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={[...itemMovements].reverse().map(m => ({
@@ -1613,11 +1632,11 @@ export default function InventoryManagement() {
 
                   {/* Movements Table */}
                   <div className="space-y-3">
-                    <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Detailed Movements Audit Log</h3>
-                    <div className="border border-slate-800 rounded-xl overflow-hidden bg-[var(--pos-surface-inset)] max-h-80 overflow-y-auto">
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Detailed Movements Audit Log</h3>
+                    <div className="border border-slate-800 rounded-xl overflow-hidden bg-gray-50 max-h-80 overflow-y-auto">
                       <table className="w-full text-left text-xs border-collapse">
                         <thead>
-                          <tr className="bg-slate-900 border-b border-slate-800 text-slate-400 font-medium uppercase tracking-wider">
+                          <tr className="bg-white border-b border-slate-800 text-gray-500 font-medium uppercase tracking-wider">
                             <th className="p-3">Date & Time</th>
                             <th className="p-3">Type</th>
                             <th className="p-3 text-right">Prev</th>
@@ -1648,12 +1667,12 @@ export default function InventoryManagement() {
                                 <td className="p-3">
                                   <Badge label={badge.label} variant={badge.variant} className="text-[10px] px-1.5 py-0.5" />
                                 </td>
-                                <td className="p-3 text-right text-slate-500 font-medium">{m.previousQty}</td>
-                                <td className={`p-3 text-right font-bold ${isPositive ? 'text-green-450' : changeQty < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                                <td className="p-3 text-right text-gray-400 font-medium">{m.previousQty}</td>
+                                <td className={`p-3 text-right font-bold ${isPositive ? 'text-green-450' : changeQty < 0 ? 'text-red-400' : 'text-gray-500'}`}>
                                   {isPositive ? `+${changeQty}` : changeQty}
                                 </td>
                                 <td className="p-3 text-right text-slate-300 font-semibold">{m.newQty}</td>
-                                <td className="p-3 text-slate-400 max-w-[200px] truncate" title={m.notes || m.reason || ''}>
+                                <td className="p-3 text-gray-500 max-w-[200px] truncate" title={m.notes || m.reason || ''}>
                                   {m.notes || m.reason || <span className="text-slate-650">—</span>}
                                 </td>
                                 <td className="p-3 text-slate-300 font-medium">{m.createdBy?.name || 'System'}</td>
@@ -1669,7 +1688,7 @@ export default function InventoryManagement() {
             </div>
 
             {/* Modal Footer */}
-            <div className="border-t border-slate-800 bg-slate-900 p-4 flex justify-end rounded-b-2xl">
+            <div className="border-t border-slate-800 bg-white p-4 flex justify-end rounded-b-2xl">
               <button onClick={() => setGraphItem(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl transition text-xs">
                 Close
               </button>
@@ -1681,37 +1700,37 @@ export default function InventoryManagement() {
       {/* Session Details Modal */}
       {activeSessionDetails && (
         <div
-          className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-gray-50/80 flex items-center justify-center z-50 p-4"
           onClick={(e) => {
             if (window.innerWidth >= 640 && e.target === e.currentTarget) setActiveSessionDetails(null);
           }}
         >
           <div
-            className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col"
+            className="bg-white border border-gray-200 rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-y-auto shadow-2xl flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-800 p-4 sm:p-5">
               <div>
-                <h2 className="text-lg font-bold text-[var(--pos-text-primary)]">Adjustment Session Details</h2>
-                <p className="text-xs text-slate-400 mt-1">
+                <h2 className="text-lg font-bold text-gray-900">Adjustment Session Details</h2>
+                <p className="text-xs text-gray-500 mt-1">
                   Started on <span className="font-semibold text-slate-200">{new Date(activeSessionDetails.createdAt).toLocaleString()}</span>
                 </p>
               </div>
-              <button onClick={() => setActiveSessionDetails(null)} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition">
+              <button onClick={() => setActiveSessionDetails(null)} className="p-2 hover:bg-slate-800 rounded-xl text-gray-500 hover:text-white transition">
                 <X size={18} />
               </button>
             </div>
 
             {/* Modal Content */}
             <div className="p-4 sm:p-6 space-y-4 flex-1">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-[var(--pos-surface-inset)] border border-slate-800 rounded-xl p-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50 border border-slate-800 rounded-xl p-3.5">
                 <div>
-                  <p className="text-[10px] uppercase text-slate-500 tracking-wider">Staff Member</p>
-                  <p className="text-sm font-semibold text-[var(--pos-text-primary)]">{activeSessionDetails.userId?.name || 'Staff'}</p>
+                  <p className="text-[10px] uppercase text-gray-400 tracking-wider">Staff Member</p>
+                  <p className="text-sm font-semibold text-gray-900">{activeSessionDetails.userId?.name || 'Staff'}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase text-slate-500 tracking-wider">Status</p>
+                  <p className="text-[10px] uppercase text-gray-400 tracking-wider">Status</p>
                   <p className="text-sm font-semibold">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${activeSessionDetails.status === 'active' ? 'bg-green-500/10 text-green-400' : 'bg-slate-800 text-slate-450'}`}>
                       {activeSessionDetails.status}
@@ -1719,31 +1738,31 @@ export default function InventoryManagement() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase text-slate-500 tracking-wider">Total Adjustments</p>
+                  <p className="text-[10px] uppercase text-gray-400 tracking-wider">Total Adjustments</p>
                   <p className="text-sm font-semibold text-amber-450">{activeSessionDetails.adjustmentCount} items adjusted</p>
                 </div>
               </div>
 
               {activeSessionDetails.notes && (
-                <div className="bg-slate-800/20 border border-slate-800 rounded-xl p-3 text-xs text-slate-400 italic">
+                <div className="bg-slate-800/20 border border-slate-800 rounded-xl p-3 text-xs text-gray-500 italic">
                   <span className="font-semibold text-slate-350 not-italic block mb-0.5">Session Notes:</span>
                   {activeSessionDetails.notes}
                 </div>
               )}
 
               <div className="space-y-2">
-                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Session Stock Changes</h3>
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Session Stock Changes</h3>
                 {movementsPending ? (
-                  <div className="text-center py-8 text-slate-500">Loading adjustments list...</div>
+                  <div className="text-center py-8 text-gray-400">Loading adjustments list...</div>
                 ) : sessionMovements.length === 0 ? (
-                  <div className="text-center py-8 text-slate-500 italic bg-slate-900/20 rounded-xl border border-slate-800">
+                  <div className="text-center py-8 text-gray-400 italic bg-white/20 rounded-xl border border-slate-800">
                     No stock movements recorded in this session.
                   </div>
                 ) : (
-                  <div className="border border-slate-800 rounded-xl overflow-hidden bg-[var(--pos-surface-inset)] max-h-64 overflow-y-auto">
+                  <div className="border border-slate-800 rounded-xl overflow-hidden bg-gray-50 max-h-64 overflow-y-auto">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
-                        <tr className="bg-slate-900 border-b border-slate-800 text-slate-400 font-medium uppercase tracking-wider">
+                        <tr className="bg-white border-b border-slate-800 text-gray-500 font-medium uppercase tracking-wider">
                           <th className="p-3">Inventory Item</th>
                           <th className="p-3 text-right">Previous Stock</th>
                           <th className="p-3 text-right">Adjustment</th>
@@ -1759,14 +1778,14 @@ export default function InventoryManagement() {
                             <tr key={m._id} className="hover:bg-slate-800/40 transition">
                               <td className="p-3 font-medium text-slate-300">
                                 {m.inventoryItemId?.itemName || 'Unknown Item'}
-                                {m.inventoryItemId?.unit && <span className="text-[10px] text-slate-500 ml-1.5">({m.inventoryItemId.unit})</span>}
+                                {m.inventoryItemId?.unit && <span className="text-[10px] text-gray-400 ml-1.5">({m.inventoryItemId.unit})</span>}
                               </td>
-                              <td className="p-3 text-right text-slate-500">{m.previousQty}</td>
-                              <td className={`p-3 text-right font-bold ${isPositive ? 'text-green-450' : changeQty < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                              <td className="p-3 text-right text-gray-400">{m.previousQty}</td>
+                              <td className={`p-3 text-right font-bold ${isPositive ? 'text-green-450' : changeQty < 0 ? 'text-red-400' : 'text-gray-500'}`}>
                                 {isPositive ? `+${changeQty}` : changeQty}
                               </td>
                               <td className="p-3 text-right text-slate-350 font-semibold">{m.newQty}</td>
-                              <td className="p-3 text-slate-400 truncate max-w-[200px]" title={m.notes || ''}>
+                              <td className="p-3 text-gray-500 truncate max-w-[200px]" title={m.notes || ''}>
                                 {m.notes || <span className="text-slate-655">—</span>}
                               </td>
                             </tr>
@@ -1780,7 +1799,7 @@ export default function InventoryManagement() {
             </div>
 
             {/* Modal Footer */}
-            <div className="border-t border-slate-800 bg-slate-900 p-4 flex justify-end rounded-b-2xl">
+            <div className="border-t border-slate-800 bg-white p-4 flex justify-end rounded-b-2xl">
               <button onClick={() => setActiveSessionDetails(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl transition text-xs">
                 Close
               </button>

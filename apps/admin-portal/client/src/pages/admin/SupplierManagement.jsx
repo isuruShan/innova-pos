@@ -46,14 +46,14 @@ function SupplierForm({
   const field = (key, label, placeholder, icon, type = 'text') => (
     <div>
       <label className="block text-sm font-medium text-slate-300 mb-1.5">{label}</label>
-      <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-amber-500">
+      <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-amber-500">
         {icon}
         <input
           type={type}
           value={form[key]}
           onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
           placeholder={placeholder}
-          className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
+          className="flex-1 bg-transparent text-gray-900 text-sm focus:outline-none placeholder-slate-600"
         />
       </div>
     </div>
@@ -61,8 +61,8 @@ function SupplierForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      {field('name', 'Supplier Name *', 'e.g. Fresh Foods Co.', <Truck size={14} className="text-slate-500 flex-shrink-0" />)}
-      {field('contactPerson', 'Contact Person', 'e.g. John Smith', <User size={14} className="text-slate-500 flex-shrink-0" />)}
+      {field('name', 'Supplier Name *', 'e.g. Fresh Foods Co.', <Truck size={14} className="text-gray-400 flex-shrink-0" />)}
+      {field('contactPerson', 'Contact Person', 'e.g. John Smith', <User size={14} className="text-gray-400 flex-shrink-0" />)}
       
       <PosPhoneField
         countryIso={phoneField.countryIso}
@@ -73,8 +73,8 @@ function SupplierForm({
         label="Phone"
       />
 
-      {field('email', 'Email', 'e.g. orders@freshfoods.com', <Mail size={14} className="text-slate-500 flex-shrink-0" />, 'email')}
-      {field('address', 'Address', 'Street, City', <MapPin size={14} className="text-slate-500 flex-shrink-0" />)}
+      {field('email', 'Email', 'e.g. orders@freshfoods.com', <Mail size={14} className="text-gray-400 flex-shrink-0" />, 'email')}
+      {field('address', 'Address', 'Street, City', <MapPin size={14} className="text-gray-400 flex-shrink-0" />)}
 
       <div>
         <label className="block text-sm font-medium text-slate-300 mb-1.5">Notes</label>
@@ -83,7 +83,7 @@ function SupplierForm({
           value={form.notes}
           onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
           placeholder="Delivery schedule, payment terms, etc."
-          className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600 resize-none"
+          className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600 resize-none"
         />
       </div>
 
@@ -95,11 +95,11 @@ function SupplierForm({
 
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancel}
-          className="flex-1 bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-semibold py-2.5 rounded-xl transition text-sm">
+          className="flex-1 bg-slate-700 hover:bg-slate-600 text-gray-900 font-semibold py-2.5 rounded-xl transition text-sm">
           Cancel
         </button>
         <button type="submit" disabled={isPending}
-          className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl transition text-sm">
+          className="flex-1 bg-brand-orange hover:bg-brand-orange-hover disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl transition text-sm">
           {isPending ? 'Saving…' : (editing ? 'Save Changes' : 'Add Supplier')}
         </button>
       </div>
@@ -109,7 +109,7 @@ function SupplierForm({
 
 function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded }) {
   return (
-    <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-2xl p-3.5 space-y-3.5">
+    <div className="bg-white border border-gray-200/50 rounded-2xl p-3.5 space-y-3.5">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -117,19 +117,19 @@ function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded }) {
             <Truck size={18} className="text-purple-400" />
           </div>
           <div className="min-w-0">
-            <h3 className="text-[var(--pos-text-primary)] font-semibold text-sm truncate">{supplier.name}</h3>
+            <h3 className="text-gray-900 font-semibold text-sm truncate">{supplier.name}</h3>
             {supplier.contactPerson && (
-              <p className="text-slate-500 text-xs truncate">{supplier.contactPerson}</p>
+              <p className="text-gray-400 text-xs truncate">{supplier.contactPerson}</p>
             )}
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           <button onClick={() => onEdit(supplier)}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition">
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-slate-700 transition">
             <Edit2 size={13} />
           </button>
           <button onClick={() => onDelete(supplier._id)}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition">
+            className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition">
             <Trash2 size={13} />
           </button>
         </div>
@@ -138,22 +138,22 @@ function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded }) {
       {/* Contact details */}
       <div className="space-y-1.5">
         {supplier.phone && (
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
             <Phone size={11} className="text-slate-600" /> {supplier.phone}
           </div>
         )}
         {supplier.email && (
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
             <Mail size={11} className="text-slate-600" /> {supplier.email}
           </div>
         )}
         {supplier.address && (
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
             <MapPin size={11} className="text-slate-600" /> {supplier.address}
           </div>
         )}
         {supplier.notes && (
-          <div className="flex items-start gap-2 text-xs text-slate-500 italic border-t border-slate-700/40 pt-2 mt-2">
+          <div className="flex items-start gap-2 text-xs text-gray-400 italic border-t border-gray-200/40 pt-2 mt-2">
             <FileText size={11} className="text-slate-600 mt-0.5 flex-shrink-0" /> {supplier.notes}
           </div>
         )}
@@ -162,7 +162,7 @@ function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded }) {
       {/* Inventory item count toggle */}
       <button
         onClick={() => onToggleItems(supplier._id)}
-        className="flex items-center gap-2 text-xs text-slate-500 hover:text-amber-400 transition w-full"
+        className="flex items-center gap-2 text-xs text-gray-400 hover:text-brand-orange transition w-full"
       >
         {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         <Package size={12} />
@@ -171,7 +171,7 @@ function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded }) {
 
       {/* Expanded items list */}
       {expanded && supplier.items && (
-        <div className="bg-[var(--pos-surface-inset)] rounded-xl p-3 space-y-1.5">
+        <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
           {supplier.items.length === 0 ? (
             <p className="text-xs text-slate-600 text-center py-2">No inventory items linked</p>
           ) : (
@@ -189,7 +189,7 @@ function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded }) {
 }
 
 export default function SupplierManagement() {
-  const { selectedStoreId, isStoreReady } = useStoreContext();
+  const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const { countryIso: tenantCountryIso } = useTenantCurrency();
   const [slideOpen, setSlideOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -383,7 +383,7 @@ export default function SupplierManagement() {
   }));
 
   return (
-    <div className="min-h-screen bg-[var(--pos-page-bg)]">
+    <div className="min-h-screen bg-gray-50">
       
       <div className="max-w-6xl mx-auto p-4 sm:p-6">
         <PageHeader
@@ -400,18 +400,34 @@ export default function SupplierManagement() {
         />
 
         {/* Search + Sort row */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700/50 items-center justify-between">
-          <div className="flex-1 w-full flex items-center gap-2 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2">
-            <Search size={15} className="text-slate-500 flex-shrink-0" />
+        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-white p-3 rounded-xl border border-gray-200/50 items-center justify-between">
+          {stores.length > 0 && (
+            <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto">
+              <span className="text-xs text-gray-500 font-semibold">Store:</span>
+              <select
+                value={selectedStoreId || ''}
+                onChange={(e) => selectStore(e.target.value)}
+                className="bg-gray-50 border border-gray-300 text-gray-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer w-full sm:w-auto"
+              >
+                {stores.map((s) => (
+                  <option key={s._id} value={s._id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="flex-1 w-full flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+            <Search size={15} className="text-gray-400 flex-shrink-0" />
             <input
               type="text"
               placeholder="Search suppliers by name, contact, phone, email, notes..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-655"
+              className="flex-1 bg-transparent text-gray-900 text-sm focus:outline-none placeholder-slate-655"
             />
             {search && (
-              <button onClick={() => setSearch('')}><X size={13} className="text-slate-500 hover:text-white" /></button>
+              <button onClick={() => setSearch('')}><X size={13} className="text-gray-400 hover:text-white" /></button>
             )}
           </div>
 
@@ -424,14 +440,14 @@ export default function SupplierManagement() {
                 onClick={() => setShowFilters(f => !f)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
                   hasLinkedFilter !== 'all'
-                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 font-semibold'
-                    : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-white'
+                    ? 'bg-brand-orange/15 border-amber-500/30 text-brand-orange font-semibold'
+                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-white'
                 }`}
               >
                 <SlidersHorizontal size={14} />
                 <span>Filters</span>
                 {hasLinkedFilter !== 'all' && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
+                  <span className="absolute -top-1.5 -right-1.5 bg-brand-orange text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
                     1
                   </span>
                 )}
@@ -439,8 +455,8 @@ export default function SupplierManagement() {
               </button>
 
               {showFilters && (
-                <div className="absolute right-0 mt-2 w-56 bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-2xl z-30 p-4 space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-700 pb-2">
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-2xl z-30 p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-gray-200 pb-2">
                     <span className="text-xs font-semibold text-slate-350">Inventory Link</span>
                     {hasLinkedFilter !== 'all' && (
                       <button onClick={() => setHasLinkedFilter('all')} className="text-[10px] text-amber-450 hover:underline">Clear</button>
@@ -457,8 +473,8 @@ export default function SupplierManagement() {
                         onClick={() => { setHasLinkedFilter(f.key); setShowFilters(false); }}
                         className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
                           hasLinkedFilter === f.key
-                            ? 'bg-amber-500/15 text-amber-400 font-semibold border-l-2 border-amber-500'
-                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                            ? 'bg-brand-orange/15 text-brand-orange font-semibold border-l-2 border-amber-500'
+                            : 'text-gray-500 hover:bg-slate-800 hover:text-white'
                         }`}
                       >
                         {f.label}
@@ -478,7 +494,7 @@ export default function SupplierManagement() {
                 if (next === sort) toggleSort(next);
                 else { setSort(next); setOrder('asc'); }
               }}
-              className="bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
             >
               {SUPPLIER_SORT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -487,7 +503,7 @@ export default function SupplierManagement() {
             <button
               type="button"
               onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-              className="p-1.5 rounded-lg bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-400 hover:text-white transition"
+              className="p-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-white transition"
               title={order === 'asc' ? 'Ascending' : 'Descending'}
             >
               {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
@@ -523,7 +539,7 @@ export default function SupplierManagement() {
                     <div className="w-6 h-6 rounded bg-purple-500/10 flex items-center justify-center flex-shrink-0">
                       <Truck size={12} className="text-purple-400" />
                     </div>
-                    <span className="font-semibold text-[var(--pos-text-primary)]">{s.name}</span>
+                    <span className="font-semibold text-gray-900">{s.name}</span>
                   </div>
                 ),
               },
@@ -534,11 +550,11 @@ export default function SupplierManagement() {
               },
               {
                 key: 'phone', header: 'Phone',
-                render: (s) => <span className="text-slate-400">{s.phone || '—'}</span>,
+                render: (s) => <span className="text-gray-500">{s.phone || '—'}</span>,
               },
               {
                 key: 'email', header: 'Email',
-                render: (s) => <span className="text-slate-400">{s.email || '—'}</span>,
+                render: (s) => <span className="text-gray-500">{s.email || '—'}</span>,
               },
               {
                 key: 'address', header: 'Address',
@@ -550,15 +566,15 @@ export default function SupplierManagement() {
                   <div className="space-y-1">
                     <button
                       onClick={() => handleToggleItems(s._id)}
-                      className="flex items-center gap-1 text-slate-400 hover:text-amber-450 transition"
+                      className="flex items-center gap-1 text-gray-500 hover:text-amber-450 transition"
                     >
                       {expandedId === s._id ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                       <span className="font-semibold">{s.itemCount || 0} items</span>
                     </button>
                     {expandedId === s._id && s.items && (
-                      <div className="bg-[var(--pos-surface-inset)] rounded-lg p-2 space-y-1 text-[10px] mt-1 border border-slate-800 max-h-24 overflow-y-auto">
+                      <div className="bg-gray-50 rounded-lg p-2 space-y-1 text-[10px] mt-1 border border-slate-800 max-h-24 overflow-y-auto">
                         {s.items.length === 0 ? (
-                          <p className="text-slate-500 text-center">No linked items</p>
+                          <p className="text-gray-400 text-center">No linked items</p>
                         ) : (
                           s.items.map(item => (
                             <div key={item._id} className="flex items-center justify-between gap-2">
@@ -574,14 +590,14 @@ export default function SupplierManagement() {
               },
               {
                 key: 'notes', header: 'Notes',
-                render: (s) => <span className="text-slate-500 italic truncate max-w-[120px] block" title={s.notes}>{s.notes || '—'}</span>,
+                render: (s) => <span className="text-gray-400 italic truncate max-w-[120px] block" title={s.notes}>{s.notes || '—'}</span>,
               },
               {
                 key: 'actions', header: '',
                 render: (s) => (
                   <div className="flex items-center gap-1.5 justify-end">
                     <button onClick={() => openEdit(s)}
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700 transition">
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-slate-700 transition">
                       <Edit2 size={13} />
                     </button>
                     <button onClick={() => handleDelete(s._id)}

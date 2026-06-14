@@ -61,14 +61,14 @@ function ComboItemsPreview({ comboItems }) {
   return (
     <div className="mt-1">
       <button type="button" onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 text-xs text-amber-400/70 hover:text-amber-400">
+        className="flex items-center gap-1 text-xs text-brand-orange/70 hover:text-brand-orange">
         {open ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
         {comboItems.length} item{comboItems.length !== 1 ? 's' : ''}
       </button>
       {open && (
         <ul className="mt-1 space-y-0.5">
           {comboItems.map((ci, i) => (
-            <li key={i} className="text-xs text-slate-500">• {ci.name} ×{ci.qty}</li>
+            <li key={i} className="text-xs text-gray-400">• {ci.name} ×{ci.qty}</li>
           ))}
         </ul>
       )}
@@ -78,7 +78,7 @@ function ComboItemsPreview({ comboItems }) {
 
 export default function MenuManagement() {
   const navigate = useNavigate();
-  const { selectedStoreId, isStoreReady } = useStoreContext();
+  const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const { data: paidAddons } = useTenantPaidAddons();
   const whatsappAddonActive = paidAddons?.whatsapp === true;
 
@@ -571,7 +571,7 @@ export default function MenuManagement() {
       list.push({
         label: 'WhatsApp Catalog',
         icon: Phone,
-        onClick: () => navigate('/manager/whatsapp-catalog'),
+        onClick: () => navigate('/whatsapp-config'),
       });
     }
     list.push({ label: 'Add Item', icon: Plus, onClick: openAdd, primary: true });
@@ -579,7 +579,7 @@ export default function MenuManagement() {
   }, [navigate, handleExportMenuItems, openAdd, whatsappAddonActive]);
 
   return (
-    <div className="min-h-screen bg-[var(--pos-page-bg)]">
+    <div className="min-h-screen bg-gray-50">
       
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         <PageHeader
@@ -593,7 +593,7 @@ export default function MenuManagement() {
         />
 
         {/* Tab Navigation */}
-        <div className="flex gap-1 mb-6 border-b border-slate-700 overflow-x-auto no-scrollbar">
+        <div className="flex gap-1 mb-6 border-b border-gray-200 overflow-x-auto no-scrollbar">
           {[
             { key: 'items', label: 'Menu Items' },
             { key: 'profitability', label: 'Recipe Profitability' },
@@ -604,8 +604,8 @@ export default function MenuManagement() {
               onClick={() => setActiveMenuTab(tab.key)}
               className={`px-4 py-2.5 text-sm font-medium transition border-b-2 whitespace-nowrap shrink-0 ${
                 activeMenuTab === tab.key
-                  ? 'border-amber-500 text-amber-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-355'
+                  ? 'border-amber-500 text-brand-orange'
+                  : 'border-transparent text-gray-500 hover:text-slate-355'
               }`}
             >
               {tab.label}
@@ -616,21 +616,37 @@ export default function MenuManagement() {
         {activeMenuTab === 'items' ? (
           <>
             {/* Search + View Toggle */}
-            <div className="flex flex-col sm:flex-row items-center gap-3 mb-4 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700">
+            <div className="flex flex-col sm:flex-row items-center gap-3 mb-4 bg-white p-3 rounded-xl border border-gray-200">
+              {stores.length > 0 && (
+                <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto">
+                  <span className="text-xs text-gray-500 font-semibold">Store:</span>
+                  <select
+                    value={selectedStoreId || ''}
+                    onChange={(e) => selectStore(e.target.value)}
+                    className="bg-gray-50 border border-gray-300 text-gray-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer w-full sm:w-auto"
+                  >
+                    {stores.map((s) => (
+                      <option key={s._id} value={s._id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="relative flex-1 w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input
                   type="text"
                   value={menuSearch}
                   onChange={(e) => setMenuSearch(e.target.value)}
                   placeholder="Search menu items…"
-                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg pl-10 pr-8 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-555"
+                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg pl-10 pr-8 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-555"
                 />
                 {menuSearch && (
                   <button
                     type="button"
                     onClick={() => setMenuSearch('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-350"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-slate-350"
                   >
                     <X size={14} />
                   </button>
@@ -638,11 +654,11 @@ export default function MenuManagement() {
               </div>
               <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto w-full sm:w-auto justify-end">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-slate-500 font-semibold">Sort:</span>
+                  <span className="text-xs text-gray-400 font-semibold">Sort:</span>
                   <select
                     value={sortCriteria}
                     onChange={(e) => setSortCriteria(e.target.value)}
-                    className="bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-350 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                    className="bg-gray-50 border border-gray-200 text-slate-350 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
                   >
                     <option value="custom">Drag Order / Default</option>
                     <option value="name-asc">Name (A-Z)</option>
@@ -654,18 +670,18 @@ export default function MenuManagement() {
                     <option value="status">Availability</option>
                   </select>
                 </div>
-                <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg p-0.5">
+                <div className="flex gap-1 bg-gray-50 border border-gray-200 rounded-lg p-0.5">
                   <button
                     type="button"
                     onClick={() => setViewMode('table')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'table' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'table' ? 'bg-brand-orange text-white' : 'text-gray-500 hover:text-white'}`}
                   >
                     <List size={14} /> Table
                   </button>
                   <button
                     type="button"
                     onClick={() => setViewMode('grid')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'grid' ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'grid' ? 'bg-brand-orange text-white' : 'text-gray-500 hover:text-white'}`}
                   >
                     <LayoutGrid size={14} /> Grid
                   </button>
@@ -674,14 +690,14 @@ export default function MenuManagement() {
             </div>
 
             {/* Sticky Category Tabs */}
-            <div className="sticky top-[64px] z-20 bg-[var(--pos-page-bg)] py-3 border-b border-slate-700 mb-5">
+            <div className="sticky top-[64px] z-20 bg-gray-50 py-3 border-b border-gray-200 mb-5">
               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                 {filterTabs.map((cat) => (
                   <button key={cat} type="button" onClick={() => setActiveCategory(cat)}
                     className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
                       activeCategory === cat
-                        ? 'bg-amber-500 text-[var(--pos-selection-text)] shadow-lg shadow-amber-500/20'
-                        : 'text-slate-450 hover:text-[var(--pos-text-primary)] bg-[var(--pos-panel)] hover:bg-slate-800 border border-slate-700'
+                        ? 'bg-brand-orange text-white shadow-lg shadow-amber-500/20'
+                        : 'text-slate-450 hover:text-gray-900 bg-white hover:bg-slate-800 border border-gray-200'
                     }`}>
                     {cat}
                   </button>
@@ -689,13 +705,13 @@ export default function MenuManagement() {
               </div>
               <div className="flex items-center justify-between mt-2">
                 {canDragProducts ? (
-                  <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                  <p className="text-[11px] text-gray-400 flex items-center gap-1">
                     <GripVertical size={11} /> Drag products to reorder within {activeCategory}
                   </p>
                 ) : sortCriteria !== 'custom' ? (
-                  <p className="text-[11px] text-slate-500">Drag to reorder is disabled when sorted. Switch back to "Drag Order / Default" to reorder.</p>
+                  <p className="text-[11px] text-gray-400">Drag to reorder is disabled when sorted. Switch back to "Drag Order / Default" to reorder.</p>
                 ) : (
-                  <p className="text-[11px] text-slate-500">Select a category tab to drag and reorder products</p>
+                  <p className="text-[11px] text-gray-400">Select a category tab to drag and reorder products</p>
                 )}
               </div>
             </div>
@@ -727,14 +743,14 @@ export default function MenuManagement() {
                   return (
                     <div key={item._id}
                       {...dropTarget}
-                      className={`bg-[var(--pos-panel)] rounded-2xl overflow-hidden border transition group ${
-                        item.isCombo ? 'border-amber-500/30 hover:border-amber-500/60' : 'border-slate-700/50 hover:border-slate-600'
+                      className={`bg-white rounded-2xl overflow-hidden border transition group ${
+                        item.isCombo ? 'border-amber-500/30 hover:border-amber-500/60' : 'border-gray-200/50 hover:border-gray-300'
                       } ${menuDragOver(item._id) ? 'ring-2 ring-amber-500/60' : ''}`}>
                       <div className="relative h-32 bg-slate-800 overflow-hidden">
                         {canDragProducts && (
                           <div
                             {...handleDrag}
-                            className="absolute top-2 left-2 z-10 w-7 h-7 bg-slate-900/90 rounded-lg flex items-center justify-center text-slate-400 cursor-grab active:cursor-grabbing"
+                            className="absolute top-2 left-2 z-10 w-7 h-7 bg-white/90 rounded-lg flex items-center justify-center text-gray-500 cursor-grab active:cursor-grabbing"
                           >
                             <GripVertical size={12} />
                           </div>
@@ -748,32 +764,32 @@ export default function MenuManagement() {
                         )}
                         {item.isCombo && (
                           <div className={`absolute top-2 ${canDragProducts ? 'left-11' : 'left-2'}`}>
-                            <span className="flex items-center gap-1 bg-amber-500/90 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                            <span className="flex items-center gap-1 bg-brand-orange/90 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                               <Link2 size={10} /> Combo
                             </span>
                           </div>
                         )}
                         <div className="absolute top-2 right-2 transition flex gap-1">
                           <button type="button" onClick={() => openEdit(item)}
-                            className="w-7 h-7 bg-slate-900 rounded-lg flex items-center justify-center text-slate-300 hover:text-[var(--pos-text-primary)]">
+                            className="w-7 h-7 bg-white rounded-lg flex items-center justify-center text-slate-300 hover:text-gray-900">
                             <Edit2 size={12} />
                           </button>
                           <button type="button" onClick={() => setDeleteTarget(item)}
-                            className="w-7 h-7 bg-slate-900 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-400">
+                            className="w-7 h-7 bg-white rounded-lg flex items-center justify-center text-slate-300 hover:text-red-400">
                             <Trash2 size={12} />
                           </button>
                         </div>
                       </div>
                       <div className="p-3">
-                        <p className="font-semibold text-[var(--pos-text-primary)] text-sm truncate" title={item.name}>{item.name}</p>
+                        <p className="font-semibold text-gray-900 text-sm truncate" title={item.name}>{item.name}</p>
                         <p className="text-xs text-slate-550 mb-1">{item.category}</p>
                         {item.isCombo && <ComboItemsPreview comboItems={item.comboItems} />}
                         <div className="flex items-center justify-between mt-1">
                           {(() => {
                             const { price, prefix, hasVariants } = getItemDisplayPrice(item);
                             return (
-                              <span className="text-amber-400 font-bold">
-                                {prefix && <span className="text-slate-500 font-normal text-[10px]">{prefix}</span>}
+                              <span className="text-brand-orange font-bold">
+                                {prefix && <span className="text-gray-400 font-normal text-[10px]">{prefix}</span>}
                                 {formatCurrency(price)}
                                 {hasVariants && <span className="text-sky-400 text-[10px] ml-1">({item.variants?.length || 0} var.)</span>}
                               </span>
@@ -781,7 +797,7 @@ export default function MenuManagement() {
                           })()}
                           <button type="button"
                             onClick={() => toggleMutation.mutate({ id: item._id, available: !item.available })}
-                            className={`flex items-center gap-1 text-xs font-medium transition ${item.available ? 'text-green-400' : 'text-slate-500'}`}>
+                            className={`flex items-center gap-1 text-xs font-medium transition ${item.available ? 'text-green-400' : 'text-gray-400'}`}>
                             {item.available ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
                             {item.available ? 'Active' : 'Hidden'}
                           </button>
@@ -838,12 +854,12 @@ export default function MenuManagement() {
         {deleteTarget && (
           <div className="space-y-2">
             {deleteTarget.isCombo && deleteTarget.comboItems?.length > 0 && (
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 text-sm text-amber-400">
+              <div className="bg-brand-orange/10 border border-amber-500/30 rounded-lg px-4 py-3 text-sm text-brand-orange">
                 This combo includes {deleteTarget.comboItems.length} item{deleteTarget.comboItems.length !== 1 ? 's' : ''}.
               </div>
             )}
             {deleteTarget.hasVariants && deleteTarget.variants?.length > 0 && (
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 text-sm text-amber-400">
+              <div className="bg-brand-orange/10 border border-amber-500/30 rounded-lg px-4 py-3 text-sm text-brand-orange">
                 {deleteTarget.variants.length} variant{deleteTarget.variants.length !== 1 ? 's' : ''} will be removed.
               </div>
             )}

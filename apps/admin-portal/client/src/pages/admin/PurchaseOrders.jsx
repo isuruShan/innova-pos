@@ -18,9 +18,9 @@ import ViewModeToggle from '../../components/ViewModeToggle';
 import Badge from '../../components/Badge';
 
 const STATUS_COLORS = {
-  draft: 'text-slate-400 bg-slate-500/10',
+  draft: 'text-gray-500 bg-slate-500/10',
   sent: 'text-sky-400 bg-sky-500/10',
-  partial: 'text-amber-400 bg-amber-500/10',
+  partial: 'text-brand-orange bg-brand-orange/10',
   completed: 'text-green-400 bg-green-500/10',
   cancelled: 'text-red-400 bg-red-500/10',
 };
@@ -42,7 +42,7 @@ const PO_SORT_OPTIONS = [
 ];
 
 export default function PurchaseOrders() {
-  const { selectedStoreId, isStoreReady } = useStoreContext();
+  const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const [activeStatus, setActiveStatus] = useState('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -261,21 +261,21 @@ export default function PurchaseOrders() {
 
 
   return (
-    <div className="min-h-screen bg-[var(--pos-page-bg)]">
+    <div className="min-h-screen bg-gray-50">
       
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--pos-text-primary)]">Purchase Orders</h1>
-            <p className="text-slate-500 text-sm mt-1">
+            <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
+            <p className="text-gray-400 text-sm mt-1">
               {orders.length} order{orders.length !== 1 ? 's' : ''} · {suppliers.length} supplier{suppliers.length !== 1 ? 's' : ''}
             </p>
           </div>
           <button
             type="button"
             onClick={openAdd}
-            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/20 text-sm"
+            className="flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/20 text-sm"
           >
             <Plus size={16} />
             Create PO
@@ -291,8 +291,8 @@ export default function PurchaseOrders() {
               onClick={() => setActiveStatus(tab.key)}
               className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition ${
                 activeStatus === tab.key
-                  ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20'
-                  : 'text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700'
+                  ? 'bg-brand-orange text-white shadow-lg shadow-amber-500/20'
+                  : 'text-gray-500 hover:text-white bg-slate-800 hover:bg-slate-700'
               }`}
             >
               {tab.label} {tab.count > 0 && `(${tab.count})`}
@@ -300,18 +300,34 @@ export default function PurchaseOrders() {
           ))}
         </div>
         {/* Search + Filter button + Sort */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700/50 items-center justify-between">
-          <div className="flex-1 w-full flex items-center gap-2 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2">
-            <Search size={15} className="text-slate-500 flex-shrink-0" />
+        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-white p-3 rounded-xl border border-gray-200/50 items-center justify-between">
+          {stores.length > 0 && (
+            <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto">
+              <span className="text-xs text-gray-500 font-semibold">Store:</span>
+              <select
+                value={selectedStoreId || ''}
+                onChange={(e) => selectStore(e.target.value)}
+                className="bg-gray-50 border border-gray-300 text-gray-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer w-full sm:w-auto"
+              >
+                {stores.map((s) => (
+                  <option key={s._id} value={s._id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="flex-1 w-full flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+            <Search size={15} className="text-gray-400 flex-shrink-0" />
             <input
               type="text"
               placeholder="Search by PO number, supplier, notes..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-650"
+              className="flex-1 bg-transparent text-gray-900 text-sm focus:outline-none placeholder-slate-650"
             />
             {search && (
-              <button onClick={() => setSearch('')}><X size={13} className="text-slate-500 hover:text-white" /></button>
+              <button onClick={() => setSearch('')}><X size={13} className="text-gray-400 hover:text-white" /></button>
             )}
           </div>
 
@@ -322,14 +338,14 @@ export default function PurchaseOrders() {
                 onClick={() => setShowFilters(f => !f)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
                   (fromDate || toDate)
-                    ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 font-semibold'
-                    : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-white'
+                    ? 'bg-brand-orange/15 border-amber-500/30 text-brand-orange font-semibold'
+                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-white'
                 }`}
               >
                 <SlidersHorizontal size={14} />
                 <span>Filters</span>
                 {(fromDate || toDate) && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
+                  <span className="absolute -top-1.5 -right-1.5 bg-brand-orange text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
                     1
                   </span>
                 )}
@@ -337,8 +353,8 @@ export default function PurchaseOrders() {
               </button>
 
               {showFilters && (
-                <div className="absolute right-0 mt-2 w-64 bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-2xl z-30 p-4 space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-700 pb-2">
+                <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-2xl z-30 p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-gray-200 pb-2">
                     <span className="text-xs font-semibold text-slate-355">Filters</span>
                     {(fromDate || toDate) && (
                       <button
@@ -355,21 +371,21 @@ export default function PurchaseOrders() {
                     <p className="text-[11px] font-semibold text-slate-455 uppercase tracking-wider mb-2">Date Range</p>
                     <div className="space-y-2">
                       <div>
-                        <label className="text-[10px] text-slate-500 block mb-1">From</label>
+                        <label className="text-[10px] text-gray-400 block mb-1">From</label>
                         <PosDateField
                           value={fromDate}
                           onChange={setFromDate}
                           max={toDate}
-                          className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] text-slate-500 block mb-1">To</label>
+                        <label className="text-[10px] text-gray-400 block mb-1">To</label>
                         <PosDateField
                           value={toDate}
                           onChange={setToDate}
                           min={fromDate}
-                          className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
                         />
                       </div>
                     </div>
@@ -383,7 +399,7 @@ export default function PurchaseOrders() {
               id="po-sort"
               value={sort}
               onChange={(e) => setSort(e.target.value)}
-              className="bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
             >
               {PO_SORT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -392,7 +408,7 @@ export default function PurchaseOrders() {
             <button
               type="button"
               onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-              className="p-1.5 rounded-lg bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-400 hover:text-white transition"
+              className="p-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-white transition"
               title={order === 'asc' ? 'Ascending' : 'Descending'}
             >
               {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
@@ -402,16 +418,16 @@ export default function PurchaseOrders() {
 
         {/* Orders List */}
         {ordersPending ? (
-          <div className="text-center py-16 text-slate-500">Loading orders...</div>
+          <div className="text-center py-16 text-gray-400">Loading orders...</div>
         ) : orders.length === 0 ? (
           <div className="text-center py-16">
             <Package size={48} className="mx-auto mb-4 text-slate-600" />
-            <p className="text-slate-500 text-lg mb-2">No purchase orders found</p>
+            <p className="text-gray-400 text-lg mb-2">No purchase orders found</p>
             <p className="text-slate-600 text-sm mb-6">Create your first purchase order to get started</p>
             <button
               type="button"
               onClick={openAdd}
-              className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-5 py-2.5 rounded-xl transition"
+              className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold px-5 py-2.5 rounded-xl transition"
             >
               <Plus size={16} />
               Create Purchase Order
@@ -420,7 +436,7 @@ export default function PurchaseOrders() {
         ) : sortedAndFiltered.length === 0 ? (
           <div className="text-center py-16">
             <Search size={48} className="mx-auto mb-4 text-slate-600" />
-            <p className="text-slate-500 text-lg mb-2">No purchase orders match your filters</p>
+            <p className="text-gray-400 text-lg mb-2">No purchase orders match your filters</p>
             <p className="text-slate-600 text-sm mb-6">Try adjusting your search terms or date range</p>
           </div>
         ) : (
@@ -434,7 +450,7 @@ export default function PurchaseOrders() {
                   {
                     key: 'orderNumber', header: 'PO Number',
                     mobilePrimary: true,
-                    render: (o) => <span className="font-semibold text-[var(--pos-text-primary)]">{o.orderNumber}</span>,
+                    render: (o) => <span className="font-semibold text-gray-900">{o.orderNumber}</span>,
                   },
                   {
                     key: 'status', header: 'Status',
@@ -455,18 +471,18 @@ export default function PurchaseOrders() {
                   },
                   {
                     key: 'date', header: 'Date Created',
-                    render: (o) => <span className="text-slate-400">{formatDate(o.createdAt)}</span>,
+                    render: (o) => <span className="text-gray-500">{formatDate(o.createdAt)}</span>,
                   },
                   {
                     key: 'expected', header: 'Expected Date',
-                    render: (o) => <span className="text-slate-400">{formatDate(o.expectedDate)}</span>,
+                    render: (o) => <span className="text-gray-500">{formatDate(o.expectedDate)}</span>,
                   },
                   {
                     key: 'items', header: 'Items / Qty',
                     render: (o) => {
                       const totalQty = o.items.reduce((sum, item) => sum + item.orderedQty, 0);
                       return (
-                        <span className="text-slate-400 text-xs">
+                        <span className="text-gray-500 text-xs">
                           {o.items.length} items ({totalQty} units)
                         </span>
                       );
@@ -485,7 +501,7 @@ export default function PurchaseOrders() {
                         <button
                           type="button"
                           onClick={() => openView(o)}
-                          className="p-1.5 bg-slate-805 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition"
+                          className="p-1.5 bg-slate-805 hover:bg-slate-700 rounded-lg text-gray-500 hover:text-white transition"
                           title="View Details"
                         >
                           <Eye size={13} />
@@ -503,7 +519,7 @@ export default function PurchaseOrders() {
                           <button
                             type="button"
                             onClick={() => openEdit(o)}
-                            className="p-1.5 bg-slate-805 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition"
+                            className="p-1.5 bg-slate-805 hover:bg-slate-700 rounded-lg text-gray-500 hover:text-white transition"
                           >
                             <Edit2 size={13} />
                           </button>
@@ -512,7 +528,7 @@ export default function PurchaseOrders() {
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(o)}
-                            className="p-1.5 bg-slate-805 hover:bg-red-500/10 rounded-lg text-slate-400 hover:text-red-400 transition"
+                            className="p-1.5 bg-slate-805 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition"
                           >
                             <Trash2 size={13} />
                           </button>
@@ -533,13 +549,13 @@ export default function PurchaseOrders() {
                   return (
                     <div
                       key={order._id}
-                      className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-4 hover:border-slate-600 transition flex flex-col justify-between"
+                      className="bg-white border border-gray-200/50 rounded-xl p-4 hover:border-gray-300 transition flex flex-col justify-between"
                     >
                       <div>
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
-                              <h3 className="text-base font-semibold text-[var(--pos-text-primary)]">
+                              <h3 className="text-base font-semibold text-gray-900">
                                 {order.orderNumber}
                               </h3>
                               <span
@@ -551,18 +567,18 @@ export default function PurchaseOrders() {
                                 {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                               </span>
                             </div>
-                            <div className="space-y-1.5 text-xs text-slate-400">
+                            <div className="space-y-1.5 text-xs text-gray-500">
                               <p className="flex items-center gap-1.5 font-medium text-slate-350">
                                 <Package size={13} className="text-purple-400 shrink-0" />
                                 {order.supplierId?.name || 'Unknown Supplier'}
                               </p>
                               <p className="flex items-center gap-1.5">
-                                <Calendar size={13} className="text-slate-500 shrink-0" />
+                                <Calendar size={13} className="text-gray-400 shrink-0" />
                                 {formatDate(order.createdAt)}
                               </p>
                               {order.expectedDate && (
                                 <p className="flex items-center gap-1.5 text-[11px]">
-                                  <Clock size={13} className="text-slate-500 shrink-0" />
+                                  <Clock size={13} className="text-gray-400 shrink-0" />
                                   Expected: {formatDate(order.expectedDate)}
                                 </p>
                               )}
@@ -609,25 +625,25 @@ export default function PurchaseOrders() {
                         </div>
 
                         {/* Items Summary */}
-                        <div className="bg-[var(--pos-surface-inset)] rounded-lg p-2.5 mt-2">
+                        <div className="bg-gray-50 rounded-lg p-2.5 mt-2">
                           <div className="grid grid-cols-3 gap-2 text-[11px] mb-2">
                             <div>
-                              <p className="text-slate-500">Items</p>
+                              <p className="text-gray-400">Items</p>
                               <p className="font-semibold text-slate-300">{order.items.length}</p>
                             </div>
                             <div>
-                              <p className="text-slate-500">Quantity</p>
+                              <p className="text-gray-400">Quantity</p>
                               <p className="font-semibold text-slate-300">{orderedCount}</p>
                             </div>
                             <div>
-                              <p className="text-slate-500">Total</p>
+                              <p className="text-gray-400">Total</p>
                               <p className="font-bold text-amber-455">{formatCurrency(order.totalAmount)}</p>
                             </div>
                           </div>
 
                           {/* Items List (collapsed) */}
                           <details className="group border-t border-slate-800/40 pt-1.5">
-                            <summary className="text-[10px] text-amber-450 hover:text-amber-400 cursor-pointer font-medium list-none flex items-center gap-1 justify-between">
+                            <summary className="text-[10px] text-amber-450 hover:text-brand-orange cursor-pointer font-medium list-none flex items-center gap-1 justify-between">
                               <span>Details ({order.items.length} items)</span>
                               <span className="group-open:rotate-90 transition">▶</span>
                             </summary>
@@ -639,7 +655,7 @@ export default function PurchaseOrders() {
                                 >
                                   <span className="text-slate-350 truncate max-w-[120px]">{item.itemName}</span>
                                   <div className="flex items-center gap-2">
-                                    <span className="text-slate-500">{item.orderedQty} {item.unit}</span>
+                                    <span className="text-gray-400">{item.orderedQty} {item.unit}</span>
                                     {item.receivedQty > 0 && <span className="text-green-455 font-bold">✓ {item.receivedQty}</span>}
                                   </div>
                                 </div>
@@ -650,7 +666,7 @@ export default function PurchaseOrders() {
                       </div>
 
                       {order.notes && (
-                        <div className="text-[11px] text-slate-500 bg-slate-800/30 rounded px-2.5 py-1.5 mt-3 italic line-clamp-1">
+                        <div className="text-[11px] text-gray-400 bg-slate-800/30 rounded px-2.5 py-1.5 mt-3 italic line-clamp-1">
                           {order.notes}
                         </div>
                       )}

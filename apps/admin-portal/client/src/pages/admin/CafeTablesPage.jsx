@@ -20,17 +20,17 @@ function QrCell({ table, tenantId, storeId }) {
   return (
     <div className="flex flex-col items-start gap-1">
       {src ? (
-        <div className="bg-white p-1 rounded-lg border border-slate-600/50">
+        <div className="bg-white p-1 rounded-lg border border-gray-200">
           <img src={src} alt="" width={120} height={120} className="block" loading="lazy" />
         </div>
       ) : (
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-gray-400">
           Set <span className="font-mono">VITE_QR_ORDER_WEB_ORIGIN</span> at POS client build time to your guest order
           app (e.g. https://order.example.com) — QR is never the POS URL.
         </span>
       )}
       {url ? (
-        <span className="text-[10px] text-slate-500 max-w-[140px] break-all font-mono">{url}</span>
+        <span className="text-[10px] text-gray-400 max-w-[140px] break-all font-mono">{url}</span>
       ) : null}
     </div>
   );
@@ -40,7 +40,7 @@ export default function CafeTablesPage() {
   const qc = useQueryClient();
   const { user } = useAuth();
   const tenantId = user?.tenantId;
-  const { selectedStoreId, isStoreReady, stores } = useStoreContext();
+  const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const selectedStore = stores.find((s) => String(s._id) === String(selectedStoreId));
   const { data: paidAddons } = useTenantPaidAddons();
   const qrAddonActive = paidAddons?.qrOrdering === true;
@@ -120,11 +120,11 @@ export default function CafeTablesPage() {
   const heading = useMemo(
     () => (
       <div>
-        <h1 className="text-xl font-bold text-[var(--pos-text-primary)] flex items-center gap-2">
-          <Table className="text-amber-400" size={22} />
+        <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <Table className="text-brand-orange" size={22} />
           Café tables & QR ordering
         </h1>
-        <p className="text-slate-500 text-sm mt-1">
+        <p className="text-gray-400 text-sm mt-1">
           Manage tables for <strong>{selectedStore?.name || '…'}</strong> — define tables, then print or share QR codes so guests can order from their phones.
         </p>
       </div>
@@ -133,32 +133,48 @@ export default function CafeTablesPage() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--pos-page-bg)]">
+    <div className="min-h-screen flex flex-col bg-gray-50">
       
       <div className="flex-1 p-4 sm:p-6 max-w-5xl mx-auto w-full space-y-6">
         {heading}
 
         {!isStoreReady ? (
-          <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3">
+          <p className="text-sm text-amber-300 bg-brand-orange/10 border border-amber-500/25 rounded-xl px-4 py-3">
             Select a store in the header first.
           </p>
         ) : (
           <>
-            <form onSubmit={onCreate} className="rounded-xl border border-slate-700/60 bg-[var(--pos-panel)] p-4 flex flex-wrap gap-3 items-end">
+            <form onSubmit={onCreate} className="rounded-xl border border-gray-200 bg-white p-4 flex flex-wrap gap-3 items-end">
+              {stores.length > 0 && (
+                <div className="w-48">
+                  <label className="block text-xs text-gray-500 mb-1">Select Store</label>
+                  <select
+                    value={selectedStoreId || ''}
+                    onChange={(e) => selectStore(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-55 text-gray-900"
+                  >
+                    {stores.map((s) => (
+                      <option key={s._id} value={s._id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="flex-1 min-w-[140px]">
-                <label className="block text-xs text-slate-400 mb-1">Table label</label>
+                <label className="block text-xs text-gray-500 mb-1">Table label</label>
                 <input
-                  className="w-full border border-slate-600 rounded-lg px-3 py-2 text-sm bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)]"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-900"
                   placeholder="e.g. Table 2"
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
                 />
               </div>
               <div className="w-24">
-                <label className="block text-xs text-slate-400 mb-1">Sort</label>
+                <label className="block text-xs text-gray-500 mb-1">Sort</label>
                 <input
                   type="number"
-                  className="w-full border border-slate-600 rounded-lg px-3 py-2 text-sm bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)]"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-900"
                   value={sortOrder}
                   onChange={(e) => setSortOrder(e.target.value)}
                 />
@@ -166,20 +182,20 @@ export default function CafeTablesPage() {
               <button
                 type="submit"
                 disabled={createMut.isPending}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-[var(--pos-selection-text)] text-sm font-semibold disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-hover text-white text-sm font-semibold disabled:opacity-50"
               >
                 <Plus size={16} /> Add table
               </button>
             </form>
 
             {qrAddonActive ? (
-              <div className="rounded-xl border border-green-700/40 bg-green-950/25 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-green-100 flex items-center gap-2">
+                  <p className="text-sm font-semibold text-green-800 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-green-400" />
                     QR Ordering is Active
                   </p>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-gray-500 mt-1">
                     Guests can scan the QR codes below to browse your menu, build a cart, and place orders directly from their phones.
                   </p>
                 </div>
@@ -188,10 +204,10 @@ export default function CafeTablesPage() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-xl border border-teal-700/40 bg-teal-950/25 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-teal-100">QR Ordering is a paid add-on</p>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-sm font-semibold text-teal-800">QR Ordering is a paid add-on</p>
+                  <p className="text-xs text-gray-500 mt-1">
                     Merchants activate it in the admin portal (subscription). Until it is active, guests opening your table
                     QR link will see an error.
                   </p>
@@ -206,44 +222,44 @@ export default function CafeTablesPage() {
               </div>
             )}
 
-            <div className="rounded-xl border border-slate-700/60 bg-[var(--pos-panel)] overflow-hidden">
+            <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
               {isPending ? (
-                <p className="p-6 text-slate-500 text-sm">Loading…</p>
+                <p className="p-6 text-gray-400 text-sm">Loading…</p>
               ) : tables.length === 0 ? (
-                <p className="p-6 text-slate-500 text-sm">No tables yet. Add labels above.</p>
+                <p className="p-6 text-gray-400 text-sm">No tables yet. Add labels above.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm min-w-[640px]">
-                    <thead className="bg-slate-800/80 border-b border-slate-700">
+                    <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
-                        <th className="text-left px-4 py-2 font-semibold text-slate-400">Label</th>
-                        <th className="text-left px-4 py-2 font-semibold text-slate-400">Capacity</th>
-                        <th className="text-left px-4 py-2 font-semibold text-slate-400">Shape</th>
-                        <th className="text-left px-4 py-2 font-semibold text-slate-400">Sort</th>
-                        <th className="text-left px-4 py-2 font-semibold text-slate-400">Active</th>
-                        <th className="text-left px-4 py-2 font-semibold text-slate-400">
+                        <th className="text-left px-4 py-2 font-semibold text-gray-500">Label</th>
+                        <th className="text-left px-4 py-2 font-semibold text-gray-500">Capacity</th>
+                        <th className="text-left px-4 py-2 font-semibold text-gray-500">Shape</th>
+                        <th className="text-left px-4 py-2 font-semibold text-gray-500">Sort</th>
+                        <th className="text-left px-4 py-2 font-semibold text-gray-500">Active</th>
+                        <th className="text-left px-4 py-2 font-semibold text-gray-500">
                           <span className="inline-flex items-center gap-1">
                             <QrCode size={14} /> Guest QR
                           </span>
                         </th>
-                        <th className="text-right px-4 py-2 font-semibold text-slate-400">Actions</th>
+                        <th className="text-right px-4 py-2 font-semibold text-gray-500">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-700/60">
+                    <tbody className="divide-y divide-gray-100">
                       {tables.map((t) => (
                         <tr key={t._id}>
-                          <td className="px-4 py-3 font-medium text-[var(--pos-text-primary)]">{t.label}</td>
-                          <td className="px-4 py-3 text-slate-400">{t.capacity || 4}</td>
-                          <td className="px-4 py-3 text-slate-400 capitalize">{t.shape || 'rectangle'}</td>
-                          <td className="px-4 py-3 text-slate-400">{t.sortOrder}</td>
-                          <td className="px-4 py-3 text-slate-400">{t.active ? 'Yes' : 'No'}</td>
+                          <td className="px-4 py-3 font-medium text-gray-900">{t.label}</td>
+                          <td className="px-4 py-3 text-gray-500">{t.capacity || 4}</td>
+                          <td className="px-4 py-3 text-gray-500 capitalize">{t.shape || 'rectangle'}</td>
+                          <td className="px-4 py-3 text-gray-500">{t.sortOrder}</td>
+                          <td className="px-4 py-3 text-gray-500">{t.active ? 'Yes' : 'No'}</td>
                           <td className="px-4 py-3 align-top">
                             <QrCell table={t} tenantId={tenantId} storeId={selectedStoreId} />
                           </td>
                           <td className="px-4 py-3 text-right space-x-2 align-top">
                             <button
                               type="button"
-                              className="text-amber-400 text-xs font-semibold"
+                              className="text-brand-orange text-xs font-semibold"
                               onClick={() => {
                                 setEditing(t);
                                 setEditLabel(t.label || '');
@@ -258,7 +274,7 @@ export default function CafeTablesPage() {
                             </button>
                             <button
                               type="button"
-                              className="text-slate-400 text-xs"
+                              className="text-gray-500 text-xs"
                               title="New QR link (invalidates old printed codes)"
                               disabled={regenerateQrMut.isPending}
                               onClick={() => {
@@ -299,11 +315,11 @@ export default function CafeTablesPage() {
           aria-modal="true"
           aria-labelledby="qr-addon-title"
         >
-          <div className="bg-[var(--pos-panel)] rounded-2xl w-full max-w-md p-6 shadow-xl border border-slate-700 space-y-4">
-            <h3 id="qr-addon-title" className="font-bold text-[var(--pos-text-primary)] text-lg">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl border border-gray-200 space-y-4">
+            <h3 id="qr-addon-title" className="font-bold text-gray-900 text-lg">
               QR Ordering
             </h3>
-            <p className="text-sm text-slate-400 leading-relaxed">
+            <p className="text-sm text-gray-500 leading-relaxed">
               Guests scan a QR code at the table to browse your menu, build a cart, and send orders to the kitchen. This is
               billed as an add-on to your subscription (price follows your monthly or yearly billing period). Pay by PayPal
               or bank transfer in the admin portal, then super admin verifies bank receipts.
@@ -314,7 +330,7 @@ export default function CafeTablesPage() {
             <div className="flex flex-col-reverse sm:flex-row gap-2 pt-1">
               <button
                 type="button"
-                className="flex-1 py-2.5 border border-slate-600 rounded-xl text-sm text-slate-300"
+                className="flex-1 py-2.5 border border-gray-300 rounded-xl text-sm text-slate-300"
                 onClick={() => setQrAddonModal(false)}
               >
                 Close
@@ -323,7 +339,7 @@ export default function CafeTablesPage() {
                 href={adminSubscriptionUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 py-2.5 rounded-xl bg-amber-500 text-[var(--pos-selection-text)] text-sm font-semibold text-center"
+                className="flex-1 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold text-center"
                 onClick={() => setQrAddonModal(false)}
               >
                 Open subscription & pay
@@ -335,40 +351,40 @@ export default function CafeTablesPage() {
 
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="bg-[var(--pos-panel)] rounded-2xl w-full max-w-sm p-6 shadow-xl border border-slate-700 space-y-3">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl border border-gray-200 space-y-3">
             <div className="flex justify-between items-center">
-              <h3 className="font-bold text-[var(--pos-text-primary)]">Edit table</h3>
+              <h3 className="font-bold text-gray-900">Edit table</h3>
               <button 
                 onClick={() => setEditing(null)} 
-                className="text-slate-500 hover:text-slate-300 transition p-1 rounded-lg hover:bg-slate-700"
+                className="text-gray-400 hover:text-slate-300 transition p-1 rounded-lg hover:bg-slate-700"
               >
                 <X size={20} />
               </button>
             </div>
             
-            <label className="block text-xs text-slate-400">Label</label>
+            <label className="block text-xs text-gray-500">Label</label>
             <input
-              className="w-full border border-slate-600 rounded-lg px-3 py-2 text-sm bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)]"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-900"
               value={editLabel}
               onChange={(e) => setEditLabel(e.target.value)}
             />
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Capacity</label>
+                <label className="block text-xs text-gray-500 mb-1">Capacity</label>
                 <input
                   type="number"
                   min={1}
                   max={20}
-                  className="w-full border border-slate-600 rounded-lg px-3 py-2 text-sm bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)]"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-900"
                   value={editCapacity}
                   onChange={(e) => setEditCapacity(parseInt(e.target.value) || 1)}
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Shape</label>
+                <label className="block text-xs text-gray-500 mb-1">Shape</label>
                 <select
-                  className="w-full border border-slate-600 rounded-lg px-3 py-2 text-sm bg-[var(--pos-panel)] text-[var(--pos-text-primary)] focus:outline-none"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none"
                   value={editShape}
                   onChange={(e) => setEditShape(e.target.value)}
                 >
@@ -380,28 +396,28 @@ export default function CafeTablesPage() {
               </div>
             </div>
 
-            <label className="block text-xs text-slate-400">Sort order</label>
+            <label className="block text-xs text-gray-500">Sort order</label>
             <input
               type="number"
-              className="w-full border border-slate-600 rounded-lg px-3 py-2 text-sm bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)]"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-900"
               value={editSort}
               onChange={(e) => setEditSort(e.target.value)}
             />
-            <label className="flex items-center gap-2 text-sm text-[var(--pos-text-primary)]">
+            <label className="flex items-center gap-2 text-sm text-gray-900">
               <input type="checkbox" checked={editActive} onChange={(e) => setEditActive(e.target.checked)} />
               Active
             </label>
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
-                className="flex-1 py-2 border border-slate-600 rounded-xl text-sm text-slate-300"
+                className="flex-1 py-2 border border-gray-300 rounded-xl text-sm text-slate-300"
                 onClick={() => setEditing(null)}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                className="flex-1 py-2 rounded-xl bg-amber-500 text-[var(--pos-selection-text)] text-sm font-semibold"
+                className="flex-1 py-2 rounded-xl bg-brand-orange text-white text-sm font-semibold"
                 onClick={() =>
                   updateMut.mutate({
                     id: editing._id,
