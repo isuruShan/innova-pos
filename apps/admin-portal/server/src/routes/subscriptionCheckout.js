@@ -54,7 +54,8 @@ async function resolvePlanForTenant(tenant, planId, billingCycle = 'monthly') {
   if (planId) {
     const selected = await SubscriptionPlan.findOne({ _id: planId, isActive: true, planAudience: audience }).lean();
     if (!selected) return null;
-    if (nextId && String(selected._id) !== nextId) return null;
+    // Allow merchants to select any active plan corresponding to their region during checkout
+    // if (nextId && String(selected._id) !== nextId) return null;
     
     const cycle = billingCycle === 'yearly' ? 'yearly' : 'monthly';
     const amount = cycle === 'yearly' ? (selected.yearlyPrice || 0) : (selected.monthlyPrice || 0);

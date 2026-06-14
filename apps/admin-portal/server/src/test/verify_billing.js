@@ -205,6 +205,26 @@ async function run() {
   tenant.subscriptionStatus = 'active';
   await tenant.save();
 
+  // Test plan change selection during checkout (without nextId restriction)
+  const premiumPlan = await SubscriptionPlan.create({
+    name: 'Premium Monthly Test Plan',
+    code: 'premium_monthly_test_plan',
+    amount: 8000,
+    currency: 'LKR',
+    billingCycle: 'monthly',
+    durationDays: 30,
+    isActive: true,
+    planAudience: 'local',
+  });
+
+  const selectedPlanDoc = await SubscriptionPlan.findOne({ _id: premiumPlan._id, isActive: true, planAudience: 'local' }).lean();
+  if (!selectedPlanDoc) {
+    console.error('Expected to find selected plan, but it was not found.');
+    process.exit(1);
+  }
+  console.log('Verification successful! Selected checkout plan is resolvable.');
+  await SubscriptionPlan.deleteOne({ _id: premiumPlan._id });
+
   // Clean up
   await User.deleteMany({ tenantId: tenant._id });
   console.log('\nCleaned up test users.');

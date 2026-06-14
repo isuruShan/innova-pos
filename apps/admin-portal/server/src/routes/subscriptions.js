@@ -77,9 +77,10 @@ async function resolveRequestedPlan({ tenant, planId }) {
   if (planId) {
     const selected = await SubscriptionPlan.findOne({ _id: planId, isActive: true, ...regionFilter });
     if (selected) {
-      if (nextId && String(selected._id) !== nextId) {
-        return null;
-      }
+      // Allow merchants to select any active plan corresponding to their region during checkout
+      // if (nextId && String(selected._id) !== nextId) {
+      //   return null;
+      // }
       return selected;
     }
   }
