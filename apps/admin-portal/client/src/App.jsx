@@ -35,6 +35,7 @@ import ProspectsPage from './pages/superadmin/ProspectsPage';
 import UberConfigPanel from './pages/admin/UberConfigPanel';
 import DashboardPage from './pages/admin/DashboardPage';
 import AnalyticsPage from './pages/admin/AnalyticsPage';
+import OrdersPage from './pages/admin/OrdersPage';
 import BrandingPage from './pages/admin/BrandingPage';
 import UsersPage from './pages/admin/UsersPage';
 import SubscriptionPage from './pages/admin/SubscriptionPage';
@@ -201,6 +202,11 @@ export default function App() {
           <Route path="/analytics" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><AnalyticsPage /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/orders" element={
+            <PrivateRoute roles={['merchant_admin']}>
+              <Layout><OrdersPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/reports/:reportType" element={

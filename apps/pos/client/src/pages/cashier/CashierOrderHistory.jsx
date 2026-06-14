@@ -29,19 +29,25 @@ export default function CashierOrderHistory() {
   const { user } = useAuth();
   const sessionCtx = useContext(CashierSessionContext);
   const isCashier = String(user?.role || '').toLowerCase() === 'cashier';
-  // For cashiers, restrict orders to their current session window
-  const sessionSince = isCashier && sessionCtx?.session?.openedAt
-    ? new Date(sessionCtx.session.openedAt).toISOString()
-    : null;
+  const { isStoreReady, selectedStore } = useStoreContext();
+
+  const thirtyDaysAgoStr = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  }, []);
+
+  const [sinceDate, setSinceDate] = useState(isCashier ? thirtyDaysAgoStr : '');
+  const [untilDate, setUntilDate] = useState('');
   const [msg, setMsg] = useState('');
-  const { isStoreReady } = useStoreContext();
   const [search, setSearch] = useState('');
-  // Cashiers only see completed orders by default; lock status to completed for cashiers
   const [statusFilter, setStatusFilter] = useState('completed');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [returnOrder, setReturnOrder] = useState(null);
   const [returnQty, setReturnQty] = useState({});
   const [returnReason, setReturnReason] = useState('');
+  const [refundPaymentType, setRefundPaymentType] = useState('cash');
+  const [refundAmountInput, setRefundAmountInput] = useState('');
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [pendingReturn, setPendingReturn] = useState(null);
 
@@ -51,14 +57,29 @@ export default function CashierOrderHistory() {
     enabled: isStoreReady,
   });
 
+  const availablePaymentMethods = useMemo(() => {
+    return selectedStore?.paymentMethods?.length ? selectedStore.paymentMethods : ['cash'];
+  }, [selectedStore]);
+
   const searchParams = useMemo(() => {
     const p = {};
     if (statusFilter) p.status = statusFilter;
     if (search.trim()) p.search = search.trim();
-    // Cashiers: scope to their current session window
-    if (sessionSince) p.since = sessionSince;
+    
+    let effSince = sinceDate;
+    if (isCashier) {
+      if (!effSince || new Date(effSince) < new Date(thirtyDaysAgoStr)) {
+        effSince = thirtyDaysAgoStr;
+      }
+    }
+    if (effSince) p.since = new Date(effSince).toISOString();
+    if (untilDate) {
+      const d = new Date(untilDate);
+      d.setHours(23, 59, 59, 999);
+      p.until = d.toISOString();
+    }
     return p;
-  }, [search, statusFilter, sessionSince]);
+  }, [search, statusFilter, sinceDate, untilDate, isCashier, thirtyDaysAgoStr]);
 
   const { data: orders = [], isPending, refetch, isFetching } = useQuery({
     queryKey: ['cashier-order-history', searchParams],
@@ -67,6 +88,7 @@ export default function CashierOrderHistory() {
   });
 
   const returnMutation = useMutation({
+    queryKey: ['return-mutation'],
     mutationFn: ({ orderId, body }) => api.post(`/orders/${orderId}/returns`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cashier-order-history'] });
@@ -76,13 +98,14 @@ export default function CashierOrderHistory() {
       setReturnOrder(null);
       setReturnQty({});
       setReturnReason('');
+      setRefundPaymentType('cash');
+      setRefundAmountInput('');
       setApprovalOpen(false);
       setPendingReturn(null);
     },
     onError: (e) => setMsg(e.response?.data?.message || 'Return failed'),
   });
 
-  const returnsEnabled = true;
   const requireApproval = tenantSettings?.returnsRequireManagerApproval !== false && user?.role !== 'merchant_admin';
 
   const openReturn = (order) => {
@@ -93,6 +116,8 @@ export default function CashierOrderHistory() {
     }
     setReturnQty(init);
     setReturnReason('');
+    setRefundPaymentType(order.paymentType || 'cash');
+    setRefundAmountInput('0');
     setReturnOrder(order);
   };
 
@@ -101,6 +126,30 @@ export default function CashierOrderHistory() {
       .map(([lineId, qty]) => ({ lineId, qty: Number(qty) || 0 }))
       .filter((x) => x.qty > 0);
 
+  const maxRefundAllowed = useMemo(() => {
+    if (!returnOrder) return 0;
+    let sum = 0;
+    for (const item of returnOrder.items || []) {
+      const qty = returnQty[String(item._id)] || 0;
+      sum += (Number(item.price) || 0) * qty;
+    }
+    return Math.round(sum * 100) / 100;
+  }, [returnOrder, returnQty]);
+
+  const handleQtyChange = (itemId, val, rem) => {
+    const nextQty = Math.min(rem, Math.max(0, parseInt(val, 10) || 0));
+    setReturnQty((q) => {
+      const updated = { ...q, [itemId]: nextQty };
+      let sum = 0;
+      for (const item of returnOrder.items || []) {
+        const qty = updated[String(item._id)] || 0;
+        sum += (Number(item.price) || 0) * qty;
+      }
+      setRefundAmountInput(String(Math.round(sum * 100) / 100));
+      return updated;
+    });
+  };
+
   const submitReturn = () => {
     if (!returnOrder) return;
     const items = buildReturnItems();
@@ -108,7 +157,22 @@ export default function CashierOrderHistory() {
       setMsg('Enter quantity to return for at least one line');
       return;
     }
-    const payload = { items, reason: returnReason.trim() };
+    const customAmt = refundAmountInput.trim() ? parseFloat(refundAmountInput) : maxRefundAllowed;
+    if (isNaN(customAmt) || customAmt < 0) {
+      setMsg('Enter a valid refund amount');
+      return;
+    }
+    if (customAmt > maxRefundAllowed + 0.01) {
+      setMsg(`Refund amount cannot exceed the items total value of ${maxRefundAllowed.toFixed(2)}`);
+      return;
+    }
+
+    const payload = {
+      items,
+      reason: returnReason.trim(),
+      paymentType: refundPaymentType,
+      refundAmount: customAmt,
+    };
     if (requireApproval) {
       setPendingReturn({ orderId: returnOrder._id, body: payload });
       setApprovalOpen(true);
@@ -128,11 +192,16 @@ export default function CashierOrderHistory() {
   const fullReturn = () => {
     if (!returnOrder) return;
     const next = {};
+    let sum = 0;
     for (const item of returnOrder.items || []) {
       const rem = remainingQty(returnOrder, item);
-      if (rem > 0) next[String(item._id)] = rem;
+      if (rem > 0) {
+        next[String(item._id)] = rem;
+        sum += (Number(item.price) || 0) * rem;
+      }
     }
     setReturnQty(next);
+    setRefundAmountInput(String(Math.round(sum * 100) / 100));
   };
 
   const searchAttrs = limitedInputProps('searchQuery');
@@ -154,35 +223,62 @@ export default function CashierOrderHistory() {
             <p className="text-sm text-center py-2 rounded-lg bg-slate-800 text-amber-200 border border-slate-600">{msg}</p>
           )}
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Order # or customer name"
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-600 bg-[var(--pos-panel)] text-sm text-[var(--pos-text-primary)]"
-                {...searchAttrs}
-              />
+          <div className="flex flex-col gap-3 bg-[var(--pos-panel)] border border-slate-700/60 p-4 rounded-2xl">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Order # or customer name"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-600 bg-[var(--pos-panel)] text-sm text-[var(--pos-text-primary)]"
+                  {...searchAttrs}
+                />
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="border border-slate-600 rounded-xl px-3 py-2.5 text-sm bg-[var(--pos-panel)] text-[var(--pos-text-primary)]"
+              >
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="">All statuses</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                className="px-4 py-2.5 rounded-xl border border-slate-600 text-sm text-slate-300 hover:bg-slate-800"
+              >
+                {isFetching ? <Loader size={14} className="animate-spin inline" /> : 'Refresh'}
+              </button>
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="border border-slate-600 rounded-xl px-3 py-2.5 text-sm bg-[var(--pos-panel)] text-[var(--pos-text-primary)]"
-            >
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="">All statuses</option>
-            </select>
-            <button
-              type="button"
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="px-4 py-2.5 rounded-xl border border-slate-600 text-sm text-slate-300 hover:bg-slate-800"
-            >
-              {isFetching ? <Loader size={14} className="animate-spin inline" /> : 'Refresh'}
-            </button>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Since Date</label>
+                <input
+                  type="date"
+                  value={sinceDate}
+                  min={isCashier ? thirtyDaysAgoStr : undefined}
+                  onChange={(e) => setSinceDate(e.target.value)}
+                  className="w-full border border-slate-600 rounded-xl px-3 py-2 text-sm bg-[var(--pos-panel)] text-[var(--pos-text-primary)] focus:outline-none"
+                />
+                {isCashier && (
+                  <p className="text-[10px] text-slate-500 mt-1">Cashier view restricted to the last 30 days.</p>
+                )}
+              </div>
+              <div className="flex-1">
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Until Date</label>
+                <input
+                  type="date"
+                  value={untilDate}
+                  onChange={(e) => setUntilDate(e.target.value)}
+                  className="w-full border border-slate-600 rounded-xl px-3 py-2 text-sm bg-[var(--pos-panel)] text-[var(--pos-text-primary)] focus:outline-none"
+                />
+              </div>
+            </div>
           </div>
 
           {isPending ? (
@@ -222,7 +318,7 @@ export default function CashierOrderHistory() {
                       <button
                         type="button"
                         onClick={() => openReturn(o)}
-                        className="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-xs font-semibold text-amber-200 inline-flex items-center gap-1"
+                        className="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-xs font-semibold text-amber-700 dark:text-amber-200 inline-flex items-center gap-1 hover:bg-amber-500/30"
                       >
                         <RotateCcw size={14} /> Return
                       </button>
@@ -270,16 +366,52 @@ export default function CashierOrderHistory() {
                         min={0}
                         max={rem}
                         value={returnQty[id] ?? 0}
-                        onChange={(e) => {
-                          const v = Math.min(rem, Math.max(0, parseInt(e.target.value, 10) || 0));
-                          setReturnQty((q) => ({ ...q, [id]: v }));
-                        }}
+                        onChange={(e) => handleQtyChange(id, e.target.value, rem)}
                         className="w-16 border border-slate-600 rounded-lg px-2 py-1 text-center bg-slate-800 text-[var(--pos-text-primary)]"
                       />
                     </div>
                   );
                 })}
               </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                  <label className="block text-xs text-slate-400 font-semibold mb-1">Refund Method</label>
+                  <select
+                    value={refundPaymentType}
+                    onChange={(e) => setRefundPaymentType(e.target.value)}
+                    className="w-full border border-slate-600 rounded-lg px-3 py-2 text-sm bg-slate-800 text-[var(--pos-text-primary)] focus:outline-none"
+                  >
+                    {availablePaymentMethods.map((m) => (
+                      <option key={m} value={m}>
+                        {m.charAt(0).toUpperCase() + m.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 font-semibold mb-1">
+                    Refund Amount (Max {maxRefundAllowed.toFixed(2)})
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max={maxRefundAllowed}
+                    value={refundAmountInput}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      if (Number.isFinite(val) && val > maxRefundAllowed) {
+                        setRefundAmountInput(String(maxRefundAllowed));
+                      } else {
+                        setRefundAmountInput(e.target.value);
+                      }
+                    }}
+                    className="w-full border border-slate-600 rounded-lg px-3 py-2 text-sm bg-slate-800 text-[var(--pos-text-primary)] focus:outline-none"
+                  />
+                </div>
+              </div>
+
               <textarea
                 value={returnReason}
                 onChange={(e) => setReturnReason(e.target.value)}

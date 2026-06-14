@@ -107,7 +107,7 @@ async function applyOrderReturn(order, input, { tenantId, userId, storeId, userR
   }
 
   const returnLines = [];
-  let refundAmount = 0;
+  let maxRefundAmount = 0;
 
   for (const reqLine of requested) {
     const qty = Math.max(0, Number(reqLine.qty) || 0);
@@ -127,7 +127,7 @@ async function applyOrderReturn(order, input, { tenantId, userId, storeId, userR
     }
     const unitPrice = Number(item.price) || 0;
     const lineRefund = Math.round(unitPrice * qty * 100) / 100;
-    refundAmount += lineRefund;
+    maxRefundAmount += lineRefund;
     returnLines.push({
       lineId: item._id,
       menuItem: item.menuItem,
@@ -144,7 +144,24 @@ async function applyOrderReturn(order, input, { tenantId, userId, storeId, userR
     throw err;
   }
 
-  refundAmount = Math.round(refundAmount * 100) / 100;
+  maxRefundAmount = Math.round(maxRefundAmount * 100) / 100;
+  
+  let refundAmount = maxRefundAmount;
+  if (input.refundAmount !== undefined && input.refundAmount !== null && input.refundAmount !== '') {
+    const customAmt = Number(input.refundAmount);
+    if (!Number.isFinite(customAmt) || customAmt < 0) {
+      const err = new Error('Refund amount must be a positive number');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (customAmt > maxRefundAmount + 0.01) {
+      const err = new Error(`Refund amount cannot exceed the returned items total of ${maxRefundAmount.toFixed(2)}`);
+      err.statusCode = 400;
+      throw err;
+    }
+    refundAmount = Math.round(customAmt * 100) / 100;
+  }
+
   const soldTotal = (order.items || []).reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.qty) || 0), 0);
   const alreadyReturned = Number(order.totalReturnedAmount) || 0;
   const isFullReturn = returnLines.every((rl) => {
@@ -160,6 +177,7 @@ async function applyOrderReturn(order, input, { tenantId, userId, storeId, userR
     reason: String(input.reason || '').trim().slice(0, 500),
     refundAmount,
     isFullReturn,
+    paymentType: input.paymentType || order.paymentType || 'cash',
     items: returnLines,
   });
   order.totalReturnedAmount = Math.round((alreadyReturned + refundAmount) * 100) / 100;

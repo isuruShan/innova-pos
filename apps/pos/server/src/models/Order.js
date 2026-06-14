@@ -179,6 +179,7 @@ const orderSchema = new mongoose.Schema(
       reason: { type: String, default: '', trim: true },
       refundAmount: { type: Number, required: true, min: 0 },
       isFullReturn: { type: Boolean, default: false },
+      paymentType: { type: String },
       items: [{
         lineId: { type: mongoose.Schema.Types.ObjectId },
         menuItem: { type: mongoose.Schema.Types.ObjectId, ref: 'MenuItem' },

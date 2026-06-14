@@ -80,12 +80,12 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
     const filter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
 
     let dateFilter = {};
-    if (since || until) {
-      if (since) dateFilter.$gte = new Date(since);
-      if (until) dateFilter.$lte = new Date(until);
-    }
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     if (req.query.board === 'true') {
+      if (since) dateFilter.$gte = new Date(since);
+      if (until) dateFilter.$lte = new Date(until);
+
       const activeQuery = {
         status: { $in: ['pending', 'preparing', 'ready', 'delivered'] },
         $or: [
@@ -104,8 +104,22 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
         const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
         filter.status = statuses.length === 1 ? statuses[0] : { $in: statuses };
       }
-      if (since || until) {
+      if (req.user.role === 'cashier') {
+        let sinceDate = since ? new Date(since) : thirtyDaysAgo;
+        if (sinceDate < thirtyDaysAgo) {
+          sinceDate = thirtyDaysAgo;
+        }
+        dateFilter.$gte = sinceDate;
+        if (until) {
+          dateFilter.$lte = new Date(until);
+        }
         filter.createdAt = dateFilter;
+      } else {
+        if (since || until) {
+          if (since) dateFilter.$gte = new Date(since);
+          if (until) dateFilter.$lte = new Date(until);
+          filter.createdAt = dateFilter;
+        }
       }
     }
     if (orderType) {
@@ -951,10 +965,10 @@ router.post(
       });
       if (!order) return res.status(404).json({ message: 'Order not found' });
 
-      const { items, reason, managerId, approvalSecret } = req.body || {};
+      const { items, reason, managerId, approvalSecret, paymentType, refundAmount } = req.body || {};
       const result = await applyOrderReturn(
         order,
-        { items, reason, managerId, approvalSecret },
+        { items, reason, managerId, approvalSecret, paymentType, refundAmount },
         { tenantId: req.tenantId, userId: req.user.id, storeId: req.storeId, userRole: req.user.role },
       );
 

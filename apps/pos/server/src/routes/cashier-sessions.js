@@ -84,7 +84,7 @@ async function aggregateSessionSalesBreakdown(tenantId, storeId, cashierId, open
       },
       {
         $group: {
-          _id: { $ifNull: ['$paymentType', 'unknown'] },
+          _id: { $ifNull: ['$returns.paymentType', { $ifNull: ['$paymentType', 'unknown'] }] },
           refunded: { $sum: '$returns.refundAmount' },
           cnt: { $sum: 1 },
         },
