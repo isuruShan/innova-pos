@@ -344,8 +344,8 @@ export default function SubscriptionPage() {
   }, [plans, nextBillingPlanId, tenant?.planLocked]);
 
   const selectedPlan = useMemo(
-    () => payPlans.find((p) => String(p._id) === String(form.planId)) || payPlans[0] || null,
-    [payPlans, form.planId]
+    () => plans.find((p) => String(p._id) === String(form.planId)) || payPlans.find((p) => String(p._id) === String(form.planId)) || payPlans[0] || null,
+    [plans, payPlans, form.planId]
   );
 
   const paypalCurrency = useMemo(() => selectedPlan?.currency || 'USD', [selectedPlan?.currency]);
@@ -1550,11 +1550,6 @@ export default function SubscriptionPage() {
                     type="button"
                     disabled={!form.planId || form.planId === 'custom' || isBreakdownFetching}
                     onClick={() => {
-                      const computedTotal = breakdownData?.billingBreakdown?.total;
-                      const p = plans.find(p => String(p._id) === String(form.planId));
-                      const price = selectedCycle === 'yearly' ? p?.yearlyPrice : p?.monthlyPrice;
-                      const amountToPay = computedTotal != null && computedTotal > 0 ? computedTotal : price;
-                      setForm((f) => ({ ...f, amount: String(amountToPay || 0) }));
                       setTrialSubscribeStep('payment_select');
                     }}
                     className="px-5 py-2 text-sm font-bold text-white bg-brand-orange hover:bg-brand-orange-hover rounded-lg shadow-md transition-all cursor-pointer disabled:opacity-50"
