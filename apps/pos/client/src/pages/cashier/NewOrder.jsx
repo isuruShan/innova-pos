@@ -583,6 +583,14 @@ export default function NewOrder() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [showPromoList, setShowPromoList] = useState(false);
   const [toast, setToast] = useState(null);
+
+  // Infinite Scroll States & Logic
+  const [visibleCount, setVisibleCount] = useState(24);
+  const infiniteScrollTriggerRef = useRef(null);
+
+  useEffect(() => {
+    setVisibleCount(24);
+  }, [activeCategory, menuSearch]);
   const toastTimer = useRef(null);
   const [readySlideOrder, setReadySlideOrder] = useState(null);
   const [gridCols, setGridCols] = useState(4);
@@ -1025,6 +1033,26 @@ export default function NewOrder() {
     }),
     [menuItems, activeCategory, menuSearch, categorySortMap],
   );
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + 24);
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    const currentTrigger = infiniteScrollTriggerRef.current;
+    if (currentTrigger) {
+      observer.observe(currentTrigger);
+    }
+    return () => {
+      if (currentTrigger) {
+        observer.unobserve(currentTrigger);
+      }
+    };
+  }, [filtered.length]);
 
   const addToCart = (item, selectedVariant = null) => {
     if (item.hasVariants && !selectedVariant) {
@@ -1538,16 +1566,23 @@ export default function NewOrder() {
                 {menuSearch.trim() ? 'No items match your search' : 'No items in this category'}
               </div>
             ) : (
-              <div className={
-                gridCols === 4
-                  ? (isCompact ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3')
-                  : gridCols === 5
-                    ? (isCompact ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3')
-                    : (isCompact ? 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3')
-              }>
-                {filtered.map(item => (
-                  <MenuCard key={item._id} item={item} onAdd={addToCart} compact={isCompact || gridCols >= 5} orderType={orderType} partners={partners} getItemPrice={getItemPrice} />
-                ))}
+              <div>
+                <div className={
+                  gridCols === 4
+                    ? (isCompact ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3')
+                    : gridCols === 5
+                      ? (isCompact ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3')
+                      : (isCompact ? 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 gap-2' : 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3')
+                }>
+                  {filtered.slice(0, visibleCount).map(item => (
+                    <MenuCard key={item._id} item={item} onAdd={addToCart} compact={isCompact || gridCols >= 5} orderType={orderType} partners={partners} getItemPrice={getItemPrice} />
+                  ))}
+                </div>
+                {filtered.length > visibleCount && (
+                  <div ref={infiniteScrollTriggerRef} className="h-10 flex items-center justify-center my-4">
+                    <span className="text-sm text-gray-500">Loading more items...</span>
+                  </div>
+                )}
               </div>
             )}
           </div>

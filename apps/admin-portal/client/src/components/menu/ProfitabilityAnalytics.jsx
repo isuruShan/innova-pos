@@ -137,35 +137,35 @@ export default function ProfitabilityAnalytics() {
 
   // Render margin badges based on value
   const getMarginBadgeVariant = (margin) => {
-    if (margin < 0) return 'bg-red-500/10 text-red-400 border border-red-550/20';
-    if (margin < 20) return 'bg-orange-500/10 text-orange-400 border border-orange-500/20';
-    if (margin < 50) return 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20';
-    return 'bg-green-500/10 text-green-405 border border-green-500/20';
+    if (margin < 0) return 'bg-red-50 text-red-750 border border-red-200';
+    if (margin < 20) return 'bg-orange-50 text-orange-750 border border-orange-200';
+    if (margin < 50) return 'bg-amber-50 text-amber-700 border border-amber-200';
+    return 'bg-green-55 text-green-750 border border-green-200';
   };
 
   return (
     <div className="space-y-6">
       {/* Search & Costing Formula Selector Header */}
-      <div className="flex flex-col sm:flex-row items-center gap-4 bg-[var(--pos-panel)] p-4 rounded-2xl border border-slate-700">
+      <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search menu items..."
-            className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-550"
+            className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-400"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-          <span className="text-xs text-slate-400 whitespace-nowrap flex items-center gap-1">
+          <span className="text-xs text-gray-500 whitespace-nowrap flex items-center gap-1">
             <Calculator size={13} /> Costing Formula:
           </span>
           <select
             value={selectedFormula}
             onChange={(e) => setSelectedFormulaState(e.target.value)}
-            className="bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+            className="bg-gray-50 border border-gray-200 text-gray-750 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
           >
             {Object.keys(FORMULA_LABELS).map(key => (
               <option key={key} value={key}>{FORMULA_LABELS[key]}</option>
@@ -175,33 +175,33 @@ export default function ProfitabilityAnalytics() {
       </div>
 
       {/* Info Warning */}
-      <div className="flex items-start gap-3 bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 text-xs text-blue-400">
+      <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-2xl p-4 text-xs text-blue-800">
         <Info size={16} className="shrink-0 mt-0.5" />
         <div>
           <p className="font-semibold">Dynamic Recipe Cost Estimation</p>
-          <p className="mt-0.5 text-slate-400">
+          <p className="mt-0.5 text-gray-650">
             Calculations are based on ingredient link recipes and current inventory unit costs calculated from Goods Receipt Notes (GRN).
-            The configured accounting default is <strong className="text-blue-300 font-semibold">{FORMULA_LABELS[settings?.inventoryCostingMethod || 'wac']}</strong>.
+            The configured accounting default is <strong className="text-blue-900 font-semibold">{FORMULA_LABELS[settings?.inventoryCostingMethod || 'wac']}</strong>.
           </p>
         </div>
       </div>
 
       {/* Profitability Table */}
       {loading ? (
-        <div className="text-center py-16 text-slate-500">
+        <div className="text-center py-16 text-gray-500">
           Loading profitability analytics...
         </div>
       ) : filteredRows.length === 0 ? (
-        <div className="text-center py-16 bg-[var(--pos-panel)] rounded-2xl border border-slate-700 text-slate-400">
+        <div className="text-center py-16 bg-white rounded-2xl border border-gray-200 text-gray-400">
           <AlertCircle size={36} className="mx-auto opacity-35 mb-2" />
           <p className="text-sm">No recipe profitability records found</p>
         </div>
       ) : (
-        <div className="bg-[var(--pos-panel)] border border-slate-700/65 rounded-2xl overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-700/50 bg-slate-800/30 text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-xs font-semibold uppercase tracking-wider">
                   <th className="py-3.5 px-4">Menu Item / Variant</th>
                   <th className="py-3.5 px-4">Category</th>
                   <th className="py-3.5 px-4 text-right">Sell Price</th>
@@ -211,27 +211,27 @@ export default function ProfitabilityAnalytics() {
                   <th className="py-3.5 px-4 w-10"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-700/40 text-sm">
+              <tbody className="divide-y divide-gray-150 text-sm">
                 {filteredRows.map(row => {
                   const isExpanded = !!expandedRows[row.id];
                   return (
-                    <tr key={row.id} className="hover:bg-slate-800/20 transition-colors">
+                    <tr key={row.id} className="hover:bg-gray-50 transition-colors">
                       <td className="py-3.5 px-4">
                         <div className="flex flex-col">
-                          <span className="font-semibold text-[var(--pos-text-primary)]">{row.name}</span>
+                          <span className="font-semibold text-gray-900">{row.name}</span>
                           {row.isVariant && (
-                            <span className="text-[10px] text-purple-400 font-medium">Variant</span>
+                            <span className="text-[10px] text-purple-600 font-medium">Variant</span>
                           )}
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-slate-400">{row.category || '—'}</td>
-                      <td className="py-3.5 px-4 text-right font-medium text-[var(--pos-text-primary)]">
+                      <td className="py-3.5 px-4 text-gray-500">{row.category || '—'}</td>
+                      <td className="py-3.5 px-4 text-right font-medium text-gray-900">
                         {formatCurrency(row.sellPrice)}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-medium text-slate-300">
+                      <td className="py-3.5 px-4 text-right font-medium text-gray-650">
                         {formatCurrency(row.totalCogs)}
                       </td>
-                      <td className={`py-3.5 px-4 text-right font-bold ${row.profit < 0 ? 'text-red-400' : 'text-green-400'}`}>
+                      <td className={`py-3.5 px-4 text-right font-bold ${row.profit < 0 ? 'text-red-600' : 'text-green-600'}`}>
                         {formatCurrency(row.profit)}
                       </td>
                       <td className="py-3.5 px-4 text-right">
@@ -243,7 +243,7 @@ export default function ProfitabilityAnalytics() {
                         <button
                           type="button"
                           onClick={() => toggleRow(row.id)}
-                          className="p-1 rounded text-slate-400 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition"
+                          className="p-1 rounded text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition"
                           title="Toggle Recipe Breakdown"
                         >
                           {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -268,20 +268,20 @@ export default function ProfitabilityAnalytics() {
         return (
           <div
             key={`detail-${row.id}`}
-            className="bg-[var(--pos-surface-inset)] border border-slate-700/60 rounded-2xl p-4 space-y-3 shadow-inner transform translate-y-[-8px] border-t-0 rounded-t-none"
+            className="bg-gray-50/50 border border-gray-200 rounded-2xl p-4 space-y-3 shadow-inner transform translate-y-[-8px] border-t-0 rounded-t-none"
           >
-            <div className="flex items-center justify-between border-b border-slate-700/50 pb-2">
-              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Recipe Breakdown</span>
-              <span className="text-xs text-slate-500 font-mono">Ingredients: {row.breakdown.length}</span>
+            <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+              <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Recipe Breakdown</span>
+              <span className="text-xs text-gray-400 font-mono">Ingredients: {row.breakdown.length}</span>
             </div>
             
             {row.breakdown.length === 0 ? (
-              <p className="text-xs text-slate-500 italic py-2">No ingredients linked to this item recipe.</p>
+              <p className="text-xs text-gray-500 italic py-2">No ingredients linked to this item recipe.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-slate-750 text-slate-500 font-semibold">
+                    <tr className="border-b border-gray-200 text-gray-500 font-semibold">
                       <th className="py-2 px-2">Ingredient</th>
                       <th className="py-2 px-2 text-right">Usage Quantity</th>
                       <th className="py-2 px-2 text-right">Wastage %</th>
@@ -289,21 +289,21 @@ export default function ProfitabilityAnalytics() {
                       <th className="py-2 px-2 text-right">Contribution</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800 text-slate-350">
+                  <tbody className="divide-y divide-gray-200 text-gray-650">
                     {row.breakdown.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-slate-800/10">
-                        <td className="py-2 px-2 font-medium text-slate-200">{item.ingredientName}</td>
+                      <tr key={idx} className="hover:bg-gray-100/50">
+                        <td className="py-2 px-2 font-medium text-gray-900">{item.ingredientName}</td>
                         <td className="py-2 px-2 text-right">{item.usageQty} {item.unit}</td>
                         <td className="py-2 px-2 text-right">{item.wastage}%</td>
                         <td className="py-2 px-2 text-right">{formatCurrency(item.unitCost)}</td>
-                        <td className="py-2 px-2 text-right font-semibold text-slate-300">
+                        <td className="py-2 px-2 text-right font-semibold text-gray-700">
                           {formatCurrency(item.contribution)}
                         </td>
                       </tr>
                     ))}
-                    <tr className="border-t-2 border-slate-700 text-slate-200">
+                    <tr className="border-t-2 border-gray-300 text-gray-900">
                       <td colSpan={4} className="py-2 px-2 font-bold text-right">Total Recipe Cost:</td>
-                      <td className="py-2 px-2 text-right font-bold text-amber-400">
+                      <td className="py-2 px-2 text-right font-bold text-brand-orange">
                         {formatCurrency(row.totalCogs)}
                       </td>
                     </tr>

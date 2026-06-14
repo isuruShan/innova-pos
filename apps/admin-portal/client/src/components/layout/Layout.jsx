@@ -95,18 +95,15 @@ const ADMIN_NAV_GROUPS = [
           { label: 'Purchase Orders', to: '/purchase-orders' },
           { label: 'Goods Receipts', to: '/goods-receipts' },
           { label: 'Wastage', to: '/wastage' },
-          { label: 'Stock Audit', to: '/stock-audit' },
-          { label: 'Stock Reconciliation', to: '/stock-reconciliation' },
           { label: 'Inventory Sessions', to: '/inventory-sessions' },
         ],
       },
       {
         label: 'Table Management',
         icon: Table,
-        to: '/tables',
+        to: '/reservations',
         subItems: [
-          { label: 'Tables & QRs', to: '/tables' },
-          { label: 'Floor Plan Editor', to: '/floor-plan/editor' },
+          { label: 'Reservations', to: '/reservations' },
           { label: 'Floor Plan View', to: '/floor-plan' },
           { label: 'Table Analytics', to: '/table-analytics' },
         ],
@@ -282,6 +279,38 @@ export default function Layout({ children }) {
 
   const isActive = (to) => location.pathname.startsWith(to);
 
+  const isItemActive = (item) => {
+    if (location.pathname === item.to) return true;
+    if (item.subItems && item.subItems.some(sub => location.pathname === sub.to || (sub.to !== '/' && location.pathname.startsWith(sub.to)))) {
+      return true;
+    }
+    if (item.to !== '/' && location.pathname.startsWith(item.to)) return true;
+    return false;
+  };
+
+  const currentNavLabel = useMemo(() => {
+    for (const group of navGroups) {
+      for (const item of group.items) {
+        if (item.subItems) {
+          const matchedSub = item.subItems.find(sub => location.pathname === sub.to);
+          if (matchedSub) return matchedSub.label;
+        }
+        if (location.pathname === item.to) return item.label;
+      }
+    }
+    for (const group of navGroups) {
+      for (const item of group.items) {
+        if (item.subItems) {
+          const matchedSub = item.subItems.find(sub => sub.to !== '/' && location.pathname.startsWith(sub.to));
+          if (matchedSub) return matchedSub.label;
+        }
+        if (item.to !== '/' && location.pathname.startsWith(item.to)) return item.label;
+      }
+    }
+    if (location.pathname === '/profile') return 'My Profile';
+    return 'My Profile';
+  }, [navGroups, location.pathname]);
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
       {/* Backdrop */}
@@ -324,7 +353,7 @@ export default function Layout({ children }) {
               </summary>
               <div className="mt-0.5 space-y-0.5">
                 {group.items.map((item) => {
-                  const active = isActive(item.to);
+                  const active = isItemActive(item);
                   const hasSubItems = item.subItems && item.subItems.length > 0;
                   
                   return (
@@ -357,7 +386,7 @@ export default function Layout({ children }) {
                                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                                   subActive
                                     ? 'bg-white/10 text-white'
-                                    : 'text-gray-500 hover:text-white hover:bg-white/5'
+                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
                                 }`}
                               >
                                 {subItem.label}
@@ -412,7 +441,7 @@ export default function Layout({ children }) {
 
           <div className="flex-1 min-w-0">
             <h1 className="text-sm font-semibold text-gray-800 truncate">
-              {navItems.find(n => isActive(n.to))?.label || 'My Profile'}
+              {currentNavLabel}
             </h1>
           </div>
 

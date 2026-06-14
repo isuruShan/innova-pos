@@ -367,8 +367,9 @@ export default function FloorPlanViewPage() {
               style={{
                 width: `${floorPlan.gridWidth * 50}px`,
                 height: `${floorPlan.gridHeight * 50}px`,
+                backgroundColor: '#ffffff',
                 backgroundImage:
-                  'linear-gradient(to right, var(--pos-grid-line) 1px, transparent 1px), linear-gradient(to bottom, var(--pos-grid-line) 1px, transparent 1px)',
+                  'linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px)',
                 backgroundSize: '50px 50px',
               }}
             >
@@ -400,7 +401,7 @@ export default function FloorPlanViewPage() {
                   style={{
                     left: `${t.x * 50}px`,
                     top: `${t.y * 50}px`,
-                    color: t.color || '#f8fafc',
+                    color: (t.color === '#f8fafc' || !t.color || t.color === '#ffffff') ? '#334155' : t.color,
                     fontSize: `${t.fontSize || 14}px`,
                     transform: 'translate(-50%, -50%)',
                     zIndex: 6,

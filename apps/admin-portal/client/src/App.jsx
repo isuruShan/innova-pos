@@ -60,9 +60,7 @@ import SupplierManagement from './pages/admin/SupplierManagement';
 import PurchaseOrders from './pages/admin/PurchaseOrders';
 import GoodsReceipts from './pages/admin/GoodsReceipts';
 import WastageManagement from './pages/admin/WastageManagement';
-import StockAudit from './pages/admin/StockAudit';
-import StockReconciliation from './pages/admin/StockReconciliation';
-import CafeTablesPage from './pages/admin/CafeTablesPage';
+import ReservationsPage from './pages/admin/ReservationsPage';
 import FloorPlanEditorPage from './pages/admin/FloorPlanEditorPage';
 import FloorPlanViewPage from './pages/admin/FloorPlanViewPage';
 import TableAnalyticsPage from './pages/admin/TableAnalyticsPage';
@@ -291,19 +289,9 @@ export default function App() {
               <Layout><WastageManagement /></Layout>
             </PrivateRoute>
           } />
-          <Route path="/stock-audit" element={
+          <Route path="/reservations" element={
             <PrivateRoute roles={['merchant_admin']}>
-              <Layout><StockAudit /></Layout>
-            </PrivateRoute>
-          } />
-          <Route path="/stock-reconciliation" element={
-            <PrivateRoute roles={['merchant_admin']}>
-              <Layout><StockReconciliation /></Layout>
-            </PrivateRoute>
-          } />
-          <Route path="/tables" element={
-            <PrivateRoute roles={['merchant_admin']}>
-              <Layout><CafeTablesPage /></Layout>
+              <Layout><ReservationsPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/floor-plan/editor" element={

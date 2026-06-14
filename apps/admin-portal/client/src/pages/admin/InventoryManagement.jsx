@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Package, X, AlertTriangle, Truck, Search,
@@ -98,6 +98,14 @@ export default function InventoryManagement() {
   const qc = useQueryClient();
   const { sort, order, toggleSort, sortParams } = useListSort('name', 'asc');
   const { toast, showToast, clearToast } = useToast();
+
+  // Infinite Scroll States & Logic
+  const [visibleCount, setVisibleCount] = useState(20);
+  const infiniteScrollTriggerRef = useRef(null);
+
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [searchQuery, filter, activeTab]);
 
   // Category States
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
@@ -498,6 +506,27 @@ export default function InventoryManagement() {
     return result;
   }, [items, filter, searchQuery, selectedCategoryId]);
 
+  useEffect(() => {
+    if (viewMode !== 'grid' || activeTab !== 'stock') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + 20);
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    const currentTrigger = infiniteScrollTriggerRef.current;
+    if (currentTrigger) {
+      observer.observe(currentTrigger);
+    }
+    return () => {
+      if (currentTrigger) {
+        observer.unobserve(currentTrigger);
+      }
+    };
+  }, [viewMode, activeTab, filtered.length]);
+
   const filteredSessions = useMemo(() => {
     let result = sessions;
     if (sessionSearch.trim()) {
@@ -701,7 +730,7 @@ export default function InventoryManagement() {
                       className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg pl-10 pr-8 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-500"
                     />
                     {searchQuery && (
-                      <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-slate-300">
+                      <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900">
                         <X size={14} />
                       </button>
                     )}
@@ -714,14 +743,14 @@ export default function InventoryManagement() {
                       onClick={() => setShowFilters(f => !f)}
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
                         filter !== 'all'
-                          ? 'bg-brand-orange/10 border-amber-500/30 text-amber-405'
-                          : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-white'
+                          ? 'bg-brand-orange/10 border-amber-500/30 text-amber-500'
+                          : 'bg-gray-50 border-gray-200 text-gray-650 hover:bg-gray-100 hover:text-gray-900'
                       }`}
                     >
                       <SlidersHorizontal size={14} />
                       <span>Filters</span>
                       {filter !== 'all' && (
-                        <span className="absolute -top-1.5 -right-1.5 bg-brand-orange text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
+                        <span className="absolute -top-1.5 -right-1.5 bg-brand-orange text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white">
                           1
                         </span>
                       )}
@@ -730,9 +759,9 @@ export default function InventoryManagement() {
                     {showFilters && (
                       <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-2xl z-30 p-4 space-y-3">
                         <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-                          <span className="text-xs font-semibold text-slate-300">Status Filter</span>
+                          <span className="text-xs font-semibold text-gray-700">Status Filter</span>
                           {filter !== 'all' && (
-                            <button onClick={() => setFilter('all')} className="text-[10px] text-amber-450 hover:underline">Clear</button>
+                            <button onClick={() => setFilter('all')} className="text-[10px] text-brand-orange hover:underline">Clear</button>
                           )}
                         </div>
                         <div className="flex flex-col gap-1.5">
@@ -748,7 +777,7 @@ export default function InventoryManagement() {
                               className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
                                 filter === f.key
                                   ? 'bg-brand-orange/15 text-brand-orange font-semibold'
-                                  : 'text-gray-500 hover:bg-slate-800 hover:text-white'
+                                  : 'text-gray-650 hover:bg-gray-100 hover:text-gray-950'
                               }`}
                             >
                               {f.label}
@@ -828,12 +857,12 @@ export default function InventoryManagement() {
                         render: (item) => (
                           <div className="flex items-center gap-1">
                             <button onClick={() => setGraphItem(item)}
-                              className="p-1.5 rounded-lg text-gray-400 hover:text-brand-orange hover:bg-slate-700 transition"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-brand-orange hover:bg-gray-100 transition"
                               title="View Stock Movements & Graph">
                               <LineChartIcon size={13} />
                             </button>
                             <button onClick={() => openEdit(item)}
-                              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-slate-700 transition"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition"
                               title="Edit Item Details">
                               <Edit2 size={13} />
                             </button>
@@ -849,52 +878,59 @@ export default function InventoryManagement() {
                       <p className="text-sm text-gray-400">No inventory items found</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {filtered.map((item) => {
-                        const status = getStockStatus(item.quantity, item.minThreshold);
-                        return (
-                          <div key={item._id} className="bg-white border border-gray-200/50 rounded-xl p-3.5 flex flex-col justify-between hover:border-gray-300 transition shadow-lg">
-                            <div>
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <h4 className="text-gray-900 font-bold text-sm truncate">{item.itemName}</h4>
-                                <Badge label={status.label} variant={status.variant} className="text-[10px] px-1.5 py-0.5" />
-                              </div>
-                              <div className="grid grid-cols-2 gap-2 mt-3 bg-gray-50 rounded-lg p-2.5 text-xs border border-slate-800/60">
-                                <div>
-                                  <p className="text-[10px] text-gray-400">Quantity</p>
-                                  <p className="font-semibold text-slate-300">{item.quantity} {item.unit}</p>
+                    <div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {filtered.slice(0, visibleCount).map((item) => {
+                          const status = getStockStatus(item.quantity, item.minThreshold);
+                          return (
+                            <div key={item._id} className="bg-white border border-gray-200 rounded-xl p-3.5 flex flex-col justify-between hover:border-gray-300 transition shadow-sm">
+                              <div>
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                  <h4 className="text-gray-900 font-bold text-sm truncate">{item.itemName}</h4>
+                                  <Badge label={status.label} variant={status.variant} className="text-[10px] px-1.5 py-0.5" />
                                 </div>
-                                <div>
-                                  <p className="text-[10px] text-gray-400">Min Threshold</p>
-                                  <p className="font-semibold text-slate-300">{item.minThreshold} {item.unit}</p>
+                                <div className="grid grid-cols-2 gap-2 mt-3 bg-gray-50 rounded-lg p-2.5 text-xs border border-gray-150">
+                                  <div>
+                                    <p className="text-[10px] text-gray-400">Quantity</p>
+                                    <p className="font-semibold text-gray-800">{item.quantity} {item.unit}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] text-gray-400">Min Threshold</p>
+                                    <p className="font-semibold text-gray-800">{item.minThreshold} {item.unit}</p>
+                                  </div>
+                                </div>
+                                <div className="mt-3">
+                                  <p className="text-[10px] text-gray-400 mb-1">Suppliers</p>
+                                  <SupplierPills suppliers={item.suppliers} />
                                 </div>
                               </div>
-                              <div className="mt-3">
-                                <p className="text-[10px] text-gray-400 mb-1">Suppliers</p>
-                                <SupplierPills suppliers={item.suppliers} />
-                              </div>
-                            </div>
 
-                            <div className="mt-4 pt-3 border-t border-slate-850/60 flex items-center justify-between">
-                              <span className="text-[10px] text-gray-400">
-                                Updated: {new Date(item.lastUpdated || item.updatedAt).toLocaleDateString()}
-                              </span>
-                              <div className="flex items-center gap-1">
-                                <button onClick={() => setGraphItem(item)}
-                                  className="p-1.5 rounded-lg bg-slate-800 text-gray-500 hover:text-brand-orange hover:bg-slate-700 transition"
-                                  title="View Stock Movements & Graph">
-                                  <LineChartIcon size={13} />
-                                </button>
-                                <button onClick={() => openEdit(item)}
-                                  className="p-1.5 rounded-lg bg-slate-800 text-gray-500 hover:text-white hover:bg-slate-700 transition"
-                                  title="Edit Item Details">
-                                  <Edit2 size={13} />
-                                </button>
+                              <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                                <span className="text-[10px] text-gray-400">
+                                  Updated: {new Date(item.lastUpdated || item.updatedAt).toLocaleDateString()}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <button onClick={() => setGraphItem(item)}
+                                    className="p-1.5 rounded-lg bg-gray-50 text-gray-400 hover:text-brand-orange hover:bg-gray-100 border border-gray-200 transition"
+                                    title="View Stock Movements & Graph">
+                                    <LineChartIcon size={13} />
+                                  </button>
+                                  <button onClick={() => openEdit(item)}
+                                    className="p-1.5 rounded-lg bg-gray-50 text-gray-400 hover:text-gray-900 hover:bg-gray-100 border border-gray-200 transition"
+                                    title="Edit Item Details">
+                                    <Edit2 size={13} />
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
+                      {filtered.length > visibleCount && (
+                        <div ref={infiniteScrollTriggerRef} className="h-10 flex items-center justify-center my-4">
+                          <span className="text-sm text-gray-500">Loading more items...</span>
+                        </div>
+                      )}
                     </div>
                   )
                 )}
@@ -920,7 +956,7 @@ export default function InventoryManagement() {
                   className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg pl-10 pr-8 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-500"
                 />
                 {sessionSearch && (
-                  <button onClick={() => setSessionSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-slate-350">
+                  <button onClick={() => setSessionSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900">
                     <X size={14} />
                   </button>
                 )}
@@ -936,13 +972,13 @@ export default function InventoryManagement() {
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
                       sessionStatus !== 'all'
                         ? 'bg-brand-orange/10 border-amber-500/30 text-brand-orange'
-                        : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-white'
+                        : 'bg-gray-50 border-gray-200 text-gray-655 hover:bg-gray-100 hover:text-gray-950'
                     }`}
                   >
                     <SlidersHorizontal size={14} />
                     <span>Filters</span>
                     {sessionStatus !== 'all' && (
-                      <span className="absolute -top-1.5 -right-1.5 bg-brand-orange text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
+                      <span className="absolute -top-1.5 -right-1.5 bg-brand-orange text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white">
                         1
                       </span>
                     )}
@@ -951,9 +987,9 @@ export default function InventoryManagement() {
                   {showSessionFilters && (
                     <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-2xl z-30 p-4 space-y-3">
                       <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-                        <span className="text-xs font-semibold text-slate-300">Session Status</span>
+                        <span className="text-xs font-semibold text-gray-700">Session Status</span>
                         {sessionStatus !== 'all' && (
-                          <button onClick={() => setSessionStatus('all')} className="text-[10px] text-amber-450 hover:underline">Clear</button>
+                          <button onClick={() => setSessionStatus('all')} className="text-[10px] text-brand-orange hover:underline">Clear</button>
                         )}
                       </div>
                       <div className="flex flex-col gap-1.5">
@@ -968,7 +1004,7 @@ export default function InventoryManagement() {
                             className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
                               sessionStatus === st.key
                                 ? 'bg-brand-orange/15 text-brand-orange font-semibold'
-                                : 'text-gray-500 hover:bg-slate-800 hover:text-white'
+                                : 'text-gray-650 hover:bg-gray-100 hover:text-gray-950'
                             }`}
                           >
                             {st.label}
@@ -1011,7 +1047,7 @@ export default function InventoryManagement() {
                     key: 'user', header: 'Staff Member',
                     sortField: 'staff',
                     render: (sess) => (
-                      <span className="text-xs text-slate-300 font-semibold">
+                      <span className="text-xs text-gray-900 font-semibold">
                         {sess.userId?.name || 'Staff'}
                       </span>
                     ),
@@ -1038,7 +1074,7 @@ export default function InventoryManagement() {
                     key: 'status', header: 'Status',
                     sortField: 'status',
                     render: (sess) => (
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${sess.status === 'active' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-slate-550/15 text-gray-500'}`}>
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${sess.status === 'active' ? 'bg-green-55 text-green-750 border border-green-200' : 'bg-gray-100 text-gray-500'}`}>
                         {sess.status}
                       </span>
                     ),
@@ -1055,7 +1091,7 @@ export default function InventoryManagement() {
                     key: 'actions', header: '',
                     render: (sess) => (
                       <button onClick={() => setActiveSessionDetails(sess)}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-slate-800 transition"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition"
                         title="View Session Details">
                         <Eye size={14} />
                       </button>
@@ -1066,10 +1102,10 @@ export default function InventoryManagement() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {sortedSessions.map((sess) => (
-                  <div key={sess._id} className="bg-white border border-gray-200 rounded-xl p-3.5 flex flex-col justify-between hover:border-gray-300 transition">
+                  <div key={sess._id} className="bg-white border border-gray-200 rounded-xl p-3.5 flex flex-col justify-between hover:border-gray-300 transition shadow-sm">
                     <div>
                       <div className="flex justify-between items-start gap-2 mb-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${sess.status === 'active' ? 'bg-green-500/10 text-green-400' : 'bg-slate-800 text-gray-500'}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${sess.status === 'active' ? 'bg-green-55 text-green-750 border border-green-200' : 'bg-gray-100 text-gray-500'}`}>
                           {sess.status}
                         </span>
                         <span className="text-[10px] text-gray-400 flex items-center gap-1">
@@ -1081,22 +1117,22 @@ export default function InventoryManagement() {
                         <User size={12} className="text-gray-400" />
                         {sess.userId?.name || 'Staff'}
                       </p>
-                      <div className="grid grid-cols-2 gap-2 mt-3 bg-gray-50 rounded-lg p-2 border border-slate-800">
+                      <div className="grid grid-cols-2 gap-2 mt-3 bg-gray-50 rounded-lg p-2 border border-gray-150">
                         <div>
                           <p className="text-[9px] uppercase text-gray-400 tracking-wide font-medium">Changes</p>
                           <p className="text-xs font-bold text-brand-orange">{sess.adjustmentCount}</p>
                         </div>
                         <div>
                           <p className="text-[9px] uppercase text-gray-400 tracking-wide font-medium">Total Qty</p>
-                          <p className="text-xs font-bold text-slate-350">{sess.totalQuantityChanged}</p>
+                          <p className="text-xs font-bold text-gray-900">{sess.totalQuantityChanged}</p>
                         </div>
                       </div>
                       {sess.notes && (
-                        <p className="text-xs text-gray-400 italic mt-2.5 border-t border-slate-800/40 pt-2 line-clamp-1">{sess.notes}</p>
+                        <p className="text-xs text-gray-400 italic mt-2.5 border-t border-gray-100 pt-2 line-clamp-1">{sess.notes}</p>
                       )}
                     </div>
                     <button onClick={() => setActiveSessionDetails(sess)}
-                      className="mt-3.5 w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1.5">
+                      className="mt-3.5 w-full bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 font-semibold py-1.5 rounded-lg text-xs transition flex items-center justify-center gap-1.5">
                       <Eye size={12} />
                       View Movements
                     </button>

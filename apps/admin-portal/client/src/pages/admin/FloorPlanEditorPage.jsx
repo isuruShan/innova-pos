@@ -979,7 +979,7 @@ export default function FloorPlanEditorPage() {
               x: gridX,
               y: gridY,
               text: textVal.trim(),
-              color: '#f8fafc',
+              color: '#334155',
               fontSize: 14,
             };
             setLocalPlan(prev => ({
@@ -1099,9 +1099,9 @@ export default function FloorPlanEditorPage() {
         <Line
           key={`v-${i}`}
           points={[i * cellSize, 0, i * cellSize, gridH * cellSize]}
-          stroke="#475569"
-          strokeWidth={0.5}
-          opacity={0.3}
+          stroke="#cbd5e1"
+          strokeWidth={1}
+          opacity={0.6}
         />
       );
     }
@@ -1110,9 +1110,9 @@ export default function FloorPlanEditorPage() {
         <Line
           key={`h-${j}`}
           points={[0, j * cellSize, gridW * cellSize, j * cellSize]}
-          stroke="#475569"
-          strokeWidth={0.5}
-          opacity={0.3}
+          stroke="#cbd5e1"
+          strokeWidth={1}
+          opacity={0.6}
         />
       );
     }
@@ -1140,37 +1140,37 @@ export default function FloorPlanEditorPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setSelectedShape(null)}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-2 rounded-lg transition-colors border ${
                   selectedShape === null
-                    ? 'bg-brand-orange text-white'
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    ? 'bg-brand-orange text-white border-brand-orange'
+                    : 'bg-white border-gray-200 text-gray-750 hover:bg-gray-50'
                 }`}
                 title="Select / Move mode"
               >
                 <Move size={16} />
               </button>
-              <div className="h-6 w-px bg-slate-700 mx-1" />
+              <div className="h-6 w-px bg-gray-200 mx-1" />
               <span className="text-xs text-gray-500">Add Table:</span>
               {SHAPES.map((shape) => (
                 <button
                   key={shape.id}
                   onClick={() => setSelectedShape(shape.id)}
-                  className={`p-2 rounded-lg transition-colors ${
+                  className={`p-2 rounded-lg transition-colors border ${
                     selectedShape === shape.id
-                      ? 'bg-brand-orange text-white'
-                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      ? 'bg-brand-orange text-white border-brand-orange'
+                      : 'bg-white border-gray-200 text-gray-750 hover:bg-gray-50'
                   }`}
                   title={shape.label}
                 >
                   <shape.icon size={16} />
                 </button>
               ))}
-              <div className="h-6 w-px bg-slate-700 mx-1" />
+              <div className="h-6 w-px bg-gray-200 mx-1" />
               <span className="text-xs text-gray-500 font-medium">Design:</span>
               <button
                 onClick={() => setSelectedShape('line')}
-                className={`p-2 rounded-lg transition-colors ${
-                  selectedShape === 'line' ? 'bg-brand-orange text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                className={`p-2 rounded-lg transition-colors border ${
+                  selectedShape === 'line' ? 'bg-brand-orange text-white border-brand-orange' : 'bg-white border-gray-200 text-gray-750 hover:bg-gray-50'
                 }`}
                 title="Draw Straight Line"
               >
@@ -1178,8 +1178,8 @@ export default function FloorPlanEditorPage() {
               </button>
               <button
                 onClick={() => setSelectedShape('text')}
-                className={`p-2 rounded-lg transition-colors ${
-                  selectedShape === 'text' ? 'bg-brand-orange text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                className={`p-2 rounded-lg transition-colors border ${
+                  selectedShape === 'text' ? 'bg-brand-orange text-white border-brand-orange' : 'bg-white border-gray-200 text-gray-750 hover:bg-gray-50'
                 }`}
                 title="Add Text Label"
               >
@@ -1187,8 +1187,8 @@ export default function FloorPlanEditorPage() {
               </button>
               <button
                 onClick={() => setSelectedShape('hall')}
-                className={`p-2 rounded-lg transition-colors ${
-                  selectedShape === 'hall' ? 'bg-brand-orange text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                className={`p-2 rounded-lg transition-colors border ${
+                  selectedShape === 'hall' ? 'bg-brand-orange text-white border-brand-orange' : 'bg-white border-gray-200 text-gray-750 hover:bg-gray-50'
                 }`}
                 title="Define Hall / Area"
               >
@@ -1196,12 +1196,12 @@ export default function FloorPlanEditorPage() {
               </button>
             </div>
 
-            <div className="h-6 w-px bg-slate-700" />
+            <div className="h-6 w-px bg-gray-200" />
 
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
-                className="p-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
+                className="p-2 rounded-lg bg-white border border-gray-200 text-gray-750 hover:bg-gray-50 transition shadow-sm"
                 title="Zoom out"
               >
                 <ZoomOut size={16} />
@@ -1211,19 +1211,19 @@ export default function FloorPlanEditorPage() {
               </span>
               <button
                 onClick={() => setZoom((z) => Math.min(1.5, z + 0.1))}
-                className="p-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600"
+                className="p-2 rounded-lg bg-white border border-gray-200 text-gray-750 hover:bg-gray-50 transition shadow-sm"
                 title="Zoom in"
               >
                 <ZoomIn size={16} />
               </button>
             </div>
 
-            <div className="h-6 w-px bg-slate-700" />
+            <div className="h-6 w-px bg-gray-200" />
 
             <button
               onClick={() => setShowGrid(!showGrid)}
-              className={`p-2 rounded-lg transition-colors ${
-                showGrid ? 'bg-brand-orange/30 text-brand-orange' : 'bg-slate-700 text-slate-300'
+              className={`p-2 rounded-lg transition-colors border ${
+                showGrid ? 'bg-brand-orange/10 border-brand-orange/30 text-brand-orange' : 'bg-white border-gray-200 text-gray-750 hover:bg-gray-50'
               }`}
               title="Toggle grid"
             >
@@ -1232,8 +1232,8 @@ export default function FloorPlanEditorPage() {
 
             <button
               onClick={() => setShowCapacity(!showCapacity)}
-              className={`p-2 rounded-lg transition-colors ${
-                showCapacity ? 'bg-brand-orange/30 text-brand-orange' : 'bg-slate-700 text-slate-300'
+              className={`p-2 rounded-lg transition-colors border ${
+                showCapacity ? 'bg-brand-orange/10 border-brand-orange/30 text-brand-orange' : 'bg-white border-gray-200 text-gray-750 hover:bg-gray-50'
               }`}
               title="Show capacity & chairs"
             >
@@ -1244,7 +1244,7 @@ export default function FloorPlanEditorPage() {
 
             <button
               onClick={() => setShowTableList(!showTableList)}
-              className="px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 text-sm flex items-center gap-2 transition"
+              className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-gray-750 hover:bg-gray-50 text-sm flex items-center gap-2 transition shadow-sm"
               title="View all tables"
             >
               <List size={14} />
@@ -1253,7 +1253,7 @@ export default function FloorPlanEditorPage() {
 
             <Link
               to="/floor-plan"
-              className="px-4 py-2 rounded-lg bg-slate-700 text-slate-350 hover:bg-slate-600 font-semibold text-sm flex items-center gap-2 transition border border-gray-300"
+              className="px-4 py-2 rounded-lg bg-white text-gray-750 hover:bg-gray-50 font-semibold text-sm flex items-center gap-2 transition border border-gray-205 shadow-sm"
             >
               Exit Editor
             </Link>
@@ -1302,7 +1302,7 @@ export default function FloorPlanEditorPage() {
                     y={0}
                     width={(localPlan?.gridWidth || plan.gridWidth || 20) * 50}
                     height={(localPlan?.gridHeight || plan.gridHeight || 15) * 50}
-                    fill="#0f172a"
+                    fill="#ffffff"
                   />
 
                   {/* Dynamic grid lines */}
@@ -1417,7 +1417,7 @@ export default function FloorPlanEditorPage() {
                         text={t.text}
                         x={t.x * 50}
                         y={t.y * 50}
-                        fill={isTextSelected ? '#38bdf8' : (t.color || '#f8fafc')}
+                        fill={isTextSelected ? '#38bdf8' : (t.color === '#f8fafc' || !t.color || t.color === '#ffffff' ? '#334155' : t.color)}
                         fontSize={t.fontSize || 12}
                         fontStyle="bold"
                         offsetX={50}
@@ -2066,7 +2066,7 @@ export default function FloorPlanEditorPage() {
             </h3>
             <button 
               onClick={() => setShowTableList(false)} 
-              className="text-gray-400 hover:text-slate-300 transition p-1 rounded-lg hover:bg-slate-700"
+              className="text-gray-400 hover:text-gray-650 transition p-1 rounded-lg hover:bg-gray-100"
             >
               <X size={20} />
             </button>
@@ -2075,7 +2075,7 @@ export default function FloorPlanEditorPage() {
             {tables.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-400 text-sm">No tables created yet.</p>
-                <p className="text-slate-600 text-xs mt-1">Add tables from the Café Tables page.</p>
+                <p className="text-slate-600 text-xs mt-1">Add tables from the Reservations page.</p>
               </div>
             ) : (
               tables.map((table) => {

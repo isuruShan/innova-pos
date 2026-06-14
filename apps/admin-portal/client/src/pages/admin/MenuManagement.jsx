@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Link2,
@@ -104,6 +104,35 @@ export default function MenuManagement() {
     setActiveCategory('All');
     setMenuSearch('');
   }
+
+  // Infinite Scroll States & Logic
+  const [visibleCount, setVisibleCount] = useState(20);
+  const infiniteScrollTriggerRef = useRef(null);
+
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [activeCategory, menuSearch, sortCriteria]);
+
+  useEffect(() => {
+    if (viewMode !== 'grid') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + 20);
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    const currentTrigger = infiniteScrollTriggerRef.current;
+    if (currentTrigger) {
+      observer.observe(currentTrigger);
+    }
+    return () => {
+      if (currentTrigger) {
+        observer.unobserve(currentTrigger);
+      }
+    };
+  }, [viewMode, displayed.length]);
 
 
   const sort = useMemo(() => {
@@ -640,13 +669,13 @@ export default function MenuManagement() {
                   value={menuSearch}
                   onChange={(e) => setMenuSearch(e.target.value)}
                   placeholder="Search menu items…"
-                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg pl-10 pr-8 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-555"
+                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg pl-10 pr-8 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-450"
                 />
                 {menuSearch && (
                   <button
                     type="button"
                     onClick={() => setMenuSearch('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-slate-350"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
                   >
                     <X size={14} />
                   </button>
@@ -658,7 +687,7 @@ export default function MenuManagement() {
                   <select
                     value={sortCriteria}
                     onChange={(e) => setSortCriteria(e.target.value)}
-                    className="bg-gray-50 border border-gray-200 text-slate-350 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                    className="bg-gray-50 border border-gray-200 text-gray-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
                   >
                     <option value="custom">Drag Order / Default</option>
                     <option value="name-asc">Name (A-Z)</option>
@@ -674,14 +703,14 @@ export default function MenuManagement() {
                   <button
                     type="button"
                     onClick={() => setViewMode('table')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'table' ? 'bg-brand-orange text-white' : 'text-gray-500 hover:text-white'}`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'table' ? 'bg-brand-orange text-white' : 'text-gray-650 hover:bg-gray-100 hover:text-gray-900'}`}
                   >
                     <List size={14} /> Table
                   </button>
                   <button
                     type="button"
                     onClick={() => setViewMode('grid')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'grid' ? 'bg-brand-orange text-white' : 'text-gray-500 hover:text-white'}`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'grid' ? 'bg-brand-orange text-white' : 'text-gray-650 hover:bg-gray-100 hover:text-gray-900'}`}
                   >
                     <LayoutGrid size={14} /> Grid
                   </button>
@@ -694,10 +723,10 @@ export default function MenuManagement() {
               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                 {filterTabs.map((cat) => (
                   <button key={cat} type="button" onClick={() => setActiveCategory(cat)}
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition border ${
                       activeCategory === cat
-                        ? 'bg-brand-orange text-white shadow-lg shadow-amber-500/20'
-                        : 'text-slate-450 hover:text-gray-900 bg-white hover:bg-slate-800 border border-gray-200'
+                        ? 'bg-brand-orange text-white shadow-lg border-brand-orange shadow-amber-500/20'
+                        : 'text-gray-650 hover:text-gray-950 bg-white hover:bg-gray-105 border-gray-200'
                     }`}>
                     {cat}
                   </button>
@@ -733,79 +762,86 @@ export default function MenuManagement() {
                 menuDragOver={menuDragOver}
               />
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {displayed.length === 0 && (
-                  <div className="col-span-full text-center text-slate-600 py-16">No items match your filters</div>
-                )}
-                {displayed.map((item) => {
-                  const handleDrag = canDragProducts ? menuDragHandle(item._id) : {};
-                  const dropTarget = canDragProducts ? menuDropTarget(item._id) : {};
-                  return (
-                    <div key={item._id}
-                      {...dropTarget}
-                      className={`bg-white rounded-2xl overflow-hidden border transition group ${
-                        item.isCombo ? 'border-amber-500/30 hover:border-amber-500/60' : 'border-gray-200/50 hover:border-gray-300'
-                      } ${menuDragOver(item._id) ? 'ring-2 ring-amber-500/60' : ''}`}>
-                      <div className="relative h-32 bg-slate-800 overflow-hidden">
-                        {canDragProducts && (
-                          <div
-                            {...handleDrag}
-                            className="absolute top-2 left-2 z-10 w-7 h-7 bg-white/90 rounded-lg flex items-center justify-center text-gray-500 cursor-grab active:cursor-grabbing"
-                          >
-                            <GripVertical size={12} />
-                          </div>
-                        )}
-                        {(item.images?.[0]?.url || item.image) ? (
-                          <img src={item.images?.[0]?.url || item.image} alt={item.name} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80'; }} />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-3xl">
-                            {item.isCombo ? '🍱' : '🍔'}
-                          </div>
-                        )}
-                        {item.isCombo && (
-                          <div className={`absolute top-2 ${canDragProducts ? 'left-11' : 'left-2'}`}>
-                            <span className="flex items-center gap-1 bg-brand-orange/90 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                              <Link2 size={10} /> Combo
-                            </span>
-                          </div>
-                        )}
-                        <div className="absolute top-2 right-2 transition flex gap-1">
-                          <button type="button" onClick={() => openEdit(item)}
-                            className="w-7 h-7 bg-white rounded-lg flex items-center justify-center text-slate-300 hover:text-gray-900">
-                            <Edit2 size={12} />
-                          </button>
-                          <button type="button" onClick={() => setDeleteTarget(item)}
-                            className="w-7 h-7 bg-white rounded-lg flex items-center justify-center text-slate-300 hover:text-red-400">
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <p className="font-semibold text-gray-900 text-sm truncate" title={item.name}>{item.name}</p>
-                        <p className="text-xs text-slate-550 mb-1">{item.category}</p>
-                        {item.isCombo && <ComboItemsPreview comboItems={item.comboItems} />}
-                        <div className="flex items-center justify-between mt-1">
-                          {(() => {
-                            const { price, prefix, hasVariants } = getItemDisplayPrice(item);
-                            return (
-                              <span className="text-brand-orange font-bold">
-                                {prefix && <span className="text-gray-400 font-normal text-[10px]">{prefix}</span>}
-                                {formatCurrency(price)}
-                                {hasVariants && <span className="text-sky-400 text-[10px] ml-1">({item.variants?.length || 0} var.)</span>}
+              <div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {displayed.length === 0 && (
+                    <div className="col-span-full text-center text-slate-655 py-16">No items match your filters</div>
+                  )}
+                  {displayed.slice(0, visibleCount).map((item) => {
+                    const handleDrag = canDragProducts ? menuDragHandle(item._id) : {};
+                    const dropTarget = canDragProducts ? menuDropTarget(item._id) : {};
+                    return (
+                      <div key={item._id}
+                        {...dropTarget}
+                        className={`bg-white rounded-2xl overflow-hidden border transition group ${
+                          item.isCombo ? 'border-amber-500/30 hover:border-amber-500/60' : 'border-gray-200/50 hover:border-gray-300'
+                        } ${menuDragOver(item._id) ? 'ring-2 ring-amber-500/60' : ''}`}>
+                        <div className="relative h-32 bg-gray-100 overflow-hidden border-b border-gray-100">
+                          {canDragProducts && (
+                            <div
+                              {...handleDrag}
+                              className="absolute top-2 left-2 z-10 w-7 h-7 bg-white/90 rounded-lg flex items-center justify-center text-gray-500 cursor-grab active:cursor-grabbing"
+                            >
+                              <GripVertical size={12} />
+                            </div>
+                          )}
+                          {(item.images?.[0]?.url || item.image) ? (
+                            <img src={item.images?.[0]?.url || item.image} alt={item.name} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80'; }} />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-3xl">
+                              {item.isCombo ? '🍱' : '🍔'}
+                            </div>
+                          )}
+                          {item.isCombo && (
+                            <div className={`absolute top-2 ${canDragProducts ? 'left-11' : 'left-2'}`}>
+                              <span className="flex items-center gap-1 bg-brand-orange/90 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                                <Link2 size={10} /> Combo
                               </span>
-                            );
-                          })()}
-                          <button type="button"
-                            onClick={() => toggleMutation.mutate({ id: item._id, available: !item.available })}
-                            className={`flex items-center gap-1 text-xs font-medium transition ${item.available ? 'text-green-400' : 'text-gray-400'}`}>
-                            {item.available ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
-                            {item.available ? 'Active' : 'Hidden'}
-                          </button>
+                            </div>
+                          )}
+                          <div className="absolute top-2 right-2 transition flex gap-1 opacity-90 group-hover:opacity-100">
+                            <button type="button" onClick={() => openEdit(item)}
+                              className="w-7 h-7 bg-white/90 hover:bg-white rounded-lg flex items-center justify-center text-gray-500 hover:text-gray-900 border border-gray-200 shadow-sm transition">
+                              <Edit2 size={12} />
+                            </button>
+                            <button type="button" onClick={() => setDeleteTarget(item)}
+                              className="w-7 h-7 bg-white/90 hover:bg-white rounded-lg flex items-center justify-center text-gray-500 hover:text-red-600 border border-gray-200 shadow-sm transition">
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="p-3">
+                          <p className="font-semibold text-gray-900 text-sm truncate" title={item.name}>{item.name}</p>
+                          <p className="text-xs text-gray-500 mb-1">{item.category}</p>
+                          {item.isCombo && <ComboItemsPreview comboItems={item.comboItems} />}
+                          <div className="flex items-center justify-between mt-1">
+                            {(() => {
+                              const { price, prefix, hasVariants } = getItemDisplayPrice(item);
+                              return (
+                                <span className="text-brand-orange font-bold">
+                                  {prefix && <span className="text-gray-400 font-normal text-[10px]">{prefix}</span>}
+                                  {formatCurrency(price)}
+                                  {hasVariants && <span className="text-sky-400 text-[10px] ml-1">({item.variants?.length || 0} var.)</span>}
+                                </span>
+                              );
+                            })()}
+                            <button type="button"
+                              onClick={() => toggleMutation.mutate({ id: item._id, available: !item.available })}
+                              className={`flex items-center gap-1 text-xs font-medium transition ${item.available ? 'text-green-400' : 'text-gray-400'}`}>
+                              {item.available ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                              {item.available ? 'Active' : 'Hidden'}
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+                {displayed.length > visibleCount && (
+                  <div ref={infiniteScrollTriggerRef} className="h-10 flex items-center justify-center my-4">
+                    <span className="text-sm text-gray-500">Loading more items...</span>
+                  </div>
+                )}
               </div>
             )}
           </>
