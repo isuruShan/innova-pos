@@ -444,10 +444,10 @@ export default function WastageManagement() {
                             : (item.inventoryItemId?.itemName || 'Unknown Item');
                           const unit = item.itemType === 'menu' ? 'unit' : (item.inventoryItemId?.unit || '');
                           return (
-                            <div key={idx} className="text-slate-355">
+                            <div key={idx} className="text-gray-700">
                               {item.itemType === 'menu' ? <UtensilsCrossed size={11} className="inline mr-1 text-amber-500" /> : <Package size={11} className="inline mr-1 text-gray-400" />}
                               {name}{' '}
-                              <span className="text-rose-455 font-bold">({item.quantity} {unit})</span>
+                              <span className="text-rose-600 font-bold">({item.quantity} {unit})</span>
                             </div>
                           );
                         })}
@@ -460,14 +460,14 @@ export default function WastageManagement() {
                   {
                     key: 'notes', header: 'Notes',
                     render: (r) => (
-                      <span className="text-slate-455 italic truncate max-w-xs block" title={r.notes}>
+                      <span className="text-gray-600 italic truncate max-w-xs block" title={r.notes}>
                         {r.notes || '—'}
                       </span>
                     ),
                   },
                   {
                     key: 'createdBy', header: 'Logged By',
-                    render: (r) => <span className="text-slate-305">{r.createdBy?.name || 'Staff'}</span>,
+                    render: (r) => <span className="text-gray-600">{r.createdBy?.name || 'Staff'}</span>,
                   },
                   {
                     key: 'actions', header: '',
@@ -475,7 +475,7 @@ export default function WastageManagement() {
                       <div className="flex justify-end">
                         <button
                           onClick={() => setActiveReport(r)}
-                          className="p-1.5 rounded-lg bg-slate-800 text-slate-450 hover:text-white transition"
+                          className="p-1.5 rounded-lg bg-gray-50 border border-gray-250 text-gray-700 hover:bg-gray-100 transition"
                           title="View Details"
                         >
                           <Eye size={13} />
@@ -504,14 +504,14 @@ export default function WastageManagement() {
                         </div>
                         <button
                           onClick={() => setActiveReport(report)}
-                          className="p-1.5 rounded-lg bg-slate-800 text-gray-500 hover:text-white transition"
+                          className="p-1.5 rounded-lg bg-gray-50 border border-gray-250 text-gray-700 hover:bg-gray-100 transition"
                           title="View Details"
                         >
                           <Eye size={14} />
                         </button>
                       </div>
 
-                      <div className="space-y-1.5 border-t border-slate-800/40 pt-3">
+                      <div className="space-y-1.5 border-t border-gray-200 pt-3">
                         <p className="text-gray-400 text-xs font-medium">Wasted Items ({report.items.length})</p>
                         <div className="space-y-1">
                           {report.items.slice(0, 3).map((item, idx) => {
@@ -520,29 +520,29 @@ export default function WastageManagement() {
                               : (item.inventoryItemId?.itemName || 'Unknown Item');
                             const unit = item.itemType === 'menu' ? 'unit' : (item.inventoryItemId?.unit || '');
                             return (
-                              <div key={idx} className="flex justify-between text-xs text-slate-300 bg-slate-800/20 px-2 py-1 rounded">
+                              <div key={idx} className="flex justify-between text-xs text-gray-700 bg-gray-50 border border-gray-150 px-2 py-1 rounded">
                                 <span className="flex items-center gap-1 truncate">
                                   {item.itemType === 'menu' ? <UtensilsCrossed size={11} className="text-amber-500 shrink-0" /> : <Package size={11} className="text-gray-400 shrink-0" />}
                                   <span className="truncate">{name}</span>
                                 </span>
-                                <span className="font-semibold text-rose-400 shrink-0">{item.quantity} {unit}</span>
+                                <span className="font-semibold text-rose-600 shrink-0">{item.quantity} {unit}</span>
                               </div>
                             );
                           })}
                           {report.items.length > 3 && (
-                            <p className="text-slate-600 text-[10px] italic">+{report.items.length - 3} more items...</p>
+                            <p className="text-gray-500 text-[10px] italic">+{report.items.length - 3} more items...</p>
                           )}
                         </div>
                       </div>
                     </div>
 
                     {report.notes && (
-                      <p className="text-xs text-gray-400 italic mt-3 bg-slate-800/30 px-3 py-1.5 rounded line-clamp-2">
+                      <p className="text-xs text-gray-600 italic mt-3 bg-gray-50 border border-gray-150 px-3 py-1.5 rounded line-clamp-2">
                         {report.notes}
                       </p>
                     )}
 
-                    <div className="text-[10px] text-slate-600 flex justify-between items-center mt-3 pt-2 border-t border-slate-800/20">
+                    <div className="text-[10px] text-gray-500 flex justify-between items-center mt-3 pt-2 border-t border-gray-200">
                       <span>Logged by: {report.createdBy?.name || 'Staff'}</span>
                       <span>{new Date(report.createdAt).toLocaleTimeString()}</span>
                     </div>
@@ -558,11 +558,11 @@ export default function WastageManagement() {
       <CenteredModal open={slideOpen} onClose={closeWastageForm} title="Log Wastage" maxWidth="max-w-3xl">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Wastage Type</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Wastage Type</label>
             <select
               value={wastageType}
               onChange={e => setWastageType(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="spill_expiry_damage">Spillage / Expiry / Damage</option>
               <option value="end_of_day">End of Day Waste</option>
@@ -570,21 +570,21 @@ export default function WastageManagement() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Date</label>
             <PosDateField
               value={reportDate}
               onChange={setReportDate}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full bg-white border border-gray-200 text-gray-900 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-2">
-              <label className="text-sm font-medium text-slate-300">Wasted Items</label>
+              <label className="text-sm font-medium text-gray-700">Wasted Items</label>
               <button
                 type="button"
                 onClick={handleAddItemRow}
-                className="text-xs text-amber-500 hover:text-brand-orange font-semibold flex items-center gap-1"
+                className="text-xs text-amber-600 hover:text-brand-orange font-semibold flex items-center gap-1"
               >
                 <Plus size={12} /> Add Item
               </button>
@@ -593,12 +593,12 @@ export default function WastageManagement() {
             {/* Set a larger max-height and bottom padding pb-24 so absolute dropdown searches have plenty of space to overlay without being cut off */}
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 pb-24 relative overflow-visible">
               {items.map((item, idx) => (
-                <div key={idx} className="bg-slate-800/40 p-4 rounded-xl border border-slate-800 relative overflow-visible">
+                <div key={idx} className="bg-gray-50 p-4 rounded-xl border border-gray-200 relative overflow-visible">
                   {items.length > 1 && (
                     <button
                       type="button"
                       onClick={() => handleRemoveItemRow(idx)}
-                      className="absolute -top-2 -right-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 p-1.5 border border-red-500/25 rounded-full transition shadow-lg z-10"
+                      className="absolute -top-2 -right-2 bg-red-50 text-red-500 p-1.5 border border-red-200 rounded-full transition shadow-sm z-10 hover:bg-red-100"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -611,7 +611,7 @@ export default function WastageManagement() {
                       <select
                         value={item.itemType || 'inventory'}
                         onChange={e => handleItemChange(idx, 'itemType', e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-lg px-2.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        className="w-full bg-white border border-gray-200 text-gray-900 text-xs rounded-lg px-2.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
                       >
                         <option value="inventory">Inventory Item</option>
                         <option value="menu">Menu Item</option>
@@ -648,7 +648,7 @@ export default function WastageManagement() {
                         step="any"
                         value={item.quantity}
                         onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-lg px-2.5 py-2 focus:outline-none"
+                        className="w-full bg-white border border-gray-200 text-gray-900 text-xs rounded-lg px-2.5 py-2 focus:outline-none"
                       />
                     </div>
 
@@ -657,7 +657,7 @@ export default function WastageManagement() {
                       <select
                         value={item.reason}
                         onChange={e => handleItemChange(idx, 'reason', e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-lg px-2 py-2 focus:outline-none"
+                        className="w-full bg-white border border-gray-200 text-gray-900 text-xs rounded-lg px-2 py-2 focus:outline-none"
                       >
                         <option value="spillage">Spillage</option>
                         <option value="expiry">Expiry</option>
@@ -672,13 +672,13 @@ export default function WastageManagement() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Notes</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
             <textarea
               rows={3}
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="E.g., Batch of buns expired; container spillage details..."
-              className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600 resize-none"
+              className="w-full bg-white border border-gray-200 text-gray-900 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400 resize-none"
             />
           </div>
 
@@ -686,7 +686,7 @@ export default function WastageManagement() {
             <button
               type="button"
               onClick={closeWastageForm}
-              className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2.5 rounded-xl transition text-sm"
+              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl transition text-sm"
             >
               Cancel
             </button>
@@ -705,7 +705,7 @@ export default function WastageManagement() {
       <CenteredModal open={!!activeReport} onClose={() => setActiveReport(null)} title="Wastage Details" maxWidth="max-w-2xl">
         {activeReport && (
           <div className="space-y-4">
-            <div className="bg-slate-800/40 p-4 rounded-xl space-y-2">
+            <div className="bg-gray-50 p-4 rounded-xl space-y-2 border border-gray-100">
               <p className="text-xs text-gray-400">Report Type</p>
               <p className="text-sm font-bold text-gray-900">{TYPE_LABELS[activeReport.type]}</p>
 
@@ -725,17 +725,17 @@ export default function WastageManagement() {
                     : (item.inventoryItemId?.itemName || 'Unknown Item');
                   const unit = item.itemType === 'menu' ? 'unit' : (item.inventoryItemId?.unit || '');
                   return (
-                    <div key={idx} className="bg-gray-50 border border-gray-200 p-3 rounded-xl flex items-center justify-between text-sm">
+                    <div key={idx} className="bg-white border border-gray-200 p-3 rounded-xl flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
                         {item.itemType === 'menu' ? <UtensilsCrossed size={14} className="text-amber-500" /> : <Package size={14} className="text-gray-400" />}
                         <div>
-                          <p className="font-semibold text-slate-200">{name}</p>
-                          <span className="text-[10px] text-gray-400 bg-slate-800 px-1.5 py-0.5 rounded capitalize">
+                          <p className="font-semibold text-gray-800">{name}</p>
+                          <span className="text-[10px] text-gray-700 bg-gray-150 px-1.5 py-0.5 rounded capitalize">
                             Reason: {REASON_LABELS[item.reason] || item.reason}
                           </span>
                         </div>
                       </div>
-                      <span className="text-rose-400 font-bold tabular-nums">
+                      <span className="text-rose-600 font-bold tabular-nums">
                         {item.quantity} {unit}
                       </span>
                     </div>
@@ -747,15 +747,15 @@ export default function WastageManagement() {
             {activeReport.notes && (
               <div>
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Notes</h4>
-                <div className="bg-slate-800/20 text-xs text-slate-300 p-3 rounded-xl border border-slate-800 italic">
+                <div className="bg-gray-50 text-xs text-gray-700 p-3 rounded-xl border border-gray-200 italic">
                   {activeReport.notes}
                 </div>
               </div>
             )}
 
-            <div className="text-xs text-gray-400 space-y-1 bg-slate-800/10 p-3 rounded-xl border border-slate-800/40">
-              <p>Logged by: <span className="text-gray-500 font-medium">{activeReport.createdBy?.name || 'Staff'}</span></p>
-              <p>Created at: <span className="text-gray-500 font-medium">{new Date(activeReport.createdAt).toLocaleString()}</span></p>
+            <div className="text-xs text-gray-500 space-y-1 bg-gray-50 p-3 rounded-xl border border-gray-200">
+              <p>Logged by: <span className="text-gray-600 font-medium">{activeReport.createdBy?.name || 'Staff'}</span></p>
+              <p>Created at: <span className="text-gray-600 font-medium">{new Date(activeReport.createdAt).toLocaleString()}</span></p>
             </div>
 
             <button

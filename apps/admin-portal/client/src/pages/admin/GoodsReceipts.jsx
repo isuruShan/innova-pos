@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, FileCheck, Package, Edit2, Trash2, Calendar,
@@ -38,6 +38,18 @@ const GRN_SORT_OPTIONS = [
 export default function GoodsReceipts() {
   const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const [activeTab, setActiveTab] = useState('receipts');
+  const filterContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (!showFilters) return;
+    const handleClickOutside = (e) => {
+      if (filterContainerRef.current && !filterContainerRef.current.contains(e.target)) {
+        setShowFilters(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFilters]);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [isReadOnly, setIsReadOnly] = useState(false);
@@ -309,7 +321,7 @@ export default function GoodsReceipts() {
               className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap transition border-b-2 ${
                 activeTab === tab.key
                   ? 'border-amber-500 text-brand-orange'
-                  : 'border-transparent text-gray-500 hover:text-slate-300'
+                  : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'
               }`}
             >
               {tab.label} {tab.count > 0 && `(${tab.count})`}
@@ -352,13 +364,13 @@ export default function GoodsReceipts() {
             {/* View toggle */}
             <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
 
-            <div className="relative">
+            <div className="relative" ref={filterContainerRef}>
               <button
                 onClick={() => setShowFilters(f => !f)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
                   (fromDate || toDate || statusFilter.length > 0)
                     ? 'bg-brand-orange/15 border-amber-500/30 text-brand-orange font-semibold'
-                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-white'
+                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                 }`}
               >
                 <SlidersHorizontal size={14} />
@@ -401,7 +413,7 @@ export default function GoodsReceipts() {
                             className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
                               active
                                 ? 'bg-brand-orange/15 text-brand-orange font-semibold border-l-2 border-amber-500'
-                                : 'text-gray-500 hover:bg-slate-800 hover:text-white'
+                                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                             }`}
                           >
                             <span className="capitalize">{status}</span>
@@ -412,7 +424,7 @@ export default function GoodsReceipts() {
                   </div>
 
                   {/* Date Range */}
-                  <div className="pt-2 border-t border-slate-800/60">
+                  <div className="pt-2 border-t border-gray-200">
                     <p className="text-[11px] font-semibold text-slate-455 uppercase tracking-wider mb-2">Date Range</p>
                     <div className="space-y-2">
                       <div>
@@ -453,7 +465,7 @@ export default function GoodsReceipts() {
             <button
               type="button"
               onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-              className="p-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-white transition"
+              className="p-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition"
               title={order === 'asc' ? 'Ascending' : 'Descending'}
             >
               {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
@@ -547,11 +559,11 @@ export default function GoodsReceipts() {
                   {
                     key: 'supplier', header: 'Supplier',
                     mobileSecondary: true,
-                    render: (r) => <span className="text-slate-300 font-medium">{r.supplierId?.name || 'Unknown Supplier'}</span>,
+                    render: (r) => <span className="text-gray-700 font-medium">{r.supplierId?.name || 'Unknown Supplier'}</span>,
                   },
                   {
                     key: 'po', header: 'PO Ref',
-                    render: (r) => <span className="text-slate-450 font-medium">{r.purchaseOrderId?.orderNumber || '—'}</span>,
+                    render: (r) => <span className="text-gray-500 font-medium">{r.purchaseOrderId?.orderNumber || '—'}</span>,
                   },
                   {
                     key: 'date', header: 'Date',
@@ -581,7 +593,7 @@ export default function GoodsReceipts() {
                         <button
                           type="button"
                           onClick={() => openView(r)}
-                          className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-gray-500 hover:text-white transition"
+                          className="p-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-205 rounded-lg text-gray-700 transition"
                           title="View Details"
                         >
                           <Eye size={13} />
@@ -599,7 +611,7 @@ export default function GoodsReceipts() {
                           <button
                             type="button"
                             onClick={() => openEdit(r)}
-                            className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-gray-500 hover:text-white transition"
+                            className="p-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-205 rounded-lg text-gray-700 transition"
                           >
                             <Edit2 size={13} />
                           </button>
@@ -608,7 +620,7 @@ export default function GoodsReceipts() {
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(r)}
-                            className="p-1.5 bg-slate-800 hover:bg-red-500/10 rounded-lg text-gray-500 hover:text-red-400 transition"
+                            className="p-1.5 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg text-red-500 transition"
                           >
                             <Trash2 size={13} />
                           </button>
@@ -659,7 +671,7 @@ export default function GoodsReceipts() {
                           <button
                             type="button"
                             onClick={() => openView(receipt)}
-                            className="p-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-gray-500 hover:text-white transition"
+                            className="p-1 bg-gray-50 hover:bg-gray-100 border border-gray-205 rounded-lg text-gray-700 transition"
                             title="View Details"
                           >
                             <Eye size={12} />
@@ -677,7 +689,7 @@ export default function GoodsReceipts() {
                             <button
                               type="button"
                               onClick={() => openEdit(receipt)}
-                              className="p-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-gray-500 hover:text-white transition"
+                              className="p-1 bg-gray-50 hover:bg-gray-100 border border-gray-205 rounded-lg text-gray-700 transition"
                             >
                               <Edit2 size={12} />
                             </button>
@@ -686,7 +698,7 @@ export default function GoodsReceipts() {
                             <button
                               type="button"
                               onClick={() => setDeleteTarget(receipt)}
-                              className="p-1 bg-slate-800 hover:bg-red-500/10 rounded-lg text-slate-455 hover:text-red-400 transition"
+                              className="p-1 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg text-red-500 transition"
                             >
                               <Trash2 size={12} />
                             </button>

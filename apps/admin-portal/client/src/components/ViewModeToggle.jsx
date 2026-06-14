@@ -2,12 +2,12 @@ import { Grid3X3, Table2 } from 'lucide-react';
 
 export default function ViewModeToggle({ mode, setMode }) {
   return (
-    <div className="inline-flex items-center rounded-lg border border-slate-700 bg-slate-800 p-1">
+    <div className="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 p-1">
       <button
         type="button"
         onClick={() => setMode('grid')}
         className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition ${
-          mode === 'grid' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'
+          mode === 'grid' ? 'bg-amber-500 text-white shadow-md' : 'text-gray-600 hover:bg-gray-200/60 hover:text-gray-900'
         }`}
       >
         <Grid3X3 size={13} />
@@ -17,7 +17,7 @@ export default function ViewModeToggle({ mode, setMode }) {
         type="button"
         onClick={() => setMode('table')}
         className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition ${
-          mode === 'table' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'
+          mode === 'table' ? 'bg-amber-500 text-white shadow-md' : 'text-gray-600 hover:bg-gray-200/60 hover:text-gray-900'
         }`}
       >
         <Table2 size={13} />

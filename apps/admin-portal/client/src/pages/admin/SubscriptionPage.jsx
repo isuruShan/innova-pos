@@ -297,6 +297,7 @@ export default function SubscriptionPage() {
   };
 
   const tenant = data?.tenant;
+  const latestReceipt = data?.latestReceipt;
 
   useEffect(() => {
     if (tenant?.billingCycle) {
@@ -443,8 +444,6 @@ export default function SubscriptionPage() {
     }
     return r.requestedPlanId?.name || r.requestedPlanCode || 'Plan Subscription';
   };
-
-  const latestReceipt = data?.latestReceipt;
 
   const renderPaymentFormsContent = () => {
     if (submitted) {
