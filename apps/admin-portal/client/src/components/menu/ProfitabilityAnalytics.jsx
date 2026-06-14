@@ -157,8 +157,9 @@ export default function ProfitabilityAnalytics() {
   return (
     <div className="space-y-6">
       {/* Search & Costing Formula Selector Header */}
-      <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
-        <div className="relative flex-1 w-full">
+      <div className="flex flex-col gap-4 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
+        {/* Row 1: Search — always full width */}
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
           <input
             type="text"
@@ -169,7 +170,8 @@ export default function ProfitabilityAnalytics() {
           />
         </div>
 
-        <div className="flex items-center gap-4 w-full sm:w-auto shrink-0 justify-between sm:justify-start">
+        {/* Row 2: Formula + toggle — flex-wrap so they never overflow */}
+        <div className="flex flex-wrap items-center gap-3 justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500 whitespace-nowrap flex items-center gap-1">
               <Calculator size={13} /> Costing Formula:

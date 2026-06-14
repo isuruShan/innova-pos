@@ -294,11 +294,28 @@ router.get('/foodmarket', protect, authorize('manager', 'merchant_admin', 'super
     const partnerSummary = {};
 
     orders.forEach((o) => {
-      totalRevenue += o.totalAmount;
-      totalCommissions += o.commissionAmount || 0;
+      // Recalculate commission for historical orders that have no stored commissionAmount.
+      // This ensures backfilled accuracy using the partner's current commission settings.
+      const partner = o.foodmarketPartnerId;
+      let commissionAmount = o.commissionAmount || 0;
+      if ((!commissionAmount || commissionAmount === 0) && partner && partner.commissionType) {
+        const subtotal = o.subtotal || o.totalAmount || 0;
+        const type = partner.commissionType;
+        let calc = 0;
+        if (type === 'flat' || type === 'both') {
+          calc += Number(partner.commissionFlat) || 0;
+        }
+        if (type === 'percentage' || type === 'both') {
+          calc += subtotal * ((Number(partner.commissionPercentage) || 0) / 100);
+        }
+        commissionAmount = Math.round(calc * 100) / 100;
+      }
 
-      const pId = o.foodmarketPartnerId ? String(o.foodmarketPartnerId._id || o.foodmarketPartnerId) : 'unknown';
-      const pName = o.foodmarketPartnerId ? o.foodmarketPartnerId.name : 'Unknown Partner';
+      totalRevenue += o.totalAmount;
+      totalCommissions += commissionAmount;
+
+      const pId = partner ? String(partner._id || partner) : 'unknown';
+      const pName = partner ? partner.name : 'Unknown Partner';
 
       if (!partnerSummary[pId]) {
         partnerSummary[pId] = {
@@ -311,7 +328,9 @@ router.get('/foodmarket', protect, authorize('manager', 'merchant_admin', 'super
       }
       partnerSummary[pId].ordersCount += 1;
       partnerSummary[pId].revenue += o.totalAmount;
-      partnerSummary[pId].commission += o.commissionAmount || 0;
+      partnerSummary[pId].commission += commissionAmount;
+      // Attach recalculated commission back to the order object for the orders list
+      o._commissionAmount = commissionAmount;
     });
 
     res.json({
@@ -324,7 +343,8 @@ router.get('/foodmarket', protect, authorize('manager', 'merchant_admin', 'super
         orderNumber: o.orderNumber,
         createdAt: o.createdAt,
         totalAmount: o.totalAmount,
-        commissionAmount: o.commissionAmount || 0,
+        subtotal: o.subtotal,
+        commissionAmount: o._commissionAmount ?? o.commissionAmount ?? 0,
         partnerName: o.foodmarketPartnerId ? o.foodmarketPartnerId.name : 'Unknown Partner',
       })),
     });

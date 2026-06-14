@@ -662,43 +662,48 @@ export default function MenuManagement() {
         {activeMenuTab === 'items' ? (
           <>
             {/* Search + View Toggle */}
-            <div className="flex flex-col sm:flex-row items-center gap-3 mb-4 bg-white p-3 rounded-xl border border-gray-200">
-              {stores.length > 0 && (
-                <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto">
-                  <span className="text-xs text-gray-500 font-semibold">Store:</span>
-                  <select
-                    value={selectedStoreId || ''}
-                    onChange={(e) => selectStore(e.target.value)}
-                    className="bg-gray-50 border border-gray-300 text-gray-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer w-full sm:w-auto"
-                  >
-                    {stores.map((s) => (
-                      <option key={s._id} value={s._id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <div className="relative flex-1 w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                <input
-                  type="text"
-                  value={menuSearch}
-                  onChange={(e) => setMenuSearch(e.target.value)}
-                  placeholder="Search menu items…"
-                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg pl-10 pr-8 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-450"
-                />
-                {menuSearch && (
-                  <button
-                    type="button"
-                    onClick={() => setMenuSearch('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
-                  >
-                    <X size={14} />
-                  </button>
+            <div className="flex flex-col gap-3 mb-4 bg-white p-3 rounded-xl border border-gray-200">
+              {/* Row 1: Store picker + Search — full width */}
+              <div className="flex items-center gap-2">
+                {stores.length > 0 && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-xs text-gray-500 font-semibold hidden sm:block">Store:</span>
+                    <select
+                      value={selectedStoreId || ''}
+                      onChange={(e) => selectStore(e.target.value)}
+                      className="bg-gray-50 border border-gray-300 text-gray-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+                    >
+                      {stores.map((s) => (
+                        <option key={s._id} value={s._id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 )}
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                  <input
+                    type="text"
+                    value={menuSearch}
+                    onChange={(e) => setMenuSearch(e.target.value)}
+                    placeholder="Search menu items…"
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-lg pl-10 pr-8 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-450"
+                  />
+                  {menuSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setMenuSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto w-full sm:w-auto justify-end">
+
+              {/* Row 2: Sort + View toggle — wraps on mobile */}
+              <div className="flex flex-wrap items-center gap-2 justify-end">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-gray-400 font-semibold">Sort:</span>
                   <select
