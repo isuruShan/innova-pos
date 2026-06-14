@@ -1,11 +1,11 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Link2,
   ChevronDown, ChevronUp, Tag, GripVertical, Search, LayoutGrid, List,
   Download, Upload, Phone, X,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import CategoryManagerModal from '../../components/CategoryManagerModal';
@@ -84,7 +84,15 @@ export default function MenuManagement() {
   const { data: paidAddons } = useTenantPaidAddons();
   const whatsappAddonActive = paidAddons?.whatsapp === true;
 
-  const [activeMenuTab, setActiveMenuTab] = useState('items'); // 'items' | 'profitability'
+  const location = useLocation();
+  const activeMenuTab = location.pathname.endsWith('/profitability') ? 'profitability' : 'items';
+  const setActiveMenuTab = (tab) => navigate(`/manager/menu/${tab}`);
+
+  useEffect(() => {
+    if (location.pathname === '/manager/menu' || location.pathname === '/manager/menu/') {
+      navigate('/manager/menu/items', { replace: true });
+    }
+  }, [location.pathname, navigate]);
   const [activeCategory, setActiveCategory] = useState('All');
   const [formOpen, setFormOpen] = useState(false);
   const [catModalOpen, setCatModalOpen] = useState(false);

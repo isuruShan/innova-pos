@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Package, X, AlertTriangle, Truck, Search,
@@ -6,6 +6,7 @@ import {
   Eye, Trash2, BarChart2, TrendingDown, TrendingUp, Layers,
   Download, Upload
 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, BarChart, Bar, Cell, PieChart, Pie, Legend,
@@ -74,7 +75,22 @@ function SupplierPills({ suppliers }) {
 
 export default function InventoryManagement() {
   const { selectedStoreId, isStoreReady } = useStoreContext();
-  const [activeTab, setActiveTab] = useState('stock');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const getActiveTab = () => {
+    if (location.pathname.endsWith('/adjustments')) return 'adjustments';
+    if (location.pathname.endsWith('/sessions')) return 'sessions';
+    if (location.pathname.endsWith('/analytics')) return 'analytics';
+    return 'stock';
+  };
+  const activeTab = getActiveTab();
+  const setActiveTab = (tab) => navigate(`/manager/inventory/${tab}`);
+
+  useEffect(() => {
+    if (location.pathname === '/manager/inventory' || location.pathname === '/manager/inventory/') {
+      navigate('/manager/inventory/stock', { replace: true });
+    }
+  }, [location.pathname, navigate]);
   const [slideOpen, setSlideOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);

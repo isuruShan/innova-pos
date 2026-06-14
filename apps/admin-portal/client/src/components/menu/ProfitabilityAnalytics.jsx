@@ -4,6 +4,7 @@ import { Search, ChevronDown, ChevronUp, AlertCircle, Info, Calculator } from 'l
 import api from '../../api/axios';
 import { formatCurrency } from '../../utils/format';
 import { useStoreContext } from '../../context/StoreContext';
+import ViewModeToggle from '../ViewModeToggle';
 
 const FORMULA_FIELDS = {
   wac: 'wacCost',
@@ -24,6 +25,16 @@ export default function ProfitabilityAnalytics() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFormulaState, setSelectedFormulaState] = useState(null);
   const [expandedRows, setExpandedRows] = useState({});
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_recipe_profitability');
+    if (saved) return saved;
+    return window.innerWidth < 768 ? 'grid' : 'table';
+  });
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('view_mode_recipe_profitability', mode);
+  };
 
   // 1. Fetch Tenant Settings to load default costing method
   const { data: settings } = useQuery({
@@ -158,19 +169,22 @@ export default function ProfitabilityAnalytics() {
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-          <span className="text-xs text-gray-500 whitespace-nowrap flex items-center gap-1">
-            <Calculator size={13} /> Costing Formula:
-          </span>
-          <select
-            value={selectedFormula}
-            onChange={(e) => setSelectedFormulaState(e.target.value)}
-            className="bg-gray-50 border border-gray-200 text-gray-750 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
-          >
-            {Object.keys(FORMULA_LABELS).map(key => (
-              <option key={key} value={key}>{FORMULA_LABELS[key]}</option>
-            ))}
-          </select>
+        <div className="flex items-center gap-4 w-full sm:w-auto shrink-0 justify-between sm:justify-start">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 whitespace-nowrap flex items-center gap-1">
+              <Calculator size={13} /> Costing Formula:
+            </span>
+            <select
+              value={selectedFormula}
+              onChange={(e) => setSelectedFormulaState(e.target.value)}
+              className="bg-gray-50 border border-gray-200 text-gray-750 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+            >
+              {Object.keys(FORMULA_LABELS).map(key => (
+                <option key={key} value={key}>{FORMULA_LABELS[key]}</option>
+              ))}
+            </select>
+          </div>
+          <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
         </div>
       </div>
 
@@ -186,7 +200,7 @@ export default function ProfitabilityAnalytics() {
         </div>
       </div>
 
-      {/* Profitability Table */}
+      {/* Profitability Content */}
       {loading ? (
         <div className="text-center py-16 text-gray-500">
           Loading profitability analytics...
@@ -196,124 +210,192 @@ export default function ProfitabilityAnalytics() {
           <AlertCircle size={36} className="mx-auto opacity-35 mb-2" />
           <p className="text-sm">No recipe profitability records found</p>
         </div>
-      ) : (
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-xs font-semibold uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Menu Item / Variant</th>
-                  <th className="py-3.5 px-4">Category</th>
-                  <th className="py-3.5 px-4 text-right">Sell Price</th>
-                  <th className="py-3.5 px-4 text-right">Recipe Cost</th>
-                  <th className="py-3.5 px-4 text-right">Profit ($)</th>
-                  <th className="py-3.5 px-4 text-right">Margin (%)</th>
-                  <th className="py-3.5 px-4 w-10"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-150 text-sm">
-                {filteredRows.map(row => {
-                  const isExpanded = !!expandedRows[row.id];
-                  return (
-                    <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="py-3.5 px-4">
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-gray-900">{row.name}</span>
-                          {row.isVariant && (
-                            <span className="text-[10px] text-purple-600 font-medium">Variant</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-gray-500">{row.category || '—'}</td>
-                      <td className="py-3.5 px-4 text-right font-medium text-gray-900">
-                        {formatCurrency(row.sellPrice)}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-medium text-gray-650">
-                        {formatCurrency(row.totalCogs)}
-                      </td>
-                      <td className={`py-3.5 px-4 text-right font-bold ${row.profit < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        {formatCurrency(row.profit)}
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${getMarginBadgeVariant(row.margin)}`}>
-                          {row.margin.toFixed(1)}%
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <button
-                          type="button"
-                          onClick={() => toggleRow(row.id)}
-                          className="p-1 rounded text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition"
-                          title="Toggle Recipe Breakdown"
-                        >
-                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+      ) : viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredRows.map(row => {
+            const isExpanded = !!expandedRows[row.id];
+            return (
+              <div key={row.id} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h4 className="font-semibold text-gray-900 text-sm truncate">{row.name}</h4>
+                      <p className="text-xs text-gray-400 mt-0.5">{row.category || '—'}</p>
+                    </div>
+                    <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold shrink-0 ${getMarginBadgeVariant(row.margin)}`}>
+                      {row.margin.toFixed(1)}%
+                    </span>
+                  </div>
 
-          {/* Accordion content inside table or using expanded details */}
-          {/* To maintain standard styling, we can render expanded items inline by injecting a row */}
+                  <div className="grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-gray-150 text-xs">
+                    <div>
+                      <p className="text-gray-400">Sell Price</p>
+                      <p className="font-semibold text-gray-900 mt-0.5">{formatCurrency(row.sellPrice)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400">Recipe Cost</p>
+                      <p className="font-semibold text-gray-650 mt-0.5">{formatCurrency(row.totalCogs)}</p>
+                    </div>
+                    <div className="col-span-2 pt-2 border-t border-gray-100 flex items-center justify-between">
+                      <div>
+                        <p className="text-gray-400">Estimated Profit</p>
+                        <p className={`font-bold mt-0.5 ${row.profit < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          {formatCurrency(row.profit)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleRow(row.id)}
+                        className="flex items-center gap-1 text-xs font-semibold text-brand-orange hover:underline px-2.5 py-1.5 rounded-lg bg-orange-50 hover:bg-orange-100/80 transition cursor-pointer"
+                      >
+                        {isExpanded ? 'Hide Recipe' : 'View Recipe'}
+                        {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {isExpanded && (
+                  <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                    <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      <span>Ingredient</span>
+                      <span>Contribution</span>
+                    </div>
+                    {row.breakdown.length === 0 ? (
+                      <p className="text-xs text-gray-450 italic py-1">No ingredients linked.</p>
+                    ) : (
+                      <div className="space-y-1.5 max-h-48 overflow-y-auto no-scrollbar">
+                        {row.breakdown.map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-xs bg-gray-50 border border-gray-150 p-2.5 rounded-xl">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-gray-800 truncate">{item.ingredientName}</p>
+                              <p className="text-[10px] text-gray-400 mt-0.5">{item.usageQty} {item.unit} (+{item.wastage}% waste)</p>
+                            </div>
+                            <div className="text-right shrink-0 ml-2">
+                              <p className="font-semibold text-gray-700">{formatCurrency(item.contribution)}</p>
+                              <p className="text-[9px] text-gray-400 mt-0.5">@{formatCurrency(item.unitCost)}/{item.unit}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                    <th className="py-3.5 px-4">Menu Item / Variant</th>
+                    <th className="py-3.5 px-4">Category</th>
+                    <th className="py-3.5 px-4 text-right">Sell Price</th>
+                    <th className="py-3.5 px-4 text-right">Recipe Cost</th>
+                    <th className="py-3.5 px-4 text-right">Profit</th>
+                    <th className="py-3.5 px-4 text-right">Margin</th>
+                    <th className="py-3.5 px-4 w-10"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-150 text-sm">
+                  {filteredRows.map(row => {
+                    const isExpanded = !!expandedRows[row.id];
+                    return (
+                      <>
+                        <tr key={row.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="py-3.5 px-4">
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-gray-900">{row.name}</span>
+                              {row.isVariant && (
+                                <span className="text-[10px] text-purple-600 font-medium">Variant</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 text-gray-500">{row.category || '—'}</td>
+                          <td className="py-3.5 px-4 text-right font-medium text-gray-900">
+                            {formatCurrency(row.sellPrice)}
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-medium text-gray-650">
+                            {formatCurrency(row.totalCogs)}
+                          </td>
+                          <td className={`py-3.5 px-4 text-right font-bold ${row.profit < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {formatCurrency(row.profit)}
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${getMarginBadgeVariant(row.margin)}`}>
+                              {row.margin.toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <button
+                              type="button"
+                              onClick={() => toggleRow(row.id)}
+                              className="p-1 rounded text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition cursor-pointer"
+                              title="Toggle Recipe Breakdown"
+                            >
+                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </button>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan={7} className="bg-gray-50/30 px-6 py-4 border-t border-gray-150">
+                              <div className="space-y-3 max-w-3xl">
+                                <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                                  <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Recipe Breakdown</span>
+                                  <span className="text-xs text-gray-400">Ingredients: {row.breakdown.length}</span>
+                                </div>
+                                {row.breakdown.length === 0 ? (
+                                  <p className="text-xs text-gray-500 italic py-2">No ingredients linked.</p>
+                                ) : (
+                                  <table className="w-full text-left text-xs border-collapse">
+                                    <thead>
+                                      <tr className="border-b border-gray-200 text-gray-500 font-semibold">
+                                        <th className="py-2 px-2">Ingredient</th>
+                                        <th className="py-2 px-2 text-right">Usage Quantity</th>
+                                        <th className="py-2 px-2 text-right">Wastage %</th>
+                                        <th className="py-2 px-2 text-right">Unit Cost</th>
+                                        <th className="py-2 px-2 text-right">Contribution</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-150 text-gray-650">
+                                      {row.breakdown.map((item, idx) => (
+                                        <tr key={idx} className="hover:bg-gray-100/50">
+                                          <td className="py-2 px-2 font-medium text-gray-900">{item.ingredientName}</td>
+                                          <td className="py-2 px-2 text-right">{item.usageQty} {item.unit}</td>
+                                          <td className="py-2 px-2 text-right">{item.wastage}%</td>
+                                          <td className="py-2 px-2 text-right">{formatCurrency(item.unitCost)}</td>
+                                          <td className="py-2 px-2 text-right font-semibold text-gray-700">
+                                            {formatCurrency(item.contribution)}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                      <tr className="border-t border-gray-250 text-gray-900 font-bold">
+                                        <td colSpan={4} className="py-2 px-2 text-right">Total Recipe Cost:</td>
+                                        <td className="py-2 px-2 text-right text-brand-orange">
+                                          {formatCurrency(row.totalCogs)}
+                                        </td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
-
-      {/* Custom Accordion Panels */}
-      {filteredRows.map(row => {
-        const isExpanded = !!expandedRows[row.id];
-        if (!isExpanded) return null;
-        return (
-          <div
-            key={`detail-${row.id}`}
-            className="bg-gray-50/50 border border-gray-200 rounded-2xl p-4 space-y-3 shadow-inner transform translate-y-[-8px] border-t-0 rounded-t-none"
-          >
-            <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-              <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Recipe Breakdown</span>
-              <span className="text-xs text-gray-400 font-mono">Ingredients: {row.breakdown.length}</span>
-            </div>
-            
-            {row.breakdown.length === 0 ? (
-              <p className="text-xs text-gray-500 italic py-2">No ingredients linked to this item recipe.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-gray-500 font-semibold">
-                      <th className="py-2 px-2">Ingredient</th>
-                      <th className="py-2 px-2 text-right">Usage Quantity</th>
-                      <th className="py-2 px-2 text-right">Wastage %</th>
-                      <th className="py-2 px-2 text-right">Unit Cost</th>
-                      <th className="py-2 px-2 text-right">Contribution</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 text-gray-650">
-                    {row.breakdown.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-gray-100/50">
-                        <td className="py-2 px-2 font-medium text-gray-900">{item.ingredientName}</td>
-                        <td className="py-2 px-2 text-right">{item.usageQty} {item.unit}</td>
-                        <td className="py-2 px-2 text-right">{item.wastage}%</td>
-                        <td className="py-2 px-2 text-right">{formatCurrency(item.unitCost)}</td>
-                        <td className="py-2 px-2 text-right font-semibold text-gray-700">
-                          {formatCurrency(item.contribution)}
-                        </td>
-                      </tr>
-                    ))}
-                    <tr className="border-t-2 border-gray-300 text-gray-900">
-                      <td colSpan={4} className="py-2 px-2 font-bold text-right">Total Recipe Cost:</td>
-                      <td className="py-2 px-2 text-right font-bold text-brand-orange">
-                        {formatCurrency(row.totalCogs)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        );
-      })}
     </div>
   );
 }

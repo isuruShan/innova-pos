@@ -302,7 +302,7 @@ export default function App() {
                   </RoleRoute>
                 } />
                 <Route path="/manager/users" element={<Navigate to="/manager/settings" replace />} />
-                <Route path="/manager/settings" element={
+                <Route path="/manager/settings/*" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
                     <SettingsPage />
                   </RoleRoute>

@@ -6,6 +6,7 @@ import {
   ChefHat, ShoppingCart, Eye, EyeOff, LayoutGrid,
   Monitor, Smartphone,
 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
@@ -767,7 +768,25 @@ function CustomerScreenTab() {
 }
 
 export default function SettingsPage() {
-  const [tab, setTab] = useState('charges');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const getActiveTab = () => {
+    if (location.pathname.endsWith('/posview')) return 'posview';
+    if (location.pathname.endsWith('/guestqr')) return 'guestqr';
+    if (location.pathname.endsWith('/checkin')) return 'checkin';
+    if (location.pathname.endsWith('/users')) return 'users';
+    if (location.pathname.endsWith('/payments')) return 'payments';
+    return 'charges';
+  };
+  const tab = getActiveTab();
+  const setTab = (t) => navigate(`/manager/settings/${t}`);
+
+  useEffect(() => {
+    if (location.pathname === '/manager/settings' || location.pathname === '/manager/settings/') {
+      navigate('/manager/settings/charges', { replace: true });
+    }
+  }, [location.pathname, navigate]);
+
   const { user } = useAuth();
   const visibleTabs = TABS.filter((t) => t.id !== 'users' || user?.role === 'merchant_admin');
 

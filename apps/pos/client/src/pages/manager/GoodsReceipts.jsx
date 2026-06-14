@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, FileCheck, Package, Edit2, Trash2, Calendar,
@@ -6,6 +6,7 @@ import {
   Search, SlidersHorizontal, ChevronDown, X, ArrowDown, ArrowUp,
   List, LayoutGrid, Eye
 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import Toast from '../../components/Toast';
@@ -39,7 +40,16 @@ const GRN_SORT_OPTIONS = [
 
 export default function GoodsReceipts() {
   const { selectedStoreId, isStoreReady } = useStoreContext();
-  const [activeTab, setActiveTab] = useState('receipts');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const activeTab = location.pathname.endsWith('/returns') ? 'returns' : 'receipts';
+  const setActiveTab = (tab) => navigate(`/manager/goods-receipts/${tab}`);
+
+  useEffect(() => {
+    if (location.pathname === '/manager/goods-receipts' || location.pathname === '/manager/goods-receipts/') {
+      navigate('/manager/goods-receipts/receipts', { replace: true });
+    }
+  }, [location.pathname, navigate]);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [isReadOnly, setIsReadOnly] = useState(false);

@@ -61,7 +61,7 @@ export default function TrialBanners() {
       {banners.map((banner) => (
         <div
           key={banner._id}
-          className="relative flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-100 border border-amber-300 text-black text-sm font-medium shadow-sm animate-in fade-in slide-in-from-top-2 duration-300"
+          className="relative flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-200 border border-amber-400 text-black text-sm font-medium shadow-sm animate-in fade-in slide-in-from-top-2 duration-300"
         >
           <div className="flex items-center gap-2">
             <Info size={16} className="text-black shrink-0" />
@@ -73,7 +73,7 @@ export default function TrialBanners() {
           <button
             type="button"
             onClick={() => dismissBanner(banner._id)}
-            className="text-black/70 hover:text-black p-1 hover:bg-amber-200/80 rounded-lg transition-all"
+            className="text-black/70 hover:text-black p-1 hover:bg-amber-300/60 rounded-lg transition-all"
             aria-label="Dismiss banner"
           >
             <X size={16} />
