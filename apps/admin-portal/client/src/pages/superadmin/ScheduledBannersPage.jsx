@@ -34,6 +34,7 @@ export default function ScheduledBannersPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [showForTrialOnly, setShowForTrialOnly] = useState(true);
 
   const fetchBanners = async () => {
     try {
@@ -61,6 +62,7 @@ export default function ScheduledBannersPage() {
     setStartDate('');
     setEndDate('');
     setIsActive(true);
+    setShowForTrialOnly(true);
     setModalOpen(true);
   };
 
@@ -73,6 +75,7 @@ export default function ScheduledBannersPage() {
     setStartDate(new Date(banner.startDate).toISOString().split('T')[0]);
     setEndDate(new Date(banner.endDate).toISOString().split('T')[0]);
     setIsActive(banner.isActive);
+    setShowForTrialOnly(banner.showForTrialOnly !== false);
     setModalOpen(true);
   };
 
@@ -107,6 +110,7 @@ export default function ScheduledBannersPage() {
       startDate: new Date(startDate),
       endDate: new Date(endDate),
       isActive,
+      showForTrialOnly,
     };
 
     try {
@@ -455,6 +459,19 @@ export default function ScheduledBannersPage() {
                 />
                 <label htmlFor="isActive" className="text-sm font-semibold text-gray-700 cursor-pointer select-none">
                   Enable Announcement
+                </label>
+              </div>
+
+              <div className="flex items-center gap-3 pt-1">
+                <input
+                  type="checkbox"
+                  id="showForTrialOnly"
+                  checked={showForTrialOnly}
+                  onChange={(e) => setShowForTrialOnly(e.target.checked)}
+                  className="rounded border-gray-300 text-brand-teal focus:ring-brand-teal h-4 w-4 cursor-pointer"
+                />
+                <label htmlFor="showForTrialOnly" className="text-sm font-semibold text-gray-700 cursor-pointer select-none">
+                  Show for Trial Merchants Only
                 </label>
               </div>
 

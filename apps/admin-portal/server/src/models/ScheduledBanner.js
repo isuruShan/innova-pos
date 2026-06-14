@@ -17,6 +17,7 @@ const scheduledBannerSchema = new mongoose.Schema(
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
     isActive: { type: Boolean, default: true },
+    showForTrialOnly: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

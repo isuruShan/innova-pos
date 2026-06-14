@@ -44,7 +44,7 @@ export default function CenteredModal({
       onClick={(e) => { if (!isMobile && e.target === e.currentTarget) onClose?.(); }}
     >
       <div
-        className={`bg-[var(--pos-panel)] border border-slate-700/60 shadow-2xl w-full ${maxWidth} flex flex-col ${
+        className={`bg-white border border-gray-200 shadow-2xl w-full ${maxWidth} flex flex-col ${
           treatAsBottomSheet
             ? 'rounded-t-2xl max-h-[85vh] touch-none'
             : 'rounded-2xl max-h-[90vh] touch-auto'
@@ -55,12 +55,12 @@ export default function CenteredModal({
       >
         {/* Drag handle */}
         {treatAsBottomSheet && (
-          <div className="w-12 h-1.5 bg-slate-600 rounded-full mx-auto mt-3 mb-1 shrink-0 cursor-grab active:cursor-grabbing" />
+          <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-3 mb-1 shrink-0 cursor-grab active:cursor-grabbing" />
         )}
         {(title || onClose) && (
-          <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-700/60 shrink-0">
+          <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-gray-150 shrink-0">
             {title ? (
-              <h2 className="text-lg font-bold text-[var(--pos-text-primary)]">{title}</h2>
+              <h2 className="text-lg font-bold text-gray-900">{title}</h2>
             ) : (
               <span />
             )}

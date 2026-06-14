@@ -100,8 +100,8 @@ router.put(
         updatedBy: req.user.id,
       };
       if (name !== undefined) updateData.name = String(name).trim();
-      if (gridWidth !== undefined) updateData.gridWidth = Math.min(50, Math.max(5, Number(gridWidth) || 20));
-      if (gridHeight !== undefined) updateData.gridHeight = Math.min(40, Math.max(5, Number(gridHeight) || 15));
+      if (gridWidth !== undefined) updateData.gridWidth = Math.min(500, Math.max(5, Number(gridWidth) || 20));
+      if (gridHeight !== undefined) updateData.gridHeight = Math.min(500, Math.max(5, Number(gridHeight) || 15));
       if (cellSizePx !== undefined) updateData.cellSizePx = Math.min(100, Math.max(30, Number(cellSizePx) || 50));
       if (tables !== undefined) updateData.tables = tables;
       if (zones !== undefined) updateData.zones = zones;

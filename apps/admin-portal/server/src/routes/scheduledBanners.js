@@ -13,24 +13,27 @@ router.get('/active', authenticateJWT, async (req, res) => {
       return res.status(400).json({ message: 'platform query parameter is required' });
     }
 
-    // Only display banners to trial tenants (unless superadmin)
-    if (req.user.role !== 'superadmin' && req.user.tenantId) {
+    let isTrial = false;
+    if (req.user.tenantId) {
       const tenant = await Tenant.findById(req.user.tenantId).lean();
-      const isTrial = tenant && tenant.status === 'active' && tenant.subscriptionStatus === 'trial' && tenant.trialEndsAt && new Date() <= new Date(tenant.trialEndsAt);
-      if (!isTrial) {
-        return res.json([]);
-      }
+      isTrial = !!(tenant && tenant.status === 'active' && tenant.subscriptionStatus === 'trial' && tenant.trialEndsAt && new Date() <= new Date(tenant.trialEndsAt));
     }
 
     const now = new Date();
-    const banners = await ScheduledBanner.find({
+    const query = {
       isActive: true,
       startDate: { $lte: now },
       endDate: { $gte: now },
       platforms: platform,
       userTypes: req.user.role,
-    }).lean();
+    };
 
+    // If tenant is not in trial, filter out banners that are showForTrialOnly: true
+    if (!isTrial && req.user.role !== 'superadmin') {
+      query.showForTrialOnly = false;
+    }
+
+    const banners = await ScheduledBanner.find(query).lean();
     res.json(banners);
   } catch (err) {
     sendRouteError(res, err, { req });
@@ -50,7 +53,7 @@ router.get('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
 // POST /api/scheduled-banners — create a new banner (superadmin only)
 router.post('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {
-    const { title, content, userTypes, platforms, startDate, endDate, isActive } = req.body;
+    const { title, content, userTypes, platforms, startDate, endDate, isActive, showForTrialOnly } = req.body;
     const banner = await ScheduledBanner.create({
       title,
       content,
@@ -59,6 +62,7 @@ router.post('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
       startDate: new Date(startDate),
       endDate: new Date(endDate),
       isActive: isActive !== undefined ? Boolean(isActive) : true,
+      showForTrialOnly: showForTrialOnly !== undefined ? Boolean(showForTrialOnly) : true,
     });
     res.status(201).json(banner);
   } catch (err) {
@@ -69,7 +73,7 @@ router.post('/', authenticateJWT, authorize('superadmin'), async (req, res) => {
 // PUT /api/scheduled-banners/:id — update a banner (superadmin only)
 router.put('/:id', authenticateJWT, authorize('superadmin'), async (req, res) => {
   try {
-    const { title, content, userTypes, platforms, startDate, endDate, isActive } = req.body;
+    const { title, content, userTypes, platforms, startDate, endDate, isActive, showForTrialOnly } = req.body;
     const update = {};
     if (title !== undefined) update.title = title;
     if (content !== undefined) update.content = content;
@@ -78,6 +82,7 @@ router.put('/:id', authenticateJWT, authorize('superadmin'), async (req, res) =>
     if (startDate !== undefined) update.startDate = new Date(startDate);
     if (endDate !== undefined) update.endDate = new Date(endDate);
     if (isActive !== undefined) update.isActive = Boolean(isActive);
+    if (showForTrialOnly !== undefined) update.showForTrialOnly = Boolean(showForTrialOnly);
 
     const banner = await ScheduledBanner.findByIdAndUpdate(req.params.id, update, { new: true });
     if (!banner) return res.status(404).json({ message: 'Banner not found' });

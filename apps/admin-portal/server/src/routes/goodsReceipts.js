@@ -89,7 +89,11 @@ router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) =>
     }
 
     // Verify supplier exists
-    const supplier = await Supplier.findOne({ _id: supplierId, tenantId, storeId });
+    const supplier = await Supplier.findOne({
+      _id: supplierId,
+      tenantId,
+      ...buildStoreFilter(req, { includeLegacyGlobal: true }),
+    });
     if (!supplier) {
       return res.status(404).json({ error: 'Supplier not found' });
     }
@@ -100,7 +104,7 @@ router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) =>
       purchaseOrder = await PurchaseOrder.findOne({
         _id: purchaseOrderId,
         tenantId,
-        storeId,
+        ...buildStoreFilter(req, { includeLegacyGlobal: true }),
       });
       if (!purchaseOrder) {
         return res.status(404).json({ error: 'Purchase order not found' });
@@ -113,7 +117,7 @@ router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) =>
       const invItem = await Inventory.findOne({
         _id: item.inventoryItemId,
         tenantId,
-        storeId,
+        ...buildStoreFilter(req, { includeLegacyGlobal: true }),
       });
       if (!invItem) {
         return res.status(404).json({ error: `Inventory item ${item.inventoryItemId} not found` });
@@ -214,7 +218,7 @@ router.post('/:id/confirm', protect, tenantScope, resolveSelectedStore, async (r
       const invItem = await Inventory.findOne({
         _id: item.inventoryItemId,
         tenantId,
-        storeId,
+        ...buildStoreFilter(req, { includeLegacyGlobal: true }),
       });
 
       if (!invItem) {
@@ -269,7 +273,7 @@ router.post('/:id/confirm', protect, tenantScope, resolveSelectedStore, async (r
       const po = await PurchaseOrder.findOne({
         _id: receipt.purchaseOrderId,
         tenantId,
-        storeId,
+        ...buildStoreFilter(req, { includeLegacyGlobal: true }),
       });
 
       if (po) {
@@ -353,7 +357,7 @@ router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
         const invItem = await Inventory.findOne({
           _id: item.inventoryItemId,
           tenantId,
-          storeId,
+          ...buildStoreFilter(req, { includeLegacyGlobal: true }),
         });
         if (!invItem) {
           return res.status(404).json({ error: `Inventory item ${item.inventoryItemId} not found` });

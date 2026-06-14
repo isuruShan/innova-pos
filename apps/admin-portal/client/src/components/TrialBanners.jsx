@@ -24,23 +24,23 @@ export default function TrialBanners() {
   if (!banners.length) return null;
 
   return (
-    <div className="w-full flex flex-col gap-2 p-2 bg-slate-900 border-b border-slate-800">
+    <div className="w-full flex flex-col gap-2 p-3 bg-gray-50 border-b border-gray-200">
       {banners.map((banner) => (
         <div
           key={banner._id}
-          className="relative flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600/10 to-indigo-600/10 border border-blue-500/20 text-blue-100 text-sm font-medium animate-in fade-in slide-in-from-top-2 duration-300"
+          className="relative flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm font-medium shadow-sm animate-in fade-in slide-in-from-top-2 duration-300"
         >
           <div className="flex items-center gap-2">
-            <Info size={16} className="text-blue-400 shrink-0" />
+            <Info size={16} className="text-amber-600 shrink-0" />
             <span>
-              <strong className="font-bold text-white mr-1.5">{banner.title}:</strong>
+              <strong className="font-bold text-amber-950 mr-1.5">{banner.title}:</strong>
               {banner.content}
             </span>
           </div>
           <button
             type="button"
             onClick={() => dismissBanner(banner._id)}
-            className="text-blue-400 hover:text-blue-200 transition-colors"
+            className="text-amber-600 hover:text-amber-900 p-1 hover:bg-amber-100/50 rounded-lg transition-all"
           >
             <X size={16} />
           </button>

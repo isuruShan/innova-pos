@@ -59,6 +59,9 @@ export default function WastageManagement() {
   const [items, setItems] = useState([]); // Array of { itemType: 'inventory', inventoryItemId: '', menuItemId: '', variantId: '', quantity: 1, reason: 'spillage' }
   const [sortField, setSortField] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
+  const [selectionModalOpen, setSelectionModalOpen] = useState(false);
+  const [selectingIndex, setSelectingIndex] = useState(null);
+  const [productSearch, setProductSearch] = useState('');
 
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
@@ -224,6 +227,22 @@ export default function WastageManagement() {
       month: 'short',
       year: 'numeric',
     });
+  };
+
+  const getSelectedItemLabel = (item) => {
+    if (item.itemType === 'menu') {
+      const mItem = menuItems.find(m => String(m._id) === String(item.menuItemId));
+      if (!mItem) return 'Select Menu Item...';
+      if (item.variantId && mItem.variants) {
+        const v = mItem.variants.find(varObj => String(varObj._id) === String(item.variantId));
+        return `${mItem.name} (${v?.name || ''})`;
+      }
+      return mItem.name;
+    } else {
+      const invItem = inventory.find(i => String(i._id) === String(item.inventoryItemId));
+      if (!invItem) return 'Select Inventory Item...';
+      return `${invItem.itemName} (${invItem.quantity} ${invItem.unit})`;
+    }
   };
 
   return (
@@ -608,24 +627,20 @@ export default function WastageManagement() {
                     {/* Conditional Select Search input with more width */}
                     <div className="col-span-12 sm:col-span-5">
                       <label className="block text-[10px] text-slate-500 mb-1 font-semibold uppercase tracking-wider">Select Item</label>
-                      {item.itemType === 'menu' ? (
-                        <MenuSearchSelect
-                          menuItemId={item.menuItemId}
-                          variantId={item.variantId}
-                          menuItems={menuItems}
-                          onChange={(menuId, varId) => {
-                            handleItemChange(idx, 'menuItemId', menuId);
-                            handleItemChange(idx, 'variantId', varId);
-                          }}
-                        />
-                      ) : (
-                        <InventorySearchSelect
-                          value={item.inventoryItemId}
-                          inventory={inventory}
-                          onChange={val => handleItemChange(idx, 'inventoryItemId', val)}
-                          onAddNewClick={() => showToast('Create item in Suppliers/Inventory management first', 'info')}
-                        />
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectingIndex(idx);
+                          setProductSearch('');
+                          setSelectionModalOpen(true);
+                        }}
+                        className="w-full flex items-center justify-between bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-2.5 text-xs text-left hover:bg-slate-800/50 focus:outline-none focus:ring-1 focus:ring-amber-500 transition"
+                      >
+                        <span className="truncate">
+                          {getSelectedItemLabel(item)}
+                        </span>
+                        <Search size={14} className="text-slate-400 shrink-0 ml-1" />
+                      </button>
                     </div>
 
                     <div className="col-span-6 sm:col-span-2">
@@ -751,6 +766,163 @@ export default function WastageManagement() {
             >
               Close
             </button>
+          </div>
+        )}
+      </CenteredModal>
+
+      {/* Product Selection Modal */}
+      <CenteredModal
+        open={selectionModalOpen}
+        onClose={() => {
+          setSelectionModalOpen(false);
+          setSelectingIndex(null);
+        }}
+        title={`Select ${selectingIndex !== null && items[selectingIndex]?.itemType === 'menu' ? 'Menu Item' : 'Inventory Item'}`}
+        maxWidth="max-w-xl"
+      >
+        {selectingIndex !== null && (
+          <div className="space-y-4">
+            {/* Search Input */}
+            <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2">
+              <Search size={15} className="text-slate-500 flex-shrink-0" />
+              <input
+                type="text"
+                placeholder="Search by name or category..."
+                value={productSearch}
+                onChange={e => setProductSearch(e.target.value)}
+                className="flex-1 bg-transparent text-[var(--pos-text-primary)] text-sm focus:outline-none placeholder-slate-600"
+                autoFocus
+              />
+              {productSearch && (
+                <button onClick={() => setProductSearch('')}>
+                  <X size={13} className="text-slate-500 hover:text-white" />
+                </button>
+              )}
+            </div>
+
+            {/* List of items */}
+            <div className="max-h-[300px] overflow-y-auto divide-y divide-slate-800/40 border border-slate-700 rounded-xl bg-[var(--pos-surface-inset)]">
+              {(() => {
+                const row = items[selectingIndex];
+                const q = productSearch.toLowerCase().trim();
+                
+                if (row.itemType === 'menu') {
+                  // Flatten menu options
+                  const flattened = [];
+                  menuItems.forEach(item => {
+                    if (item.hasVariants && item.variants && item.variants.length > 0) {
+                      item.variants.forEach(v => {
+                        flattened.push({
+                          menuItemId: String(item._id),
+                          variantId: String(v._id),
+                          name: `${item.name} (${v.name})`,
+                          category: item.category,
+                        });
+                      });
+                    } else {
+                      flattened.push({
+                        menuItemId: String(item._id),
+                        variantId: null,
+                        name: item.name,
+                        category: item.category,
+                      });
+                    }
+                  });
+
+                  const filtered = flattened.filter(opt =>
+                    opt.name.toLowerCase().includes(q) || (opt.category || '').toLowerCase().includes(q)
+                  );
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="p-8 text-center text-xs text-slate-500">
+                        No menu items found
+                      </div>
+                    );
+                  }
+
+                  return filtered.map((opt, idx) => {
+                    const isSelected = row.menuItemId === opt.menuItemId && (opt.variantId ? row.variantId === opt.variantId : !row.variantId);
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          handleItemChange(selectingIndex, 'menuItemId', opt.menuItemId);
+                          handleItemChange(selectingIndex, 'variantId', opt.variantId);
+                          setSelectionModalOpen(false);
+                          setSelectingIndex(null);
+                        }}
+                        className={`w-full text-left px-4 py-3 hover:bg-slate-800/50 flex items-center justify-between text-xs transition ${
+                          isSelected ? 'bg-amber-500/10 text-amber-400 font-semibold border-l-2 border-amber-500' : 'text-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <UtensilsCrossed size={14} className={isSelected ? 'text-amber-500' : 'text-slate-500'} />
+                          <span className="truncate">{opt.name}</span>
+                        </div>
+                        {opt.category && (
+                          <span className="bg-slate-800 text-slate-400 px-2 py-0.5 rounded text-[10px] border border-slate-700/55">
+                            {opt.category}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  });
+                } else {
+                  const filtered = inventory.filter(item =>
+                    (item.itemName || '').toLowerCase().includes(q) || (item.category || '').toLowerCase().includes(q)
+                  );
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="p-8 text-center text-xs text-slate-500">
+                        No inventory items found
+                      </div>
+                    );
+                  }
+
+                  return filtered.map((item, idx) => {
+                    const isSelected = row.inventoryItemId === String(item._id);
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          handleItemChange(selectingIndex, 'inventoryItemId', String(item._id));
+                          setSelectionModalOpen(false);
+                          setSelectingIndex(null);
+                        }}
+                        className={`w-full text-left px-4 py-3 hover:bg-slate-800/50 flex items-center justify-between text-xs transition ${
+                          isSelected ? 'bg-amber-500/10 text-amber-400 font-semibold border-l-2 border-amber-500' : 'text-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Package size={14} className={isSelected ? 'text-amber-500' : 'text-slate-500'} />
+                          <span className="truncate">{item.itemName}</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          Stock: {item.quantity} {item.unit}
+                        </span>
+                      </button>
+                    );
+                  });
+                }
+              })()}
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectionModalOpen(false);
+                  setSelectingIndex(null);
+                }}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-4 py-2 rounded-xl text-sm"
+              >
+                Close
+              </button>
+            </div>
           </div>
         )}
       </CenteredModal>

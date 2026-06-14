@@ -142,6 +142,7 @@ app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/inventory-sessions', require('./routes/inventorySessions'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/accounting', require('./routes/accounting'));
+app.use('/api/reservations', require('./routes/reservations'));
 
 
 app.get('/api/health', (_req, res) =>
