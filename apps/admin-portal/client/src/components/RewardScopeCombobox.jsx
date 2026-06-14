@@ -30,7 +30,8 @@ export default function RewardScopeCombobox({
   const categoryList = useMemo(() => {
     const s = new Set();
     menuItems.forEach((m) => {
-      if (m.category) s.add(m.category);
+      const cat = m.category?.name || m.category;
+      if (cat && typeof cat === 'string') s.add(cat);
     });
     return [...s].sort();
   }, [menuItems]);
@@ -39,7 +40,7 @@ export default function RewardScopeCombobox({
   const matchCats = categoryList.filter((c) => c.toLowerCase().includes(q));
   const matchItems = menuItems.filter((m) => {
     const name = (m.name || '').toLowerCase();
-    const cat = (m.category || '').toLowerCase();
+    const cat = (m.category?.name || m.category || '').toLowerCase();
     return name.includes(q) || cat.includes(q);
   });
 
@@ -216,7 +217,7 @@ export default function RewardScopeCombobox({
                           🔸 Variants
                         </span>
                       )}
-                      {m.category ? <span className="text-xs text-gray-500">{m.category}</span> : null}
+                      {m.category ? <span className="text-xs text-gray-500">{m.category?.name || m.category}</span> : null}
                       {isSelected ? (
                         <span className="ml-auto text-brand-teal text-xs">✓</span>
                       ) : null}
