@@ -56,6 +56,7 @@ async function activateSubscriptionForTenant(tenantId, plan, options = {}) {
     activatedBy = null,
     paymentNote = 'Payment confirmed',
     deferStartUntil = null,
+    excludeAddons = [],
   } = options;
 
   const tenant = await Tenant.findById(tenantId);
@@ -110,12 +111,23 @@ async function activateSubscriptionForTenant(tenantId, plan, options = {}) {
     // Fulfill/activate deferred trial addons post-trial
     if (tenant.paidAddons) {
       const { computeAddonPeriodEnd } = require('./addonPeriod');
+      const { ENTITLEMENT_BY_CODE, emptyEntitlement } = require('@innovapos/paid-addons');
+      const excludeSet = new Set((excludeAddons || []).map(c => String(c).trim().toLowerCase()));
+
       Object.keys(tenant.paidAddons).forEach((key) => {
-        if (tenant.paidAddons[key] && tenant.paidAddons[key].active && !tenant.paidAddons[key].activatedAt) {
-          tenant.paidAddons[key].activatedAt = now;
-          tenant.paidAddons[key].periodEndsAt = computeAddonPeriodEnd(now, plan.billingCycle || 'monthly');
+        if (tenant.paidAddons[key] && tenant.paidAddons[key].active) {
+          // Find the catalog code for this entitlement key
+          const code = Object.keys(ENTITLEMENT_BY_CODE).find(c => ENTITLEMENT_BY_CODE[c] === key);
+          if (code && excludeSet.has(code.toLowerCase())) {
+            tenant.paidAddons[key] = emptyEntitlement();
+          } else if (!tenant.paidAddons[key].activatedAt) {
+            tenant.paidAddons[key].activatedAt = now;
+            tenant.paidAddons[key].periodEndsAt = computeAddonPeriodEnd(now, plan.billingCycle || 'monthly');
+          }
         }
       });
+      // Force Mongoose to notice changes inside subdocuments
+      tenant.markModified('paidAddons');
     }
 
     await tenant.save();

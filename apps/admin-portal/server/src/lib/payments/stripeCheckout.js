@@ -10,7 +10,7 @@ async function getStripe() {
   return new Stripe(key);
 }
 
-async function createCheckoutSession({ tenant, plan, userId, amount }) {
+async function createCheckoutSession({ tenant, plan, userId, amount, excludeAddons = [] }) {
   const stripe = await getStripe();
   if (!stripe) throw new Error('Stripe is not configured');
 
@@ -31,6 +31,7 @@ async function createCheckoutSession({ tenant, plan, userId, amount }) {
       tenantId: String(tenant._id),
       planId: String(plan._id),
       userId: String(userId || ''),
+      excludeAddons: JSON.stringify(excludeAddons || []),
     },
     line_items: [
       {

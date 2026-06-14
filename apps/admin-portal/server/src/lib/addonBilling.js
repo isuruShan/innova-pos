@@ -246,7 +246,13 @@ async function previewAdditionalStoreCharge(tenantId, plan) {
 /**
  * Expected bank-transfer amount for subscription renewal (plan + active paid add-ons).
  */
-async function computeSubscriptionRenewalExpected(tenant, planOverride = null) {
+async function computeSubscriptionRenewalExpected(tenant, planOverride = null, options = {}) {
+  const { excludeAddons = [] } = options;
+  const excludeSet = new Set(
+    (Array.isArray(excludeAddons) ? excludeAddons : [])
+      .map(c => String(c).trim().toLowerCase())
+  );
+
   const { resolveNextBillingPlan } = require('./resolveBillingPlan');
   const t = await Tenant.findById(tenant._id || tenant)
     .populate('assignedPlanId')
@@ -270,6 +276,9 @@ async function computeSubscriptionRenewalExpected(tenant, planOverride = null) {
     { code: 'whatsapp_integration', label: 'WhatsApp Business Integration', key: 'whatsapp', check: isWhatsappEffective },
   ];
   for (const row of renewalRows) {
+    if (excludeSet.has(row.code)) {
+      continue;
+    }
     if (plan && Array.isArray(plan.includedAddons) && plan.includedAddons.includes(row.code)) {
       continue;
     }

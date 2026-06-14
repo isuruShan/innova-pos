@@ -60,6 +60,9 @@ const paymentReceiptSchema = new mongoose.Schema(
     billingPeriodStart: { type: Date, default: null },
     billingPeriodEnd: { type: Date, default: null },
 
+    /** Add-on codes excluded during checkout bundling */
+    excludeAddons: { type: [String], default: [] },
+
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },

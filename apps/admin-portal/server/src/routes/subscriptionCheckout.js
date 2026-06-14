@@ -72,7 +72,7 @@ async function resolvePlanForTenant(tenant, planId, billingCycle = 'monthly') {
 
 router.post('/stripe', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
   try {
-    const { planId, billingCycle = 'monthly' } = req.body;
+    const { planId, billingCycle = 'monthly', excludeAddons = [] } = req.body;
     const settings = await loadPaymentSettings();
     if (!settings.stripe?.enabled) {
       return res.status(400).json({ message: 'Stripe payments are not enabled' });
@@ -92,7 +92,7 @@ router.post('/stripe', authenticateJWT, authorize('merchant_admin'), async (req,
     const plan = await resolvePlanForTenant(tenant, planId, billingCycle);
     if (!plan) return res.status(400).json({ message: 'No valid plan selected' });
 
-    const renewal = await computeSubscriptionRenewalExpected(tenant, plan);
+    const renewal = await computeSubscriptionRenewalExpected(tenant, plan, { excludeAddons });
     const expectedAmount = renewal.total > 0 ? renewal.total : Number(plan.amount) || 0;
 
     const session = await createCheckoutSession({
@@ -100,6 +100,7 @@ router.post('/stripe', authenticateJWT, authorize('merchant_admin'), async (req,
       plan,
       userId: req.user.id,
       amount: expectedAmount,
+      excludeAddons,
     });
 
     const { getLatestSubscriptionEnd, resolveTenantPeriodEnd } = require('../lib/subscriptionDates');
@@ -125,6 +126,7 @@ router.post('/stripe', authenticateJWT, authorize('merchant_admin'), async (req,
       paymentBreakdown: renewal,
       billingPeriodStart,
       billingPeriodEnd,
+      excludeAddons,
       createdBy: req.user.id,
     });
 
@@ -136,7 +138,7 @@ router.post('/stripe', authenticateJWT, authorize('merchant_admin'), async (req,
 
 router.post('/paypal/create-order', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
   try {
-    const { planId, billingCycle = 'monthly' } = req.body;
+    const { planId, billingCycle = 'monthly', excludeAddons = [] } = req.body;
     const settings = await loadPaymentSettings();
     if (!settings.paypal?.enabled) {
       return res.status(400).json({ message: 'PayPal is not enabled' });
@@ -150,7 +152,7 @@ router.post('/paypal/create-order', authenticateJWT, authorize('merchant_admin')
     const plan = await resolvePlanForTenant(tenant, planId, billingCycle);
     if (!plan) return res.status(400).json({ message: 'No valid plan selected' });
 
-    const renewal = await computeSubscriptionRenewalExpected(tenant, plan);
+    const renewal = await computeSubscriptionRenewalExpected(tenant, plan, { excludeAddons });
     const expectedAmount = renewal.total > 0 ? renewal.total : Number(plan.amount) || 0;
 
     const { orderId } = await createOrder({ tenant, plan, amount: expectedAmount });
@@ -178,6 +180,7 @@ router.post('/paypal/create-order', authenticateJWT, authorize('merchant_admin')
       paymentBreakdown: renewal,
       billingPeriodStart,
       billingPeriodEnd,
+      excludeAddons,
       createdBy: req.user.id,
     });
 
@@ -489,6 +492,7 @@ router.post('/paypal/capture', authenticateJWT, authorize('merchant_admin'), asy
       externalId: custom,
       amount: receipt.amount,
       currency: receipt.currency,
+      excludeAddons: receipt.excludeAddons,
     });
 
     res.json({

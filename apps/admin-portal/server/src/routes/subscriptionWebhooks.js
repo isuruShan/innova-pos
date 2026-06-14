@@ -16,7 +16,7 @@ const {
 
 const router = express.Router();
 
-async function fulfillOnlinePayment({ tenantId, planId, paymentMethod, externalId, sessionId, amount, currency }) {
+async function fulfillOnlinePayment({ tenantId, planId, paymentMethod, externalId, sessionId, amount, currency, excludeAddons = [] }) {
   const existing = await PaymentReceipt.findOne({
     $or: [
       ...(sessionId ? [{ stripeSessionId: sessionId }] : []),
@@ -36,6 +36,8 @@ async function fulfillOnlinePayment({ tenantId, planId, paymentMethod, externalI
     paypalOrderId: externalId || undefined,
     status: 'pending',
   });
+
+  const finalExcludeAddons = excludeAddons && excludeAddons.length ? excludeAddons : (pending?.excludeAddons || []);
 
   const cycle = pending?.paymentBreakdown?.plan?.billingCycle || 'monthly';
   const planObj = plan.toObject ? plan.toObject() : plan;
@@ -70,12 +72,16 @@ async function fulfillOnlinePayment({ tenantId, planId, paymentMethod, externalI
       verifiedAt: new Date(),
       subscriptionExtended: true,
       extensionDays: decoratedPlan.durationDays,
+      excludeAddons: finalExcludeAddons,
     });
   } else {
     receipt.status = 'verified';
     receipt.verifiedAt = new Date();
     receipt.subscriptionExtended = true;
     receipt.extensionDays = decoratedPlan.durationDays;
+    if (finalExcludeAddons && finalExcludeAddons.length && (!receipt.excludeAddons || !receipt.excludeAddons.length)) {
+      receipt.excludeAddons = finalExcludeAddons;
+    }
     await receipt.save();
   }
 
@@ -83,6 +89,7 @@ async function fulfillOnlinePayment({ tenantId, planId, paymentMethod, externalI
     await activateSubscriptionForTenant(tenantId, decoratedPlan, {
       paymentNote: `${paymentMethod} payment confirmed`,
       activatedBy: null,
+      excludeAddons: finalExcludeAddons,
     });
 
   if (subscription?._id) {
@@ -119,6 +126,12 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
       const session = event.data.object;
       const tenantId = session.metadata?.tenantId;
       const planId = session.metadata?.planId;
+      let excludeAddons = [];
+      if (session.metadata?.excludeAddons) {
+        try {
+          excludeAddons = JSON.parse(session.metadata.excludeAddons);
+        } catch (_) {}
+      }
       if (tenantId && planId) {
         await fulfillOnlinePayment({
           tenantId,
@@ -128,6 +141,7 @@ router.post('/stripe', express.raw({ type: 'application/json' }), async (req, re
           externalId: session.payment_intent || session.id,
           amount: (session.amount_total || 0) / 100,
           currency: (session.currency || 'lkr').toUpperCase(),
+          excludeAddons,
         });
       }
     }

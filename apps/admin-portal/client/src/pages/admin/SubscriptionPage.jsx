@@ -118,6 +118,7 @@ export default function SubscriptionPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [paypalReady, setPaypalReady] = useState(false);
   const [selectedCycle, setSelectedCycle] = useState('monthly');
+  const [excludeAddons, setExcludeAddons] = useState([]);
   
   const { data } = useQuery({
     queryKey: ['my-subscription'],
@@ -126,13 +127,14 @@ export default function SubscriptionPage() {
 
   const needsBreakdown = activeTab === 'overview' || activeTab === 'breakdown';
   const { data: breakdownData } = useQuery({
-    queryKey: ['my-subscription-breakdown', form.planId, selectedCycle],
+    queryKey: ['my-subscription-breakdown', form.planId, selectedCycle, excludeAddons],
     queryFn: async () => {
       const { data } = await api.get('/subscriptions/my', {
         params: {
           includeBreakdown: '1',
           planId: form.planId,
           billingCycle: selectedCycle,
+          excludeAddons: JSON.stringify(excludeAddons),
         },
       });
       return data;
@@ -210,7 +212,7 @@ export default function SubscriptionPage() {
   });
 
   const stripeCheckoutMutation = useMutation({
-    mutationFn: () => api.post('/subscriptions/checkout/stripe', { planId: form.planId, billingCycle: selectedCycle }),
+    mutationFn: () => api.post('/subscriptions/checkout/stripe', { planId: form.planId, billingCycle: selectedCycle, excludeAddons }),
     onSuccess: ({ data }) => {
       if (data?.url) window.location.href = data.url;
     },
@@ -275,6 +277,7 @@ export default function SubscriptionPage() {
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => v && fd.append(k, v));
     fd.append('billingCycle', selectedCycle);
+    fd.append('excludeAddons', JSON.stringify(excludeAddons));
     if (file) fd.append('receipt', file);
     uploadMutation.mutate(fd);
   };
@@ -400,7 +403,7 @@ export default function SubscriptionPage() {
     paypalContainerRef.current.innerHTML = '';
     window.paypal.Buttons({
       createOrder: async () => {
-        const { data } = await api.post('/subscriptions/checkout/paypal/create-order', { planId: form.planId, billingCycle: selectedCycle });
+        const { data } = await api.post('/subscriptions/checkout/paypal/create-order', { planId: form.planId, billingCycle: selectedCycle, excludeAddons });
         return data.orderId;
       },
       onApprove: async (data) => {
@@ -408,7 +411,7 @@ export default function SubscriptionPage() {
       },
       onError: () => setErrors({ api: 'PayPal payment failed' }),
     }).render(paypalContainerRef.current);
-  }, [paypalReady, paymentMethod, form.planId]);
+  }, [paypalReady, paymentMethod, form.planId, excludeAddons]);
 
   const trialDaysLeft = tenant?.trialEndsAt
     ? Math.max(0, Math.ceil((new Date(tenant.trialEndsAt) - Date.now()) / (1000 * 60 * 60 * 24)))
@@ -1387,6 +1390,70 @@ export default function SubscriptionPage() {
                       </ul>
                     </div>
                   </div>
+
+                  {/* Active trial add-ons cost breakdown selection */}
+                  {tenant?.subscriptionStatus === 'trial' && tenant?.paidAddons && Object.keys(tenant.paidAddons).some(k => tenant.paidAddons[k]?.active) && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 space-y-3 mt-6">
+                      <div>
+                        <h4 className="font-bold text-gray-900 text-sm">Trial Add-ons Billing Bundling</h4>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          You have subscribed to these add-ons during your trial period. Select which ones you want to keep and pay for. Unchecked add-ons will be disabled immediately after payment.
+                        </p>
+                      </div>
+                      <div className="divide-y divide-gray-150">
+                        {Object.keys(tenant.paidAddons).map((key) => {
+                          const addonEnt = tenant.paidAddons[key];
+                          if (!addonEnt?.active) return null;
+
+                          // Translate entitlement key to catalog code
+                          const code = {
+                            qrOrdering: 'qr_ordering',
+                            loyalty: 'loyalty',
+                            tableManagement: 'table_management',
+                            uberEats: 'uber_eats',
+                            accounting: 'accounting',
+                            dualScreen: 'dual_screen',
+                            whatsapp: 'whatsapp_integration',
+                          }[key] || key;
+
+                          const label = {
+                            qrOrdering: 'QR Ordering',
+                            loyalty: 'Loyalty Program',
+                            tableManagement: 'Table Management',
+                            uberEats: 'Uber Eats Integration',
+                            accounting: 'Advanced Accounting Module',
+                            dualScreen: 'Dual Screen Customer Terminal',
+                            whatsapp: 'WhatsApp Business Integration',
+                          }[key] || key;
+
+                          const isExcluded = excludeAddons.includes(code);
+
+                          return (
+                            <div key={key} className="flex items-center justify-between py-3">
+                              <label className="flex items-center gap-3 cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={!isExcluded}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setExcludeAddons(prev => prev.filter(c => c !== code));
+                                    } else {
+                                      setExcludeAddons(prev => [...prev, code]);
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-brand-orange border-gray-300 rounded focus:ring-brand-orange cursor-pointer"
+                                />
+                                <span className="text-sm font-semibold text-gray-900">{label}</span>
+                              </label>
+                              <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full">
+                                Trial Active
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1478,9 +1545,11 @@ export default function SubscriptionPage() {
                     type="button"
                     disabled={!form.planId || form.planId === 'custom'}
                     onClick={() => {
+                      const computedTotal = breakdownData?.billingBreakdown?.total;
                       const p = plans.find(p => p._id === form.planId);
                       const price = selectedCycle === 'yearly' ? p?.yearlyPrice : p?.monthlyPrice;
-                      setForm((f) => ({ ...f, amount: String(price || 0) }));
+                      const amountToPay = computedTotal != null && computedTotal > 0 ? computedTotal : price;
+                      setForm((f) => ({ ...f, amount: String(amountToPay || 0) }));
                       setTrialSubscribeStep('payment_select');
                     }}
                     className="px-5 py-2 text-sm font-bold text-white bg-brand-orange hover:bg-brand-orange-hover rounded-lg shadow-md transition-all cursor-pointer disabled:opacity-50"

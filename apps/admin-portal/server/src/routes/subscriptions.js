@@ -805,7 +805,14 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       });
     }
 
-    const { billingCycle = 'monthly' } = req.body;
+    const { billingCycle = 'monthly', excludeAddons: rawExcludeAddons } = req.body;
+    let excludeAddons = [];
+    if (rawExcludeAddons) {
+      try {
+        excludeAddons = typeof rawExcludeAddons === 'string' ? JSON.parse(rawExcludeAddons) : rawExcludeAddons;
+      } catch (_) {}
+    }
+
     const cycle = billingCycle === 'yearly' ? 'yearly' : 'monthly';
     const planObj = requestedPlan.toObject ? requestedPlan.toObject() : requestedPlan;
     const planAmount = cycle === 'yearly' ? (planObj.yearlyPrice || 0) : (planObj.monthlyPrice || 0);
@@ -818,7 +825,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       durationDays,
     };
 
-    const renewal = await computeSubscriptionRenewalExpected(tenant, decoratedPlan);
+    const renewal = await computeSubscriptionRenewalExpected(tenant, decoratedPlan, { excludeAddons });
     const expectedTotal = renewal.total > 0 ? renewal.total : Number(decoratedPlan.amount) || 0;
     if (!amountsEqual(amountValue, expectedTotal)) {
       return res.status(400).json({
@@ -861,6 +868,7 @@ router.post('/receipts', authenticateJWT, authorize('merchant_admin'), upload.si
       paymentBreakdown: renewal,
       billingPeriodStart,
       billingPeriodEnd,
+      excludeAddons,
       createdBy: req.user.id,
     });
 
@@ -1058,6 +1066,7 @@ router.put('/receipts/:id/verify', authenticateJWT, authorize('superadmin'), asy
       await activateSubscriptionForTenant(tenantId, decoratedPlan, {
         paymentNote: `Payment receipt verified. ${decoratedPlan.name}`,
         activatedBy: req.user.id,
+        excludeAddons: receipt.excludeAddons,
       });
 
     if (addonPortion > 0 && subscription) {
@@ -1176,7 +1185,14 @@ router.get('/my', authenticateJWT, authorize('merchant_admin'), async (req, res)
     const includeBreakdown = req.query.includeBreakdown === '1' || req.query.includeBreakdown === 'true';
     let billingBreakdown = null;
     if (includeBreakdown) {
-      const { planId, billingCycle } = req.query;
+      const { planId, billingCycle, excludeAddons: rawExcludeAddons } = req.query;
+      let excludeAddons = [];
+      if (rawExcludeAddons) {
+        try {
+          excludeAddons = typeof rawExcludeAddons === 'string' ? JSON.parse(rawExcludeAddons) : rawExcludeAddons;
+        } catch (_) {}
+      }
+
       if (planId && billingCycle) {
         const planDoc = await SubscriptionPlan.findOne({ _id: planId, isActive: true }).lean();
         if (planDoc) {
@@ -1189,11 +1205,11 @@ router.get('/my', authenticateJWT, authorize('merchant_admin'), async (req, res)
             amount,
             durationDays,
           };
-          billingBreakdown = await computeSubscriptionRenewalExpected(tenant, planOverride);
+          billingBreakdown = await computeSubscriptionRenewalExpected(tenant, planOverride, { excludeAddons });
         }
       }
       if (!billingBreakdown) {
-        billingBreakdown = await computeSubscriptionRenewalExpected(tenant);
+        billingBreakdown = await computeSubscriptionRenewalExpected(tenant, null, { excludeAddons });
       }
 
       if (billingBreakdown) {
