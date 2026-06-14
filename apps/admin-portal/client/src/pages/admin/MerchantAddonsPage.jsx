@@ -615,14 +615,16 @@ export default function MerchantAddonsPage() {
                   </div>
                 ) : (
                   <>
-                    <BillingQuotePanel
-                      recurringRates={selectedAddon.recurringRates}
-                      proration={selectedAddon.proration}
-                      amountDue={selectedAddon.priced?.amount}
-                      currency={selectedAddon.priced?.currency}
-                      fullCycle={selectedAddon.fullCycle}
-                      merchantSymbol={merchantSymbol}
-                    />
+                    {tenant?.subscriptionStatus !== 'trial' && (
+                      <BillingQuotePanel
+                        recurringRates={selectedAddon.recurringRates}
+                        proration={selectedAddon.proration}
+                        amountDue={selectedAddon.priced?.amount}
+                        currency={selectedAddon.priced?.currency}
+                        fullCycle={selectedAddon.fullCycle}
+                        merchantSymbol={merchantSymbol}
+                      />
+                    )}
                     {tenant?.subscriptionStatus === 'trial' && (
                       <div className="flex items-start gap-2 text-violet-800 text-xs bg-violet-50 border border-violet-200 rounded-lg p-3 mt-3">
                         <Sparkles size={16} className="shrink-0 mt-0.5 text-violet-600 animate-pulse" />
