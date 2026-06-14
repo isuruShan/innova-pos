@@ -7,6 +7,7 @@ import {
   List, LayoutGrid, Eye
 } from 'lucide-react';
 import api from '../../api/axios';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Toast from '../../components/Toast';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import GoodsReceiptFormModal from '../../components/inventory/GoodsReceiptFormModal';
@@ -36,7 +37,16 @@ const GRN_SORT_OPTIONS = [
 ];
 export default function GoodsReceipts() {
   const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
-  const [activeTab, setActiveTab] = useState('receipts');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab = location.pathname.endsWith('/returns') ? 'returns' : 'receipts';
+  const setActiveTab = (tab) => navigate(`/goods-receipts/${tab}`);
+
+  useEffect(() => {
+    if (location.pathname === '/goods-receipts' || location.pathname === '/goods-receipts/') {
+      navigate('/goods-receipts/receipts', { replace: true });
+    }
+  }, [location.pathname, navigate]);
   const filterContainerRef = useRef(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);

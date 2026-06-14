@@ -188,7 +188,7 @@ export default function App() {
                   </RoleRoute>
                 } />
                 <Route path="/manager/reports" element={<Navigate to="/manager/reports/menu-mix" replace />} />
-                <Route path="/manager/menu" element={
+                <Route path="/manager/menu/*" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
                     <MenuManagement />
                   </RoleRoute>
@@ -228,7 +228,7 @@ export default function App() {
                     <TableAnalyticsPage />
                   </RoleRoute>
                 } />
-                <Route path="/manager/inventory" element={
+                <Route path="/manager/inventory/*" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
                     <InventoryManagement />
                   </RoleRoute>
@@ -238,7 +238,7 @@ export default function App() {
                     <PurchaseOrders />
                   </RoleRoute>
                 } />
-                <Route path="/manager/goods-receipts" element={
+                <Route path="/manager/goods-receipts/*" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
                     <Suspense fallback={<div className="flex items-center justify-center h-screen bg-[var(--pos-page-bg)] text-slate-400">Loading...</div>}>
                       <GoodsReceipts />

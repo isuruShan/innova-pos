@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronUp, Tag, GripVertical, Search, LayoutGrid, List,
   Download, Upload, Phone, X,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../api/axios';
 import CategoryManagerModal from '../../components/CategoryManagerModal';
 import ConfirmDialog from '../../components/ConfirmDialog';
@@ -78,11 +78,19 @@ function ComboItemsPreview({ comboItems }) {
 
 export default function MenuManagement() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const { data: paidAddons } = useTenantPaidAddons();
   const whatsappAddonActive = paidAddons?.whatsapp === true;
 
-  const [activeMenuTab, setActiveMenuTab] = useState('items'); // 'items' | 'profitability'
+  const activeMenuTab = location.pathname.endsWith('/profitability') ? 'profitability' : 'items';
+  const setActiveMenuTab = (tab) => navigate(`/menu/${tab}`);
+
+  useEffect(() => {
+    if (location.pathname === '/menu' || location.pathname === '/menu/') {
+      navigate('/menu/items', { replace: true });
+    }
+  }, [location.pathname, navigate]);
   const [activeCategory, setActiveCategory] = useState('All');
   const [formOpen, setFormOpen] = useState(false);
   const [catModalOpen, setCatModalOpen] = useState(false);

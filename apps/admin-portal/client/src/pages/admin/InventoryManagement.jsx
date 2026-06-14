@@ -11,6 +11,7 @@ import {
   CartesianGrid, Tooltip, BarChart, Bar, Cell, PieChart, Pie, Legend,
 } from 'recharts';
 import api from '../../api/axios';
+import { useNavigate, useLocation } from 'react-router-dom';
 import SlideOver from '../../components/SlideOver';
 import Badge from '../../components/Badge';
 import Toast from '../../components/Toast';
@@ -72,7 +73,22 @@ function SupplierPills({ suppliers }) {
 
 export default function InventoryManagement() {
   const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
-  const [activeTab, setActiveTab] = useState('stock');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const getActiveTab = () => {
+    if (location.pathname.endsWith('/adjustments')) return 'adjustments';
+    if (location.pathname.endsWith('/sessions')) return 'sessions';
+    if (location.pathname.endsWith('/analytics')) return 'analytics';
+    return 'stock';
+  };
+  const activeTab = getActiveTab();
+  const setActiveTab = (tab) => navigate(`/inventory/${tab}`);
+
+  useEffect(() => {
+    if (location.pathname === '/inventory' || location.pathname === '/inventory/') {
+      navigate('/inventory/stock', { replace: true });
+    }
+  }, [location.pathname, navigate]);
   const [slideOpen, setSlideOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);

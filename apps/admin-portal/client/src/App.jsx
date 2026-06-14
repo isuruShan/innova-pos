@@ -259,12 +259,12 @@ export default function App() {
               <Layout><CustomersAdminPage /></Layout>
             </PrivateRoute>
           } />
-          <Route path="/menu" element={
+          <Route path="/menu/*" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><MenuManagement /></Layout>
             </PrivateRoute>
           } />
-          <Route path="/inventory" element={
+          <Route path="/inventory/*" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><InventoryManagement /></Layout>
             </PrivateRoute>
@@ -279,7 +279,7 @@ export default function App() {
               <Layout><PurchaseOrders /></Layout>
             </PrivateRoute>
           } />
-          <Route path="/goods-receipts" element={
+          <Route path="/goods-receipts/*" element={
             <PrivateRoute roles={['merchant_admin']}>
               <Layout><GoodsReceipts /></Layout>
             </PrivateRoute>
