@@ -561,21 +561,21 @@ export default function InventoryManagement() {
 
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
         <PageHeader
-          title={
-            <span className="flex items-center gap-2">
-              Inventory
+          title="Inventory"
+          subtitle={
+            <span className="flex flex-wrap items-center gap-2">
+              <span>
+                {activeTab === 'stock' ? `${items.length} items tracked` :
+                activeTab === 'adjustments' ? 'Make manual stock adjustments' :
+                activeTab === 'analytics' ? 'Stock health, category breakdown & consumption' :
+                'View history of stock adjustments'}
+              </span>
               {activeTab === 'stock' && lowCount > 0 && (
-                <span className="flex items-center gap-1 bg-yellow-500/20 text-yellow-450 border border-yellow-500/30 text-xs font-semibold px-2.5 py-1 rounded-full">
-                  <AlertTriangle size={12} /> {lowCount} need attention
+                <span className="inline-flex items-center gap-1 bg-yellow-500/20 text-yellow-450 border border-yellow-500/30 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                  <AlertTriangle size={11} /> {lowCount} need attention
                 </span>
               )}
             </span>
-          }
-          subtitle={
-            activeTab === 'stock' ? `${items.length} items tracked` :
-            activeTab === 'adjustments' ? 'Make manual stock adjustments' :
-            activeTab === 'analytics' ? 'Stock health, category breakdown & consumption' :
-            'View history of stock adjustments'
           }
           actions={activeTab === 'stock' ? [
             { label: 'Export', icon: Download, onClick: handleExportInventory },

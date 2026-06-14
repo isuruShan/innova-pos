@@ -172,8 +172,9 @@ export default function ProfitabilityAnalytics() {
   return (
     <div className="space-y-6">
       {/* Search & Controls Header */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-[var(--pos-panel)] p-4 rounded-2xl border border-slate-700">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-3 bg-[var(--pos-panel)] p-4 rounded-2xl border border-slate-700">
+        {/* Search — always full width */}
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
           <input
             type="text"
@@ -184,9 +185,10 @@ export default function ProfitabilityAnalytics() {
           />
         </div>
 
-        <div className="flex items-center gap-3 justify-between sm:justify-end shrink-0">
+        {/* Controls — wrap on mobile */}
+        <div className="flex flex-wrap items-center gap-3 justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 hidden sm:flex items-center gap-1 whitespace-nowrap">
+            <span className="text-xs text-slate-400 flex items-center gap-1 whitespace-nowrap">
               <Calculator size={13} /> Formula:
             </span>
             <select

@@ -402,9 +402,10 @@ export default function SupplierManagement() {
           ]}
         />
 
-        {/* Search + Sort row */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700/50 items-center justify-between">
-          <div className="flex-1 w-full flex items-center gap-2 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2">
+        {/* Search + Controls row */}
+        <div className="flex flex-col gap-3 mb-6 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700/50">
+          {/* Search — always full width */}
+          <div className="flex items-center gap-2 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg px-3 py-2">
             <Search size={15} className="text-slate-500 flex-shrink-0" />
             <input
               type="text"
@@ -418,7 +419,8 @@ export default function SupplierManagement() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+          {/* Controls — wrap on mobile */}
+          <div className="flex flex-wrap items-center gap-2 justify-end">
             {/* View toggle */}
             <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
 
