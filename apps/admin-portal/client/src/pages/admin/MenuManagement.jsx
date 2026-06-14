@@ -91,7 +91,16 @@ export default function MenuManagement() {
   const [formError, setFormError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [menuSearch, setMenuSearch] = useState('');
-  const [viewMode, setViewMode] = useState('grid');
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem('view_mode_menu_management');
+    if (saved) return saved;
+    return 'grid';
+  });
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('view_mode_menu_management', mode);
+  };
   const [importModalOpen, setImportModalOpen] = useState(false);
   const qc = useQueryClient();
   const { toast, showToast, clearToast } = useToast();
@@ -702,14 +711,14 @@ export default function MenuManagement() {
                 <div className="flex gap-1 bg-gray-50 border border-gray-200 rounded-lg p-0.5">
                   <button
                     type="button"
-                    onClick={() => setViewMode('table')}
+                    onClick={() => handleSetViewMode('table')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'table' ? 'bg-brand-orange text-white' : 'text-gray-650 hover:bg-gray-100 hover:text-gray-900'}`}
                   >
                     <List size={14} /> Table
                   </button>
                   <button
                     type="button"
-                    onClick={() => setViewMode('grid')}
+                    onClick={() => handleSetViewMode('grid')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition ${viewMode === 'grid' ? 'bg-brand-orange text-white' : 'text-gray-650 hover:bg-gray-100 hover:text-gray-900'}`}
                   >
                     <LayoutGrid size={14} /> Grid

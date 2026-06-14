@@ -20,6 +20,16 @@ export const AuthProvider = ({ children }) => {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Listen for preference updates from intercepted storage writes
+  useEffect(() => {
+    const handlePrefsUpdated = (e) => {
+      const { user: updatedUser, token, refreshToken } = e.detail;
+      updateUser(updatedUser, token, refreshToken);
+    };
+    window.addEventListener('user-preferences-updated', handlePrefsUpdated);
+    return () => window.removeEventListener('user-preferences-updated', handlePrefsUpdated);
+  }, [updateUser]);
+
   const login = useCallback(async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
     localStorage.setItem('admin_token', data.token);

@@ -37,6 +37,12 @@ const userSchema = new mongoose.Schema(
 
     // Firebase Cloud Messaging push notification tokens (one per registered browser/device)
     fcmTokens: [{ type: String, index: true }],
+
+    preferences: {
+      type: Map,
+      of: String,
+      default: () => new Map(),
+    },
   },
   { timestamps: true }
 );

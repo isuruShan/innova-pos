@@ -25,6 +25,7 @@ const buildPayload = (u, subscriptionActive = true) => ({
   profileImage: u.profileImage || '',
   isTemporaryPassword: u.isTemporaryPassword || false,
   subscriptionActive,
+  preferences: u.preferences ? Object.fromEntries(u.preferences) : {},
 });
 
 async function withFreshProfileImage(payload, userDoc) {
@@ -143,11 +144,24 @@ router.put('/me', authenticateJWT, async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const { name, currentPassword, newPassword, profileImage, profileImageKey } = req.body;
+    const { name, currentPassword, newPassword, profileImage, profileImageKey, preferences } = req.body;
     if (name?.trim()) user.name = name.trim();
     if (profileImage !== undefined) user.profileImage = profileImage;
     if (profileImageKey !== undefined) user.profileImageKey = profileImageKey;
     if (profileImageKey !== undefined) user.profileImage = '';
+
+    if (preferences && typeof preferences === 'object') {
+      if (!user.preferences) {
+        user.preferences = new Map();
+      }
+      for (const [key, value] of Object.entries(preferences)) {
+        if (value === null || value === undefined) {
+          user.preferences.delete(key);
+        } else {
+          user.preferences.set(key, String(value));
+        }
+      }
+    }
 
     if (newPassword) {
       if (!currentPassword) return res.status(400).json({ message: 'Current password required' });
