@@ -336,10 +336,12 @@ export default function SubscriptionPage() {
   }, [tenant?.planLocked, tenant?.pendingPlanId?._id, tenant?.assignedPlanId?._id]);
 
   const payPlans = useMemo(() => {
-    if (!nextBillingPlanId) return plans;
-    const match = plans.filter((p) => p._id === nextBillingPlanId);
-    return match.length ? match : plans;
-  }, [plans, nextBillingPlanId]);
+    if (tenant?.planLocked && nextBillingPlanId) {
+      const match = plans.filter((p) => p._id === nextBillingPlanId);
+      return match.length ? match : plans;
+    }
+    return plans;
+  }, [plans, nextBillingPlanId, tenant?.planLocked]);
 
   const selectedPlan = useMemo(
     () => payPlans.find((p) => p._id === form.planId) || payPlans[0] || null,
