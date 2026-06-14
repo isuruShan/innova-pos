@@ -28,19 +28,19 @@ export default function TrialBanners() {
       {banners.map((banner) => (
         <div
           key={banner._id}
-          className="relative flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-100 border border-amber-300 text-amber-900 text-sm font-medium shadow-sm animate-in fade-in slide-in-from-top-2 duration-300"
+          className="relative flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-100 border border-amber-300 text-gray-900 text-sm font-medium shadow-sm animate-in fade-in slide-in-from-top-2 duration-300"
         >
           <div className="flex items-center gap-2">
-            <Info size={16} className="text-amber-700 shrink-0" />
-            <span className="text-amber-900">
-              <strong className="font-bold text-amber-950 mr-1.5">{banner.title}:</strong>
+            <Info size={16} className="text-gray-700 shrink-0" />
+            <span className="text-gray-900">
+              <strong className="font-bold text-black mr-1.5">{banner.title}:</strong>
               {banner.content}
             </span>
           </div>
           <button
             type="button"
             onClick={() => dismissBanner(banner._id)}
-            className="text-amber-700 hover:text-amber-950 p-1 hover:bg-amber-200/60 rounded-lg transition-all"
+            className="text-gray-700 hover:text-black p-1 hover:bg-amber-200/60 rounded-lg transition-all"
           >
             <X size={16} />
           </button>
