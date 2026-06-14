@@ -6,7 +6,7 @@ const Supplier = require('../models/Supplier');
 const Store = require('../models/Store');
 const Tenant = require('../models/Tenant');
 const { protect, tenantScope } = require('../middleware/auth');
-const { resolveSelectedStore, buildStoreFilter } = require('../middleware/storeScope');
+const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
 const { generatePurchaseOrderPDF } = require('../utils/pdfGenerator');
 const { sendPurchaseOrderEmail } = require('../utils/mailer');
 const { createNotification } = require('../lib/notificationHelpers');
@@ -19,9 +19,9 @@ const { createNotification } = require('../lib/notificationHelpers');
 router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { status, supplierId, from, to } = req.query;
-    const { tenantId, storeId } = req;
+    const { tenantId } = req;
 
-    const filter = { tenantId, storeId };
+    const filter = { tenantId, ...buildStoreFilter(req) };
     if (status) filter.status = status;
     if (supplierId) filter.supplierId = supplierId;
     if (from || to) {
@@ -49,11 +49,11 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
  */
 router.get('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const { tenantId, storeId } = req;
+    const { tenantId } = req;
     const order = await PurchaseOrder.findOne({
       _id: req.params.id,
       tenantId,
-      storeId,
+      ...buildStoreFilter(req),
     })
       .populate('supplierId', 'name email phone')
       .populate('createdBy', 'name email')
@@ -83,8 +83,13 @@ router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) =>
       return res.status(400).json({ error: 'Supplier and items are required' });
     }
 
+    const activeStoreId = storeId || (await resolveWriteStoreId(req));
+    if (!activeStoreId) {
+      return res.status(400).json({ error: 'No active store context found to create purchase order' });
+    }
+
     // Verify supplier exists
-    const supplier = await Supplier.findOne({ _id: supplierId, tenantId, storeId });
+    const supplier = await Supplier.findOne({ _id: supplierId, tenantId, storeId: activeStoreId });
     if (!supplier) {
       return res.status(404).json({ error: 'Supplier not found' });
     }
@@ -95,7 +100,7 @@ router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) =>
       const invItem = await Inventory.findOne({
         _id: item.inventoryItemId,
         tenantId,
-        storeId,
+        storeId: activeStoreId,
       });
       if (!invItem) {
         return res.status(404).json({ error: `Inventory item ${item.inventoryItemId} not found` });
@@ -128,14 +133,14 @@ router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) =>
     const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const countToday = await PurchaseOrder.countDocuments({
       tenantId,
-      storeId,
+      storeId: activeStoreId,
       createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) },
     });
     const orderNumber = `PO-${today}-${String(countToday + 1).padStart(4, '0')}`;
 
     const order = new PurchaseOrder({
       tenantId,
-      storeId,
+      storeId: activeStoreId,
       orderNumber,
       supplierId,
       items: validatedItems,
@@ -163,18 +168,20 @@ router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) =>
  */
 router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const { tenantId, storeId } = req;
+    const { tenantId } = req;
     const { supplierId, items, expectedDate, notes, status } = req.body;
 
     const order = await PurchaseOrder.findOne({
       _id: req.params.id,
       tenantId,
-      storeId,
+      ...buildStoreFilter(req),
     });
 
     if (!order) {
       return res.status(404).json({ error: 'Purchase order not found' });
     }
+
+    const activeStoreId = order.storeId;
 
     // Only draft and sent orders can be edited
     if (!['draft', 'sent'].includes(order.status)) {
@@ -183,7 +190,7 @@ router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
 
     // Update supplier if provided
     if (supplierId && supplierId !== String(order.supplierId)) {
-      const supplier = await Supplier.findOne({ _id: supplierId, tenantId, storeId });
+      const supplier = await Supplier.findOne({ _id: supplierId, tenantId, storeId: activeStoreId });
       if (!supplier) {
         return res.status(404).json({ error: 'Supplier not found' });
       }
@@ -197,7 +204,7 @@ router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
         const invItem = await Inventory.findOne({
           _id: item.inventoryItemId,
           tenantId,
-          storeId,
+          storeId: activeStoreId,
         });
         if (!invItem) {
           return res.status(404).json({ error: `Inventory item ${item.inventoryItemId} not found` });
@@ -249,12 +256,12 @@ router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
  */
 router.post('/:id/send', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const { tenantId, storeId } = req;
+    const { tenantId } = req;
 
     const order = await PurchaseOrder.findOne({
       _id: req.params.id,
       tenantId,
-      storeId,
+      ...buildStoreFilter(req),
     });
 
     if (!order) {
@@ -275,7 +282,7 @@ router.post('/:id/send', protect, tenantScope, resolveSelectedStore, async (req,
     await order.populate('sentBy', 'name email');
 
     // Fetch store details for PDF/email context
-    const store = await Store.findOne({ _id: storeId, tenantId });
+    const store = await Store.findOne({ _id: order.storeId, tenantId });
     const tenantDoc = await Tenant.findById(tenantId).lean();
     const merchantName = tenantDoc?.businessName || 'Merchant';
 
@@ -362,12 +369,12 @@ router.post('/:id/send', protect, tenantScope, resolveSelectedStore, async (req,
  */
 router.delete('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const { tenantId, storeId } = req;
+    const { tenantId } = req;
 
     const order = await PurchaseOrder.findOne({
       _id: req.params.id,
       tenantId,
-      storeId,
+      ...buildStoreFilter(req),
     });
 
     if (!order) {
@@ -392,11 +399,11 @@ router.delete('/:id', protect, tenantScope, resolveSelectedStore, async (req, re
  */
 router.get('/suggestions/low-stock', protect, tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const { tenantId, storeId } = req;
+    const { tenantId } = req;
 
     const lowStockItems = await Inventory.find({
       tenantId,
-      storeId,
+      ...buildStoreFilter(req),
       $expr: { $lte: ['$quantity', '$minThreshold'] },
     }).sort({ quantity: 1 });
 

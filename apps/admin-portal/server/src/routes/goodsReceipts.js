@@ -18,7 +18,7 @@ router.get('/', protect, tenantScope, resolveSelectedStore, async (req, res) => 
     const { type, status, supplierId, purchaseOrderId, from, to } = req.query;
     const { tenantId, storeId } = req;
 
-    const filter = { tenantId, storeId };
+    const filter = { tenantId, ...buildStoreFilter(req) };
     if (type) filter.type = type;
     if (status) filter.status = status;
     if (supplierId) filter.supplierId = supplierId;
@@ -53,7 +53,7 @@ router.get('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
     const receipt = await GoodsReceipt.findOne({
       _id: req.params.id,
       tenantId,
-      storeId,
+      ...buildStoreFilter(req),
     })
       .populate('supplierId', 'name email phone')
       .populate('purchaseOrderId', 'orderNumber items')
@@ -198,7 +198,7 @@ router.post('/:id/confirm', protect, tenantScope, resolveSelectedStore, async (r
     const receipt = await GoodsReceipt.findOne({
       _id: req.params.id,
       tenantId,
-      storeId,
+      ...buildStoreFilter(req),
     });
 
     if (!receipt) {
@@ -335,7 +335,7 @@ router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
     const receipt = await GoodsReceipt.findOne({
       _id: req.params.id,
       tenantId,
-      storeId,
+      ...buildStoreFilter(req),
     });
 
     if (!receipt) {
@@ -416,7 +416,7 @@ router.delete('/:id', protect, tenantScope, resolveSelectedStore, async (req, re
     const receipt = await GoodsReceipt.findOne({
       _id: req.params.id,
       tenantId,
-      storeId,
+      ...buildStoreFilter(req),
     });
 
     if (!receipt) {

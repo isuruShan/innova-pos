@@ -93,6 +93,19 @@ export default function InventoryManagement() {
     localStorage.setItem('view_mode_inventory_management', mode);
   };
 
+  const filterContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (!showFilters) return;
+    const handleClickOutside = (e) => {
+      if (filterContainerRef.current && !filterContainerRef.current.contains(e.target)) {
+        setShowFilters(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFilters]);
+
   const [importModalOpen, setImportModalOpen] = useState(false);
 
   const qc = useQueryClient();
@@ -738,13 +751,13 @@ export default function InventoryManagement() {
                   
                   <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
                   
-                  <div className="relative self-end sm:self-auto">
+                  <div className="relative self-end sm:self-auto" ref={filterContainerRef}>
                     <button
                       onClick={() => setShowFilters(f => !f)}
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
                         filter !== 'all'
-                          ? 'bg-brand-orange/10 border-amber-500/30 text-amber-500'
-                          : 'bg-gray-50 border-gray-200 text-gray-650 hover:bg-gray-100 hover:text-gray-900'
+                          ? 'bg-brand-orange/10 border-amber-500/30 text-amber-500 font-semibold'
+                          : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                       }`}
                     >
                       <SlidersHorizontal size={14} />

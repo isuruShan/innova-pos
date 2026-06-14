@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, Truck, Package, Search, X,
@@ -215,6 +215,19 @@ export default function SupplierManagement() {
 
   const [hasLinkedFilter, setHasLinkedFilter] = useState('all'); // 'all', 'linked', 'not_linked'
   const [showFilters, setShowFilters] = useState(false);
+  const filterContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (!showFilters) return;
+    const handleClickOutside = (e) => {
+      if (filterContainerRef.current && !filterContainerRef.current.contains(e.target)) {
+        setShowFilters(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFilters]);
+
   const qc = useQueryClient();
   const { sort, order, toggleSort, sortParams, setSort, setOrder } = useListSort('name', 'asc');
 
@@ -427,7 +440,7 @@ export default function SupplierManagement() {
               className="flex-1 bg-transparent text-gray-900 text-sm focus:outline-none placeholder-slate-655"
             />
             {search && (
-              <button onClick={() => setSearch('')}><X size={13} className="text-gray-400 hover:text-white" /></button>
+              <button onClick={() => setSearch('')}><X size={13} className="text-gray-400 hover:text-gray-900" /></button>
             )}
           </div>
 
@@ -435,19 +448,19 @@ export default function SupplierManagement() {
             {/* View toggle */}
             <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
 
-            <div className="relative">
+            <div className="relative" ref={filterContainerRef}>
               <button
                 onClick={() => setShowFilters(f => !f)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
                   hasLinkedFilter !== 'all'
                     ? 'bg-brand-orange/15 border-amber-500/30 text-brand-orange font-semibold'
-                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-white'
+                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                 }`}
               >
                 <SlidersHorizontal size={14} />
                 <span>Filters</span>
                 {hasLinkedFilter !== 'all' && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-brand-orange text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-[var(--pos-panel)]">
+                  <span className="absolute -top-1.5 -right-1.5 bg-brand-orange text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white">
                     1
                   </span>
                 )}
@@ -457,9 +470,9 @@ export default function SupplierManagement() {
               {showFilters && (
                 <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-2xl z-30 p-4 space-y-3">
                   <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-                    <span className="text-xs font-semibold text-slate-350">Inventory Link</span>
+                    <span className="text-xs font-semibold text-gray-700">Inventory Link</span>
                     {hasLinkedFilter !== 'all' && (
-                      <button onClick={() => setHasLinkedFilter('all')} className="text-[10px] text-amber-450 hover:underline">Clear</button>
+                      <button onClick={() => setHasLinkedFilter('all')} className="text-[10px] text-brand-orange hover:underline">Clear</button>
                     )}
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -474,7 +487,7 @@ export default function SupplierManagement() {
                         className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
                           hasLinkedFilter === f.key
                             ? 'bg-brand-orange/15 text-brand-orange font-semibold border-l-2 border-amber-500'
-                            : 'text-gray-500 hover:bg-slate-800 hover:text-white'
+                            : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                         }`}
                       >
                         {f.label}
@@ -503,7 +516,7 @@ export default function SupplierManagement() {
             <button
               type="button"
               onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-              className="p-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-white transition"
+              className="p-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition"
               title={order === 'asc' ? 'Ascending' : 'Descending'}
             >
               {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
@@ -597,7 +610,7 @@ export default function SupplierManagement() {
                 render: (s) => (
                   <div className="flex items-center gap-1.5 justify-end">
                     <button onClick={() => openEdit(s)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-slate-700 transition">
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-150 transition">
                       <Edit2 size={13} />
                     </button>
                     <button onClick={() => handleDelete(s._id)}

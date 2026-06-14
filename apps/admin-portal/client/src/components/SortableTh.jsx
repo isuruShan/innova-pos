@@ -14,11 +14,11 @@ export default function SortableTh({
   const alignClass = align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left';
 
   return (
-    <th className={`px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide ${alignClass} ${className}`}>
+    <th className={`px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide ${alignClass} ${className}`}>
       <button
         type="button"
         onClick={() => onSort(field)}
-        className={`inline-flex items-center gap-1 hover:text-gray-200 transition-colors ${active ? 'text-brand-orange' : ''}`}
+        className={`inline-flex items-center gap-1 hover:text-gray-900 transition-colors ${active ? 'text-brand-orange' : ''}`}
       >
         <span>{label}</span>
         {active ? (

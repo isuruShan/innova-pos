@@ -539,7 +539,7 @@ export default function FloorPlanEditorPage() {
 
   const [errorMessage, setErrorMessage] = useState(null);
 
-  // Attach Transformer to selected tables
+  // Attach Transformer to selected tables and zones
   useEffect(() => {
     if (trRef.current) {
       const stage = stageRef.current;
@@ -552,11 +552,14 @@ export default function FloorPlanEditorPage() {
           const node = stage.findOne(`#table-${id}`);
           if (node) nodes.push(node);
         });
+      } else if (selectedElement?.type === 'zone') {
+        const node = stage.findOne(`#zone-${selectedElement.index}`);
+        if (node) nodes.push(node);
       }
       trRef.current.nodes(nodes);
       trRef.current.getLayer()?.batchDraw();
     }
-  }, [selectedTable, selectedTables, localPlan]);
+  }, [selectedTable, selectedTables, selectedElement, localPlan]);
 
   // Handle nudging shapes with arrow keys
   useEffect(() => {
@@ -729,6 +732,25 @@ export default function FloorPlanEditorPage() {
     });
   }, [localPlan, saveMutation]);
 
+  // Helper to expand grid width/height dynamically when shapes are positioned near edges
+  const checkAndExpandGrid = useCallback((newX, newY, shapeWidth = 1, shapeHeight = 1) => {
+    if (!localPlan) return null;
+    let updatedGridWidth = localPlan.gridWidth || 20;
+    let updatedGridHeight = localPlan.gridHeight || 15;
+
+    if (newX + shapeWidth > updatedGridWidth) {
+      updatedGridWidth = Math.min(500, newX + shapeWidth + 2);
+    }
+    if (newY + shapeHeight > updatedGridHeight) {
+      updatedGridHeight = Math.min(500, newY + shapeHeight + 2);
+    }
+
+    return {
+      gridWidth: updatedGridWidth,
+      gridHeight: updatedGridHeight
+    };
+  }, [localPlan]);
+
   // Handle table drag/transform end on stage
   const handleTableDragOrTransformEnd = useCallback((e, tableId) => {
     const node = e.target;
@@ -749,15 +771,9 @@ export default function FloorPlanEditorPage() {
     const newRotation = Math.round(node.rotation() / 90) * 90;
 
     if (localPlan) {
-      let updatedGridWidth = localPlan.gridWidth || 20;
-      let updatedGridHeight = localPlan.gridHeight || 15;
-
-      if (newX + newWidth > updatedGridWidth) {
-        updatedGridWidth = Math.min(50, newX + newWidth + 2);
-      }
-      if (newY + newHeight > updatedGridHeight) {
-        updatedGridHeight = Math.min(40, newY + newHeight + 2);
-      }
+      const expansion = checkAndExpandGrid(newX, newY, newWidth, newHeight);
+      const updatedGridWidth = expansion ? expansion.gridWidth : (localPlan.gridWidth || 20);
+      const updatedGridHeight = expansion ? expansion.gridHeight : (localPlan.gridHeight || 15);
 
       const updatedTables = localPlan.tables.map((t) => {
         if (String(t.tableId) === String(tableId)) {
@@ -781,7 +797,7 @@ export default function FloorPlanEditorPage() {
       });
       setIsDirty(true);
     }
-  }, [localPlan]);
+  }, [localPlan, checkAndExpandGrid]);
 
   // Handle Drop from Sidebar to Canvas
   const handleCanvasDrop = useCallback(
@@ -809,10 +825,10 @@ export default function FloorPlanEditorPage() {
       const height = newTableId ? 2 : (currentTables.find((t) => String(t.tableId) === tableId)?.height || 2);
 
       if (x + width > updatedGridWidth) {
-        updatedGridWidth = Math.min(50, Math.max(updatedGridWidth + 5, x + width));
+        updatedGridWidth = Math.min(500, Math.max(updatedGridWidth + 5, x + width));
       }
       if (y + height > updatedGridHeight) {
-        updatedGridHeight = Math.min(40, Math.max(updatedGridHeight + 5, y + height));
+        updatedGridHeight = Math.min(500, Math.max(updatedGridHeight + 5, y + height));
       }
 
       if (newTableId) {
@@ -1312,23 +1328,9 @@ export default function FloorPlanEditorPage() {
                   {(plan.zones || []).map((zone, idx) => {
                     const isZoneSelected = selectedElement?.type === 'zone' && selectedElement.index === idx;
                     return (
-                      <Group
-                        key={`zone-${idx}`}
-                        draggable
-                        onDragEnd={(e) => {
-                          const node = e.target;
-                          const newX = Math.max(0, Math.round(node.x() / 50));
-                          const newY = Math.max(0, Math.round(node.y() / 50));
-                          node.x(newX * 50);
-                          node.y(newY * 50);
-                          const updated = localPlan.zones.map((z, i) => 
-                            i === idx ? { ...z, x: newX, y: newY } : z
-                          );
-                          setLocalPlan({ ...localPlan, zones: updated });
-                          setIsDirty(true);
-                        }}
-                      >
+                      <Group key={`zone-group-${idx}`}>
                         <Rect
+                          id={`zone-${idx}`}
                           name="zone-rect"
                           x={zone.x * 50}
                           y={zone.y * 50}
@@ -1339,6 +1341,60 @@ export default function FloorPlanEditorPage() {
                           stroke={isZoneSelected ? '#38bdf8' : 'transparent'}
                           strokeWidth={2}
                           cornerRadius={6}
+                          draggable
+                          onDragEnd={(e) => {
+                            const node = e.target;
+                            const newX = Math.max(0, Math.round(node.x() / 50));
+                            const newY = Math.max(0, Math.round(node.y() / 50));
+                            node.x(newX * 50);
+                            node.y(newY * 50);
+                            
+                            const expansion = checkAndExpandGrid(newX, newY, zone.width, zone.height);
+                            const updatedGridWidth = expansion ? expansion.gridWidth : (localPlan.gridWidth || 20);
+                            const updatedGridHeight = expansion ? expansion.gridHeight : (localPlan.gridHeight || 15);
+
+                            const updated = localPlan.zones.map((z, i) => 
+                              i === idx ? { ...z, x: newX, y: newY } : z
+                            );
+                            setLocalPlan({
+                              ...localPlan,
+                              gridWidth: updatedGridWidth,
+                              gridHeight: updatedGridHeight,
+                              zones: updated
+                            });
+                            setIsDirty(true);
+                          }}
+                          onTransformEnd={(e) => {
+                            const node = e.target;
+                            const scaleX = node.scaleX();
+                            const scaleY = node.scaleY();
+                            node.scaleX(1);
+                            node.scaleY(1);
+                            const newWidth = Math.max(1, Math.round((node.width() * scaleX) / 50));
+                            const newHeight = Math.max(1, Math.round((node.height() * scaleY) / 50));
+                            const newX = Math.max(0, Math.round(node.x() / 50));
+                            const newY = Math.max(0, Math.round(node.y() / 50));
+
+                            node.x(newX * 50);
+                            node.y(newY * 50);
+                            node.width(newWidth * 50);
+                            node.height(newHeight * 50);
+
+                            const expansion = checkAndExpandGrid(newX, newY, newWidth, newHeight);
+                            const updatedGridWidth = expansion ? expansion.gridWidth : (localPlan.gridWidth || 20);
+                            const updatedGridHeight = expansion ? expansion.gridHeight : (localPlan.gridHeight || 15);
+
+                            const updated = localPlan.zones.map((z, i) => 
+                              i === idx ? { ...z, x: newX, y: newY, width: newWidth, height: newHeight } : z
+                            );
+                            setLocalPlan({
+                              ...localPlan,
+                              gridWidth: updatedGridWidth,
+                              gridHeight: updatedGridHeight,
+                              zones: updated
+                            });
+                            setIsDirty(true);
+                          }}
                           onClick={(e) => {
                             e.cancelBubble = true;
                             setSelectedElement({ type: 'zone', index: idx });
@@ -1355,6 +1411,7 @@ export default function FloorPlanEditorPage() {
                           fill={isZoneSelected ? '#38bdf8' : '#94a3b8'}
                           fontSize={11}
                           fontStyle="bold"
+                          listening={false}
                         />
                       </Group>
                     );
@@ -1438,10 +1495,20 @@ export default function FloorPlanEditorPage() {
                           const newY = Math.max(0, Math.round(node.y() / 50));
                           node.x(newX * 50);
                           node.y(newY * 50);
+                          
+                          const expansion = checkAndExpandGrid(newX, newY, 1, 1);
+                          const updatedGridWidth = expansion ? expansion.gridWidth : (localPlan.gridWidth || 20);
+                          const updatedGridHeight = expansion ? expansion.gridHeight : (localPlan.gridHeight || 15);
+
                           const updated = localPlan.texts.map((txt, i) => 
                             i === idx ? { ...txt, x: newX, y: newY } : txt
                           );
-                          setLocalPlan({ ...localPlan, texts: updated });
+                          setLocalPlan({
+                            ...localPlan,
+                            gridWidth: updatedGridWidth,
+                            gridHeight: updatedGridHeight,
+                            texts: updated
+                          });
                           setIsDirty(true);
                         }}
                       />

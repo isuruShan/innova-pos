@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Calendar, Package, Trash2, SlidersHorizontal, ChevronDown, X,
@@ -49,6 +49,18 @@ export default function WastageManagement() {
     localStorage.setItem('view_mode_wastage_management', mode);
   };
   const [typeFilter, setTypeFilter] = useState('all'); // 'all', 'end_of_day', 'spill_expiry_damage'
+  const filterContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (!showFilters) return;
+    const handleClickOutside = (e) => {
+      if (filterContainerRef.current && !filterContainerRef.current.contains(e.target)) {
+        setShowFilters(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFilters]);
 
   // New Wastage Report Form State
   const [notes, setNotes] = useState('');
@@ -264,7 +276,7 @@ export default function WastageManagement() {
               className="flex-1 bg-transparent text-gray-900 text-sm focus:outline-none placeholder-slate-650"
             />
             {search && (
-              <button onClick={() => setSearch('')}><X size={13} className="text-gray-400 hover:text-white" /></button>
+              <button onClick={() => setSearch('')}><X size={13} className="text-gray-400 hover:text-gray-900" /></button>
             )}
           </div>
 
@@ -272,13 +284,13 @@ export default function WastageManagement() {
             {/* View toggle */}
             <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
 
-            <div className="relative">
+            <div className="relative" ref={filterContainerRef}>
               <button
                 onClick={() => setShowFilters(f => !f)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
                   (fromDate || toDate || typeFilter !== 'all')
                     ? 'bg-brand-orange/15 border-amber-500/30 text-brand-orange font-semibold'
-                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-white'
+                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                 }`}
               >
                 <SlidersHorizontal size={14} />
@@ -294,11 +306,11 @@ export default function WastageManagement() {
               {showFilters && (
                 <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-2xl z-30 p-4 space-y-3">
                   <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-                    <span className="text-xs font-semibold text-slate-350">Filters</span>
+                    <span className="text-xs font-semibold text-gray-700">Filters</span>
                     {(fromDate || toDate || typeFilter !== 'all') && (
                       <button
                         onClick={() => { setFromDate(''); setToDate(''); setTypeFilter('all'); }}
-                        className="text-[10px] text-amber-455 hover:underline"
+                        className="text-[10px] text-brand-orange hover:underline"
                       >
                         Clear All
                       </button>
@@ -307,7 +319,7 @@ export default function WastageManagement() {
                   
                   {/* Type Filter */}
                   <div>
-                    <p className="text-[11px] font-semibold text-slate-450 uppercase tracking-wider mb-2">Wastage Type</p>
+                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Wastage Type</p>
                     <div className="flex flex-col gap-1">
                       {[
                         { key: 'all', label: 'All Types' },
@@ -323,7 +335,7 @@ export default function WastageManagement() {
                             className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
                               active
                                 ? 'bg-brand-orange/15 text-brand-orange font-semibold border-l-2 border-amber-500'
-                                : 'text-gray-500 hover:bg-slate-800 hover:text-white'
+                                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
                             }`}
                           >
                             <span>{t.label}</span>
@@ -376,7 +388,7 @@ export default function WastageManagement() {
             <button
               type="button"
               onClick={() => setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-              className="p-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:text-white transition"
+              className="p-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition"
               title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
             >
               {sortOrder === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}

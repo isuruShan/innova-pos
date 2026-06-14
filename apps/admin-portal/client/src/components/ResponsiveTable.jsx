@@ -72,14 +72,14 @@ export default function ResponsiveTable({
                         currentOrder={currentOrder}
                         onSort={onSort}
                         align={col.className?.includes('text-right') ? 'right' : col.className?.includes('text-center') ? 'center' : 'left'}
-                        className={`sticky top-16 bg-gray-50 z-10 border-b border-gray-200 text-gray-500 ${col.headerClassName || ''}`}
+                        className={`bg-gray-50 border-b border-gray-200 text-gray-500 ${col.headerClassName || ''}`}
                       />
                     );
                   }
                   return (
                     <th
                       key={col.key}
-                      className={`sticky top-16 bg-gray-50 z-10 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3 border-b border-gray-200 ${col.headerClassName || ''}`}
+                      className={`bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 py-3 border-b border-gray-200 ${col.headerClassName || ''}`}
                     >
                       {col.header}
                     </th>

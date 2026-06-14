@@ -148,18 +148,18 @@ export default function ImportModal({ open, onClose, title, fields, onImport, te
 
   return (
     <div
-      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-xs"
       onClick={(e) => {
         if (typeof window !== 'undefined' && window.innerWidth >= 640 && e.target === e.currentTarget) {
           handleClose();
         }
       }}
     >
-      <div className="bg-[var(--pos-panel)] rounded-2xl border border-slate-700 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl border border-gray-200 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
         {/* Header */}
-        <div className="sticky top-0 bg-[var(--pos-panel)] border-b border-slate-700 px-6 py-4 flex justify-between items-center z-10">
-          <h2 className="text-xl font-bold text-[var(--pos-text-primary)]">{title}</h2>
-          <button onClick={handleClose} className="text-slate-500 hover:text-slate-300 transition">
+        <div className="sticky top-0 bg-white border-b border-gray-150 px-6 py-4 flex justify-between items-center z-10">
+          <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 transition">
             <X size={24} />
           </button>
         </div>
@@ -170,11 +170,11 @@ export default function ImportModal({ open, onClose, title, fields, onImport, te
           {step === 1 && (
             <div className="space-y-6">
               <div className="text-center">
-                <Upload size={48} className="mx-auto mb-4 text-amber-500" />
-                <h3 className="text-lg font-semibold text-[var(--pos-text-primary)] mb-2">
+                <Upload size={48} className="mx-auto mb-4 text-brand-orange animate-bounce-slow" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   Upload CSV File
                 </h3>
-                <p className="text-sm text-slate-500 mb-6">
+                <p className="text-sm text-gray-500 mb-6">
                   Select a CSV file to import. You can download a template with the correct format below.
                 </p>
               </div>
@@ -189,7 +189,7 @@ export default function ImportModal({ open, onClose, title, fields, onImport, te
                 />
                 <button
                   onClick={() => fileRef.current?.click()}
-                  className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-6 py-3 rounded-xl transition"
+                  className="flex items-center justify-center gap-2 bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold px-6 py-3 rounded-xl transition shadow-lg shadow-orange-500/10"
                 >
                   <Upload size={20} />
                   Select CSV File
@@ -197,18 +197,18 @@ export default function ImportModal({ open, onClose, title, fields, onImport, te
 
                 <button
                   onClick={downloadTemplate}
-                  className="flex items-center justify-center gap-2 border border-slate-600 hover:border-amber-500 text-slate-300 hover:text-amber-400 font-medium px-6 py-3 rounded-xl transition"
+                  className="flex items-center justify-center gap-2 border border-gray-300 hover:border-brand-orange text-gray-700 hover:text-brand-orange font-medium px-6 py-3 rounded-xl transition bg-white"
                 >
                   <Download size={20} />
                   Download Template
                 </button>
               </div>
 
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
-                <p className="text-sm font-semibold text-amber-400 mb-2 flex items-center gap-2">
-                  <AlertCircle size={16} /> Important Notes:
+              <div className="bg-amber-50 border border-amber-250/70 rounded-xl p-4">
+                <p className="text-sm font-semibold text-amber-800 mb-2 flex items-center gap-2">
+                  <AlertCircle size={16} className="text-amber-600" /> Important Notes:
                 </p>
-                <ul className="text-xs text-slate-400 space-y-1.5 ml-6 list-disc">
+                <ul className="text-xs text-amber-700/95 space-y-1.5 ml-6 list-disc font-medium">
                   {instructions && instructions.length > 0 ? (
                     instructions.map((inst, index) => (
                       <li key={index}>{inst}</li>
@@ -230,47 +230,47 @@ export default function ImportModal({ open, onClose, title, fields, onImport, te
           {step === 2 && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-[var(--pos-text-primary)] mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   Map Your Fields
                 </h3>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-gray-500">
                   Match your CSV columns to our fields. Required fields are marked with *.
                 </p>
               </div>
 
-              <div className="bg-slate-800/30 rounded-xl p-4 mb-4">
-                <p className="text-sm text-slate-400">
-                  <FileText size={14} className="inline mr-1" />
-                  File: <span className="font-medium text-slate-300">{file?.name}</span>
-                  <span className="mx-2">•</span>
-                  {csvData.length} rows detected
+              <div className="bg-gray-50 border border-gray-150 rounded-xl p-4 mb-4">
+                <p className="text-sm text-gray-600">
+                  <FileText size={14} className="inline mr-1 text-gray-400" />
+                  File: <span className="font-semibold text-gray-800">{file?.name}</span>
+                  <span className="mx-2 text-gray-300">•</span>
+                  <span className="font-semibold text-gray-800">{csvData.length}</span> rows detected
                 </p>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1">
                 {fields.map(field => (
-                  <div key={field.key} className="grid grid-cols-2 gap-4 items-center">
+                  <div key={field.key} className="grid grid-cols-2 gap-4 items-center border-b border-gray-50 pb-2">
                     <div>
-                      <label className="text-sm font-medium text-[var(--pos-text-primary)] flex items-center gap-2">
+                      <label className="text-sm font-medium text-gray-900 flex items-center gap-2">
                         {field.label}
                         {field.required && (
-                          <span className="bg-red-500/20 text-red-400 text-xs px-1.5 py-0.5 rounded border border-red-500/30">
+                          <span className="bg-red-50 text-red-600 text-xs px-1.5 py-0.5 rounded border border-red-200">
                             Required
                           </span>
                         )}
                       </label>
-                      <p className="text-xs text-slate-600 mt-0.5">
+                      <p className="text-xs text-gray-400 mt-0.5">
                         Type: {field.type}
                       </p>
                     </div>
                     <select
                       value={mapping[field.key] || ''}
                       onChange={(e) => setMapping({ ...mapping, [field.key]: e.target.value })}
-                      className={`w-full bg-[var(--pos-surface-inset)] border ${
+                      className={`w-full bg-gray-50 border ${
                         field.required && !mapping[field.key] 
-                          ? 'border-red-500/50' 
-                          : 'border-slate-700'
-                      } text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500`}
+                          ? 'border-red-300 focus:ring-red-200' 
+                          : 'border-gray-250 focus:ring-orange-200'
+                      } text-gray-850 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2`}
                     >
                       <option value="">-- Select Column --</option>
                       {csvHeaders.map(header => (
@@ -284,13 +284,13 @@ export default function ImportModal({ open, onClose, title, fields, onImport, te
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={() => setStep(1)}
-                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium px-6 py-3 rounded-xl transition"
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-6 py-3 rounded-xl transition"
                 >
                   Back
                 </button>
                 <button
                   onClick={handleStartImport}
-                  className="flex-1 bg-amber-500 hover:bg-amber-400 text-white font-semibold px-6 py-3 rounded-xl transition"
+                  className="flex-1 bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold px-6 py-3 rounded-xl transition"
                 >
                   Start Import
                 </button>
@@ -304,18 +304,18 @@ export default function ImportModal({ open, onClose, title, fields, onImport, te
               {!importResults ? (
                 <>
                   <div className="text-center">
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-amber-500 border-t-transparent mb-4" />
-                    <h3 className="text-lg font-semibold text-[var(--pos-text-primary)] mb-2">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-brand-orange border-t-transparent mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
                       Importing...
                     </h3>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-gray-500">
                       Processing {importProgress?.current || 0} of {importProgress?.total || 0} rows
                     </p>
                   </div>
 
-                  <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+                  <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
                     <div
-                      className="bg-amber-500 h-full transition-all duration-300"
+                      className="bg-brand-orange h-full transition-all duration-300"
                       style={{
                         width: `${((importProgress?.current || 0) / (importProgress?.total || 1)) * 100}%`
                       }}
@@ -323,16 +323,16 @@ export default function ImportModal({ open, onClose, title, fields, onImport, te
                   </div>
 
                   {importProgress?.errors.length > 0 && (
-                    <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 max-h-48 overflow-y-auto">
-                      <p className="text-sm font-semibold text-red-400 mb-2">
+                    <div className="bg-red-50 border border-red-100 rounded-xl p-4 max-h-48 overflow-y-auto">
+                      <p className="text-sm font-semibold text-red-800 mb-2">
                         Errors encountered (import continues):
                       </p>
-                      <ul className="text-xs text-slate-400 space-y-1">
+                      <ul className="text-xs text-red-750 space-y-1">
                         {importProgress.errors.slice(0, 10).map((err, idx) => (
                           <li key={idx}>Row {err.rowIndex + 1}: {err.message}</li>
                         ))}
                         {importProgress.errors.length > 10 && (
-                          <li className="font-medium text-slate-300">
+                          <li className="font-semibold text-red-800">
                             ... and {importProgress.errors.length - 10} more errors
                           </li>
                         )}
@@ -344,32 +344,32 @@ export default function ImportModal({ open, onClose, title, fields, onImport, te
                 <>
                   <div className="text-center">
                     <CheckCircle size={48} className="mx-auto mb-4 text-green-500" />
-                    <h3 className="text-lg font-semibold text-[var(--pos-text-primary)] mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
                       Import Complete
                     </h3>
                   </div>
 
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 text-center">
-                      <p className="text-2xl font-bold text-green-400">{importResults.success}</p>
-                      <p className="text-xs text-slate-500 mt-1">Successful</p>
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                      <p className="text-2xl font-bold text-green-600">{importResults.success}</p>
+                      <p className="text-xs text-green-700 mt-1">Successful</p>
                     </div>
-                    <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-center">
-                      <p className="text-2xl font-bold text-red-400">{importResults.errors.length}</p>
-                      <p className="text-xs text-slate-500 mt-1">Failed</p>
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                      <p className="text-2xl font-bold text-red-600">{importResults.errors.length}</p>
+                      <p className="text-xs text-red-700 mt-1">Failed</p>
                     </div>
-                    <div className="bg-slate-800/30 border border-slate-700 rounded-xl p-4 text-center">
-                      <p className="text-2xl font-bold text-slate-300">{importResults.total}</p>
-                      <p className="text-xs text-slate-500 mt-1">Total</p>
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
+                      <p className="text-2xl font-bold text-gray-700">{importResults.total}</p>
+                      <p className="text-xs text-gray-500 mt-1">Total</p>
                     </div>
                   </div>
 
                   {importResults.errors.length > 0 && (
-                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
-                      <p className="text-sm font-semibold text-amber-400 mb-2 flex items-center gap-2">
-                        <AlertCircle size={16} /> Error File Downloaded
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                      <p className="text-sm font-semibold text-amber-800 mb-2 flex items-center gap-2">
+                        <AlertCircle size={16} className="text-amber-600" /> Error File Downloaded
                       </p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-amber-700">
                         A CSV file with the failed rows and error messages has been downloaded. 
                         Fix the errors and re-import only those rows.
                       </p>
@@ -378,7 +378,7 @@ export default function ImportModal({ open, onClose, title, fields, onImport, te
 
                   <button
                     onClick={handleClose}
-                    className="w-full bg-amber-500 hover:bg-amber-400 text-white font-semibold px-6 py-3 rounded-xl transition"
+                    className="w-full bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold px-6 py-3 rounded-xl transition shadow-lg shadow-orange-500/10"
                   >
                     Done
                   </button>
