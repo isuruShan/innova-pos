@@ -1193,7 +1193,7 @@ export default function InventoryManagement() {
                     className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
                       analyticsDays === d
                         ? 'bg-brand-orange text-white'
-                        : 'bg-slate-800 text-gray-500 hover:text-white border border-gray-200'
+                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                     }`}
                   >
                     {d}d
