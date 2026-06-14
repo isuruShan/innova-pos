@@ -145,7 +145,7 @@ function ContactSection() {
           <h2 className="text-3xl font-extrabold text-white mb-3">Let's talk operations</h2>
           <p className="text-slate-400 mb-6">Have questions about migrating from your old POS system? We are here to help.</p>
           <a
-            href="https://wa.me/94773539443"
+            href="https://wa.me/94772539443"
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-2.5 px-6 py-3 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg shadow-emerald-950/20 hover:shadow-emerald-950/30 hover:scale-[1.02] active:scale-[0.98] transition-all text-sm group"
