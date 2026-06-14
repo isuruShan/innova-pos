@@ -13,6 +13,14 @@ export const AuthProvider = ({ children }) => {
     } catch { return null; }
   });
 
+  // updateUser must be declared BEFORE any useEffect that references it
+  const updateUser = useCallback((updatedUser, newToken, newRefreshToken) => {
+    if (newToken) localStorage.setItem('admin_token', newToken);
+    if (newRefreshToken) localStorage.setItem('admin_refresh_token', newRefreshToken);
+    localStorage.setItem('admin_user', JSON.stringify(updatedUser));
+    setUser(updatedUser);
+  }, []);
+
   // Silently re-register FCM token on mount if permission already granted
   useEffect(() => {
     if (user) {
@@ -49,13 +57,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('admin_refresh_token');
     localStorage.removeItem('admin_user');
     setUser(null);
-  }, []);
-
-  const updateUser = useCallback((updatedUser, newToken, newRefreshToken) => {
-    if (newToken) localStorage.setItem('admin_token', newToken);
-    if (newRefreshToken) localStorage.setItem('admin_refresh_token', newRefreshToken);
-    localStorage.setItem('admin_user', JSON.stringify(updatedUser));
-    setUser(updatedUser);
   }, []);
 
   const isSuperAdmin = user?.role === 'superadmin';
