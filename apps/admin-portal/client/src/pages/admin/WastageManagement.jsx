@@ -896,7 +896,7 @@ export default function WastageManagement() {
                   });
                 } else {
                   const filtered = inventory.filter(item =>
-                    (item.itemName || '').toLowerCase().includes(q) || (item.category || '').toLowerCase().includes(q)
+                    (item.itemName || '').toLowerCase().includes(q) || (item.category?.name || item.category || '').toLowerCase().includes(q)
                   );
 
                   if (filtered.length === 0) {

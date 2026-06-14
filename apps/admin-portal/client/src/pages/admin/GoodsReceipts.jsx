@@ -34,22 +34,10 @@ const GRN_SORT_OPTIONS = [
   { value: 'totalAmount', label: 'Total Amount' },
   { value: 'status', label: 'Status' },
 ];
-
 export default function GoodsReceipts() {
   const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const [activeTab, setActiveTab] = useState('receipts');
   const filterContainerRef = useRef(null);
-
-  useEffect(() => {
-    if (!showFilters) return;
-    const handleClickOutside = (e) => {
-      if (filterContainerRef.current && !filterContainerRef.current.contains(e.target)) {
-        setShowFilters(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showFilters]);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [isReadOnly, setIsReadOnly] = useState(false);
@@ -68,6 +56,17 @@ export default function GoodsReceipts() {
     if (saved) return saved;
     return window.innerWidth < 768 ? 'grid' : 'table';
   });
+
+  useEffect(() => {
+    if (!showFilters) return;
+    const handleClickOutside = (e) => {
+      if (filterContainerRef.current && !filterContainerRef.current.contains(e.target)) {
+        setShowFilters(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFilters]);
 
   const handleSetViewMode = (mode) => {
     setViewMode(mode);
