@@ -113,27 +113,6 @@ export default function MenuManagement() {
     setVisibleCount(20);
   }, [activeCategory, menuSearch, sortCriteria]);
 
-  useEffect(() => {
-    if (viewMode !== 'grid') return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisibleCount((prev) => prev + 20);
-        }
-      },
-      { rootMargin: '200px' }
-    );
-    const currentTrigger = infiniteScrollTriggerRef.current;
-    if (currentTrigger) {
-      observer.observe(currentTrigger);
-    }
-    return () => {
-      if (currentTrigger) {
-        observer.unobserve(currentTrigger);
-      }
-    };
-  }, [viewMode, displayed.length]);
-
 
   const sort = useMemo(() => {
     if (sortCriteria === 'name-asc' || sortCriteria === 'name-desc') return 'name';
@@ -466,6 +445,27 @@ export default function MenuManagement() {
       return compareSortValues(a[field], b[field], dir);
     });
   }, [categoryFiltered, sortCriteria, sort, order, activeCategory, categorySortMap, menuSearch]);
+
+  useEffect(() => {
+    if (viewMode !== 'grid') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + 20);
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    const currentTrigger = infiniteScrollTriggerRef.current;
+    if (currentTrigger) {
+      observer.observe(currentTrigger);
+    }
+    return () => {
+      if (currentTrigger) {
+        observer.unobserve(currentTrigger);
+      }
+    };
+  }, [viewMode, displayed.length]);
 
   const canDragProducts = activeCategory !== 'All' && sortCriteria === 'custom';
 
