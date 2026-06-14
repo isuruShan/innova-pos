@@ -48,7 +48,7 @@ async function getAddonMerchantState(tenant, code) {
     cancelScheduled,
     periodEndsAt: row.periodEndsAt || null,
     canSubscribe: !active && !pendingReceipt,
-    canUnsubscribe: active && !row.cancelAtPeriodEnd && !inTrial,
+    canUnsubscribe: active && !row.cancelAtPeriodEnd && (!inTrial || tenant.subscriptionStatus === 'trial'),
     isInTrial: inTrial,
     trialEndsAt: row.trialEndsAt || null,
     trialActivatedAt: row.trialActivatedAt || null,

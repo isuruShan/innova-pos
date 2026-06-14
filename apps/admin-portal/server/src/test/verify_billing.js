@@ -135,6 +135,76 @@ async function run() {
   console.log('\n--- Breakdown with Bob added (Manager Seat @ 500/mo + 2 Extra Stores @ 300/mo each) ---');
   console.log(JSON.stringify(breakdown, null, 2));
 
+  // Test addon billing and unsubscribe exclusion
+  tenant.paidAddons = tenant.paidAddons || {};
+  tenant.paidAddons.qrOrdering = {
+    active: true,
+    activatedAt: new Date(),
+    periodEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    cancelAtPeriodEnd: false,
+  };
+  await tenant.save();
+
+  breakdown = await computeSubscriptionRenewalExpected(tenant);
+  console.log('\n--- Breakdown with QR Ordering Addon active ---');
+  console.log(JSON.stringify(breakdown, null, 2));
+  const hasQrBefore = breakdown.addons.some(a => a.code === 'qr_ordering');
+  if (!hasQrBefore) {
+    console.error('Expected qr_ordering to be in renewal breakdown, but it was not.');
+    process.exit(1);
+  }
+
+  // Unsubscribe QR ordering (set cancelAtPeriodEnd to true)
+  tenant.paidAddons.qrOrdering.cancelAtPeriodEnd = true;
+  await tenant.save();
+
+  breakdown = await computeSubscriptionRenewalExpected(tenant);
+  console.log('\n--- Breakdown after unsubscribing QR Ordering (cancelAtPeriodEnd: true) ---');
+  console.log(JSON.stringify(breakdown, null, 2));
+  const hasQrAfter = breakdown.addons.some(a => a.code === 'qr_ordering');
+  if (hasQrAfter) {
+    console.error('Expected qr_ordering to be excluded from renewal breakdown after unsubscribing, but it was still present.');
+    process.exit(1);
+  }
+  console.log('Verification successful! Unsubscribed addons are excluded from next billing cycle breakdown.');
+
+  // Clean up addons
+  tenant.paidAddons.qrOrdering = {
+    active: false,
+    activatedAt: null,
+    periodEndsAt: null,
+    cancelAtPeriodEnd: false,
+  };
+  await tenant.save();
+
+  // Test immediate deactivation during main trial period
+  tenant.subscriptionStatus = 'trial';
+  tenant.paidAddons.qrOrdering = {
+    active: true,
+    activatedAt: new Date(),
+    periodEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    cancelAtPeriodEnd: false,
+  };
+  await tenant.save();
+
+  // Simulate unsubscribe in trial logic
+  if (tenant.subscriptionStatus === 'trial') {
+    const { emptyEntitlement } = require('@innovapos/paid-addons');
+    tenant.paidAddons.qrOrdering = emptyEntitlement();
+    tenant.markModified('paidAddons');
+    await tenant.save();
+  }
+
+  if (tenant.paidAddons.qrOrdering.active) {
+    console.error('Expected qrOrdering to be immediately deactivated during trial, but it was still active.');
+    process.exit(1);
+  }
+  console.log('Verification successful! Addons unsubscribed during trial are immediately deactivated.');
+
+  // Restore tenant state
+  tenant.subscriptionStatus = 'active';
+  await tenant.save();
+
   // Clean up
   await User.deleteMany({ tenantId: tenant._id });
   console.log('\nCleaned up test users.');

@@ -150,6 +150,19 @@ router.post('/:code/unsubscribe', authenticateJWT, authorize('merchant_admin'), 
       });
     }
 
+    if (tenant.subscriptionStatus === 'trial') {
+      const { emptyEntitlement } = require('@innovapos/paid-addons');
+      tenant.paidAddons[entitlementKey] = emptyEntitlement();
+      tenant.updatedBy = req.user.id;
+      tenant.markModified('paidAddons');
+      await tenant.save();
+
+      return res.json({
+        message: `${addonName} has been unsubscribed and deactivated immediately.`,
+        deactivatedImmediately: true,
+      });
+    }
+
     const ent = tenant.paidAddons?.[entitlementKey];
     if (!ent?.periodEndsAt) {
       return res.status(400).json({ message: 'Billing period end is not set. Contact support.' });

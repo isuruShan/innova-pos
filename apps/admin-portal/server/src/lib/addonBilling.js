@@ -283,6 +283,15 @@ async function computeSubscriptionRenewalExpected(tenant, planOverride = null, o
       continue;
     }
     if (!row.check(t)) continue;
+    
+    // If the merchant has scheduled to unsubscribe / cancel this addon at the period end,
+    // do not charge or show it in the next billing cycle renewal breakdown.
+    const entKey = row.key;
+    const ent = t.paidAddons?.[entKey];
+    if (ent?.cancelAtPeriodEnd) {
+      continue;
+    }
+
     const addonDef = await getAddonByCode(row.code);
     const priced =
       addonDef && addonDef.isActive ? priceAddonForPlan(addonDef, plan, t.countryIso) : { amount: 0 };
