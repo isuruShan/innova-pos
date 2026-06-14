@@ -529,14 +529,24 @@ export default function SubscriptionPage() {
                 <div className="w-full border border-gray-250 bg-gray-55/10 rounded-lg px-3 py-2 text-sm text-gray-800 font-medium">
                   {selectedPlan?.name || '—'} ({selectedPlan?.currency || 'LKR'} {Number(selectedCycle === 'yearly' ? selectedPlan?.yearlyPrice : selectedPlan?.monthlyPrice).toLocaleString()} / {selectedCycle === 'yearly' ? '365 days' : '30 days'})
                 </div>
-                {tenant?.pendingPlanId && (
+                {String(form.planId) !== String(tenant?.assignedPlanId?._id) ? (
                   <p className="text-xs text-blue-750 mt-1">
-                    Paying for your upcoming plan: <strong>{tenant.pendingPlanId.name}</strong>
-                    {tenant.pendingPlanEffectiveAt
-                      ? ` (effective ${new Date(tenant.pendingPlanEffectiveAt).toLocaleDateString()})`
+                    Paying for your selected plan: <strong>{selectedPlan?.name}</strong>
+                    {subscriptionEndDate
+                      ? ` (effective ${new Date(subscriptionEndDate).toLocaleDateString()})`
                       : ''}
                     .
                   </p>
+                ) : (
+                  tenant?.pendingPlanId && String(tenant.pendingPlanId._id) === String(form.planId) && (
+                    <p className="text-xs text-blue-750 mt-1">
+                      Paying for your upcoming plan: <strong>{tenant.pendingPlanId.name}</strong>
+                      {tenant.pendingPlanEffectiveAt
+                        ? ` (effective ${new Date(tenant.pendingPlanEffectiveAt).toLocaleDateString()})`
+                        : ''}
+                      .
+                    </p>
+                  )
                 )}
                 {tenant?.planLocked && (
                   <p className="text-xs text-amber-600 mt-1">This plan is locked by superadmin and cannot be changed.</p>
@@ -792,17 +802,28 @@ export default function SubscriptionPage() {
               {tenant.subscriptionStatus === 'trial' ? (
                 /* Trial Mode Subscribe workflow */
                 <div className="space-y-6">
-                  <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center justify-center text-center gap-4">
-                    <h4 className="font-bold text-gray-900 text-base">Select Subscription Plan</h4>
-                    <p className="text-sm text-gray-500 max-w-md">Your trial is active. You can subscribe to a premium plan at any time to ensure uninterrupted service when your trial ends.</p>
-                    <button
-                      type="button"
-                      onClick={() => setTrialSubscribeStep('plan_select')}
-                      className="px-6 py-3 bg-brand-orange hover:bg-brand-orange-hover text-white font-bold rounded-xl shadow-lg transition duration-200 cursor-pointer"
-                    >
-                      Subscribe
-                    </button>
-                  </div>
+                  {latestReceipt?.status === 'pending' ? (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 space-y-2">
+                      <p className="font-semibold text-amber-800 flex items-center gap-2">
+                        <Clock size={16} className="text-amber-600 animate-pulse" /> Pending Verification
+                      </p>
+                      <p className="text-xs text-amber-700 leading-relaxed">
+                        We have received your payment proof for subscription plan: <strong>{latestReceipt.requestedPlanId?.name || latestReceipt.requestedPlanCode || '—'}</strong>. Our team is currently verifying it.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center justify-center text-center gap-4">
+                      <h4 className="font-bold text-gray-900 text-base">Select Subscription Plan</h4>
+                      <p className="text-sm text-gray-500 max-w-md">Your trial is active. You can subscribe to a premium plan at any time to ensure uninterrupted service when your trial ends.</p>
+                      <button
+                        type="button"
+                        onClick={() => setTrialSubscribeStep('plan_select')}
+                        className="px-6 py-3 bg-brand-orange hover:bg-brand-orange-hover text-white font-bold rounded-xl shadow-lg transition duration-200 cursor-pointer"
+                      >
+                        Subscribe
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 /* Subscribed Mode details and toggleable Payment block */
@@ -1465,7 +1486,7 @@ export default function SubscriptionPage() {
               {trialSubscribeStep === 'payment_select' && (
                 <div className="space-y-6">
                   <p className="text-sm text-gray-650">
-                    Select a payment option below to subscribe to the <strong className="text-gray-900">{selectedPlan?.name || 'selected'} plan</strong> ({selectedPlan?.currency || 'LKR'} {Number(form.amount).toLocaleString()} / {selectedCycle === 'yearly' ? 'year' : 'month'}).
+                    Select a payment option below to subscribe to the <strong className="text-gray-900">{selectedPlan?.name || 'selected'} plan</strong>. Total payment amount: <strong className="text-gray-900">{selectedPlan?.currency || 'LKR'} {Number(form.amount).toLocaleString()}</strong> (includes plan renewal fee and active add-ons/user seats for the next {selectedCycle === 'yearly' ? 'year' : 'month'}).
                   </p>
                   <div className="flex flex-wrap gap-4 justify-center py-4">
                     {paymentOptions?.stripe?.enabled && !isInternational && (
