@@ -816,7 +816,7 @@ export default function WastageManagement() {
                           menuItemId: String(item._id),
                           variantId: String(v._id),
                           name: `${item.name} (${v.name})`,
-                          category: item.category,
+                          category: typeof item.category === 'object' ? (item.category?.name || '') : (item.category || ''),
                         });
                       });
                     } else {
@@ -824,13 +824,13 @@ export default function WastageManagement() {
                         menuItemId: String(item._id),
                         variantId: null,
                         name: item.name,
-                        category: item.category,
+                        category: typeof item.category === 'object' ? (item.category?.name || '') : (item.category || ''),
                       });
                     }
                   });
 
                   const filtered = flattened.filter(opt =>
-                    opt.name.toLowerCase().includes(q) || (opt.category || '').toLowerCase().includes(q)
+                    opt.name.toLowerCase().includes(q) || String(opt.category || '').toLowerCase().includes(q)
                   );
 
                   if (filtered.length === 0) {
@@ -871,7 +871,7 @@ export default function WastageManagement() {
                   });
                 } else {
                   const filtered = inventory.filter(item =>
-                    (item.itemName || '').toLowerCase().includes(q) || (item.category || '').toLowerCase().includes(q)
+                    (item.itemName || '').toLowerCase().includes(q) || String(item.category || '').toLowerCase().includes(q)
                   );
 
                   if (filtered.length === 0) {

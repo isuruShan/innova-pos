@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Clock, RefreshCw, ChefHat, Link2, Sun, Moon, Eye } from 'lucide-react';
+import { Clock, RefreshCw, ChefHat, Link2, Sun, Moon, Eye, Search, X } from 'lucide-react';
 import api from '../../api/axios';
 import OfflineBanner from '../../components/OfflineBanner';
 import { mergeOrderLists } from '../../offline/mergeOrders.js';
@@ -297,6 +297,7 @@ export default function KitchenDisplay() {
   const [advancingAddsId, setAdvancingAddsId] = useState(null);
   const [acknowledgingId, setAcknowledgingId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     setSelectedOrder(null);
@@ -385,35 +386,46 @@ export default function KitchenDisplay() {
     onSettled: () => setAcknowledgingId(null),
   });
 
+  const filteredOrders = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return orders;
+    return orders.filter((o) => {
+      const orderNum = String(o.orderNumber || '').padStart(3, '0');
+      const customerName = (o.customerName || o.customer?.name || o.customerId?.name || '').toLowerCase();
+      const mobileNumber = (o.customerMobile || o.customerPhone || o.customer?.mobile || o.customer?.phone || o.customerId?.mobile || o.customerId?.phone || '').toLowerCase();
+      return orderNum.includes(q) || customerName.includes(q) || mobileNumber.includes(q);
+    });
+  }, [orders, searchQuery]);
+
   const addsPendingBundles = useMemo(() => {
     const out = [];
-    for (const o of orders) {
+    for (const o of filteredOrders) {
       if (o._offlinePending) continue;
       if (kitchenAddsPipelineStage(o) !== 'pending') continue;
       const b = buildAddsBundle(o);
       if (b) out.push(b);
     }
     return out;
-  }, [orders]);
+  }, [filteredOrders]);
 
   const addsPreppingBundles = useMemo(() => {
     const out = [];
-    for (const o of orders) {
+    for (const o of filteredOrders) {
       if (o._offlinePending) continue;
       if (kitchenAddsPipelineStage(o) !== 'prepping') continue;
       const b = buildAddsBundle(o);
       if (b) out.push(b);
     }
     return out;
-  }, [orders]);
+  }, [filteredOrders]);
 
   const grouped = useMemo(() => ({
     'kitchen-adds-pending': addsPendingBundles,
     'kitchen-adds-prepping': addsPreppingBundles,
-    pending: orders.filter((o) => o.status === 'pending'),
-    preparing: orders.filter((o) => o.status === 'preparing'),
-    ready: orders.filter((o) => o.status === 'ready'),
-  }), [orders, addsPendingBundles, addsPreppingBundles]);
+    pending: filteredOrders.filter((o) => o.status === 'pending'),
+    preparing: filteredOrders.filter((o) => o.status === 'preparing'),
+    ready: filteredOrders.filter((o) => o.status === 'ready'),
+  }), [filteredOrders, addsPendingBundles, addsPreppingBundles]);
 
   const lastUpdated = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -456,6 +468,29 @@ export default function KitchenDisplay() {
               {orders.length} active
             </span>
           )}
+        </div>
+
+        {/* Search Input */}
+        <div className="flex-1 max-w-xs mx-4">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by order #, name, phone..."
+              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700/50 text-[var(--pos-text-primary)] rounded-xl pl-8 pr-8 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/40 placeholder-slate-500"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-4">

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -26,7 +26,9 @@ import Dashboard from './pages/manager/Dashboard';
 import MenuManagement from './pages/manager/MenuManagement';
 import InventoryManagement from './pages/manager/InventoryManagement';
 import PurchaseOrders from './pages/manager/PurchaseOrders';
-import GoodsReceipts from './pages/manager/GoodsReceipts';
+// GoodsReceipts uses React.lazy to break a Vite bundler circular-init issue
+// (ReferenceError: Cannot access 'D' before initialization)
+const GoodsReceipts = lazy(() => import('./pages/manager/GoodsReceipts'));
 import SupplierManagement from './pages/manager/SupplierManagement';
 import OrdersView from './pages/manager/OrdersView';
 import Promotions from './pages/manager/Promotions';
@@ -238,7 +240,9 @@ export default function App() {
                 } />
                 <Route path="/manager/goods-receipts" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>
-                    <GoodsReceipts />
+                    <Suspense fallback={<div className="flex items-center justify-center h-screen bg-[var(--pos-page-bg)] text-slate-400">Loading...</div>}>
+                      <GoodsReceipts />
+                    </Suspense>
                   </RoleRoute>
                 } />
                 <Route path="/manager/suppliers" element={
