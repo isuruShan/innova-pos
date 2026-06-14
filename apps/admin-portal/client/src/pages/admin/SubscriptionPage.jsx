@@ -344,7 +344,7 @@ export default function SubscriptionPage() {
   }, [plans, nextBillingPlanId, tenant?.planLocked]);
 
   const selectedPlan = useMemo(
-    () => payPlans.find((p) => p._id === form.planId) || payPlans[0] || null,
+    () => payPlans.find((p) => String(p._id) === String(form.planId)) || payPlans[0] || null,
     [payPlans, form.planId]
   );
 
@@ -358,6 +358,9 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     if (!tenant || !payPlans.length) return;
+    const hasValidPlan = form.planId && payPlans.some(p => String(p._id) === String(form.planId));
+    if (hasValidPlan) return;
+
     const defaultPlanId =
       (tenant.planLocked && tenant.assignedPlanId?._id) ||
       nextBillingPlanId ||
@@ -368,7 +371,7 @@ export default function SubscriptionPage() {
       ...f,
       planId: defaultPlanId,
     }));
-  }, [tenant, payPlans, nextBillingPlanId]);
+  }, [tenant, payPlans, nextBillingPlanId, form.planId]);
 
   useEffect(() => {
     const total =
@@ -1310,7 +1313,7 @@ export default function SubscriptionPage() {
                       const price = selectedCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
                       const displayPrice = `${plan.currency} ${price.toLocaleString()}`;
 
-                      const isSelected = form.planId === plan._id;
+                      const isSelected = String(form.planId) === String(plan._id);
 
                       let cardClass = `relative rounded-2xl p-6 border flex flex-col min-h-[350px] transition-all cursor-pointer hover:shadow-md ${
                         isSelected
@@ -1548,7 +1551,7 @@ export default function SubscriptionPage() {
                     disabled={!form.planId || form.planId === 'custom' || isBreakdownFetching}
                     onClick={() => {
                       const computedTotal = breakdownData?.billingBreakdown?.total;
-                      const p = plans.find(p => p._id === form.planId);
+                      const p = plans.find(p => String(p._id) === String(form.planId));
                       const price = selectedCycle === 'yearly' ? p?.yearlyPrice : p?.monthlyPrice;
                       const amountToPay = computedTotal != null && computedTotal > 0 ? computedTotal : price;
                       setForm((f) => ({ ...f, amount: String(amountToPay || 0) }));
