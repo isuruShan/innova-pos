@@ -126,7 +126,7 @@ export default function SubscriptionPage() {
   });
 
   const needsBreakdown = activeTab === 'overview' || activeTab === 'breakdown';
-  const { data: breakdownData } = useQuery({
+  const { data: breakdownData, isFetching: isBreakdownFetching } = useQuery({
     queryKey: ['my-subscription-breakdown', form.planId, selectedCycle, excludeAddons],
     queryFn: async () => {
       const { data } = await api.get('/subscriptions/my', {
@@ -413,7 +413,7 @@ export default function SubscriptionPage() {
       },
       onError: () => setErrors({ api: 'PayPal payment failed' }),
     }).render(paypalContainerRef.current);
-  }, [paypalReady, paymentMethod, form.planId, excludeAddons]);
+  }, [paypalReady, paymentMethod, form.planId, selectedCycle, excludeAddons]);
 
   const trialDaysLeft = tenant?.trialEndsAt
     ? Math.max(0, Math.ceil((new Date(tenant.trialEndsAt) - Date.now()) / (1000 * 60 * 60 * 24)))
@@ -1545,7 +1545,7 @@ export default function SubscriptionPage() {
                 {trialSubscribeStep === 'plan_select' && (
                   <button
                     type="button"
-                    disabled={!form.planId || form.planId === 'custom'}
+                    disabled={!form.planId || form.planId === 'custom' || isBreakdownFetching}
                     onClick={() => {
                       const computedTotal = breakdownData?.billingBreakdown?.total;
                       const p = plans.find(p => p._id === form.planId);
@@ -1556,7 +1556,7 @@ export default function SubscriptionPage() {
                     }}
                     className="px-5 py-2 text-sm font-bold text-white bg-brand-orange hover:bg-brand-orange-hover rounded-lg shadow-md transition-all cursor-pointer disabled:opacity-50"
                   >
-                    Next: Payment Method
+                    {isBreakdownFetching ? 'Calculating...' : 'Next: Payment Method'}
                   </button>
                 )}
               </div>
