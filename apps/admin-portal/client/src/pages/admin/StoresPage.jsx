@@ -465,6 +465,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
       toast.success('Receipt submitted. Your store will be created after verification.');
       closePurchase();
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
       queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
     },
     onError: (err) => setPurchaseError(err.response?.data?.message || 'Upload failed'),
@@ -638,6 +639,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
       queryClient.invalidateQueries({ queryKey: ['stores'] });
       queryClient.invalidateQueries({ queryKey: ['users-for-store-access'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
       queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
     },
     onError: (err) => {

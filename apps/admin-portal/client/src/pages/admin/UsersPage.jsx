@@ -210,6 +210,8 @@ export default function UsersPage() {
   const invalidateUsers = () => {
     queryClient.invalidateQueries({ queryKey: ['users'] });
     queryClient.invalidateQueries({ queryKey: ['my-users-total'] });
+    queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+    queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
   };
 
   const toggleMutation = useMutation({
@@ -325,6 +327,7 @@ export default function UsersPage() {
     onSuccess: () => {
       toast.success('Receipt submitted. The change will apply after super admin approval.');
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
       queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
       closeAll();
     },

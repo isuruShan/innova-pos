@@ -202,6 +202,7 @@ export default function MerchantAddonsPage() {
       api.post('/subscriptions/checkout/paypal/capture', { orderId }).then((r) => r.data),
     onSuccess: (capData) => {
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
       queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
       queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
       if (capData?.addon) {
@@ -219,6 +220,7 @@ export default function MerchantAddonsPage() {
     mutationFn: (fd) => api.post('/subscriptions/receipts', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
       queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
       queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
       toast.success('Receipt submitted. Pending super admin approval.');
@@ -235,6 +237,7 @@ export default function MerchantAddonsPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
       queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
       toast.success(data?.message || 'Unsubscribe scheduled.');
       setUnsubscribingCode('');
@@ -252,6 +255,7 @@ export default function MerchantAddonsPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
       queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
       toast.success(data?.message || 'Trial started successfully!');
       setTrialStartingCode('');
@@ -267,6 +271,7 @@ export default function MerchantAddonsPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
       queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
       toast.success(data?.message || 'Add-on activated successfully!');
       closeFlow();
