@@ -48,9 +48,14 @@ async function getRolePricing(role, countryIso, kind) {
     return { monthlyAmount: 0, yearlyAmount: 0, currency: cur, name: kind === 'userSeat' ? 'User seat' : 'Extra store' };
   }
   const picked = pickAmounts(doc, countryIso, kind);
+  const monthlyAmount = Number(picked.monthly) || 0;
+  let yearlyAmount = Number(picked.yearly) || 0;
+  if (yearlyAmount <= 0 && monthlyAmount > 0) {
+    yearlyAmount = monthlyAmount * 12;
+  }
   return {
-    monthlyAmount: Number(picked.monthly) || 0,
-    yearlyAmount: Number(picked.yearly) || 0,
+    monthlyAmount,
+    yearlyAmount,
     currency: picked.currency || (isLocalMerchant(countryIso) ? 'LKR' : 'USD'),
     name: picked.label,
   };
