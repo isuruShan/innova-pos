@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import {
   Search, Loader2, Eye, Calendar, Store, Filter, RefreshCw, X,
   Receipt, Sparkles, User, Phone, Mail, Clock, DollarSign
@@ -20,9 +21,15 @@ function addDays(d, n) {
 }
 
 export default function OrdersPage() {
+  const [searchParams] = useSearchParams();
   const [selectedStore, setSelectedStore] = useState('all');
   const [statusFilter, setStatusFilter] = useState('');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => searchParams.get('search') || '');
+
+  useEffect(() => {
+    const q = searchParams.get('search') || '';
+    setSearch(q);
+  }, [searchParams]);
   const [sinceDate, setSinceDate] = useState(() => {
     const today = new Date();
     return toYMD(addDays(today, -6));

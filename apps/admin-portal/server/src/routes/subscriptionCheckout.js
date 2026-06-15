@@ -272,6 +272,12 @@ router.post('/paypal/create-user-license-order', authenticateJWT, authorize('mer
 
     const tenant = await Tenant.findById(req.tenantId);
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+    if (tenant.subscriptionStatus === 'trial') {
+      return res.status(400).json({
+        code: 'TRIAL_PERIOD_RESTRICTION',
+        message: 'You cannot purchase user seats during your trial period. Please subscribe to a paid plan first.',
+      });
+    }
 
     const built =
       actionNorm === 'create_user'
@@ -326,6 +332,12 @@ router.post('/paypal/create-store-order', authenticateJWT, authorize('merchant_a
 
     const tenant = await Tenant.findById(req.tenantId);
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+    if (tenant.subscriptionStatus === 'trial') {
+      return res.status(400).json({
+        code: 'TRIAL_PERIOD_RESTRICTION',
+        message: 'You cannot purchase additional stores during your trial period. Please subscribe to a paid plan first.',
+      });
+    }
 
     const quote = await getStoreCreateQuote(req.tenantId);
     if (quote.error) return res.status(400).json({ message: quote.error });

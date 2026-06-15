@@ -428,13 +428,13 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
         ariaLabel="Manage categories"
         disableBottomSheet={true}
       >
-        <div className="space-y-4">
+        <div className="space-y-4 text-gray-900">
           {/* Export/Import Buttons */}
-          <div className="flex items-center gap-2 pb-3 border-b border-slate-700">
+          <div className="flex items-center gap-2 pb-3 border-b border-gray-200">
             <button
               type="button"
               onClick={handleExportCategories}
-              className="flex items-center gap-2 text-sm bg-slate-700 hover:bg-slate-600 text-green-400 px-3 py-1.5 rounded-lg transition"
+              className="flex items-center gap-2 text-sm bg-gray-50 hover:bg-gray-100 border border-gray-250 text-gray-700 px-3 py-1.5 rounded-lg transition hover:text-green-650"
             >
               <Download size={14} />
               Export
@@ -442,17 +442,17 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
             <button
               type="button"
               onClick={() => setImportModalOpen(true)}
-              className="flex items-center gap-2 text-sm bg-slate-700 hover:bg-slate-600 text-blue-400 px-3 py-1.5 rounded-lg transition"
+              className="flex items-center gap-2 text-sm bg-gray-50 hover:bg-gray-100 border border-gray-250 text-gray-700 px-3 py-1.5 rounded-lg transition hover:text-blue-600"
             >
               <Upload size={14} />
               Import
             </button>
             <div className="flex-1" />
-            <p className="text-xs text-slate-500">{manageableCategories.length} categories</p>
+            <p className="text-xs text-gray-500">{manageableCategories.length} categories</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">New Category</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">New Category</label>
             <div className="flex gap-2">
               <div className="flex-1 flex flex-col gap-2">
                 <input
@@ -462,10 +462,10 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                   placeholder="e.g. Wraps"
-                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500"
+                  className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange placeholder-gray-400"
                 />
                 
-                <div className="flex items-center gap-2 bg-slate-800/40 p-2 border border-slate-700 rounded-lg">
+                <div className="flex items-center gap-2 bg-gray-50 p-2 border border-gray-200 rounded-lg">
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -477,12 +477,12 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadingImage}
-                    className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-slate-300 px-3 py-1.5 rounded-md text-xs font-semibold transition"
+                    className="flex items-center gap-1.5 bg-white hover:bg-gray-100 border border-gray-300 disabled:opacity-40 text-gray-700 px-3 py-1.5 rounded-md text-xs font-semibold transition"
                   >
                     {uploadingImage ? (
-                      <Loader2 className="animate-spin text-amber-500" size={13} />
+                      <Loader2 className="animate-spin text-brand-orange" size={13} />
                     ) : newImageUrl ? (
-                      <Check size={13} className="text-green-400" />
+                      <Check size={13} className="text-green-600" />
                     ) : (
                       <Upload size={13} />
                     )}
@@ -491,17 +491,17 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                   
                   {newImageUrl ? (
                     <div className="flex items-center gap-1.5 ml-auto">
-                      <img src={newImageUrl} alt="" className="w-8 h-8 rounded object-cover border border-slate-600" />
+                      <img src={newImageUrl} alt="" className="w-8 h-8 rounded object-cover border border-gray-200" />
                       <button
                         type="button"
                         onClick={() => { setNewImageUrl(''); setNewImageKey(''); }}
-                        className="text-[10px] text-red-400 hover:text-red-300"
+                        className="text-[10px] text-red-600 hover:text-red-700 font-semibold"
                       >
                         Remove
                       </button>
                     </div>
                   ) : (
-                    <span className="text-[11px] text-slate-500 italic ml-2">No image selected (used in QR Ordering)</span>
+                    <span className="text-[11px] text-gray-500 italic ml-2">No image selected (used in QR Ordering)</span>
                   )}
                 </div>
               </div>
@@ -509,29 +509,29 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                 type="button"
                 onClick={handleCreate}
                 disabled={!newName.trim() || uploadingImage}
-                className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition self-start"
+                className="flex items-center gap-1.5 bg-brand-orange hover:bg-brand-orange-hover disabled:opacity-40 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition self-start"
               >
                 <Plus size={15} />
                 Add
               </button>
             </div>
-            <p className="text-xs text-slate-500 mt-1">{newName.length}/{CATEGORY_NAME_MAX} characters · Drag rows to reorder</p>
+            <p className="text-xs text-gray-550 mt-1">{newName.length}/{CATEGORY_NAME_MAX} characters · Drag rows to reorder</p>
           </div>
 
           <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search categories…"
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg pl-9 pr-9 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500"
+              className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg pl-9 pr-9 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange placeholder-gray-400"
             />
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-650"
                 aria-label="Clear search"
               >
                 <X size={16} />
@@ -540,14 +540,14 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
           </div>
 
           {validationError && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">{validationError}</div>
+            <div className="bg-red-50 border border-red-200 text-red-750 rounded-lg px-4 py-3 text-sm">{validationError}</div>
           )}
 
           {sort !== 'sortOrder' && (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 flex items-center justify-between">
-              <p className="text-xs text-amber-400 flex items-center gap-2">
-                <AlertTriangle size={14} className="shrink-0" />
-                <span>Drag-to-reorder is paused while sorted by {sort === 'productCount' ? 'products' : sort}.</span>
+            <div className="bg-amber-50 border border-amber-250 rounded-xl px-4 py-3 flex items-center justify-between">
+              <p className="text-xs text-amber-800 flex items-center gap-2">
+                <AlertTriangle size={14} className="shrink-0 text-amber-600" />
+                <span className="font-medium">Drag-to-reorder is paused while sorted by {sort === 'productCount' ? 'products' : sort}.</span>
               </p>
               <button
                 type="button"
@@ -555,29 +555,29 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                   setSort('sortOrder');
                   setOrder('asc');
                 }}
-                className="text-xs bg-amber-500 hover:bg-amber-400 text-white px-2.5 py-1.5 rounded-lg font-semibold transition"
+                className="text-xs bg-brand-orange hover:bg-brand-orange-hover text-white px-2.5 py-1.5 rounded-lg font-semibold transition"
               >
                 Restore Custom Order
               </button>
             </div>
           )}
 
-          <div className="rounded-lg border border-slate-700 overflow-hidden">
+          <div className="rounded-lg border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-[var(--pos-surface-inset)] z-10">
-                  <tr className="border-b border-slate-700 bg-[var(--pos-surface-inset)]">
+                <thead className="sticky top-0 bg-gray-50 z-10">
+                  <tr className="border-b border-gray-200 bg-gray-50">
                     <th className="px-3 py-3 w-10" aria-label="Drag to reorder" />
                     <SortableTh label="Name" field="name" currentSort={sort} currentOrder={order} onSort={toggleSort} className="px-4 py-3" />
                     <SortableTh label="Products" field="productCount" currentSort={sort} currentOrder={order} onSort={toggleSort} className="px-4 py-3" align="center" />
                     <SortableTh label="Active" field="active" currentSort={sort} currentOrder={order} onSort={toggleSort} className="px-4 py-3" align="center" />
-                    <th className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide text-right">Actions</th>
+                    <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wide text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-700/50">
+                <tbody className="divide-y divide-gray-200">
                   {activeList.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="text-center text-slate-500 py-12">
+                      <td colSpan={5} className="text-center text-gray-500 py-12">
                         {search ? 'No categories match your search' : 'No categories yet'}
                       </td>
                     </tr>
@@ -593,11 +593,11 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                           onDragStart={(e) => handleDragStart(e, cat._id)}
                           onDragOver={(e) => handleDragOver(e, cat._id)}
                           onDragEnd={handleDragEnd}
-                          className={`hover:bg-slate-800/40 transition ${!cat.active ? 'opacity-60' : ''} ${
-                            draggedId === cat._id ? 'bg-amber-500/20 opacity-50 border-y-2 border-dashed border-amber-500' : ''
+                          className={`hover:bg-gray-50 transition ${!cat.active ? 'opacity-60' : ''} ${
+                            draggedId === cat._id ? 'bg-brand-orange/10 opacity-60 border-y-2 border-dashed border-brand-orange' : ''
                           } ${!isEditing && sort === 'sortOrder' ? 'cursor-grab active:cursor-grabbing' : ''}`}
                         >
-                          <td className={`px-3 py-3 ${sort === 'sortOrder' ? 'text-slate-500' : 'text-slate-600 opacity-40'}`}>
+                          <td className={`px-3 py-3 ${sort === 'sortOrder' ? 'text-gray-400' : 'text-gray-300 opacity-40'}`}>
                             <GripVertical size={16} />
                           </td>
                           <td className="px-4 py-3">
@@ -614,16 +614,16 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                                       if (e.key === 'Enter') saveEdit();
                                       if (e.key === 'Escape') setEditingId(null);
                                     }}
-                                    className="flex-1 min-w-0 bg-[var(--pos-surface-inset)] border border-amber-500/50 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-sm focus:outline-none"
+                                    className="flex-1 min-w-0 bg-white border border-brand-orange text-gray-900 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
                                   />
-                                  <button type="button" onClick={saveEdit} className="text-green-400 hover:text-green-300">
+                                  <button type="button" onClick={saveEdit} className="text-green-600 hover:text-green-700">
                                     <Check size={14} />
                                   </button>
-                                  <button type="button" onClick={() => setEditingId(null)} className="text-slate-500 hover:text-slate-300">
+                                  <button type="button" onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600">
                                     <X size={14} />
                                   </button>
                                 </div>
-                                <div className="flex items-center gap-2 bg-slate-800/40 p-1.5 border border-slate-700 rounded-lg">
+                                <div className="flex items-center gap-2 bg-gray-50 p-1.5 border border-gray-200 rounded-lg">
                                   <input
                                     type="file"
                                     ref={editFileInputRef}
@@ -635,12 +635,12 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                                     type="button"
                                     onClick={() => editFileInputRef.current?.click()}
                                     disabled={uploadingImage}
-                                    className="flex items-center gap-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-slate-300 px-2 py-1 rounded text-[10px] font-semibold transition"
+                                    className="flex items-center gap-1 bg-white border border-gray-305 text-gray-700 px-2 py-1 rounded text-[10px] font-semibold transition hover:bg-gray-50"
                                   >
                                     {uploadingImage ? (
-                                      <Loader2 className="animate-spin text-amber-500" size={10} />
+                                      <Loader2 className="animate-spin text-brand-orange" size={10} />
                                     ) : editImageUrl ? (
-                                      <Check size={10} className="text-green-400" />
+                                      <Check size={10} className="text-green-600" />
                                     ) : (
                                       <Upload size={10} />
                                     )}
@@ -648,34 +648,34 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                                   </button>
                                   {editImageUrl ? (
                                     <div className="flex items-center gap-1 ml-auto">
-                                      <img src={editImageUrl} alt="" className="w-6 h-6 rounded object-cover border border-slate-600" />
+                                      <img src={editImageUrl} alt="" className="w-6 h-6 rounded object-cover border border-gray-200" />
                                       <button
                                         type="button"
                                         onClick={() => { setEditImageUrl(''); setEditImageKey(''); }}
-                                        className="text-[9px] text-red-400 hover:text-red-300"
+                                        className="text-[9px] text-red-600 hover:text-red-700 font-semibold"
                                       >
                                         Remove
                                       </button>
                                     </div>
                                   ) : (
-                                    <span className="text-[9px] text-slate-500 italic ml-1">No image</span>
+                                    <span className="text-[9px] text-gray-400 italic ml-1">No image</span>
                                   )}
                                 </div>
                               </div>
                             ) : (
                               <div className="flex items-center gap-2 min-w-0" onDragStart={(e) => e.preventDefault()}>
                                 {cat.imageUrl ? (
-                                  <img src={cat.imageUrl} alt="" className="w-6 h-6 rounded object-cover shrink-0 border border-slate-600" />
+                                  <img src={cat.imageUrl} alt="" className="w-6 h-6 rounded object-cover shrink-0 border border-gray-200" />
                                 ) : (
-                                  <Tag size={13} className={cat.active ? 'text-amber-400 shrink-0' : 'text-slate-600 shrink-0'} />
+                                  <Tag size={13} className={cat.active ? 'text-brand-orange shrink-0' : 'text-gray-400 shrink-0'} />
                                 )}
-                                <span className="font-medium text-[var(--pos-text-primary)] truncate" title={cat.name}>
+                                <span className="font-semibold text-gray-800 truncate" title={cat.name}>
                                   {cat.name}
                                 </span>
                               </div>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-center text-slate-400 tabular-nums">{cat.productCount}</td>
+                          <td className="px-4 py-3 text-center text-gray-600 font-semibold tabular-nums">{cat.productCount}</td>
                           <td className="px-4 py-3 text-center">
                             <button
                               type="button"
@@ -685,9 +685,9 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                               title={isPlaceholder ? 'Uncategorized must stay active' : cat.active ? 'Deactivate' : 'Activate'}
                             >
                               {cat.active ? (
-                                <ToggleRight size={18} className="text-green-400" />
+                                <ToggleRight size={18} className="text-green-600" />
                               ) : (
-                                <ToggleLeft size={18} className="text-slate-500" />
+                                <ToggleLeft size={18} className="text-gray-400" />
                               )}
                             </button>
                           </td>
@@ -697,7 +697,7 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                                 <button
                                   type="button"
                                   onClick={() => startEdit(cat)}
-                                  className="p-1.5 rounded text-slate-500 hover:text-[var(--pos-text-primary)] transition"
+                                  className="p-1.5 rounded text-gray-450 hover:text-brand-orange transition"
                                   title="Rename"
                                 >
                                   <Edit2 size={14} />
@@ -707,7 +707,7 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
                                 <button
                                   type="button"
                                   onClick={() => setDeleteTarget(cat)}
-                                  className="p-1.5 rounded text-slate-500 hover:text-red-400 transition"
+                                  className="p-1.5 rounded text-gray-450 hover:text-red-600 transition"
                                   title="Delete"
                                 >
                                   <Trash2 size={14} />

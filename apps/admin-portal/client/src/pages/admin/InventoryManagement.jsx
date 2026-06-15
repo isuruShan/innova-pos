@@ -11,7 +11,7 @@ import {
   CartesianGrid, Tooltip, BarChart, Bar, Cell, PieChart, Pie, Legend,
 } from 'recharts';
 import api from '../../api/axios';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import SlideOver from '../../components/SlideOver';
 import Badge from '../../components/Badge';
 import Toast from '../../components/Toast';
@@ -75,6 +75,7 @@ export default function InventoryManagement() {
   const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const getActiveTab = () => {
     if (location.pathname.endsWith('/adjustments')) return 'adjustments';
     if (location.pathname.endsWith('/sessions')) return 'sessions';
@@ -94,7 +95,16 @@ export default function InventoryManagement() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
   const [filter, setFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('search') || '');
+  
+  useEffect(() => {
+    const q = searchParams.get('search') || '';
+    setSearchQuery(q);
+    if (q) {
+      setSelectedCategoryId(null);
+    }
+  }, [searchParams]);
+
   const [showFilters, setShowFilters] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState('');
   const [customUnit, setCustomUnit] = useState('');

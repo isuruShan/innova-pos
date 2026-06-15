@@ -176,6 +176,12 @@ export default function UsersPage() {
     queryFn: () => api.get('/platform-payments/merchant-options').then((r) => r.data),
   });
 
+  const { data: subData } = useQuery({
+    queryKey: ['my-subscription'],
+    queryFn: async () => { const { data } = await api.get('/subscriptions/my'); return data; },
+  });
+  const tenant = subData?.tenant;
+
   const { data: pendingUserReceipts = [] } = useQuery({
     queryKey: ['merchant-receipts', 'pending-user-license'],
     queryFn: async () => {
@@ -904,10 +910,24 @@ export default function UsersPage() {
                     merchantSymbol={merchantSymbol}
                   />
                 )}
-                <div className="flex gap-3 mt-6">
-                  <button type="button" onClick={closePayment} className="flex-1 py-2.5 border rounded-xl text-sm">Cancel</button>
-                  <button type="button" onClick={() => setPaymentStep('method')} className="flex-1 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold">Continue to payment</button>
-                </div>
+                {tenant?.subscriptionStatus === 'trial' ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 space-y-3 mt-6">
+                    <p className="font-semibold text-base">Subscription Required</p>
+                    <p>You cannot purchase user seats during your trial period. Please subscribe to a paid plan first.</p>
+                    <button
+                      type="button"
+                      onClick={() => { closePayment(); navigate('/subscription'); }}
+                      className="w-full py-2.5 bg-brand-orange text-white rounded-xl text-sm font-semibold hover:bg-brand-orange-hover transition shadow-sm"
+                    >
+                      Subscribe Now
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-3 mt-6">
+                    <button type="button" onClick={closePayment} className="flex-1 py-2.5 border rounded-xl text-sm">Cancel</button>
+                    <button type="button" onClick={() => setPaymentStep('method')} className="flex-1 py-2.5 rounded-xl bg-brand-orange text-white text-sm font-semibold">Continue to payment</button>
+                  </div>
+                )}
               </>
             )}
 

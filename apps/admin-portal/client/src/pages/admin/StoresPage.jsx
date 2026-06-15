@@ -299,6 +299,12 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
   const [paypalReady, setPaypalReady] = useState(false);
   const [startCreateLoading, setStartCreateLoading] = useState(false);
 
+  const { data: subData } = useQuery({
+    queryKey: ['my-subscription'],
+    queryFn: async () => { const { data } = await api.get('/subscriptions/my'); return data; },
+  });
+  const tenant = subData?.tenant;
+
   const storeIdStr = (store) => {
     const raw = store?._id ?? store?.id;
     if (raw == null || raw === '') return '';
@@ -1064,7 +1070,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                   fullCycle={purchaseQuote.fullCycle}
                   merchantSymbol={merchantSymbol}
                 />
-                {!purchaseQuote.requiresPayment ? (
+                 {!purchaseQuote.requiresPayment ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -1076,6 +1082,18 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                     {createIncludedStore.isPending && <Loader size={14} className="animate-spin" />}
                     Create store
                   </button>
+                ) : tenant?.subscriptionStatus === 'trial' ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 space-y-3 mt-4">
+                    <p className="font-semibold text-base text-amber-900">Subscription Required</p>
+                    <p>You cannot purchase additional stores during your trial period. Please subscribe to a paid plan first.</p>
+                    <button
+                      type="button"
+                      onClick={() => { closePurchase(); navigate('/subscription'); }}
+                      className="w-full py-2.5 bg-brand-orange text-white rounded-xl text-sm font-semibold hover:bg-brand-orange-hover transition shadow-sm"
+                    >
+                      Subscribe Now
+                    </button>
+                  </div>
                 ) : methodOptions.length === 0 ? (
                   <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">No payment methods configured. Contact support.</p>
                 ) : (

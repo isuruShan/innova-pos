@@ -102,8 +102,16 @@ router.get(
   tenantScope,
   async (req, res) => {
     try {
+      const Tenant = require('../models/Tenant');
+      const tenant = await Tenant.findById(req.tenantId).select('subscriptionStatus');
       const quote = await getStoreCreateQuote(req.tenantId);
       if (quote.error) return res.status(400).json({ message: quote.error });
+      if (quote.requiresPayment && tenant?.subscriptionStatus === 'trial') {
+        return res.status(400).json({
+          code: 'TRIAL_PERIOD_RESTRICTION',
+          message: 'You cannot purchase additional stores during your trial period. Please subscribe to a paid plan first.',
+        });
+      }
       res.json(quote);
     } catch (err) {
       sendRouteError(res, err, { req });

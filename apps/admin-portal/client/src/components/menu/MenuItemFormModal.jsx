@@ -124,16 +124,16 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-slate-500">Quantities multiply with the ordered amount. Click on items with variants to select a specific variant.</p>
+      <p className="text-xs text-gray-500 font-medium">Quantities multiply with the ordered amount. Click on items with variants to select a specific variant.</p>
       {comboItems.length > 0 && (
-        <div className="bg-[var(--pos-surface-inset)] rounded-xl divide-y divide-slate-800">
+        <div className="bg-gray-50 border border-gray-200 rounded-xl divide-y divide-gray-200 shadow-sm">
           {comboItems.map((ci, idx) => (
             <div key={`${ci.menuItem}:${ci.variantId || ''}:${idx}`} className="flex items-center gap-2 px-3 py-2">
               <div className="flex-1 min-w-0">
-                <span className="text-sm text-slate-200 truncate block" title={ci.name}>{ci.name}</span>
+                <span className="text-sm text-gray-800 font-semibold truncate block" title={ci.name}>{ci.name}</span>
                 {ci.variantId && (
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-sky-400">variant selected</span>
+                    <span className="text-xs text-sky-600 font-medium">variant selected</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -143,7 +143,7 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
                           setVariantPickerItem({ ...item, _replaceCombo: { menuItem: ci.menuItem, variantId: ci.variantId } });
                         }
                       }}
-                      className="text-xs text-amber-400 hover:text-amber-300 underline"
+                      className="text-xs text-amber-600 hover:text-amber-700 underline font-semibold"
                     >
                       change
                     </button>
@@ -152,13 +152,13 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
               </div>
               <div className="flex items-center gap-1">
                 <button type="button" onClick={() => updateQty(ci.menuItem, ci.variantId, ci.qty - 1)}
-                  className="w-6 h-6 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 flex items-center justify-center text-xs">−</button>
-                <span className="w-6 text-center text-sm text-[var(--pos-text-primary)] font-semibold">{ci.qty}</span>
+                  className="w-6 h-6 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 flex items-center justify-center text-xs">−</button>
+                <span className="w-6 text-center text-sm text-gray-800 font-semibold">{ci.qty}</span>
                 <button type="button" onClick={() => updateQty(ci.menuItem, ci.variantId, ci.qty + 1)}
-                  className="w-6 h-6 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 flex items-center justify-center text-xs">+</button>
+                  className="w-6 h-6 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 flex items-center justify-center text-xs">+</button>
               </div>
               <button type="button" onClick={() => remove(ci.menuItem, ci.variantId)}
-                className="text-slate-600 hover:text-red-400 transition ml-1"><X size={14} /></button>
+                className="text-gray-400 hover:text-red-600 transition ml-1"><X size={14} /></button>
             </div>
           ))}
         </div>
@@ -176,10 +176,10 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
                   setPage(1);
                   setSelectedId('');
                 }}
-                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-400"
               />
               <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}
-                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
                 <option value="">— Select item —</option>
                 {paginatedAvailable.map((i) => {
                   const { price, prefix, hasVariants } = getItemDisplayPrice(i);
@@ -193,21 +193,21 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
               </select>
             </div>
             <input type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)}
-              className="w-16 h-[38px] mt-6 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500" />
+              className="w-16 h-[38px] mt-6 bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500" />
             <button type="button" onClick={handleAddClick} disabled={!selectedId}
-              className="mt-6 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white px-3 py-2 rounded-xl transition text-sm font-semibold shrink-0 h-[38px]">
+              className="mt-6 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white px-3 py-2 rounded-xl transition text-sm font-semibold shrink-0 h-[38px]">
               Add
             </button>
           </div>
           {totalPages > 1 && (
-            <div className="flex items-center justify-between text-xs text-slate-400 bg-slate-800/40 px-3 py-1.5 rounded-lg border border-slate-800">
+            <div className="flex items-center justify-between text-xs text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
               <span>Page {page} of {totalPages} ({filteredAvailable.length} matching)</span>
               <div className="flex gap-2">
                 <button
                   type="button"
                   disabled={page <= 1}
                   onClick={() => setPage((p) => p - 1)}
-                  className="px-2 py-1 bg-slate-750 hover:bg-slate-700 rounded disabled:opacity-40 text-[10px] font-semibold"
+                  className="px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded disabled:opacity-40 text-[10px] font-semibold text-gray-700"
                 >
                   Prev
                 </button>
@@ -215,7 +215,7 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
                   type="button"
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => p + 1)}
-                  className="px-2 py-1 bg-slate-750 hover:bg-slate-700 rounded disabled:opacity-40 text-[10px] font-semibold"
+                  className="px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded disabled:opacity-40 text-[10px] font-semibold text-gray-700"
                 >
                   Next
                 </button>
@@ -224,9 +224,9 @@ function ComboBuilder({ comboItems, onChange, allItems, currentItemId }) {
           )}
         </div>
       ) : (
-        <p className="text-xs text-slate-600 italic">No more items available to add.</p>
+        <p className="text-xs text-gray-500 italic">No more items available to add.</p>
       )}
-      <p className="text-xs text-slate-600">🔸 = item has variants (click Add to select specific variant)</p>
+      <p className="text-xs text-gray-500">🔸 = item has variants (click Add to select specific variant)</p>
 
       {/* Variant picker modal */}
       {variantPickerItem && (
@@ -276,12 +276,12 @@ function MenuGalleryAppend({ onAppend }) {
   };
 
   return (
-    <div className="border border-dashed border-slate-600 rounded-xl p-3 space-y-2">
-      <p className="text-xs text-slate-500">Add another image</p>
-      <div className="flex gap-1 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-lg p-0.5 w-fit">
+    <div className="border border-dashed border-gray-300 rounded-xl p-3 space-y-2">
+      <p className="text-xs text-gray-500 font-semibold">Add another image</p>
+      <div className="flex gap-1 bg-gray-50 border border-gray-200 rounded-lg p-0.5 w-fit">
         {[{ id: 'url', label: 'URL' }, { id: 'file', label: 'Upload' }].map((t) => (
           <button key={t.id} type="button" onClick={() => setTab(t.id)}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition ${tab === t.id ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white'}`}>
+            className={`px-3 py-1 rounded-md text-xs font-medium transition ${tab === t.id ? 'bg-amber-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}>
             {t.label}
           </button>
         ))}
@@ -289,15 +289,15 @@ function MenuGalleryAppend({ onAppend }) {
       {tab === 'url' ? (
         <div className="flex gap-2">
           <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…"
-            className="flex-1 bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500" />
+            className="flex-1 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400" />
           <button type="button" disabled={!url.trim()} onClick={() => { onAppend({ url: url.trim(), key: '' }); setUrl(''); }}
-            className="px-3 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold disabled:opacity-40">Add</button>
+            className="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold disabled:opacity-40 transition">Add</button>
         </div>
       ) : (
         <div>
           <input type="file" ref={fileRef} onChange={handleFile} accept="image/*" className="hidden" />
           <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="w-full flex items-center justify-center gap-2 bg-[var(--pos-surface-inset)] border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-400 hover:text-amber-400 disabled:opacity-50">
+            className="w-full flex items-center justify-center gap-2 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-600 hover:text-amber-600 disabled:opacity-50 transition">
             {uploading ? <><Upload size={15} className="animate-bounce" /> Uploading…</> : <><ImageIcon size={15} /> Upload file</>}
           </button>
         </div>
@@ -319,33 +319,33 @@ function MenuGalleryField({ images, onChange }) {
 
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-medium text-slate-300">Photos (first is primary on menus)</label>
+      <label className="block text-sm font-semibold text-gray-700">Photos (first is primary on menus)</label>
       {images.length > 0 && (
         <div className="space-y-2">
           {images.map((img, idx) => (
             <div
               key={`${idx}-${img.key || img.url}`}
-              className="flex items-center gap-2 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl p-2"
+              className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl p-2"
             >
-              <div className="w-14 h-14 rounded-lg bg-slate-800 overflow-hidden shrink-0 border border-slate-600">
+              <div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden shrink-0 border border-gray-200">
                 {img.url ? (
                   <img src={img.url} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs text-slate-600">—</div>
+                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">—</div>
                 )}
               </div>
-              <span className="text-xs text-slate-500 flex-1 truncate">{img.key ? `S3: …${String(img.key).slice(-20)}` : img.url || '—'}</span>
+              <span className="text-xs text-gray-500 flex-1 truncate">{img.key ? `S3: …${String(img.key).slice(-20)}` : img.url || '—'}</span>
               <div className="flex flex-col gap-0.5 shrink-0">
                 <button type="button" disabled={idx === 0} onClick={() => move(idx, -1)}
-                  className="p-1 rounded bg-slate-700 text-slate-300 disabled:opacity-30 hover:bg-slate-600">
+                  className="p-1 rounded bg-gray-205 text-gray-655 disabled:opacity-30 hover:bg-gray-300 transition">
                   <ChevronUp size={14} />
                 </button>
                 <button type="button" disabled={idx === images.length - 1} onClick={() => move(idx, 1)}
-                  className="p-1 rounded bg-slate-700 text-slate-300 disabled:opacity-30 hover:bg-slate-600">
+                  className="p-1 rounded bg-gray-205 text-gray-655 disabled:opacity-30 hover:bg-gray-300 transition">
                   <ChevronDown size={14} />
                 </button>
               </div>
-              <button type="button" onClick={() => removeAt(idx)} className="p-2 text-slate-500 hover:text-red-400 shrink-0">
+              <button type="button" onClick={() => removeAt(idx)} className="p-2 text-gray-400 hover:text-red-650 shrink-0 transition">
                 <X size={16} />
               </button>
             </div>
@@ -394,7 +394,7 @@ function VariantImagePicker({ images, onChange }) {
         type="button"
         onClick={() => fileRef.current?.click()}
         disabled={uploading}
-        className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 hover:border-amber-500/50 flex items-center justify-center overflow-hidden shrink-0 text-slate-400 hover:text-amber-500 transition"
+        className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-300 hover:border-amber-500 flex items-center justify-center overflow-hidden shrink-0 text-gray-500 hover:text-amber-600 transition shadow-sm"
       >
         {uploading ? (
           <Loader2 className="animate-spin text-amber-500" size={12} />
@@ -406,7 +406,7 @@ function VariantImagePicker({ images, onChange }) {
       </button>
       {imgUrl && (
         <button type="button" onClick={() => onChange([])}
-          className="text-[10px] text-red-400 hover:text-red-300 transition">
+          className="text-[10px] text-red-600 hover:text-red-700 font-semibold transition">
           Clear
         </button>
       )}
@@ -527,8 +527,8 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
   };
 
   return (
-    <div className="space-y-4 bg-slate-900/40 p-4 border border-slate-700/60 rounded-2xl">
-      <h3 className="text-sm font-semibold text-amber-400">Variant options</h3>
+    <div className="space-y-4 bg-gray-50 p-4 border border-gray-200 rounded-2xl">
+      <h3 className="text-sm font-bold text-amber-600">Variant options</h3>
 
       <div className="flex flex-wrap gap-2">
         {allAvailableCriteria.filter((c) => !hasGroup(c)).map((c) => (
@@ -536,7 +536,7 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
             key={c}
             type="button"
             onClick={() => addOptionGroup(c)}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-600 text-slate-300 hover:border-amber-500/50 hover:text-amber-400 transition"
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:border-amber-500 hover:text-amber-600 transition bg-white shadow-sm"
           >
             + Add {c}
           </button>
@@ -547,7 +547,7 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
           <button
             type="button"
             onClick={() => setShowCustomTypeInput(true)}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-dashed border-amber-500/40 text-amber-400 hover:border-amber-500 hover:bg-amber-500/5 transition"
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-dashed border-amber-500 text-amber-600 hover:bg-amber-500/5 transition bg-white shadow-sm"
           >
             + Custom Type...
           </button>
@@ -569,13 +569,13 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
               }}
               placeholder="Type name (e.g. Topping, Style)"
               autoFocus
-              className="bg-slate-900 border border-amber-500/50 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 w-40"
+              className="bg-white border border-amber-500 text-gray-900 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 w-40 placeholder-gray-400 shadow-sm"
             />
             <button
               type="button"
               onClick={addCustomVariantType}
               disabled={!customVariantType.trim()}
-              className="bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white text-xs px-3 py-1.5 rounded-lg transition"
+              className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white text-xs px-3 py-1.5 rounded-lg transition"
             >
               Add
             </button>
@@ -585,7 +585,7 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                 setShowCustomTypeInput(false);
                 setCustomVariantType('');
               }}
-              className="text-slate-500 hover:text-slate-300 text-xs px-2"
+              className="text-gray-550 hover:text-gray-700 text-xs px-2"
             >
               <X size={14} />
             </button>
@@ -598,30 +598,30 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
           const isSystemType = VARIANT_CRITERIA.includes(group.name);
           const isCustomType = !isSystemType;
           return (
-            <div key={groupIdx} className="bg-[var(--pos-surface-inset)] rounded-xl p-3 border border-slate-800 space-y-2">
+            <div key={groupIdx} className="bg-white rounded-xl p-3 border border-gray-250 space-y-2 shadow-sm">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-slate-200">
+                <span className="text-sm font-semibold text-gray-800">
                   {group.name}
-                  {isCustomType && <span className="ml-2 text-[10px] text-amber-400 font-normal">(custom)</span>}
+                  {isCustomType && <span className="ml-2 text-[10px] text-amber-650 font-normal bg-amber-50 px-1 py-0.5 rounded border border-amber-100">(custom)</span>}
                 </span>
                 <button type="button" onClick={() => removeOptionGroup(groupIdx)}
-                  className="text-xs text-red-400 hover:text-red-300 font-medium">
+                  className="text-xs text-red-655 hover:text-red-750 font-semibold">
                   Remove
                 </button>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {group.values.map((val, valIdx) => (
                   <span key={valIdx}
-                    className="inline-flex items-center gap-1 text-xs bg-slate-800 text-slate-300 rounded-lg px-2 py-1 border border-slate-700 font-medium">
+                    className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-700 rounded-lg px-2 py-1 border border-gray-200 font-semibold">
                     {val}
                     <button type="button" onClick={() => removeValueFromGroup(groupIdx, valIdx)}
-                      className="text-slate-500 hover:text-slate-300 ml-0.5">
+                      className="text-gray-405 hover:text-gray-655 ml-0.5">
                       <X size={11} />
                     </button>
                   </span>
                 ))}
                 {group.values.length === 0 && (
-                  <span className="text-xs text-slate-600 italic">No values added yet</span>
+                  <span className="text-xs text-gray-450 italic">No values added yet</span>
                 )}
               </div>
               <div className="flex gap-2">
@@ -637,7 +637,7 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                     }
                   }}
                   placeholder={`Add value for ${group.name}…`}
-                  className="flex-1 bg-slate-900 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="flex-1 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-400"
                 />
                 <button
                   type="button"
@@ -646,7 +646,7 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                     setNewValueInput((p) => ({ ...p, [groupIdx]: '' }));
                   }}
                   disabled={!(newValueInput[groupIdx] || '').trim()}
-                  className="bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white text-xs px-3 py-1.5 rounded-lg transition"
+                  className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white text-xs px-3 py-1.5 rounded-lg transition"
                 >
                   Add
                 </button>
@@ -657,35 +657,35 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
       </div>
 
       {form.variants.length > 0 && (
-        <div className="space-y-2 border-t border-slate-800 pt-3">
+        <div className="space-y-2 border-t border-gray-200 pt-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <p className="text-xs font-semibold text-slate-400">
+            <p className="text-xs font-semibold text-gray-500">
               Pricing ({form.variants.length} variant{form.variants.length !== 1 ? 's' : ''})
             </p>
           </div>
 
           {showMatrix ? (
             <div className="overflow-x-auto">
-              <table className="w-full text-xs border-collapse">
+              <table className="w-full text-xs border-collapse text-gray-800">
                 <thead>
                   <tr>
-                    <th className="text-left text-slate-500 font-medium p-2 border-b border-slate-800">Size \ Flavor</th>
+                    <th className="text-left text-gray-500 font-semibold p-2 border-b border-gray-200">Size \ Flavor</th>
                     {flavors.map((f) => (
-                      <th key={f} className="text-center text-slate-400 font-medium p-2 border-b border-slate-800 min-w-[100px]">{f}</th>
+                      <th key={f} className="text-center text-gray-600 font-semibold p-2 border-b border-gray-200 min-w-[100px]">{f}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {sizes.map((size) => (
                     <tr key={size}>
-                      <td className="text-slate-300 font-medium p-2 border-b border-slate-800/50">{size}</td>
+                      <td className="text-gray-700 font-semibold p-2 border-b border-gray-200">{size}</td>
                       {flavors.map((flavor) => {
                         const idx = findVariantIndex(form.variants, size, flavor);
                         const v = idx >= 0 ? form.variants[idx] : null;
                         const available = v?.available !== false;
                         const isDefault = v && form.defaultVariantId && String(form.defaultVariantId) === String(v._id);
                         return (
-                          <td key={flavor} className={`p-2 border-b border-slate-800/50 align-top ${isDefault ? 'bg-amber-500/10' : ''}`}>
+                          <td key={flavor} className={`p-2 border-b border-gray-200 align-top ${isDefault ? 'bg-amber-50' : ''}`}>
                             {v ? (
                               <div className="space-y-1">
                                 <input
@@ -697,56 +697,56 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                                   placeholder="0.00"
                                   required={available}
                                   disabled={!available}
-                                  className={`w-full bg-slate-950 border text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none disabled:opacity-40 ${isDefault ? 'border-amber-500/50' : 'border-slate-800'}`}
+                                  className={`w-full bg-gray-50 border text-gray-900 rounded-lg px-2 py-1 text-xs focus:outline-none disabled:opacity-40 ${isDefault ? 'border-amber-500' : 'border-gray-300'}`}
                                 />
                                 {available && activePartners?.map((partner) => {
-                                  const suggested = calcCommissionPrice(v.price, partner);
-                                  return (
-                                    <div key={partner._id} className="flex items-center gap-1 mt-1">
-                                      <span className="text-[9px] text-sky-400 font-semibold w-8 truncate shrink-0" title={partner.name}>
-                                        {partner.name.slice(0, 4)}
-                                      </span>
-                                      <div className="relative flex items-center w-full">
-                                        <input
-                                          type="number"
-                                          step="0.01"
-                                          min="0"
-                                          value={v.channelPrices?.[partner._id] ?? ''}
-                                          onChange={(e) => {
-                                            const val = e.target.value;
-                                            const newChannelPrices = {
-                                              ...(v.channelPrices || {}),
-                                              [partner._id]: val === '' ? undefined : Number(val),
-                                            };
-                                            const vIdx = findVariantIndex(form.variants, size, flavor);
-                                            if (vIdx >= 0) {
-                                              patchVariant(vIdx, { channelPrices: newChannelPrices });
-                                            }
-                                          }}
-                                          placeholder={suggested ? String(suggested) : 'base'}
-                                          className="w-full bg-slate-950 border border-sky-900/60 text-[var(--pos-text-primary)] rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-sky-500/50 placeholder-sky-900"
-                                        />
+                                    const suggested = calcCommissionPrice(v.price, partner);
+                                    return (
+                                      <div key={partner._id} className="flex items-center gap-1 mt-1">
+                                        <span className="text-[9px] text-sky-700 font-semibold w-8 truncate shrink-0" title={partner.name}>
+                                          {partner.name.slice(0, 4)}
+                                        </span>
+                                        <div className="relative flex items-center w-full">
+                                          <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={v.channelPrices?.[partner._id] ?? ''}
+                                            onChange={(e) => {
+                                              const val = e.target.value;
+                                              const newChannelPrices = {
+                                                ...(v.channelPrices || {}),
+                                                [partner._id]: val === '' ? undefined : Number(val),
+                                              };
+                                              const vIdx = findVariantIndex(form.variants, size, flavor);
+                                              if (vIdx >= 0) {
+                                                patchVariant(vIdx, { channelPrices: newChannelPrices });
+                                              }
+                                            }}
+                                            placeholder={suggested ? String(suggested) : 'base'}
+                                            className="w-full bg-white border border-sky-300 text-gray-900 rounded px-1.5 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-sky-500 placeholder-sky-600/50 shadow-sm"
+                                          />
+                                        </div>
                                       </div>
-                                    </div>
-                                  );
-                                })}
+                                    );
+                                  })}
                                 <div className="flex items-center justify-between gap-1">
                                   <button
                                     type="button"
                                     onClick={() => toggleMatrixAvailable(size, flavor)}
-                                    className={`flex items-center gap-0.5 text-[10px] ${available ? 'text-green-400' : 'text-slate-500'}`}
+                                    className={`flex items-center gap-0.5 text-[10px] ${available ? 'text-green-600' : 'text-gray-450'}`}
                                   >
                                     {available ? <ToggleRight size={12} /> : <ToggleLeft size={12} />}
                                     {available ? 'On' : 'Off'}
                                   </button>
                                   {available && (
                                     isDefault ? (
-                                      <span className="text-[9px] font-bold text-amber-400">🔸</span>
+                                      <span className="text-[9px] font-bold text-amber-500">🔸</span>
                                     ) : (
                                       <button
                                         type="button"
                                         onClick={() => setForm((f) => ({ ...f, defaultVariantId: v._id }))}
-                                        className="text-[9px] text-slate-500 hover:text-amber-400"
+                                        className="text-[9px] text-gray-450 hover:text-amber-500"
                                         title="Set as default"
                                       >
                                         ☆
@@ -756,7 +756,7 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                                 </div>
                               </div>
                             ) : (
-                              <span className="text-slate-600">—</span>
+                              <span className="text-gray-400">—</span>
                             )}
                           </td>
                         );
@@ -765,19 +765,19 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                   ))}
                 </tbody>
               </table>
-              <p className="text-[10px] text-slate-500 mt-2">{priceLabel} per cell · 🔸 = default variant shown in listings</p>
+              <p className="text-[10px] text-gray-500 mt-2">{priceLabel} per cell · 🔸 = default variant shown in listings</p>
             </div>
           ) : (
             <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
               {form.variants.map((v, idx) => {
                 const isDefault = form.defaultVariantId && String(form.defaultVariantId) === String(v._id);
                 return (
-                <div key={idx} className={`bg-slate-900/80 rounded-xl p-3 border space-y-2 ${isDefault ? 'border-amber-500/50 ring-1 ring-amber-500/30' : 'border-slate-850'}`}>
+                <div key={idx} className={`bg-white rounded-xl p-3 border space-y-2 shadow-sm transition ${isDefault ? 'border-amber-500 ring-1 ring-amber-500/20' : 'border-gray-250'}`}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="text-xs font-semibold text-slate-200 truncate" title={v.name}>{v.name}</span>
+                      <span className="text-xs font-semibold text-gray-800 truncate" title={v.name}>{v.name}</span>
                       {isDefault && (
-                        <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                        <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-250">
                           Default
                         </span>
                       )}
@@ -787,13 +787,13 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                         <button
                           type="button"
                           onClick={() => setForm((f) => ({ ...f, defaultVariantId: v._id }))}
-                          className="text-[10px] text-slate-400 hover:text-amber-400 font-medium transition"
+                          className="text-[10px] text-gray-505 hover:text-amber-600 font-semibold transition"
                         >
                           Set default
                         </button>
                       )}
                       <button type="button" onClick={() => patchVariant(idx, { available: !v.available })}
-                        className={`flex items-center gap-1 text-[10px] font-medium transition ${v.available !== false ? 'text-green-400' : 'text-slate-500'}`}>
+                        className={`flex items-center gap-1 text-[10px] font-semibold transition ${v.available !== false ? 'text-green-600' : 'text-gray-450'}`}>
                         {v.available !== false ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
                         {v.available !== false ? 'Active' : 'Disabled'}
                       </button>
@@ -803,7 +803,7 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                     <div className="flex flex-col gap-2">
                       <div className="flex gap-2">
                         <div className="w-24">
-                          <label className="text-[9px] text-slate-500 block mb-0.5">{priceLabel} *</label>
+                          <label className="text-[9px] text-gray-550 block mb-0.5 font-semibold">{priceLabel} *</label>
                           <input
                             type="number"
                             step="0.01"
@@ -813,32 +813,32 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                             placeholder="0.00"
                             required={v.available !== false}
                             disabled={v.available === false}
-                            className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none disabled:opacity-40"
+                            className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-40 shadow-sm"
                           />
                         </div>
                         <div className="flex-1">
-                          <label className="text-[9px] text-slate-500 block mb-0.5">Desc override</label>
+                          <label className="text-[9px] text-gray-555 block mb-0.5 font-semibold">Desc override</label>
                           <input
                             type="text"
                             value={v.description || ''}
                             onChange={(e) => patchVariant(idx, { description: e.target.value })}
                             placeholder="Falls back to product"
                             disabled={v.available === false}
-                            className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none disabled:opacity-40"
+                            className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-40 shadow-sm"
                           />
                         </div>
                       </div>
                       {v.available !== false && activePartners?.length > 0 && (
-                        <div className="space-y-1.5 pt-1.5 border-t border-slate-800/60">
+                        <div className="space-y-1.5 pt-1.5 border-t border-gray-200">
                           <div className="flex items-center justify-between flex-wrap gap-2">
-                            <p className="text-[9px] font-semibold text-sky-400/80 uppercase tracking-wide">Channel prices</p>
+                            <p className="text-[9px] font-bold text-sky-700 uppercase tracking-wide">Channel prices</p>
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {activePartners.map((partner) => {
                               const suggested = calcCommissionPrice(v.price, partner);
                               return (
                                 <div key={partner._id} className="w-24">
-                                  <label className="text-[9px] text-slate-400 block mb-0.5 flex items-center gap-1">
+                                  <label className="text-[9px] text-gray-650 block mb-0.5 flex items-center gap-1 font-semibold">
                                     {partner.icon && <span>{partner.icon}</span>}
                                     {partner.name}
                                   </label>
@@ -857,7 +857,7 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                                         patchVariant(idx, { channelPrices: newChannelPrices });
                                       }}
                                       placeholder={suggested ? String(suggested) : 'base price'}
-                                      className="w-full bg-slate-950 border border-sky-900/50 text-[var(--pos-text-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500/40 placeholder-sky-900/70"
+                                      className="w-full bg-white border border-sky-305 text-gray-900 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500 placeholder-sky-600/50 shadow-sm"
                                     />
                                   </div>
                                 </div>
@@ -868,7 +868,7 @@ function VariantsBuilder({ form, setForm, savedCriteria, saveCriteriaMutation, p
                       )}
                     </div>
                     <div className="flex flex-col items-center">
-                      <label className="text-[9px] text-slate-500 block mb-0.5 self-start">Photo</label>
+                      <label className="text-[9px] text-gray-550 block mb-0.5 self-start font-semibold">Photo</label>
                       <VariantImagePicker
                         images={v.images}
                         onChange={(imgList) => {
@@ -1066,11 +1066,11 @@ export default function MenuItemFormModal({
   const footer = (
     <div className="flex gap-3">
       <button type="button" onClick={onClose}
-        className="flex-1 bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-semibold py-2.5 rounded-xl transition text-sm">
+        className="flex-1 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-700 font-bold py-2.5 rounded-xl transition text-sm">
         Cancel
       </button>
       <button type="submit" form="menu-item-form" disabled={isPending}
-        className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl transition text-sm">
+        className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white font-bold py-2.5 rounded-xl transition text-sm shadow-sm">
         {isPending ? 'Saving…' : editing ? 'Save Changes' : 'Add Item'}
       </button>
     </div>
@@ -1084,7 +1084,7 @@ export default function MenuItemFormModal({
       maxWidth="max-w-2xl"
       footer={footer}
     >
-      <div className="flex gap-1.5 border-b border-slate-800 pb-3 mb-4">
+      <div className="flex gap-1.5 border-b border-gray-250 pb-3 mb-4">
         {[
           { id: 'general', label: 'General info' },
           { id: 'pricing', label: 'Pricing & Options' },
@@ -1096,8 +1096,8 @@ export default function MenuItemFormModal({
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 text-sm font-semibold rounded-xl transition ${
               activeTab === tab.id
-                ? 'bg-amber-500 text-white'
-                : 'text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-900/40 hover:bg-slate-800/40'
+                ? 'bg-amber-500 text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 border border-gray-200'
             }`}
           >
             {tab.label}
@@ -1119,22 +1119,22 @@ export default function MenuItemFormModal({
                 variants: [],
               }))}
               className={`flex items-center justify-between rounded-xl px-4 py-3 cursor-pointer border transition ${
-                form.isCombo ? 'bg-amber-500/10 border-amber-500/40' : 'bg-[var(--pos-surface-inset)] border-slate-700 hover:border-slate-600'
+                form.isCombo ? 'bg-amber-50 border-amber-300' : 'bg-gray-50 border-gray-250 hover:border-gray-350 shadow-sm'
               }`}>
               <div className="flex items-center gap-2">
-                <Link2 size={16} className={form.isCombo ? 'text-amber-400' : 'text-slate-500'} />
+                <Link2 size={16} className={form.isCombo ? 'text-amber-600 font-bold' : 'text-gray-500'} />
                 <div>
-                  <p className={`text-sm font-semibold ${form.isCombo ? 'text-amber-400' : 'text-slate-300'}`}>Combo Product</p>
-                  <p className="text-xs text-slate-500">Bundle multiple items into one product</p>
+                  <p className={`text-sm font-bold ${form.isCombo ? 'text-amber-700' : 'text-gray-700'}`}>Combo Product</p>
+                  <p className="text-xs text-gray-500">Bundle multiple items into one product</p>
                 </div>
               </div>
-              <div className={`w-10 h-5 rounded-full transition relative flex-shrink-0 ${form.isCombo ? 'bg-amber-500' : 'bg-slate-700'}`}>
+              <div className={`w-10 h-5 rounded-full transition relative flex-shrink-0 ${form.isCombo ? 'bg-amber-500' : 'bg-gray-300'}`}>
                 <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${form.isCombo ? 'left-5' : 'left-0.5'}`} />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Item Name *</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Item Name *</label>
               <input
                 type="text"
                 value={form.name}
@@ -1142,27 +1142,27 @@ export default function MenuItemFormModal({
                 placeholder={form.isCombo ? 'e.g. Burger Meal Deal' : 'e.g. Classic Burger'}
                 required
                 maxLength={MENU_ITEM_LIMITS.name}
-                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+                className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400 shadow-sm"
               />
             </div>
 
             {form.isCombo ? (
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Category</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Category</label>
                 <input type="text" value={COMBO_CATEGORY_NAME} disabled
-                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-400 rounded-xl px-4 py-2.5 text-sm cursor-not-allowed opacity-70" />
-                <p className="text-xs text-slate-500 mt-1">Combo products are always assigned to the Combos category.</p>
+                  className="w-full bg-gray-100 border border-gray-250 text-gray-500 rounded-xl px-4 py-2.5 text-sm cursor-not-allowed opacity-70" />
+                <p className="text-xs text-gray-550 mt-1">Combo products are always assigned to the Combos category.</p>
               </div>
             ) : (
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Category *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Category *</label>
                 {selectableCategoryNames.length > 0 ? (
                   <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                    className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm">
                     {selectableCategoryNames.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 ) : (
-                  <p className="text-xs text-slate-500 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-4 py-3">
+                  <p className="text-xs text-gray-600 bg-gray-50 border border-gray-250 rounded-xl px-4 py-3">
                     No active categories. Add categories first using the Categories button.
                   </p>
                 )}
@@ -1170,26 +1170,26 @@ export default function MenuItemFormModal({
             )}
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Description</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Description</label>
               <textarea
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 rows={2}
                 maxLength={MENU_ITEM_LIMITS.description}
                 placeholder="Short description…"
-                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600 resize-none"
+                className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400 resize-none shadow-sm"
               />
             </div>
 
             <MenuGalleryField images={form.images} onChange={(images) => setForm((f) => ({ ...f, images }))} />
 
-            <div className="flex items-center justify-between bg-[var(--pos-surface-inset)] rounded-xl px-4 py-3">
+            <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
               <div>
-                <p className="text-sm font-medium text-slate-300">Available on menu</p>
-                <p className="text-xs text-slate-500">Show to cashiers</p>
+                <p className="text-sm font-semibold text-gray-750">Available on menu</p>
+                <p className="text-xs text-gray-550">Show to cashiers</p>
               </div>
               <button type="button" onClick={() => setForm((f) => ({ ...f, available: !f.available }))}
-                className={`w-12 h-6 rounded-full transition relative ${form.available ? 'bg-amber-500' : 'bg-slate-700'}`}>
+                className={`w-12 h-6 rounded-full transition relative ${form.available ? 'bg-amber-500' : 'bg-gray-300'}`}>
                 <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${form.available ? 'left-6' : 'left-0.5'}`} />
               </button>
             </div>
@@ -1203,15 +1203,15 @@ export default function MenuItemFormModal({
                 <button
                   type="button"
                   onClick={handleGlobalAutofill}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-550 active:bg-sky-700 text-white shadow-md transition cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-sky-650 hover:bg-sky-600 active:bg-sky-700 text-white shadow-md transition cursor-pointer"
                 >
                   ✦ Auto-fill all channel prices from commission
                 </button>
               </div>
             )}
             {form.isCombo && (
-              <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-amber-500/20">
-                <p className="text-sm font-semibold text-amber-400 mb-3 flex items-center gap-1.5">
+              <div className="bg-gray-50 rounded-xl p-4 border border-amber-250 shadow-sm">
+                <p className="text-sm font-bold text-amber-600 mb-3 flex items-center gap-1.5">
                   <Link2 size={14} /> Combo Items
                 </p>
                 <ComboBuilder
@@ -1225,21 +1225,21 @@ export default function MenuItemFormModal({
 
             {!form.hasVariants && (
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">{priceLabel} *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">{priceLabel} *</label>
                 <input type="number" step="0.01" min="0" value={form.price}
                   onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
                   placeholder="0.00" required
-                  className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
-                {form.isCombo && <p className="text-xs text-slate-500 mt-1">Set the combo price (can differ from sum of parts)</p>}
+                  className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400 shadow-sm" />
+                {form.isCombo && <p className="text-xs text-gray-500 mt-1">Set the combo price (can differ from sum of parts)</p>}
               </div>
             )}
 
             {!form.hasVariants && activePartners.length > 0 && (
-              <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-sky-900/40 space-y-3">
+              <div className="bg-gray-50 rounded-xl p-4 border border-sky-200 space-y-3 shadow-sm">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
-                    <p className="text-xs font-semibold text-sky-400">Channel Prices</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">Leave blank to use the base price. Placeholder shows commission-suggested price.</p>
+                    <p className="text-xs font-bold text-sky-700">Channel Prices</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Leave blank to use the base price. Placeholder shows commission-suggested price.</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -1247,7 +1247,7 @@ export default function MenuItemFormModal({
                     const suggested = calcCommissionPrice(form.price, partner);
                     return (
                       <div key={partner._id}>
-                        <label className="flex items-center gap-1 text-xs font-medium text-slate-400 mb-1">
+                        <label className="flex items-center gap-1 text-xs font-semibold text-gray-655 mb-1">
                           {partner.icon && <span>{partner.icon}</span>}
                           {partner.name}
                         </label>
@@ -1268,7 +1268,7 @@ export default function MenuItemFormModal({
                               }));
                             }}
                             placeholder={suggested ? String(suggested) : 'Use base price'}
-                            className="w-full bg-slate-900 border border-sky-900/50 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500/40 placeholder-sky-900/70"
+                            className="w-full bg-white border border-sky-250 text-gray-900 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500 placeholder-sky-655 shadow-sm"
                           />
                         </div>
                       </div>
@@ -1280,13 +1280,13 @@ export default function MenuItemFormModal({
 
             {!form.isCombo && (
               <>
-                <div className="flex items-center justify-between bg-[var(--pos-surface-inset)] rounded-xl px-4 py-3">
+                <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
                   <div>
-                    <p className="text-sm font-medium text-slate-300">Has Variants</p>
-                    <p className="text-xs text-slate-500">Sell in different sizes and flavors</p>
+                    <p className="text-sm font-semibold text-gray-750">Has Variants</p>
+                    <p className="text-xs text-gray-555">Sell in different sizes and flavors</p>
                   </div>
                   <button type="button" onClick={() => setForm((f) => ({ ...f, hasVariants: !f.hasVariants, price: f.hasVariants ? f.price : '' }))}
-                    className={`w-12 h-6 rounded-full transition relative ${form.hasVariants ? 'bg-amber-500' : 'bg-slate-700'}`}>
+                    className={`w-12 h-6 rounded-full transition relative ${form.hasVariants ? 'bg-amber-500' : 'bg-gray-300'}`}>
                     <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${form.hasVariants ? 'left-6' : 'left-0.5'}`} />
                   </button>
                 </div>
@@ -1309,25 +1309,25 @@ export default function MenuItemFormModal({
         {activeTab === 'ingredients' && (
           <div className="space-y-4">
             {form.isCombo ? (
-              <p className="text-xs text-slate-500 bg-slate-900/40 border border-slate-800 rounded-lg p-3">
+              <p className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3">
                 Combo products do not have recipes. Ingredients are tracked on individual products in the combo.
               </p>
             ) : (
-              <div className="bg-[var(--pos-surface-inset)] rounded-xl p-4 border border-purple-500/20 space-y-4">
-                <p className="text-sm font-semibold text-purple-400 flex items-center gap-1.5">
+              <div className="bg-gray-50 rounded-xl p-4 border border-purple-200 space-y-4 shadow-sm">
+                <p className="text-sm font-bold text-purple-700 flex items-center gap-1.5">
                   <Package size={14} /> Recipe Ingredients
                 </p>
 
                 {inventoryItems.length > 0 ? (
-                  <div className="bg-slate-900/40 border border-slate-850 rounded-xl p-3 space-y-3">
-                    <p className="text-xs font-semibold text-slate-400">Link Ingredient Link</p>
+                  <div className="bg-white border border-gray-200 rounded-xl p-3 space-y-3 shadow-sm">
+                    <p className="text-xs font-bold text-gray-600">Link Ingredient Link</p>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       <div>
-                        <label className="block text-[10px] text-slate-500 mb-1">Inventory Item</label>
+                        <label className="block text-[10px] text-gray-550 font-semibold mb-1">Inventory Item</label>
                         <select
                           value={selectedInventoryId}
                           onChange={(e) => setSelectedInventoryId(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-sm"
                         >
                           <option value="">Select item...</option>
                           {inventoryItems.map((inv) => (
@@ -1339,7 +1339,7 @@ export default function MenuItemFormModal({
                       </div>
 
                       <div>
-                        <label className="block text-[10px] text-slate-500 mb-1">Qty Used</label>
+                        <label className="block text-[10px] text-gray-555 font-semibold mb-1">Qty Used</label>
                         <input
                           type="number"
                           step="0.01"
@@ -1347,12 +1347,12 @@ export default function MenuItemFormModal({
                           value={ingQuantity}
                           onChange={(e) => setIngQuantity(e.target.value)}
                           placeholder="0.00"
-                          className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-400 shadow-sm"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[10px] text-slate-500 mb-1">Wastage %</label>
+                        <label className="block text-[10px] text-gray-555 font-semibold mb-1">Wastage %</label>
                         <input
                           type="number"
                           min="0"
@@ -1360,17 +1360,17 @@ export default function MenuItemFormModal({
                           value={ingWastagePercentage}
                           onChange={(e) => setIngWastagePercentage(e.target.value)}
                           placeholder="0"
-                          className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-450 shadow-sm"
                         />
                       </div>
 
                       {form.hasVariants ? (
                         <div>
-                          <label className="block text-[10px] text-slate-500 mb-1">Apply to Variant</label>
+                          <label className="block text-[10px] text-gray-555 font-semibold mb-1">Apply to Variant</label>
                           <select
                             value={ingVariantId}
                             onChange={(e) => setIngVariantId(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                            className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-sm"
                           >
                             <option value="">Default (all variants)</option>
                             {form.variants?.map((v) => (
@@ -1386,28 +1386,28 @@ export default function MenuItemFormModal({
                     </div>
 
                     {ingError && (
-                      <p className="text-xs text-red-400 mt-1">{ingError}</p>
+                      <p className="text-xs text-red-500 mt-1 font-semibold">{ingError}</p>
                     )}
 
                     <button
                       type="button"
                       onClick={handleAddIngredient}
-                      className="flex items-center justify-center gap-1 bg-amber-500 hover:bg-amber-400 text-white font-medium px-3 py-1.5 rounded-lg transition text-xs"
+                      className="flex items-center justify-center gap-1 bg-amber-500 hover:bg-amber-600 text-white font-semibold px-3 py-1.5 rounded-lg transition text-xs"
                     >
                       <Plus size={13} />
                       Link Ingredient
                     </button>
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-500 bg-slate-900/40 border border-slate-800 rounded-lg p-3">
+                  <p className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3">
                     No inventory items available. Create inventory items first under Menu & Stock → Inventory.
                   </p>
                 )}
 
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-slate-400">Current Ingredients Checklist</p>
+                  <p className="text-xs font-bold text-gray-650">Current Ingredients Checklist</p>
                   {(form.ingredients || []).length > 0 ? (
-                    <div className="bg-[var(--pos-surface-inset)] rounded-xl divide-y divide-slate-800 max-h-60 overflow-y-auto">
+                    <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-200 max-h-60 overflow-y-auto shadow-sm">
                       {form.ingredients.map((link, idx) => {
                         const variant = form.hasVariants && link.variantId
                           ? form.variants?.find(v => v._id === link.variantId)
@@ -1415,44 +1415,44 @@ export default function MenuItemFormModal({
 
                         return (
                           <div key={idx} className="flex items-center gap-3 px-3 py-2">
-                            <Package size={14} className="text-slate-500 flex-shrink-0" />
+                            <Package size={14} className="text-gray-400 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs text-slate-200 truncate">{link.itemName}</p>
+                              <p className="text-xs text-gray-800 truncate font-semibold">{link.itemName}</p>
                               {form.hasVariants && (
-                                <span className="text-[10px] text-amber-400 block truncate">
+                                <span className="text-[10px] text-amber-600 block truncate font-medium">
                                   {variant ? `↳ Variant: ${variant.name}` : '↳ Default'}
                                 </span>
                               )}
                             </div>
                             <div className="flex items-center gap-4">
                               <div className="flex items-center gap-1">
-                                <span className="text-[10px] text-slate-500">Qty:</span>
+                                <span className="text-[10px] text-gray-555">Qty:</span>
                                 <input
                                   type="number"
                                   step="0.01"
                                   min="0.01"
                                   value={link.quantity}
                                   onChange={(e) => handleUpdateIngredientQty(link.inventoryItemId, link.variantId, e.target.value)}
-                                  className="w-16 bg-slate-900 border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2 py-0.5 text-xs text-right focus:outline-none"
+                                  className="w-16 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2 py-0.5 text-xs text-right focus:outline-none shadow-sm"
                                 />
                               </div>
-                              <span className="text-[10px] text-slate-500 w-8 truncate">{link.unit}</span>
+                              <span className="text-[10px] text-gray-655 w-8 truncate font-medium">{link.unit}</span>
                               <div className="flex items-center gap-1">
-                                <span className="text-[10px] text-slate-500">Waste:</span>
+                                <span className="text-[10px] text-gray-555">Waste:</span>
                                 <input
                                   type="number"
                                   min="0"
                                   max="100"
                                   value={link.wastagePercentage || 0}
                                   onChange={(e) => handleUpdateIngredientWastage(link.inventoryItemId, link.variantId, e.target.value)}
-                                  className="w-12 bg-slate-900 border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2 py-0.5 text-xs text-right focus:outline-none"
+                                  className="w-12 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2 py-0.5 text-xs text-right focus:outline-none shadow-sm"
                                 />
-                                <span className="text-[10px] text-slate-500">%</span>
+                                <span className="text-[10px] text-gray-555">%</span>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveIngredient(link.inventoryItemId, link.variantId)}
-                                className="p-1 text-slate-500 hover:text-red-400 transition"
+                                className="p-1 text-gray-455 hover:text-red-650 transition"
                                 title="Remove ingredient"
                               >
                                 <Trash2 size={13} />
@@ -1463,7 +1463,7 @@ export default function MenuItemFormModal({
                       })}
                     </div>
                   ) : (
-                    <div className="text-center py-6 text-slate-600 bg-slate-900/20 border border-dashed border-slate-800 rounded-xl text-xs">
+                    <div className="text-center py-6 text-gray-550 bg-gray-50 border border-dashed border-gray-300 rounded-xl text-xs">
                       No ingredients linked yet.
                     </div>
                   )}
@@ -1474,7 +1474,7 @@ export default function MenuItemFormModal({
         )}
 
         {formError && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm">{formError}</div>
+          <div className="bg-red-50 border border-red-200 text-red-750 rounded-xl px-4 py-3 text-sm font-semibold">{formError}</div>
         )}
       </form>
     </CenteredModal>

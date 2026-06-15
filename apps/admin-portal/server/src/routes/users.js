@@ -109,6 +109,14 @@ router.post('/', authenticateJWT, tenantScope, authorize('merchant_admin', 'supe
     const quote = await quoteCreateUser(tenantId, role, storeIds || []);
 
     if (quote.requiresPayment && req.user.role !== 'superadmin') {
+      const Tenant = require('../models/Tenant');
+      const tenant = await Tenant.findById(tenantId).select('subscriptionStatus');
+      if (tenant?.subscriptionStatus === 'trial') {
+        return res.status(400).json({
+          code: 'TRIAL_PERIOD_RESTRICTION',
+          message: 'You cannot purchase user seats during your trial period. Please subscribe to a paid plan first.',
+        });
+      }
       return res.status(402).json({
         code: 'PAYMENT_REQUIRED',
         message: 'Payment is required before adding another user.',
@@ -201,6 +209,14 @@ router.put('/:id', authenticateJWT, tenantScope, authorize('merchant_admin', 'su
       const quote = await quoteAssignStores(user.tenantId, user._id, targetIds);
 
       if (quote.requiresPayment && req.user.role !== 'superadmin') {
+        const Tenant = require('../models/Tenant');
+        const tenant = await Tenant.findById(user.tenantId).select('subscriptionStatus');
+        if (tenant?.subscriptionStatus === 'trial') {
+          return res.status(400).json({
+            code: 'TRIAL_PERIOD_RESTRICTION',
+            message: 'You cannot assign users to additional stores during your trial period. Please subscribe to a paid plan first.',
+          });
+        }
         return res.status(402).json({
           code: 'PAYMENT_REQUIRED',
           message: 'Payment is required to assign this user to additional stores.',
