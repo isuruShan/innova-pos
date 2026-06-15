@@ -4,7 +4,8 @@ import {
   Zap, ShoppingCart, BarChart3, Users, Layers, Shield,
   Clock, CheckCircle, Star, ArrowRight, ChefHat, Tablet, TrendingUp, Mail,
   ChevronLeft, ChevronRight, Laptop, Smartphone, Sparkles, Cpu, Activity,
-  Smartphone as PhoneIcon, HeartHandshake, Check, WifiOff, Settings2, BarChart4, X
+  Smartphone as PhoneIcon, HeartHandshake, Check, WifiOff, Settings2, BarChart4, X,
+  Database, ArrowLeftRight
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -121,7 +122,7 @@ function ContactSection() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-extrabold text-theme-text-header mb-3">Let's talk operations</h2>
-          <p className="text-theme-text-muted mb-6">Have custom development requirements, integration requests, or questions about migrating from your old POS system? We are here to help.</p>
+          <p className="text-theme-text-muted mb-6">Have custom development requirements, migration requests, or questions about migrating from your old POS system? We are here to help.</p>
           <a
             href="https://wa.me/94772539443"
             target="_blank"
@@ -134,91 +135,91 @@ function ContactSection() {
               xmlns="http://www.w3.org/2000/svg"
             >
               <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.968C16.528 1.97 14.076.945 11.472.945c-5.442 0-9.866 4.372-9.87 9.802 0 1.814.504 3.58 1.46 5.176l-.99 3.616 3.731-.97c1.554.846 3.176 1.291 4.254 1.291zm10.222-7.042c-.282-.141-1.666-.822-1.924-.916-.258-.094-.446-.141-.634.141-.188.282-.728.916-.893 1.1-.164.185-.328.207-.61.066-.282-.141-1.19-.439-2.268-1.4c-.838-.747-1.403-1.671-1.567-1.953-.164-.282-.018-.434.122-.574.127-.127.282-.328.423-.493.141-.164.188-.282.282-.47.094-.188.047-.353-.023-.493-.07-.141-.634-1.527-.868-2.09-.228-.549-.459-.475-.634-.484-.164-.008-.352-.01-.54-.01s-.493.07-.751.353c-.258.282-.986.963-.986 2.348s1.009 2.72 1.15 2.908c.141.188 1.984 3.03 4.81 4.25 2.827 1.22 2.827.813 3.344.765.517-.047 1.667-.68 1.902-1.338.235-.658.235-1.22.164-1.338-.07-.117-.258-.211-.54-.353z" />
-            </svg>
-            Chat with us on WhatsApp
-          </a>
-        </div>
-
-        {status === 'success' ? (
-          <div className="bg-green-500/10 border border-green-550/20 rounded-2xl p-8 text-center">
-            <CheckCircle size={40} className="text-green-500 mx-auto mb-3" />
-            <p className="font-semibold text-theme-text-header">Message received!</p>
-            <p className="text-theme-text-muted text-sm mt-1">We'll get back to you within 24 hours.</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="bg-theme-bg-surface/25 backdrop-blur-md rounded-2xl border border-theme-border p-8 space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {[
-                { label: 'Full name', key: 'name', type: 'text', attrs: nameAttrs },
-                { label: 'Email address', key: 'email', type: 'email', attrs: emailAttrs },
-              ].map((field) => (
-                <div key={field.key}>
-                  <label className="block text-sm font-medium text-theme-text-muted mb-1">{field.label}</label>
-                  <input
-                    type={field.type}
-                    value={form[field.key]}
-                    onChange={(e) => {
-                      setForm((f) => ({ ...f, [field.key]: e.target.value }));
-                      if (errors[field.key]) setErrors((err) => ({ ...err, [field.key]: '' }));
-                    }}
-                    placeholder={field.attrs.placeholder}
-                    maxLength={field.attrs.maxLength}
-                    autoComplete={field.attrs.autoComplete}
-                    className={`w-full border bg-theme-bg-surface/30 border-theme-border text-theme-text-main rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all ${
-                      errors[field.key] ? 'border-red-500' : 'border-theme-border'
-                    }`}
-                  />
-                  {errors[field.key] && <p className="text-xs text-red-500 mt-1">{errors[field.key]}</p>}
-                </div>
-              ))}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-theme-text-muted mb-1">Subject / Requirement type</label>
-              <input
-                type="text"
-                value={form.subject}
-                onChange={(e) => {
-                  setForm((f) => ({ ...f, subject: e.target.value }));
-                  if (errors.subject) setErrors((err) => ({ ...err, subject: '' }));
-                }}
-                placeholder="e.g. Custom Integration / Feature Request"
-                maxLength={subjectAttrs.maxLength}
-                className={`w-full border bg-theme-bg-surface/30 border-theme-border text-theme-text-main rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all ${
-                  errors.subject ? 'border-red-500' : 'border-theme-border'
-                }`}
-              />
-              {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-theme-text-muted mb-1">Tell us your custom requirements</label>
-              <textarea
-                value={form.message}
-                onChange={(e) => {
-                  setForm((f) => ({ ...f, message: e.target.value }));
-                  if (errors.message) setErrors((err) => ({ ...err, message: '' }));
-                }}
-                rows={4}
-                placeholder="Describe what specific feature, report, or integration you need us to build..."
-                maxLength={messageAttrs.maxLength}
-                className={`w-full border bg-theme-bg-surface/30 border-theme-border text-theme-text-main rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange resize-none transition-all ${
-                  errors.message ? 'border-red-500' : 'border-theme-border'
-                }`}
-              />
-              {errors.message && <p className="text-xs text-red-500 mt-1">{errors.message}</p>}
-            </div>
-            {status === 'error' && <p className="text-sm text-red-550">Failed to send. Please try again.</p>}
-            <button
-              type="submit"
-              disabled={status === 'loading'}
-              className="w-full py-3 rounded-lg bg-brand-orange text-white text-sm font-semibold transition-all hover:bg-brand-orange-hover hover:scale-[1.01] disabled:opacity-60 cursor-pointer"
-            >
-              {status === 'loading' ? 'Sending message...' : 'Send custom request'}
-            </button>
-          </form>
-        )}
+          </svg>
+          Chat with us on WhatsApp
+        </a>
       </div>
-    </section>
-  );
+
+      {status === 'success' ? (
+        <div className="bg-green-500/10 border border-green-550/20 rounded-2xl p-8 text-center">
+          <CheckCircle size={40} className="text-green-500 mx-auto mb-3" />
+          <p className="font-semibold text-theme-text-header">Message received!</p>
+          <p className="text-theme-text-muted text-sm mt-1">We'll get back to you within 24 hours.</p>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="bg-theme-bg-surface/25 backdrop-blur-md rounded-2xl border border-theme-border p-8 space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {[
+              { label: 'Full name', key: 'name', type: 'text', attrs: nameAttrs },
+              { label: 'Email address', key: 'email', type: 'email', attrs: emailAttrs },
+            ].map((field) => (
+              <div key={field.key}>
+                <label className="block text-sm font-medium text-theme-text-muted mb-1">{field.label}</label>
+                <input
+                  type={field.type}
+                  value={form[field.key]}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, [field.key]: e.target.value }));
+                    if (errors[field.key]) setErrors((err) => ({ ...err, [field.key]: '' }));
+                  }}
+                  placeholder={field.attrs.placeholder}
+                  maxLength={field.attrs.maxLength}
+                  autoComplete={field.attrs.autoComplete}
+                  className={`w-full border bg-theme-bg-surface/30 border-theme-border text-theme-text-main rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all ${
+                    errors[field.key] ? 'border-red-500' : 'border-theme-border'
+                  }`}
+                />
+                {errors[field.key] && <p className="text-xs text-red-500 mt-1">{errors[field.key]}</p>}
+              </div>
+            ))}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-theme-text-muted mb-1">Subject / Requirement type</label>
+            <input
+              type="text"
+              value={form.subject}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, subject: e.target.value }));
+                if (errors.subject) setErrors((err) => ({ ...err, subject: '' }));
+              }}
+              placeholder="e.g. Custom Integration / Migration Inquiry"
+              maxLength={subjectAttrs.maxLength}
+              className={`w-full border bg-theme-bg-surface/30 border-theme-border text-theme-text-main rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all ${
+                errors.subject ? 'border-red-500' : 'border-theme-border'
+              }`}
+            />
+            {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-theme-text-muted mb-1">Tell us your requirements</label>
+            <textarea
+              value={form.message}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, message: e.target.value }));
+                if (errors.message) setErrors((err) => ({ ...err, message: '' }));
+              }}
+              rows={4}
+              placeholder="Describe what specific feature, report, integration, or custom data migration you need us to handle..."
+              maxLength={messageAttrs.maxLength}
+              className={`w-full border bg-theme-bg-surface/30 border-theme-border text-theme-text-main rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange resize-none transition-all ${
+                errors.message ? 'border-red-500' : 'border-theme-border'
+              }`}
+            />
+            {errors.message && <p className="text-xs text-red-500 mt-1">{errors.message}</p>}
+          </div>
+          {status === 'error' && <p className="text-sm text-red-550">Failed to send. Please try again.</p>}
+          <button
+            type="submit"
+            disabled={status === 'loading'}
+            className="w-full py-3 rounded-lg bg-brand-orange text-white text-sm font-semibold transition-all hover:bg-brand-orange-hover hover:scale-[1.01] disabled:opacity-60 cursor-pointer"
+          >
+            {status === 'loading' ? 'Sending message...' : 'Send custom request'}
+          </button>
+        </form>
+      )}
+    </div>
+  </section>
+);
 }
 
 export default function LandingPage() {
@@ -233,7 +234,6 @@ export default function LandingPage() {
   
   const pricingCarouselRef = useRef(null);
   const [pricingSlide, setPricingSlide] = useState(0);
-  const [activeDeviceTab, setActiveDeviceTab] = useState('counter_register');
 
   const pricingSlideCount = useMemo(() => {
     if (plansLoading) return 3;
@@ -373,7 +373,7 @@ export default function LandingPage() {
       <Navbar />
 
       {/* Hero Header */}
-      <section className="relative overflow-hidden pt-32 pb-24 px-4 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
           <div className="absolute inset-0 bg-theme-hero-gradient transition-colors duration-250" />
           <div className="absolute -left-[10%] -top-[20%] h-[500px] w-[500px] rounded-full bg-brand-orange/10 blur-[120px]" />
@@ -395,7 +395,7 @@ export default function LandingPage() {
             <strong className="font-semibold text-theme-text-header">Cafinity</strong> is the unified Point of Sale engineered for busy cafes, premium coffee spots, and full-size fine dining restaurants. Synchronize counter speed billing, live table floor plan service, kitchen KDS queues, and automated reporting.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link to="/signup"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold text-base shadow-lg shadow-brand-orange/20 transition-all hover:scale-[1.02] cursor-pointer"
             >
@@ -408,103 +408,201 @@ export default function LandingPage() {
               Explore platform
             </a>
           </div>
-
-          {/* Interactive Platform Live View Showcase */}
-          <div className="mt-8 border border-theme-border/60 rounded-3xl bg-theme-bg-card/65 backdrop-blur-lg overflow-hidden shadow-2xl transition-all duration-250">
-            <div className="flex border-b border-theme-border/60 bg-theme-bg-card/40 p-2 overflow-x-auto gap-2">
-              {[
-                { id: 'counter_register', label: 'Counter Register', icon: ShoppingCart },
-                { id: 'kds_board', label: 'Table & Kitchen KDS', icon: ChefHat },
-                { id: 'menu_stock', label: 'Menu & Stock Manager', icon: Laptop },
-                { id: 'sales_hq', label: 'HQ Sales Dashboard', icon: BarChart3 },
-                { id: 'channel_analytics', label: 'Channel Analytics', icon: BarChart4 }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveDeviceTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                    activeDeviceTab === tab.id
-                      ? 'bg-theme-bg-surface text-theme-text-header border border-theme-border/80 shadow-sm'
-                      : 'text-theme-text-muted hover:text-theme-text-header bg-transparent border border-transparent'
-                  }`}
-                >
-                  <tab.icon size={14} className={activeDeviceTab === tab.id ? 'text-brand-orange' : 'text-theme-text-muted'} />
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Displaying Live Interactive Mockups / Images */}
-            <div className="p-4 sm:p-8 bg-theme-bg-surface/10 min-h-[380px] sm:min-h-[460px] flex items-center justify-center">
-              <div className="w-full max-w-4xl border border-theme-border/80 rounded-2xl bg-theme-bg-card overflow-hidden shadow-xl animate-fade-in transition-all duration-250">
-                <div className="bg-theme-bg-card/90 px-4 py-2.5 text-[10px] uppercase font-bold tracking-widest text-theme-text-muted border-b border-theme-border flex justify-between items-center">
-                  <span>
-                    {activeDeviceTab === 'counter_register' && 'POS Cashier Terminal Interface'}
-                    {activeDeviceTab === 'kds_board' && 'Order Board & Kitchen Display System'}
-                    {activeDeviceTab === 'menu_stock' && 'Menu Items, Combos & Stock Management'}
-                    {activeDeviceTab === 'sales_hq' && 'HQ Business Sales & Performance Dashboard'}
-                    {activeDeviceTab === 'channel_analytics' && 'Order Distribution & Device Breakdown Reports'}
-                  </span>
-                  <span className="text-emerald-500 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live View
-                  </span>
-                </div>
-                
-                <div className="relative group bg-theme-bg-main/50">
-                  {activeDeviceTab === 'counter_register' && (
-                    <img src="/pos-register.png" alt="Counter Register" className="w-full h-auto object-cover max-h-[520px] transition-transform duration-300 hover:scale-[1.005]" />
-                  )}
-                  {activeDeviceTab === 'kds_board' && (
-                    <img src="/order-board.png" alt="Kitchen Order Board" className="w-full h-auto object-cover max-h-[520px] transition-transform duration-300 hover:scale-[1.005]" />
-                  )}
-                  {activeDeviceTab === 'menu_stock' && (
-                    <img src="/menu-items.png" alt="Menu & Stock Manager" className="w-full h-auto object-cover max-h-[520px] transition-transform duration-300 hover:scale-[1.005]" />
-                  )}
-                  {activeDeviceTab === 'sales_hq' && (
-                    <img src="/sales-dashboard.png" alt="HQ Sales Dashboard" className="w-full h-auto object-cover max-h-[520px] transition-transform duration-300 hover:scale-[1.005]" />
-                  )}
-                  {activeDeviceTab === 'channel_analytics' && (
-                    <img src="/order-channel-report.png" alt="Order Distribution Analytics" className="w-full h-auto object-cover max-h-[520px] transition-transform duration-300 hover:scale-[1.005]" />
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
-      {/* Deep-Dive Features Sections */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-theme-border/60 bg-theme-bg-surface/10 relative transition-colors duration-250">
-        <div className="max-w-6xl mx-auto space-y-24">
+      {/* Alternate Features Showcases with Contextual AI Images */}
+      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 border-t border-theme-border/60 bg-theme-bg-surface/10 relative transition-colors duration-250">
+        <div className="max-w-6xl mx-auto space-y-28">
           
-          {/* Section 1: Table Plans & Restaurant Transformation */}
+          {/* Section 1: Table Plans & Seating Selections (Full-Service Restaurant) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-7 space-y-6">
               <div className="inline-flex items-center gap-2 bg-brand-orange/15 text-brand-orange px-4 py-1.5 rounded-full text-xs font-bold border border-brand-orange/20">
                 <Layers size={14} />
-                <span>Full-Service Tables Plan</span>
+                <span>Full-Service Dining</span>
               </div>
               <h2 className="text-3xl sm:text-4xl font-extrabold text-theme-text-header tracking-tight">
-                Transform customer experiences with live table floorplans.
+                Transform restaurant experiences with Table Management.
               </h2>
               <p className="text-theme-text-muted text-sm sm:text-base leading-relaxed">
-                Give your restaurant staff absolute clarity on the dining floor. Cafinity's live floor plans allow hosts and stewards to monitor table occupancy in real time, fire orders directly from tablet handhelds, and keep preparation stages completely synchronized.
+                Elevate your service with our advanced **Tables Plan** controls. Designed to bring total operational control to sit-down dining spots, Cafinity bridges the gap between customer convenience and kitchen execution.
               </p>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                 <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
-                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Steward Mobile App</h4>
-                  <p className="text-xs text-theme-text-muted">Waiters ring items, record cooking modifiers, and send tickets directly to kitchen displays from their handhelds.</p>
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Stewards App</h4>
+                  <p className="text-xs text-theme-text-muted">Waiters ring orders directly at tables, customize modifier rules, and fire them immediately to kitchen display queues.</p>
                 </div>
                 <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
-                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Split Bills & Seats</h4>
-                  <p className="text-xs text-theme-text-muted">Divide bills by seat count, items ordered, or exact shares instantly without cashier math loops.</p>
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Table Management</h4>
+                  <p className="text-xs text-theme-text-muted">Design interactive table floorplans, monitor live occupancy indicators, and organize layout sections easily.</p>
+                </div>
+                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Reservation Management</h4>
+                  <p className="text-xs text-theme-text-muted">Log guest bookings, allocate specific table seating options, and manage arrival times without paper sheets.</p>
+                </div>
+                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Analytics Suite</h4>
+                  <p className="text-xs text-theme-text-muted">Track **Table Performance Analytics** and study **Menu Profitability Analytics** to identify high-margin dishes.</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="lg:col-span-5 relative group">
+              <div className="absolute inset-0 bg-brand-orange/5 rounded-2xl filter blur-xl opacity-60 group-hover:opacity-100 transition-opacity" />
+              <div className="relative border border-theme-border/80 rounded-2xl overflow-hidden bg-theme-bg-card shadow-lg p-2">
+                <img src="/restaurant-floor-plan.png" alt="Seasons Floor Plan" className="w-full h-auto object-cover rounded-xl transition-all duration-300 group-hover:scale-[1.01]" />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Counter Plans & Cafe Growth (Cafe & Coffee Shops) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-5 lg:order-2 space-y-6">
+              <div className="inline-flex items-center gap-2 bg-brand-orange/15 text-brand-orange px-4 py-1.5 rounded-full text-xs font-bold border border-brand-orange/20">
+                <Zap size={14} />
+                <span>Fast-Casual Counter Plan</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-theme-text-header tracking-tight">
+                Accelerate checkout lines and customer satisfaction.
+              </h2>
+              <p className="text-theme-text-muted text-sm sm:text-base leading-relaxed">
+                Speed up espresso bars, bakeries, and counter-service spots. The Cafinity Counter POS features a quick-tap grid interface to handle high customer checkout volume with maximum velocity.
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Phone Number Loyalty</h4>
+                  <p className="text-xs text-theme-text-muted">Link customer points directly to mobile numbers at checkout to drive morning brew habits.</p>
+                </div>
+                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Receipt Customization</h4>
+                  <p className="text-xs text-theme-text-muted">Format print templates, design customizable headers, and send electronic receipts seamlessly.</p>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-theme-bg-surface/50 border border-theme-border rounded-xl text-xs text-theme-text-muted flex items-start gap-2.5">
+                <Sparkles size={16} className="text-brand-orange shrink-0 mt-0.5 animate-pulse" />
+                <div>
+                  <span className="font-bold text-theme-text-header block mb-0.5">Upcoming Add-on Release</span>
+                  The WhatsApp Catalog sync integration is currently under active future development.
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-7 lg:order-1 relative group">
+              <div className="absolute inset-0 bg-brand-orange/5 rounded-2xl filter blur-xl opacity-60 group-hover:opacity-100 transition-opacity" />
+              <div className="relative border border-theme-border/80 rounded-2xl overflow-hidden bg-theme-bg-card shadow-lg p-2">
+                <img src="/cafe-counter-pos.png" alt="Daily Grind POS" className="w-full h-auto object-cover rounded-xl transition-all duration-300 group-hover:scale-[1.01]" />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Dedicated Inventory Management features */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-7 space-y-6">
+              <div className="inline-flex items-center gap-2 bg-brand-orange/15 text-brand-orange px-4 py-1.5 rounded-full text-xs font-bold border border-brand-orange/20">
+                <Settings2 size={14} />
+                <span>Dedicated Inventory Controls</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-theme-text-header tracking-tight">
+                Control recipe margins and ingredient tracking.
+              </h2>
+              <p className="text-theme-text-muted text-sm sm:text-base leading-relaxed">
+                Cafinity maps menu ingredients directly to physical stock. Prevent leakage and calculate profit margins accurately by monitoring real-time stock logs and cost structures.
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Recipe Cost Mapping</h4>
+                  <p className="text-xs text-theme-text-muted">Track exact component costs down to single milk cartons, syrup bottles, and coffee bean bags per order.</p>
+                </div>
+                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Wastage Management</h4>
+                  <p className="text-xs text-theme-text-muted">Log expired ingredients, spilled drinks, or preparation mistakes to evaluate structural losses.</p>
+                </div>
+                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Purchase Orders</h4>
+                  <p className="text-xs text-theme-text-muted">Issue structured purchase requests to registered vendors and track supply statuses natively.</p>
+                </div>
+                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Goods Receipts</h4>
+                  <p className="text-xs text-theme-text-muted">Log received items into stock, auto-update item costs, and detect vendor quantity variations.</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="lg:col-span-5 relative group">
+              <div className="absolute inset-0 bg-brand-orange/5 rounded-2xl filter blur-xl opacity-60 group-hover:opacity-100 transition-opacity" />
+              <div className="relative border border-theme-border/80 rounded-2xl overflow-hidden bg-theme-bg-card shadow-lg p-2">
+                <img src="/inventory-dashboard.png" alt="Stockflow Inventory" className="w-full h-auto object-cover rounded-xl transition-all duration-300 group-hover:scale-[1.01]" />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Restaurant Support Plus (Guest QR ordering app) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-5 lg:order-2 space-y-6">
+              <div className="inline-flex items-center gap-2 bg-brand-orange/15 text-brand-orange px-4 py-1.5 rounded-full text-xs font-bold border border-brand-orange/20">
+                <Tablet size={14} />
+                <span>Restaurant Support Plus</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-theme-text-header tracking-tight">
+                Guest self-ordering app via smart table QR codes.
+              </h2>
+              <p className="text-theme-text-muted text-sm sm:text-base leading-relaxed">
+                Transform ordering efficiency. Guests scan table-specific QR codes, browse your digital menu catalog, add items, and fire orders straight to the kitchen without waiter delays.
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Self-Checkout & Payments</h4>
+                  <p className="text-xs text-theme-text-muted">Allow guests to pay directly from their phones, cutting cashier workload and table turnover times.</p>
+                </div>
+                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Automatic Table Mapping</h4>
+                  <p className="text-xs text-theme-text-muted">QR codes associate tickets with the exact table, preventing routing errors to the kitchen KDS.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-7 lg:order-1 relative group">
+              <div className="absolute inset-0 bg-brand-orange/5 rounded-2xl filter blur-xl opacity-60 group-hover:opacity-100 transition-opacity" />
+              <div className="relative border border-theme-border/80 rounded-2xl overflow-hidden bg-theme-bg-card shadow-lg p-2 max-w-lg mx-auto">
+                <img src="/qr-ordering-app.png" alt="Guest QR Ordering" className="w-full h-auto object-cover rounded-xl transition-all duration-300 group-hover:scale-[1.01]" />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 5: Smooth and Quick Migration */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-7 space-y-6">
+              <div className="inline-flex items-center gap-2 bg-brand-orange/15 text-brand-orange px-4 py-1.5 rounded-full text-xs font-bold border border-brand-orange/20">
+                <ArrowLeftRight size={14} />
+                <span>Seamless Data Porting</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-theme-text-header tracking-tight">
+                Migrate from your existing POS, hassle-free.
+              </h2>
+              <p className="text-theme-text-muted text-sm sm:text-base leading-relaxed">
+                Switching systems shouldn't mean losing your history. We provide a **smooth and quick migration** service from legacy platforms to Cafinity.
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Historical Sales Migration</h4>
+                  <p className="text-xs text-theme-text-muted">We port over your legacy transactions and cash logs so you keep your multi-year sales charts and reporting indicators.</p>
+                </div>
+                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Catalog & Menu Imports</h4>
+                  <p className="text-xs text-theme-text-muted">Upload your inventory files, menu categories, and recipe records to go live in minutes.</p>
                 </div>
               </div>
 
               <div className="pt-2">
-                <p className="text-xs font-semibold text-brand-orange flex items-center gap-1.5">
-                  <Check size={14} /> Ready to expand: Supports adding multi-floor maps, custom VIP sections, and table-side QR check-ins.
+                <p className="text-xs text-theme-text-muted/80 italic">
+                  * Note: Historical transaction data porting is subject to technical review and data compatibility check. Some conditions may apply.
                 </p>
               </div>
             </div>
@@ -512,65 +610,25 @@ export default function LandingPage() {
             <div className="lg:col-span-5 relative group">
               <div className="absolute inset-0 bg-brand-orange/5 rounded-2xl filter blur-xl opacity-60 group-hover:opacity-100 transition-opacity" />
               <div className="relative border border-theme-border/80 rounded-2xl overflow-hidden bg-theme-bg-card shadow-lg p-2">
-                <img src="/order-board.png" alt="Live Table Board" className="w-full h-auto object-cover rounded-xl transition-all duration-300 group-hover:scale-[1.01]" />
+                <img src="/pos-migration.png" alt="POS Database Migration" className="w-full h-auto object-cover rounded-xl transition-all duration-300 group-hover:scale-[1.01]" />
               </div>
             </div>
           </div>
 
-          {/* Section 2: Counter Plans & Cafe Growth */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center lg:flex-row-reverse">
-            <div className="lg:col-span-5 lg:order-2 space-y-6">
-              <div className="inline-flex items-center gap-2 bg-brand-orange/15 text-brand-orange px-4 py-1.5 rounded-full text-xs font-bold border border-brand-orange/20">
-                <Zap size={14} />
-                <span>Quick-Service Counter Plan</span>
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-theme-text-header tracking-tight">
-                Streamline coffee shops & high-volume cafe queues.
-              </h2>
-              <p className="text-theme-text-muted text-sm sm:text-base leading-relaxed">
-                Speed is the currency of fast-casual dining. The Cafinity Counter Plan is built for high-throughput espresso bars, bakeries, and food trucks. Ring transactions in milliseconds with our simplified touch-grid, customize hotkey layouts, and print labels automatically.
-              </p>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
-                  <h4 className="font-bold text-sm text-theme-text-header mb-1">WhatsApp Catalog Add-on</h4>
-                  <p className="text-xs text-theme-text-muted">Push your POS menu options directly to your business WhatsApp Catalog so clients can browse and place pre-orders.</p>
-                </div>
-                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
-                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Phone Number Loyalty</h4>
-                  <p className="text-xs text-theme-text-muted">Accumulate customer points dynamically via their mobile number at the terminal to drive morning brew habits.</p>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <p className="text-xs font-semibold text-brand-orange flex items-center gap-1.5">
-                  <Check size={14} /> Ready to expand: Easily connect kitchen KDS monitors, thermal label printers, and SMS receipt dispatch channels.
-                </p>
-              </div>
-            </div>
-
-            <div className="lg:col-span-7 lg:order-1 relative group">
-              <div className="absolute inset-0 bg-brand-orange/5 rounded-2xl filter blur-xl opacity-60 group-hover:opacity-100 transition-opacity" />
-              <div className="relative border border-theme-border/80 rounded-2xl overflow-hidden bg-theme-bg-card shadow-lg p-2">
-                <img src="/pos-register.png" alt="Counter Register UI" className="w-full h-auto object-cover rounded-xl transition-all duration-300 group-hover:scale-[1.01]" />
-              </div>
-            </div>
-          </div>
-
-          {/* Section 3: Future Roadmap / Innovation */}
+          {/* Near-Future Roadmap / Upcoming features */}
           <div className="border border-theme-border rounded-3xl bg-theme-bg-card/80 p-8 sm:p-12 relative overflow-hidden shadow-xl">
             <div className="absolute right-0 top-0 w-[300px] h-[300px] rounded-full bg-brand-orange/5 blur-[120px] pointer-events-none" />
             
             <div className="relative z-10 max-w-3xl">
               <div className="inline-flex items-center gap-2 bg-brand-orange/15 text-brand-orange px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-4 border border-brand-orange/10">
                 <Sparkles size={12} className="animate-pulse" />
-                <span>On the Horizon</span>
+                <span>Upcoming Features Roadmap</span>
               </div>
               <h3 className="text-2xl sm:text-3xl font-extrabold text-theme-text-header mb-4">
-                Upcoming roadmap & future integrations.
+                What's coming next to Cafinity.
               </h3>
               <p className="text-theme-text-muted text-sm sm:text-base leading-relaxed mb-8">
-                We are constantly building tools to help you manage your business decisions automatically. Here are the features currently in private developer testing, which our merchants will be able to enjoy **very recently**:
+                We are building tools to automate more of your operations. Here are the features coming **very soon** to our platform:
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -578,41 +636,41 @@ export default function LandingPage() {
                   <div className="w-9 h-9 rounded-lg bg-theme-bg-surface flex items-center justify-center text-brand-orange border border-theme-border">
                     <Cpu size={16} />
                   </div>
-                  <h4 className="font-bold text-sm text-theme-text-header">AI Sales Forecasting</h4>
-                  <p className="text-xs text-theme-text-muted">Predict upcoming weekend volumes based on historical demand patterns, weather indicators, and public holidays.</p>
+                  <h4 className="font-bold text-sm text-theme-text-header">AI Sales Forecasts</h4>
+                  <p className="text-xs text-theme-text-muted">Predict next week's inventory requirements based on historical volumes, local weather indicators, and holiday calendars.</p>
                 </div>
                 
                 <div className="space-y-2">
                   <div className="w-9 h-9 rounded-lg bg-theme-bg-surface flex items-center justify-center text-brand-orange border border-theme-border">
                     <Activity size={16} />
                   </div>
-                  <h4 className="font-bold text-sm text-theme-text-header">Smart Shift Schedulers</h4>
-                  <p className="text-xs text-theme-text-muted">Auto-allocate employee shifts to perfectly match predicted peak customer hours, minimizing labor overhead.</p>
+                  <h4 className="font-bold text-sm text-theme-text-header">Smart Staff Schedulers</h4>
+                  <p className="text-xs text-theme-text-muted">Automatically allocate employee shifts to match predicted peak hours, cutting wage overheads.</p>
                 </div>
 
                 <div className="space-y-2">
                   <div className="w-9 h-9 rounded-lg bg-theme-bg-surface flex items-center justify-center text-brand-orange border border-theme-border">
                     <Laptop size={16} />
                   </div>
-                  <h4 className="font-bold text-sm text-theme-text-header">Superadmin API Portal</h4>
-                  <p className="text-xs text-theme-text-muted">Direct developer API endpoints to sync your sales logs and ingredient expenditures to custom bookkeeping software.</p>
+                  <h4 className="font-bold text-sm text-theme-text-header">HQ Developer APIs</h4>
+                  <p className="text-xs text-theme-text-muted">Direct API access to integrate your transaction logs and stock sheets with custom ERP and bookkeeping portals.</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Section 4: Bespoke Custom Requirements */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center border border-theme-border rounded-3xl bg-theme-bg-surface/20 p-8">
+          {/* Bespoke Custom Requirements */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center border border-theme-border rounded-3xl bg-theme-bg-surface/25 p-8">
             <div className="lg:col-span-8 space-y-4">
               <div className="flex items-center gap-2 text-brand-orange">
                 <HeartHandshake size={20} />
-                <h4 className="font-extrabold text-sm uppercase tracking-wider">Flexible For Your Needs</h4>
+                <h4 className="font-extrabold text-sm uppercase tracking-wider">Bespoke Options</h4>
               </div>
               <h3 className="text-xl sm:text-2xl font-extrabold text-theme-text-header">
-                Have specific custom requirements? We build them for you.
+                Have specific custom requirements? We are flexible for you.
               </h3>
               <p className="text-theme-text-muted text-xs sm:text-sm leading-relaxed">
-                Every dining venue runs on distinct, specialized operational steps. Whether you need a bespoke accounting API, unique table checkout flows, customized receipt layouts, or localized taxation reports, our engineering team is ready to build tailored extensions matching your workflow.
+                Every dining venue runs on distinct operational habits. Whether you need a bespoke accounting API integration, unique table checkout flows, localized taxation layouts, or custom reporting cards, our engineering team is ready to build tailored extensions matching your needs. Reach out to discuss how we can help.
               </p>
             </div>
             <div className="lg:col-span-4 text-left lg:text-right">
@@ -629,8 +687,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* High-Fidelity Features Section */}
-      <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-theme-bg-main relative transition-colors duration-250">
+      {/* Resilience Features Section */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-theme-bg-main relative transition-colors duration-250">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <h2 className="text-3xl sm:text-4xl font-extrabold text-theme-text-header mb-4">
