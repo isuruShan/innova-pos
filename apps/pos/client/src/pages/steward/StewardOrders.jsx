@@ -11,6 +11,22 @@ import { getPublicWebUrl } from '@innovapos/app-urls';
 import { Search, Plus, Minus, Trash2, Tag, Gift, ChevronLeft, Save } from 'lucide-react';
 import VariantSelectorModal from '../../components/VariantSelectorModal';
 
+const getFallbackGradient = (name) => {
+  const gradients = [
+    'from-amber-400 to-orange-500',
+    'from-rose-400 to-pink-500',
+    'from-emerald-400 to-teal-500',
+    'from-sky-400 to-indigo-500',
+    'from-violet-400 to-purple-500',
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % gradients.length;
+  return gradients[index];
+};
+
 export default function StewardOrders() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -47,8 +63,21 @@ export default function StewardOrders() {
   // Fetch existing order if we are appending
   useEffect(() => {
     if (editOrderId && isStoreReady) {
+      const savedKey = `steward_append_${selectedStoreId}_${editOrderId}`;
+      const savedCart = localStorage.getItem(savedKey);
+
       api.get(`/orders/${editOrderId}`).then((res) => {
         setExistingOrder(res.data);
+        
+        if (savedCart) {
+          try {
+            setLocalCart(JSON.parse(savedCart));
+            return;
+          } catch (e) {
+            console.error("Error parsing saved cart", e);
+          }
+        }
+
         const mappedCart = (res.data.items || []).map(i => ({
           ...i,
           isExisting: true // Flag to know it was already sent to kitchen
@@ -60,7 +89,14 @@ export default function StewardOrders() {
         navigate('/steward/tables');
       });
     }
-  }, [editOrderId, isStoreReady, navigate]);
+  }, [editOrderId, isStoreReady, navigate, selectedStoreId]);
+
+  // Persist append cart changes
+  useEffect(() => {
+    if (editOrderId && isStoreReady && localCart.length > 0) {
+      localStorage.setItem(`steward_append_${selectedStoreId}_${editOrderId}`, JSON.stringify(localCart));
+    }
+  }, [localCart, editOrderId, selectedStoreId, isStoreReady]);
 
   // Sync draft logic
   const cart = editOrderId ? localCart : activeDraft.cart;
@@ -158,6 +194,7 @@ export default function StewardOrders() {
   const appendOrderMutation = useMutation({
     mutationFn: (data) => api.put(`/orders/${editOrderId}`, data),
     onSuccess: () => {
+      localStorage.removeItem(`steward_append_${selectedStoreId}_${editOrderId}`);
       navigate('/steward/tables');
     },
     onError: (err) => alert(err.response?.data?.message || 'Failed to append to order'),
@@ -254,7 +291,17 @@ export default function StewardOrders() {
                 {item.image ? (
                   <img src={getPublicWebUrl(item.image)} alt={item.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-300">No Image</div>
+                  <div className={`w-full h-full bg-gradient-to-br ${getFallbackGradient(item.name)} flex flex-col items-center justify-center text-white p-3 text-center`}>
+                    <span className="text-3xl filter drop-shadow">
+                      {item.categoryName?.toLowerCase().includes('drink') || item.name.toLowerCase().includes('drink') || item.name.toLowerCase().includes('coke') || item.name.toLowerCase().includes('juice') ? '🥤' :
+                       item.categoryName?.toLowerCase().includes('dessert') || item.name.toLowerCase().includes('cake') || item.name.toLowerCase().includes('ice') ? '🍰' :
+                       item.categoryName?.toLowerCase().includes('pizza') || item.name.toLowerCase().includes('pizza') ? '🍕' :
+                       item.categoryName?.toLowerCase().includes('burger') || item.name.toLowerCase().includes('burger') ? '🍔' : '🍽️'}
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider mt-1 opacity-90 truncate max-w-full">
+                      {item.categoryName || 'Menu'}
+                    </span>
+                  </div>
                 )}
                 {item.hasVariants && (
                   <span className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">Variants</span>
