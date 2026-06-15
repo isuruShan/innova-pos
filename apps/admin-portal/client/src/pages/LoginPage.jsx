@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Loader } from 'lucide-react';
+import { getPosUrl } from '@innovapos/app-urls';
 import { useAuth } from '../context/AuthContext';
 import { fieldAttrs } from '../utils/formFields';
 import PwaInstallPrompt from '../components/PwaInstallPrompt';
@@ -29,10 +30,20 @@ export default function LoginPage() {
       if (u.isTemporaryPassword) {
         navigate('/profile?changePassword=1', { replace: true });
       } else {
-        navigate(
-          u.role === 'superadmin' ? '/merchants' : (u.subscriptionActive === false ? '/subscription' : '/dashboard'),
-          { replace: true },
-        );
+        const r = String(u.role || '').trim().toLowerCase();
+        if (r === 'superadmin') {
+          navigate('/merchants', { replace: true });
+        } else if (r === 'merchant_admin') {
+          navigate(u.subscriptionActive === false ? '/subscription' : '/dashboard', { replace: true });
+        } else if (r === 'manager') {
+          navigate('/accounting', { replace: true });
+        } else if (['cashier', 'steward', 'kitchen'].includes(r)) {
+          await logout();
+          window.location.href = getPosUrl();
+        } else {
+          await logout();
+          setError('Access Denied. Invalid role for this portal.');
+        }
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'Invalid credentials';
