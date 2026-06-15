@@ -108,7 +108,8 @@ router.post('/', authenticateJWT, tenantScope, authorize('merchant_admin', 'supe
 
     if (role === 'steward') {
       const Tenant = require('../models/Tenant');
-      const tenantForSteward = await Tenant.findById(tenantId);
+      require('../models/SubscriptionPlan');
+      const tenantForSteward = await Tenant.findById(tenantId).populate('assignedPlanId');
       const { isTableManagementEffective } = require('../lib/addonPeriod');
       if (!isTableManagementEffective(tenantForSteward)) {
         return res.status(400).json({ message: 'Table Management add-on is required to create steward users.' });

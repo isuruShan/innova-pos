@@ -59,6 +59,17 @@ router.post('/quote/create-user', authenticateJWT, authorize('merchant_admin'), 
   try {
     const { role, storeIds } = req.body;
     if (!role) return res.status(400).json({ message: 'role is required' });
+
+    if (role === 'steward') {
+      const Tenant = require('../models/Tenant');
+      require('../models/SubscriptionPlan');
+      const tenant = await Tenant.findById(req.tenantId).populate('assignedPlanId');
+      const { isTableManagementEffective } = require('../lib/addonPeriod');
+      if (!isTableManagementEffective(tenant)) {
+        return res.status(400).json({ message: 'Table Management add-on is required to purchase steward seats.' });
+      }
+    }
+
     const quote = await quoteCreateUser(req.tenantId, role, storeIds || []);
     res.json(quote);
   } catch (err) {
