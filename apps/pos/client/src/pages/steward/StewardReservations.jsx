@@ -44,7 +44,7 @@ export default function StewardReservations() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, action }) => api.put(`/reservations/${id}/status`, { action }),
+    mutationFn: ({ id, action }) => api.put(`/reservations/${id}/status`, { status: action === 'confirm' ? 'confirmed' : action === 'seat' ? 'seated' : 'cancelled' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['reservations'] }),
   });
 

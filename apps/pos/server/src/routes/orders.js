@@ -181,7 +181,7 @@ router.get('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
 });
 
 // POST create order
-router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin', 'steward'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const headerReqId = (req.headers['x-client-request-id'] || '').trim();
     const clientRequestId = headerReqId || (typeof req.body.clientRequestId === 'string' ? req.body.clientRequestId.trim() : '') || '';
@@ -570,7 +570,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin'), ten
 });
 
 // PUT update order details
-router.put('/:id', protect, authorize('cashier', 'manager', 'merchant_admin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.put('/:id', protect, authorize('cashier', 'manager', 'merchant_admin', 'steward'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) });
     if (!order) return res.status(404).json({ message: 'Order not found' });
@@ -670,7 +670,7 @@ router.put('/:id', protect, authorize('cashier', 'manager', 'merchant_admin'), t
 router.put(
   '/:id/items/:itemId/delivered',
   protect,
-  authorize('cashier', 'manager', 'merchant_admin'),
+  authorize('cashier', 'manager', 'merchant_admin', 'steward'),
   tenantScope,
   resolveSelectedStore,
   async (req, res) => {

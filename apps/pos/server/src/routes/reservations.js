@@ -212,7 +212,7 @@ router.get('/availability', resolveSelectedStore, async (req, res) => {
  */
 router.post(
   '/',
-  authorize('cashier', 'manager', 'merchant_admin'),
+  authorize('cashier', 'manager', 'merchant_admin', 'steward'),
   resolveSelectedStore,
   async (req, res) => {
     try {
@@ -410,7 +410,7 @@ router.get('/:id', resolveSelectedStore, async (req, res) => {
  */
 router.put(
   '/:id',
-  authorize('cashier', 'manager', 'merchant_admin'),
+  authorize('cashier', 'manager', 'merchant_admin', 'steward'),
   async (req, res) => {
     try {
       if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -539,15 +539,15 @@ const updateStatus = async (req, res) => {
   }
 };
 
-router.put('/:id/status', authorize('cashier', 'manager', 'merchant_admin'), updateStatus);
-router.patch('/:id/status', authorize('cashier', 'manager', 'merchant_admin'), updateStatus);
+router.put('/:id/status', authorize('cashier', 'manager', 'merchant_admin', 'steward'), updateStatus);
+router.patch('/:id/status', authorize('cashier', 'manager', 'merchant_admin', 'steward'), updateStatus);
 
 /**
  * PUT /reservations/:id/assign-table - Assign or reassign table
  */
 router.put(
   '/:id/assign-table',
-  authorize('cashier', 'manager', 'merchant_admin'),
+  authorize('cashier', 'manager', 'merchant_admin', 'steward'),
   async (req, res) => {
     try {
       const { tableId } = req.body;

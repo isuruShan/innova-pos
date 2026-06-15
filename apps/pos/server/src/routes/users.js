@@ -7,8 +7,8 @@ const { parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
 
-const MANAGER_ROLES = ['cashier', 'kitchen'];
-const ADMIN_ROLES = ['manager', 'cashier', 'kitchen'];
+const MANAGER_ROLES = ['cashier', 'kitchen', 'steward'];
+const ADMIN_ROLES = ['manager', 'cashier', 'kitchen', 'steward'];
 const storeAccessFilter = (storeId) => (
   storeId
     ? {

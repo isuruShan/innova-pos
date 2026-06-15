@@ -14,7 +14,7 @@ const router = express.Router();
 router.get(
   '/paid-addons',
   protect,
-  authorize('cashier', 'manager', 'merchant_admin'),
+  authorize('cashier', 'kitchen', 'steward', 'manager', 'merchant_admin', 'superadmin'),
   tenantScope,
   async (req, res) => {
     try {

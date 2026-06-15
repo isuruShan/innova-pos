@@ -136,7 +136,7 @@ router.get('/', protect, tenantScope, async (req, res) => {
 router.post(
   '/dismiss-waiter-calls-for-order',
   protect,
-  authorize('cashier', 'kitchen', 'manager', 'merchant_admin', 'superadmin'),
+  authorize('cashier', 'kitchen', 'steward', 'manager', 'merchant_admin', 'superadmin'),
   tenantScope,
   resolveSelectedStore,
   async (req, res) => {
