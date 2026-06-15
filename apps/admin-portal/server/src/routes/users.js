@@ -106,6 +106,15 @@ router.post('/', authenticateJWT, tenantScope, authorize('merchant_admin', 'supe
       return res.status(400).json({ message: `Role ${role} not allowed` });
     }
 
+    if (role === 'steward') {
+      const Tenant = require('../models/Tenant');
+      const tenantForSteward = await Tenant.findById(tenantId);
+      const { isTableManagementEffective } = require('../lib/addonPeriod');
+      if (!isTableManagementEffective(tenantForSteward)) {
+        return res.status(400).json({ message: 'Table Management add-on is required to create steward users.' });
+      }
+    }
+
     const quote = await quoteCreateUser(tenantId, role, storeIds || []);
 
     if (quote.requiresPayment && req.user.role !== 'superadmin') {

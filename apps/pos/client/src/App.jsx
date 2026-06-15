@@ -55,6 +55,10 @@ import StockReconciliation from './pages/manager/StockReconciliation';
 import StockAudit from './pages/manager/StockAudit';
 import WhatsAppProductsPage from './pages/manager/WhatsAppProductsPage';
 
+import StewardLayout from './pages/steward/StewardLayout';
+import StewardTables from './pages/steward/StewardTables';
+import StewardOrders from './pages/steward/StewardOrders';
+import StewardReservations from './pages/steward/StewardReservations';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 10_000 } },
@@ -83,6 +87,7 @@ const RootRedirect = () => {
   if (user.subscriptionActive === false) return <SubscriptionBlocked />;
   const r = normalizeRole(user.role);
   if (r === 'cashier') return <Navigate to="/cashier/order" replace />;
+  if (r === 'steward') return <Navigate to="/steward/tables" replace />;
   if (r === 'kitchen') return <Navigate to="/kitchen" replace />;
   if (r === 'manager' || r === 'merchant_admin') return <Navigate to="/manager/dashboard" replace />;
   return <Navigate to="/login" replace />;
@@ -176,6 +181,17 @@ export default function App() {
                     <KitchenDisplay />
                   </RoleRoute>
                 } />
+
+                <Route path="/steward" element={
+                  <RoleRoute roles={['steward', 'manager', 'merchant_admin']}>
+                    <StewardLayout />
+                  </RoleRoute>
+                }>
+                  <Route path="tables" element={<StewardTables />} />
+                  <Route path="orders" element={<StewardOrders />} />
+                  <Route path="reservations" element={<StewardReservations />} />
+                  <Route index element={<Navigate to="tables" replace />} />
+                </Route>
 
                 <Route path="/manager/dashboard" element={
                   <RoleRoute roles={['manager', 'merchant_admin']}>

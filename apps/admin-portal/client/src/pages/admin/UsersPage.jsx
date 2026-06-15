@@ -24,6 +24,7 @@ const ROLE_COLORS = {
   manager:        'bg-blue-100 text-blue-700',
   cashier:        'bg-green-100 text-green-700',
   kitchen:        'bg-orange-100 text-orange-700',
+  steward:        'bg-teal-100 text-teal-700',
 };
 
 const ROLE_OPTIONS = [
@@ -31,6 +32,7 @@ const ROLE_OPTIONS = [
   { value: 'manager',        label: 'Manager' },
   { value: 'cashier',        label: 'Cashier' },
   { value: 'kitchen',        label: 'Kitchen' },
+  { value: 'steward',        label: 'Steward' },
 ];
 
 const SORT_OPTIONS = [

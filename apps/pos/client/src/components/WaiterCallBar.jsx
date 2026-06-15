@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useStoreContext } from '../context/StoreContext';
 import { formatCurrency } from '../utils/format';
 
-const FOHR_ROLES = new Set(['cashier', 'manager', 'merchant_admin']);
+const FOHR_ROLES = new Set(['cashier', 'manager', 'merchant_admin', 'steward']);
 
 function WaiterCallDetailModal({ notification, order, orderLoading, orderError, onClose }) {
   const meta = notification?.meta || {};

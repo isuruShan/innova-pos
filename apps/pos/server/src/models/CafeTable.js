@@ -27,6 +27,7 @@ const cafeTableSchema = new mongoose.Schema(
     qrToken: { type: String, default: null },
     /** Throttle repeated “call waiter” from the same table QR link. */
     lastWaiterCallAt: { type: Date, default: null },
+    assignedSteward: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },

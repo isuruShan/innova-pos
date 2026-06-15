@@ -148,17 +148,27 @@ async function notifyCashiersTableWaiterCall({
   order,
 }) {
   const tid = castTenantId(tenantId);
-  const roles = ['cashier', 'manager', 'merchant_admin'];
+  const roles = ['cashier', 'manager', 'merchant_admin', 'steward'];
   const users = await User.find({
     tenantId: tid,
     role: { $in: roles },
     isActive: true,
   })
-    .select('_id storeIds')
+    .select('_id storeIds role')
     .lean();
+
+  let assignedStewardId = null;
+  if (tableId) {
+    const CafeTable = mongoose.model('CafeTable');
+    const table = await CafeTable.findById(tableId).select('assignedSteward').lean();
+    if (table && table.assignedSteward) assignedStewardId = String(table.assignedSteward);
+  }
 
   const sid = storeId ? String(storeId) : '';
   const targets = users.filter((u) => {
+    if (u.role === 'steward') {
+      return assignedStewardId && String(u._id) === assignedStewardId;
+    }
     const ids = (u.storeIds || []).map(String);
     if (!ids.length) return true;
     return sid && ids.includes(sid);
