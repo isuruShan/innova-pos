@@ -8,6 +8,7 @@ const DEFAULT_ROWS = [
   { role: 'manager', sortOrder: 1 },
   { role: 'cashier', sortOrder: 2 },
   { role: 'kitchen', sortOrder: 3 },
+  { role: 'steward', sortOrder: 4 },
 ];
 
 async function ensureDefaultUserLicensePricing() {

@@ -387,6 +387,7 @@ router.post('/payroll/calculate', authorize('merchant_admin'), resolveSelectedSt
       cashier: 30000,
       manager: 60000,
       kitchen: 40000,
+      steward: 35000,
       merchant_admin: 85000
     };
 

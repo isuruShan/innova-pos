@@ -257,9 +257,10 @@ const ROLE_LABELS = {
   manager: 'Manager',
   cashier: 'Cashier',
   kitchen: 'Kitchen',
+  steward: 'Steward',
 };
 
-const ROLES_ORDER = ['merchant_admin', 'manager', 'cashier', 'kitchen'];
+const ROLES_ORDER = ['merchant_admin', 'manager', 'cashier', 'kitchen', 'steward'];
 
 /* ─────────────────────────────────────────────
    Single role pricing row inside the drawer
@@ -496,7 +497,7 @@ export default function PaidAddonsPage() {
           </p>
           <div className="flex items-center justify-between text-xs mt-auto pt-1">
             <span className="text-green-700 font-medium">Active</span>
-            <span className="text-gray-500">4 roles</span>
+            <span className="text-gray-500">{ROLES_ORDER.length} roles</span>
           </div>
         </button>
       </div>

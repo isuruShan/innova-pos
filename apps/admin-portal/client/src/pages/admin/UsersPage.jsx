@@ -809,6 +809,7 @@ export default function UsersPage() {
                   <option value="cashier">Cashier</option>
                   <option value="manager">Manager</option>
                   <option value="kitchen">Kitchen</option>
+                  <option value="steward">Steward</option>
                   <option value="merchant_admin">Admin</option>
                 </select>
               </div>

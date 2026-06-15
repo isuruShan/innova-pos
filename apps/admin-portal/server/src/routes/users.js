@@ -17,7 +17,7 @@ const {
 const router = express.Router();
 
 const generateTempPassword = () => crypto.randomBytes(6).toString('hex');
-const STAFF_ROLES = ['manager', 'cashier', 'kitchen'];
+const STAFF_ROLES = ['manager', 'cashier', 'kitchen', 'steward'];
 
 /**
  * Attach fresh presigned URLs to user profile images using batch presigning.
