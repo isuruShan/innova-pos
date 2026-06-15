@@ -19,6 +19,7 @@ export default function Login() {
     if (!user) return;
     const r = String(user.role || '').trim().toLowerCase();
     if (r === 'cashier') navigate('/cashier/order', { replace: true });
+    else if (r === 'steward') navigate('/steward/tables', { replace: true });
     else if (r === 'kitchen') navigate('/kitchen', { replace: true });
     else if (r === 'manager' || r === 'merchant_admin') navigate('/manager/dashboard', { replace: true });
     else logout();
@@ -33,6 +34,7 @@ export default function Login() {
       const u = await login(email.trim().toLowerCase(), password.trim());
       const r = String(u.role || '').trim().toLowerCase();
       if (r === 'cashier') navigate('/cashier/order');
+      else if (r === 'steward') navigate('/steward/tables');
       else if (r === 'kitchen') navigate('/kitchen');
       else if (r === 'manager' || r === 'merchant_admin') navigate('/manager/dashboard');
       else logout();
