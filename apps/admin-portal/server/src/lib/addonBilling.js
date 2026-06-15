@@ -282,13 +282,12 @@ async function computeSubscriptionRenewalExpected(tenant, planOverride = null, o
     if (plan && Array.isArray(plan.includedAddons) && plan.includedAddons.includes(row.code)) {
       continue;
     }
-    if (!row.check(t)) continue;
-    
-    // If the merchant has scheduled to unsubscribe / cancel this addon at the period end,
-    // do not charge or show it in the next billing cycle renewal breakdown.
     const entKey = row.key;
     const ent = t.paidAddons?.[entKey];
-    if (ent?.cancelAtPeriodEnd) {
+    if (!ent || !ent.active) {
+      continue;
+    }
+    if (ent.cancelAtPeriodEnd) {
       continue;
     }
 

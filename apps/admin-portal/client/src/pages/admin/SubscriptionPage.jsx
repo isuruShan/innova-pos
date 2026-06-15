@@ -259,7 +259,7 @@ export default function SubscriptionPage() {
 
   const validate = () => {
     const e = {};
-    if (!form.amount || isNaN(form.amount) || parseFloat(form.amount) <= 0) e.amount = 'Valid amount required';
+    if (!displayAmount || isNaN(displayAmount) || parseFloat(displayAmount) <= 0) e.amount = 'Valid amount required';
     if (!form.planId) e.planId = 'Plan selection is required';
     if (!form.bankReference.trim()) e.bankReference = 'Bank reference required';
     if (!file) { e.receipt = 'Receipt photo is required'; }
@@ -275,7 +275,10 @@ export default function SubscriptionPage() {
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     const fd = new FormData();
-    Object.entries(form).forEach(([k, v]) => v && fd.append(k, v));
+    Object.entries(form).forEach(([k, v]) => {
+      if (k !== 'amount' && v) fd.append(k, v);
+    });
+    fd.append('amount', String(displayAmount));
     fd.append('billingCycle', selectedCycle);
     fd.append('excludeAddons', JSON.stringify(excludeAddons));
     if (file) fd.append('receipt', file);
@@ -454,20 +457,20 @@ export default function SubscriptionPage() {
       nextBillingPlanId ||
       payPlans[0]?._id ||
       '';
-    if (!defaultPlanId) return;
     setForm((f) => ({
       ...f,
       planId: defaultPlanId,
     }));
   }, [tenant, payPlans, nextBillingPlanId, form.planId]);
 
-  useEffect(() => {
+  const displayAmount = useMemo(() => {
     const isBreakdownStale = !billingBreakdown || String(billingBreakdown?.plan?._id) !== String(form.planId);
-    const total = !isBreakdownStale && billingBreakdown?.total > 0
-      ? billingBreakdown.total
-      : (selectedCycle === 'yearly' ? selectedPlan?.yearlyPrice : selectedPlan?.monthlyPrice);
-    if (total != null) setForm((f) => ({ ...f, amount: String(total) }));
-  }, [selectedPlan?._id, selectedPlan?.monthlyPrice, selectedPlan?.yearlyPrice, billingBreakdown?.total, selectedCycle, form.planId, billingBreakdown?.plan?._id]);
+    if (!isBreakdownStale && billingBreakdown?.total > 0) {
+      return billingBreakdown.total;
+    }
+    const price = selectedCycle === 'yearly' ? selectedPlan?.yearlyPrice : selectedPlan?.monthlyPrice;
+    return price || 0;
+  }, [billingBreakdown, form.planId, selectedCycle, selectedPlan]);
 
   useEffect(() => {
     const wantPaypal =
@@ -647,7 +650,7 @@ export default function SubscriptionPage() {
                 </label>
                 <input
                   type="number"
-                  value={form.amount}
+                  value={displayAmount}
                   readOnly
                   className={`w-full border rounded-lg px-3 py-2 text-sm bg-gray-50 ${errors.amount ? 'border-red-400' : 'border-gray-300'}`}
                 />
@@ -957,10 +960,7 @@ export default function SubscriptionPage() {
                             nextBillingPlanId ||
                             payPlans[0]?._id ||
                             '';
-                          const defaultPlan = payPlans.find((p) => p._id === defaultPlanId) || payPlans[0];
-                          const price = selectedCycle === 'yearly' ? defaultPlan?.yearlyPrice : defaultPlan?.monthlyPrice;
-                          const amountToPay = billingBreakdown?.total > 0 ? billingBreakdown.total : price;
-                          setForm((f) => ({ ...f, planId: defaultPlanId, amount: String(amountToPay || 0) }));
+                          setForm((f) => ({ ...f, planId: defaultPlanId }));
                           setTrialSubscribeStep('payment_select');
                         }}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg shadow-sm transition whitespace-nowrap cursor-pointer"
@@ -1003,10 +1003,7 @@ export default function SubscriptionPage() {
                               nextBillingPlanId ||
                               payPlans[0]?._id ||
                               '';
-                            const defaultPlan = payPlans.find((p) => p._id === defaultPlanId) || payPlans[0];
-                            const price = selectedCycle === 'yearly' ? defaultPlan?.yearlyPrice : defaultPlan?.monthlyPrice;
-                            const amountToPay = billingBreakdown?.total > 0 ? billingBreakdown.total : price;
-                            setForm((f) => ({ ...f, planId: defaultPlanId, amount: String(amountToPay || 0) }));
+                            setForm((f) => ({ ...f, planId: defaultPlanId }));
                             setTrialSubscribeStep('payment_select');
                           }}
                           className="px-6 py-2.5 bg-brand-orange hover:bg-brand-orange-hover text-white text-xs font-semibold rounded-lg shadow-sm transition cursor-pointer"
@@ -1436,7 +1433,7 @@ export default function SubscriptionPage() {
                           className={cardClass}
                           style={customCardBg ? { background: customCardBg } : undefined}
                           onClick={() => {
-                            setForm((f) => ({ ...f, planId: plan._id, amount: String(price || 0) }));
+                            setForm((f) => ({ ...f, planId: plan._id }));
                           }}
                         >
                           {showRibbon && ribbonBg && (
@@ -1549,8 +1546,8 @@ export default function SubscriptionPage() {
 
               {trialSubscribeStep === 'payment_select' && (
                 <div className="space-y-6">
-                  <p className="text-sm text-gray-650">
-                    Select a payment option below to subscribe to the <strong className="text-gray-900">{selectedPlan?.name || 'selected'} plan</strong>. Total payment amount: <strong className="text-gray-900">{selectedPlan?.currency || 'LKR'} {Number(form.amount).toLocaleString()}</strong> (includes plan renewal fee and active add-ons/user seats for the next {selectedCycle === 'yearly' ? 'year' : 'month'}).
+                  <p className="text-sm text-gray-655">
+                    Select a payment option below to subscribe to the <strong className="text-gray-900">{selectedPlan?.name || 'selected'} plan</strong>. Total payment amount: <strong className="text-gray-900">{selectedPlan?.currency || 'LKR'} {Number(displayAmount).toLocaleString()}</strong> (includes plan renewal fee and active add-ons/user seats for the next {selectedCycle === 'yearly' ? 'year' : 'month'}).
                   </p>
                   <div className="flex flex-wrap gap-4 justify-center py-4">
                     {paymentOptions?.stripe?.enabled && !isInternational && (
