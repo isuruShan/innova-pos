@@ -318,7 +318,7 @@ export default function CashierOrderHistory() {
                       <button
                         type="button"
                         onClick={() => openReturn(o)}
-                        className="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-xs font-semibold text-amber-700 dark:text-amber-200 inline-flex items-center gap-1 hover:bg-amber-500/30"
+                        className="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-xs font-semibold text-amber-300 hover:text-amber-200 inline-flex items-center gap-1 hover:bg-amber-500/30"
                       >
                         <RotateCcw size={14} /> Return
                       </button>

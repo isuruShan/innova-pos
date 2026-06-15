@@ -11,3 +11,24 @@ body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Custom scrollbar for categories scroll */
+.category-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--qr-accent, #fa7237) #f1f5f9;
+}
+
+.category-scroll::-webkit-scrollbar {
+  height: 6px;
+  display: block !important;
+}
+
+.category-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 999px;
+}
+
+.category-scroll::-webkit-scrollbar-thumb {
+  background: var(--qr-accent, #fa7237);
+  border-radius: 999px;
+}

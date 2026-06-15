@@ -107,18 +107,18 @@ function VariantSelectorModal({ item, currencySymbol, onClose, onAdd }) {
       onClick={onClose}
     >
       <div
-        className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-[var(--qr-border)]/80 shadow-2xl flex flex-col min-h-0 bg-[var(--qr-panel)] text-[var(--qr-body)]"
+        className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-[var(--qr-border)] shadow-2xl flex flex-col min-h-0 bg-[var(--qr-panel)] text-[var(--qr-body)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--qr-border)]/60">
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--qr-border)]">
           <div>
-            <h3 className="text-base font-bold text-slate-100">{item.name}</h3>
+            <h3 className="text-base font-bold text-slate-800">{item.name}</h3>
             <p className="text-xs text-[var(--qr-muted)]">Select options to add to order</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-slate-800 text-[var(--qr-muted)] hover:text-slate-100"
+            className="p-2 rounded-full hover:bg-slate-105 text-[var(--qr-muted)] hover:text-slate-800"
           >
             <X size={20} />
           </button>
@@ -136,10 +136,10 @@ function VariantSelectorModal({ item, currencySymbol, onClose, onAdd }) {
                       key={val}
                       type="button"
                       onClick={() => handleSelect(opt.name, val)}
-                      className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-all ${
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition-all duration-200 active:scale-95 ${
                         active
-                          ? 'border-transparent shadow-lg text-[var(--qr-on-accent,#fff)] font-bold'
-                          : 'bg-slate-800/80 border-slate-700/80 text-slate-300 hover:border-slate-600'
+                          ? 'ring-2 ring-[var(--qr-accent)] ring-offset-2 scale-105 shadow-md text-white font-extrabold border-transparent'
+                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
                       }`}
                       style={active ? { backgroundColor: 'var(--qr-accent, #f59e0b)' } : {}}
                     >
@@ -152,18 +152,18 @@ function VariantSelectorModal({ item, currencySymbol, onClose, onAdd }) {
           ))}
 
           {selectedVariant ? (
-            <div className="bg-slate-900/50 rounded-xl p-3 border border-[var(--qr-border)]/60 flex items-center gap-3">
-              <div className="w-12 h-12 bg-slate-800 rounded-lg overflow-hidden border border-slate-750 shrink-0">
+            <div className="bg-slate-50 rounded-xl p-3 border border-[var(--qr-border)] flex items-center gap-3">
+              <div className="w-12 h-12 bg-slate-100 rounded-lg overflow-hidden border border-slate-200 shrink-0">
                 {selectedVariant.image ? (
                   <img src={resolveAssetUrl(selectedVariant.image)} alt="" className="w-full h-full object-cover" />
                 ) : itemPhotoUrls(item)[0] ? (
                   <img src={itemPhotoUrls(item)[0]} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xl">🍔</div>
+                  <div className="w-full h-full flex items-center justify-center text-xl bg-slate-205">🍔</div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-slate-200 truncate">{selectedVariant.name}</p>
+                <p className="text-sm font-bold text-slate-800 truncate">{selectedVariant.name}</p>
                 <p className="text-xs text-[var(--qr-muted)] truncate">{selectedVariant.description || 'Selected Option'}</p>
               </div>
               <span className="text-sm font-extrabold tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
@@ -172,18 +172,18 @@ function VariantSelectorModal({ item, currencySymbol, onClose, onAdd }) {
             </div>
           ) : (
             canConfirm && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium rounded-xl">
+              <div className="p-3 bg-red-50/10 border border-red-500/20 text-red-650 text-xs font-medium rounded-xl">
                 This combination is currently unavailable
               </div>
             )
           )}
         </div>
 
-        <div className="p-4 border-t border-[var(--qr-border)]/60 flex gap-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="p-4 border-t border-[var(--qr-border)] flex gap-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-3 rounded-xl font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm border border-slate-700 transition"
+            className="flex-1 py-3 rounded-xl font-bold bg-slate-50 hover:bg-slate-100 text-slate-700 text-sm border border-slate-205 transition"
           >
             Cancel
           </button>
@@ -253,17 +253,17 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
       onClick={onClose}
     >
       <div
-        className="w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl bg-[var(--qr-panel)] shadow-2xl flex flex-col min-h-0 border border-[var(--qr-border)]/60"
+        className="w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl bg-[var(--qr-panel)] shadow-2xl flex flex-col min-h-0 border border-[var(--qr-border)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--qr-border)]/60 shrink-0">
-          <h2 id="item-detail-title" className="text-lg font-bold text-slate-100 pr-2 leading-tight">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--qr-border)] shrink-0">
+          <h2 id="item-detail-title" className="text-lg font-bold text-slate-800 pr-2 leading-tight">
             {item.name}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-slate-800 text-[var(--qr-muted)] hover:text-white"
+            className="p-2 rounded-full hover:bg-slate-100 text-[var(--qr-muted)] hover:text-slate-800"
             aria-label="Close"
           >
             <X size={22} />
@@ -272,7 +272,7 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           {urls.length > 0 ? (
-            <div className="relative bg-slate-900 aspect-[4/3] max-h-[42vh] shrink-0">
+            <div className="relative bg-slate-50 aspect-[4/3] max-h-[42vh] shrink-0">
               <img src={urls[idx]} alt="" className="w-full h-full object-contain" />
               {urls.length > 1 && (
                 <>
@@ -309,7 +309,7 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
               )}
             </div>
           ) : (
-            <div className="aspect-[4/3] bg-slate-900 flex items-center justify-center text-5xl">🍽️</div>
+            <div className="aspect-[4/3] bg-slate-50 flex items-center justify-center text-5xl">🍽️</div>
           )}
 
           <div className="px-4 py-4 space-y-4">
@@ -319,11 +319,11 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
                 {hasVariants && !selectedVariant ? 'From ' : ''}
                 {currencySymbol}{displayPrice.toFixed(2)}
               </p>
-              {item.category && <p className="text-xs font-semibold uppercase tracking-wider text-[var(--qr-muted)] bg-slate-800/60 px-2 py-0.5 rounded-full">{item.category}</p>}
+              {item.category && <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full">{item.category}</p>}
             </div>
 
             {desc ? (
-              <p className="text-sm text-[var(--qr-muted)] whitespace-pre-wrap leading-relaxed">{desc}</p>
+              <p className="text-sm text-slate-500 whitespace-pre-wrap leading-relaxed">{desc}</p>
             ) : null}
 
             {/* Variant Options */}
@@ -341,7 +341,7 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
                             key={val}
                             type="button"
                             onClick={() => handleSelect(opt.name, val)}
-                            className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${active ? 'border-transparent shadow-md' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:border-slate-500'}`}
+                            className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition-all duration-200 active:scale-95 ${active ? 'ring-2 ring-[var(--qr-accent)] ring-offset-2 scale-105 shadow-md text-white font-extrabold border-transparent' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-350'}`}
                             style={active ? { backgroundColor: 'var(--qr-accent, #f59e0b)', color: 'var(--qr-on-accent, #fff)' } : {}}
                           >
                             {val}
@@ -354,24 +354,24 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
 
                 {/* Selected variant preview */}
                 {selectedVariant ? (
-                  <div className="bg-slate-900/50 rounded-xl p-3 border border-[var(--qr-border)]/50 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-800 rounded-lg overflow-hidden shrink-0">
+                  <div className="bg-slate-50 rounded-xl p-3 border border-[var(--qr-border)] flex items-center gap-3">
+                    <div className="w-10 h-10 bg-slate-100 rounded-lg overflow-hidden shrink-0 border border-slate-200">
                       {selectedVariant.image ? (
                         <img src={resolveAssetUrl(selectedVariant.image)} alt="" className="w-full h-full object-cover" />
                       ) : urls[0] ? (
                         <img src={urls[0]} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-lg">🍔</div>
+                        <div className="w-full h-full flex items-center justify-center text-lg bg-slate-200">🍔</div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-200 truncate">{selectedVariant.name}</p>
+                      <p className="text-sm font-bold text-slate-800 truncate">{selectedVariant.name}</p>
                       <p className="text-xs text-[var(--qr-muted)] truncate">{selectedVariant.description || 'Selected option'}</p>
                     </div>
                   </div>
                 ) : (
                   canConfirm && (
-                    <div className="p-2.5 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl">
+                    <div className="p-2.5 bg-red-500/10 border border-red-500/20 text-red-650 text-xs rounded-xl">
                       This combination is unavailable
                     </div>
                   )
@@ -385,7 +385,7 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
                       <div
                         key={v._id}
                         className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs border transition ${
-                          v.available === false ? 'opacity-40 border-slate-800 bg-transparent' : 'border-slate-700/70 bg-slate-800/50 hover:border-slate-600'
+                          v.available === false ? 'opacity-40 border-slate-200 bg-transparent' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
                         }`}
                       >
                         <span className="font-medium text-slate-200 truncate">{v.name}</span>
@@ -481,37 +481,18 @@ export default function TableOrderApp() {
   }, [waiterBlockedUntil, waiterSecondsLeft]);
 
   const rootStyle = useMemo(() => {
-    if (!branding) {
-      return {
-        '--qr-primary': '#0f172a',
-        '--qr-accent': '#fa7237',
-        '--qr-text': '#f8fafc',
-        '--qr-on-accent': '#ffffff',
-        '--qr-page-bg': '#020617',
-        '--qr-panel': '#1e293b',
-        '--qr-border': '#334155',
-        '--qr-body': '#cbd5e1',
-        '--qr-muted': '#64748b',
-        '--qr-radius': '1rem',
-      };
-    }
-    const prim = branding.primaryColor || '#0f172a';
     const accent = branding?.qrOrdering?.accentColor || branding?.accentColor || '#fa7237';
-    const text = branding.textColor || '#f8fafc';
-    const side = branding.sidebarColor || '#1e293b';
-
-    const isLight = prim.toLowerCase() === '#ffffff' || prim.toLowerCase() === '#fff' || prim.toLowerCase() === '#f8fafc' || prim.toLowerCase() === 'white';
-
+    // Always use dynamic theme light styles
     return {
-      '--qr-primary': prim,
+      '--qr-primary': '#ffffff',
       '--qr-accent': accent,
-      '--qr-text': text,
-      '--qr-on-accent': branding.selectionTextColor || '#ffffff',
-      '--qr-page-bg': isLight ? '#f8fafc' : '#080d16',
-      '--qr-panel': isLight ? '#ffffff' : side,
-      '--qr-border': isLight ? '#e2e8f0' : '#334155',
-      '--qr-body': isLight ? '#1e293b' : text,
-      '--qr-muted': isLight ? '#64748b' : '#94a3b8',
+      '--qr-text': '#1e293b',
+      '--qr-on-accent': branding?.selectionTextColor || '#ffffff',
+      '--qr-page-bg': '#f8fafc',
+      '--qr-panel': '#ffffff',
+      '--qr-border': '#e2e8f0',
+      '--qr-body': '#1e293b',
+      '--qr-muted': '#64748b',
       '--qr-radius': '1rem',
     };
   }, [branding]);
@@ -732,60 +713,86 @@ export default function TableOrderApp() {
       }}
     >
       <header
-        className="shrink-0 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 shadow-md z-20"
-        style={{ backgroundColor: 'var(--qr-primary)', color: 'var(--qr-text)' }}
+        className="shrink-0 px-4 pt-[max(0.85rem,env(safe-area-inset-top))] pb-3.5 shadow-sm border-b border-[var(--qr-border)] z-20"
+        style={{ backgroundColor: 'var(--qr-panel)', color: 'var(--qr-body)' }}
       >
-        <div className="flex items-start gap-3 max-w-lg mx-auto">
-          {branding?.logoUrl ? (
-            <img src={resolveAssetUrl(branding.logoUrl)} alt="" className="h-12 w-12 rounded-lg object-cover border border-white/20 shrink-0" />
-          ) : null}
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg sm:text-xl font-bold leading-tight truncate">{displayName}</h1>
-            <p className="text-sm opacity-90 mt-0.5">
-              {payload.storeName !== displayName && <span className="opacity-75">{payload.storeName} · </span>}
-              Table <span className="font-semibold">{payload.tableLabel}</span>
-            </p>
-            {branding?.tagline ? <p className="text-xs opacity-80 mt-1 line-clamp-2">{branding.tagline}</p> : null}
+        <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            {branding?.logoUrl ? (
+              <img 
+                src={resolveAssetUrl(branding.logoUrl)} 
+                alt={displayName} 
+                className="h-12 w-12 rounded-xl object-cover border border-slate-100 shadow-sm shrink-0" 
+              />
+            ) : (
+              <div 
+                className="h-12 w-12 rounded-xl flex items-center justify-center font-extrabold text-base text-white shadow-sm shrink-0"
+                style={{ backgroundColor: 'var(--qr-accent)' }}
+              >
+                {String(displayName || 'M').charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-805 leading-tight truncate">{displayName}</h1>
+              {branding?.tagline ? (
+                <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1 leading-normal">{branding.tagline}</p>
+              ) : payload.storeName && payload.storeName !== displayName ? (
+                <p className="text-[11px] text-slate-400 mt-0.5 truncate">{payload.storeName}</p>
+              ) : null}
+            </div>
+          </div>
+          
+          <div className="shrink-0">
+            <span 
+              className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-black shadow-sm border"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--qr-accent) 8%, #ffffff)',
+                color: 'var(--qr-accent)',
+                borderColor: 'color-mix(in srgb, var(--qr-accent) 20%, #ffffff)',
+              }}
+            >
+              Table {payload.tableLabel}
+            </span>
           </div>
         </div>
       </header>
 
       {msg && (
-        <div className="shrink-0 mx-3 mt-3 rounded-xl border border-teal-700/50 bg-teal-950/40 text-teal-100 text-sm px-4 py-3">
+        <div className="shrink-0 mx-3 mt-3 rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-800 text-sm px-4 py-3 shadow-sm font-medium animate-fadeIn">
           {msg}
         </div>
       )}
 
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
         {tab === 'order' && (
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-3 py-4 pb-[calc(8rem+env(safe-area-inset-bottom))] space-y-4 max-w-lg mx-auto w-full">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-3 py-4 pb-[calc(8rem+env(safe-area-inset-bottom))] space-y-4 max-w-lg mx-auto w-full animate-fadeIn">
             {order ? (
-              <section className="rounded-2xl bg-[var(--qr-panel)] border border-slate-600/60 p-4 shadow-sm">
+              <section className="rounded-2xl bg-[var(--qr-panel)] border border-[var(--qr-border)] p-4 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-400">Your order</p>
-                    <p className="font-mono font-bold text-slate-100">#{String(order.orderNumber).padStart(3, '0')}</p>
+                    <p className="text-xs uppercase tracking-wide text-slate-400 font-semibold">Your order</p>
+                    <p className="font-mono font-bold text-slate-800">#{String(order.orderNumber).padStart(3, '0')}</p>
                   </div>
-                  <span className="text-sm font-semibold px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-50 text-amber-805 border border-amber-205">
                     {STATUS_LABEL[order.status] || order.status}
                   </span>
                 </div>
-                <ul className="mt-3 divide-y divide-slate-600/50 text-sm">
+                <ul className="mt-3 divide-y divide-slate-100 text-sm">
                   {(order.items || []).map((line, idx) => (
-                    <li key={idx} className="py-2 flex justify-between gap-2">
-                      <span className="text-slate-200 min-w-0">
-                        <span className="block truncate">{line.name} × {line.qty}</span>
+                    <li key={idx} className="py-2.5 flex justify-between gap-2">
+                      <span className="text-slate-805 min-w-0">
+                        <span className="block font-semibold truncate">{line.name} × {line.qty}</span>
                         {line.variantName && (
-                          <span className="block text-[11px] text-amber-400/80 truncate">↳ {line.variantName}</span>
+                          <span className="block text-[11px] text-amber-600 truncate font-semibold">↳ {line.variantName}</span>
                         )}
                       </span>
-                      <span className="text-slate-400 tabular-nums shrink-0">{fmtMoney(line.price * line.qty)}</span>
+                      <span className="text-slate-500 tabular-nums shrink-0 font-semibold">{fmtMoney(line.price * line.qty)}</span>
                     </li>
                   ))}
                 </ul>
-                <div className="mt-3 pt-3 border-t border-slate-600/50 flex justify-between font-semibold text-slate-100">
+                <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between font-bold text-slate-800">
                   <span>Total</span>
-                  <span className="tabular-nums">{fmtMoney(order.totalAmount)}</span>
+                  <span className="tabular-nums" style={{ color: 'var(--qr-accent)' }}>{fmtMoney(order.totalAmount)}</span>
                 </div>
                 <p className="text-xs text-slate-400 mt-2">
                   Pay with staff when you finish. You can add more from the <strong>Menu</strong> tab; you cannot reduce
@@ -793,7 +800,7 @@ export default function TableOrderApp() {
                 </p>
               </section>
             ) : (
-              <section className="rounded-2xl bg-[var(--qr-panel)] border border-slate-600/60 p-6 text-center text-slate-400 text-sm">
+              <section className="rounded-2xl bg-[var(--qr-panel)] border border-[var(--qr-border)] p-6 text-center text-slate-400 text-sm shadow-sm">
                 No open order yet. Use <strong>Menu</strong> to choose items and send them to the kitchen.
               </section>
             )}
@@ -802,8 +809,8 @@ export default function TableOrderApp() {
 
         {tab === 'menu' && (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <div className="shrink-0 px-3 pt-3 pb-2.5 bg-[var(--qr-panel)] border-b border-[var(--qr-border)]/60 space-y-2.5">
-              <div className="flex gap-2.5 overflow-x-auto pb-1.5 touch-pan-x max-w-lg mx-auto w-full scrollbar-none">
+            <div className="shrink-0 px-3 pt-3 pb-2.5 bg-[var(--qr-panel)] border-b border-[var(--qr-border)] space-y-2.5">
+              <div className="flex gap-2.5 overflow-x-auto pb-2 touch-pan-x max-w-lg mx-auto w-full category-scroll">
                 {categories.map((c) => {
                   const catObj = categoryRows.find((row) => row.name === c);
                   const imageUrl = catObj?.imageUrl;
@@ -815,7 +822,7 @@ export default function TableOrderApp() {
                       className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap shrink-0 transition active:scale-95 ${
                         activeCat === c
                           ? 'text-white'
-                          : 'bg-slate-800/80 text-slate-300 border border-slate-600/70 hover:bg-slate-700/60'
+                          : 'bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-105'
                       }`}
                       style={
                         activeCat === c
@@ -829,7 +836,7 @@ export default function TableOrderApp() {
                       }
                     >
                       <div className={`w-5 h-5 rounded-full overflow-hidden shrink-0 flex items-center justify-center text-[10px] ${
-                        activeCat === c ? 'bg-white/20' : 'bg-slate-700/60'
+                        activeCat === c ? 'bg-white/20' : 'bg-slate-200'
                       }`}>
                         {c === 'All' ? (
                           '🍽️'
@@ -845,19 +852,19 @@ export default function TableOrderApp() {
                 })}
               </div>
               <div className="relative max-w-lg mx-auto w-full">
-                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   value={menuSearch}
                   onChange={(e) => setMenuSearch(e.target.value)}
                   placeholder="Search menu…"
-                  className="w-full bg-slate-900/60 border border-slate-600/70 text-slate-100 rounded-2xl pl-10 pr-9 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/60 placeholder-slate-500 transition-all"
+                  className="w-full bg-slate-50 border border-slate-205 text-slate-800 rounded-2xl pl-10 pr-9 py-2.5 text-sm focus:outline-none focus:bg-white focus:ring-2 focus:ring-[var(--qr-accent)]/20 placeholder-slate-400 transition-all"
                 />
                 {menuSearch && (
                   <button
                     type="button"
                     onClick={() => setMenuSearch('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-lg font-bold"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-lg font-bold"
                     aria-label="Clear search"
                   >
                     ×
@@ -869,7 +876,7 @@ export default function TableOrderApp() {
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-3 py-4">
               <div className="max-w-lg mx-auto w-full space-y-3.5 pb-[calc(8rem+env(safe-area-inset-bottom))]">
                 {filteredMenu.length === 0 ? (
-                  <p className="text-center text-slate-500 text-sm py-16 bg-[var(--qr-panel)]/40 border border-[var(--qr-border)]/50 rounded-2xl">
+                  <p className="text-center text-slate-505 text-sm py-16 bg-[var(--qr-panel)] border border-[var(--qr-border)] rounded-2xl shadow-sm">
                     {menuSearch.trim() ? 'No items match your search' : 'No items in this category'}
                   </p>
                 ) : (
@@ -882,70 +889,100 @@ export default function TableOrderApp() {
                     // For single-variant or no-variant items, use the first matching line's cartKey
                     const singleCartKey = !item.hasVariants ? (itemCartLines[0]?.cartKey ?? String(item._id)) : null;
 
+                    // Calculate display price for the product card listing
+                    let displayPrice = Number(item.price || 0);
+                    let pricePrefix = '';
+                    const hasVariants = item.hasVariants && item.variants?.length > 0;
+                    if (hasVariants) {
+                      const availableVariants = item.variants.filter(v => v.available !== false);
+                      if (availableVariants.length > 0) {
+                        const defaultVariant = item.defaultVariantId 
+                          ? availableVariants.find(v => String(v._id) === String(item.defaultVariantId))
+                          : null;
+                        if (defaultVariant) {
+                          displayPrice = Number(defaultVariant.price || 0);
+                        } else {
+                          const prices = availableVariants.map(v => Number(v.price)).filter(p => !isNaN(p));
+                          displayPrice = Math.min(...prices);
+                          pricePrefix = 'from ';
+                        }
+                      }
+                    }
+
                     return (
                       <div
                         key={item._id}
-                        className={`rounded-2xl border shadow-sm overflow-hidden flex gap-0 transition-transform active:scale-[0.99] duration-200 ${
-                          item.available ? 'bg-[var(--qr-panel)] border-[var(--qr-border)]/60' : 'opacity-55 border-slate-700 bg-slate-900/50'
+                        onClick={() => setDetailItem(item)}
+                        className={`cursor-pointer rounded-2xl border shadow-sm overflow-hidden flex gap-0 transition-all hover:shadow-md duration-200 h-32 ${
+                          item.available ? 'bg-[var(--qr-panel)] border-[var(--qr-border)]' : 'opacity-55 border-slate-200 bg-slate-100'
                         }`}
                       >
-                        <div className="w-28 sm:w-32 shrink-0 bg-slate-800 self-stretch min-h-[7.5rem]">
+                        <div className="w-28 sm:w-32 shrink-0 bg-slate-50 self-stretch h-full overflow-hidden">
                           {thumb ? (
-                            <img src={thumb} alt="" className="w-full h-full min-h-[7.5rem] object-cover" loading="lazy" />
+                            <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
                           ) : (
-                            <div className="w-full h-full min-h-[7.5rem] flex items-center justify-center text-3xl bg-slate-800">
+                            <div className="w-full h-full flex items-center justify-center text-3xl bg-slate-105">
                               🍽️
                             </div>
                           )}
                         </div>
-                        <div className="flex-1 min-w-0 p-3.5 flex flex-col justify-between">
-                          <div>
+                        <div className="flex-1 min-w-0 p-3 flex flex-col justify-between h-full">
+                          <div className="min-w-0">
                             <div className="flex items-start justify-between gap-1">
-                              <p className="font-bold text-slate-100 leading-snug truncate" title={item.name}>{item.name}</p>
+                              <p className="font-bold text-slate-800 leading-snug truncate text-sm" title={item.name}>{item.name}</p>
                               {photos.length > 1 && (
-                                <span className="text-[9px] text-slate-400 font-semibold shrink-0 bg-slate-800 px-1.5 py-0.5 rounded">
+                                <span className="text-[9px] text-slate-500 font-semibold shrink-0 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
                                   {photos.length} photos
                                 </span>
                               )}
                             </div>
-                            {item.category && <p className="text-[11px] text-slate-500 mt-1">{item.category}</p>}
+                            {item.category && <p className="text-[10px] text-slate-400 mt-0.5 font-semibold">{item.category}</p>}
+                            {item.description && (
+                              <p className="text-[11px] text-slate-500 line-clamp-1 mt-1 leading-tight">
+                                {item.description}
+                              </p>
+                            )}
                           </div>
                           
-                          <div className="flex items-center justify-between gap-2 mt-3 pt-1">
-                            {item.hasVariants && item.variants?.length > 0 ? (
-                              <span className="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-full shrink-0">
-                                {item.variants.length} options
-                              </span>
-                            ) : (
-                              <span />
-                            )}
+                          <div className="flex items-center justify-between gap-2 pt-1">
+                            <div className="flex flex-col">
+                              <p className="text-sm font-extrabold text-slate-850 tabular-nums">
+                                {pricePrefix && <span className="text-slate-450 font-normal text-[9px] uppercase tracking-wider">{pricePrefix}</span>}
+                                {fmtMoney(displayPrice)}
+                              </p>
+                              {hasVariants && (
+                                <span className="text-[9px] font-semibold text-slate-400 mt-0.5">
+                                  {item.variants.length} options
+                                </span>
+                              )}
+                            </div>
                             
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                               <button
                                 type="button"
                                 onClick={() => setDetailItem(item)}
-                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-600/70 text-slate-300 bg-slate-800/80 hover:bg-slate-700 transition"
+                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-205 text-slate-500 bg-slate-50 hover:bg-slate-105 transition"
                                 title="View details"
                               >
                                 <Eye size={15} />
                               </button>
                               
                               {qtyInCart > 0 && !item.hasVariants ? (
-                                <div className="inline-flex items-center rounded-lg border border-slate-600/70 bg-slate-800 overflow-hidden h-8 shadow-sm">
+                                <div className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 overflow-hidden h-8 shadow-sm">
                                   <button
                                     type="button"
                                     onClick={() => changeQty(singleCartKey, -1)}
-                                    className="w-8 h-full flex items-center justify-center text-slate-300 hover:bg-slate-700 transition font-bold"
+                                    className="w-8 h-full flex items-center justify-center text-slate-600 hover:bg-slate-200 transition font-bold"
                                   >
                                     -
                                   </button>
-                                  <span className="px-2 text-xs font-bold text-slate-100 tabular-nums">
+                                  <span className="px-2 text-xs font-bold text-slate-800 tabular-nums">
                                     {qtyInCart}
                                   </span>
                                   <button
                                     type="button"
                                     onClick={() => changeQty(singleCartKey, 1)}
-                                    className="w-8 h-full flex items-center justify-center text-slate-300 hover:bg-slate-700 transition font-bold"
+                                    className="w-8 h-full flex items-center justify-center text-slate-600 hover:bg-slate-200 transition font-bold"
                                   >
                                     +
                                   </button>
@@ -955,7 +992,7 @@ export default function TableOrderApp() {
                                   type="button"
                                   disabled={!item.available}
                                   onClick={() => addWithVariant(item)}
-                                  className="inline-flex items-center gap-1 h-8 px-3.5 rounded-lg text-xs font-extrabold disabled:opacity-40 hover:brightness-110 active:scale-95 transition shrink-0"
+                                  className="inline-flex items-center gap-1 h-8 px-3 rounded-lg text-xs font-extrabold disabled:opacity-40 hover:brightness-110 active:scale-95 transition shrink-0 shadow-sm"
                                   style={{ backgroundColor: 'var(--qr-accent, #f59e0b)', color: 'var(--qr-on-accent, #fff)' }}
                                 >
                                   <Plus size={13} />
@@ -978,7 +1015,7 @@ export default function TableOrderApp() {
                         setMenuLoadingMore(true);
                         fetchSession(true);
                       }}
-                      className="px-4 py-2.5 rounded-xl border border-slate-600 text-sm font-semibold text-slate-200 bg-slate-800/80 shadow-sm disabled:opacity-50"
+                      className="px-4 py-2.5 rounded-xl border border-slate-205 text-sm font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 shadow-sm disabled:opacity-50 transition"
                     >
                       {menuLoadingMore ? 'Loading…' : 'Load more items'}
                     </button>
@@ -993,47 +1030,47 @@ export default function TableOrderApp() {
         )}
 
         {tab === 'cart' && (
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden max-w-lg mx-auto w-full">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden max-w-lg mx-auto w-full animate-fadeIn">
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-4 py-4">
               {cart.length === 0 ? (
                 <p className="text-center text-slate-500 text-sm py-16">Your cart is empty. Add items from the Menu tab.</p>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Your selection</p>
+                  <p className="text-xs font-bold text-slate-450 uppercase tracking-wide">Your selection</p>
                   {cart.map((c) => (
                     <div
                       key={c.cartKey}
-                      className="flex items-center justify-between gap-2 text-sm bg-[var(--qr-panel)] border border-slate-600/60 rounded-xl px-3 py-2"
+                      className="flex items-center justify-between gap-2 text-sm bg-[var(--qr-panel)] border border-[var(--qr-border)] rounded-xl px-3 py-2 shadow-sm"
                     >
                       <div className="min-w-0 flex-1">
-                        <span className="text-slate-200 font-medium truncate block">{c.name}</span>
-                        <span className="text-xs tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>{fmtMoney(c.price)}</span>
+                        <span className="text-slate-855 font-bold truncate block">{c.name}</span>
+                        <span className="text-xs font-bold tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>{fmtMoney(c.price)}</span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
-                          className="p-1.5 rounded-lg border border-slate-600 text-slate-200"
+                          className="p-1.5 rounded-lg border border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100 transition"
                           onClick={() => changeQty(c.cartKey, -1)}
                           aria-label="Decrease quantity"
                         >
-                          <Minus size={16} />
+                          <Minus size={14} />
                         </button>
-                        <span className="w-8 text-center font-semibold text-slate-100">{c.qty}</span>
+                        <span className="w-6 text-center font-bold text-slate-805">{c.qty}</span>
                         <button
                           type="button"
-                          className="p-1.5 rounded-lg border border-slate-600 text-slate-200"
+                          className="p-1.5 rounded-lg border border-slate-205 text-slate-600 bg-slate-50 hover:bg-slate-100 transition"
                           onClick={() => changeQty(c.cartKey, 1)}
                         >
-                          <Plus size={16} />
+                          <Plus size={14} />
                         </button>
                         <button
                           type="button"
                           title="Remove from cart"
-                          className="p-1.5 rounded-lg border border-red-500/50 text-red-400 hover:bg-red-500/10"
+                          className="p-1.5 rounded-lg border border-red-100 text-red-500 bg-red-50 hover:bg-red-100 hover:border-red-200 transition"
                           onClick={() => removeLine(c.cartKey)}
                           aria-label="Remove line"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
@@ -1042,10 +1079,10 @@ export default function TableOrderApp() {
               )}
             </div>
             {cart.length > 0 && (
-              <div className="shrink-0 border-t border-slate-700/80 bg-[var(--qr-panel)] px-4 py-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] space-y-3 z-20 shadow-[0_-8px_24px_rgba(0,0,0,0.35)]">
-                <div className="flex items-center justify-between pt-1 border-t border-slate-600/50">
-                  <span className="font-semibold text-slate-100">Subtotal</span>
-                  <span className="font-bold tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
+              <div className="shrink-0 border-t border-slate-200 bg-[var(--qr-panel)] px-4 py-3.5 pb-[calc(5.5rem+env(safe-area-inset-bottom))] space-y-3.5 z-20 shadow-[0_-8px_24px_rgba(15,23,42,0.06)]">
+                <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                  <span className="font-extrabold text-slate-800">Subtotal</span>
+                  <span className="font-black text-lg tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
                     {fmtMoney(cartTotal)}
                   </span>
                 </div>
@@ -1053,7 +1090,7 @@ export default function TableOrderApp() {
                   type="button"
                   disabled={submitting}
                   onClick={onConfirm}
-                  className="w-full py-3.5 rounded-xl disabled:opacity-60 font-bold text-base shadow-lg flex items-center justify-center gap-2"
+                  className="w-full py-3.5 rounded-xl disabled:opacity-60 font-bold text-base shadow-lg flex items-center justify-center gap-2 hover:brightness-110 transition cursor-pointer"
                   style={{
                     backgroundColor: 'var(--qr-accent, #f59e0b)',
                     color: 'var(--qr-on-accent, #ffffff)',
@@ -1103,7 +1140,7 @@ export default function TableOrderApp() {
         </button>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-slate-800/80 bg-[#080d16] pb-[max(0.35rem,env(safe-area-inset-bottom))] shadow-[0_-4px_24px_rgba(0,0,0,0.5)]">
+      <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-slate-150 bg-[#ffffff] pb-[max(0.35rem,env(safe-area-inset-bottom))] shadow-[0_-4px_24px_rgba(15,23,42,0.06)]">
         {[
           { id: 'menu', label: 'Menu', Icon: ShoppingBag },
           { id: 'cart', label: 'Cart', Icon: ShoppingCart },
@@ -1116,7 +1153,7 @@ export default function TableOrderApp() {
               type="button"
               onClick={() => setTab(id)}
               className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 pt-2 pb-1.5 text-[11px] font-bold transition-colors ${
-                active ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+                active ? 'text-slate-805' : 'text-slate-400 hover:text-slate-600'
               }`}
             >
               {active && (

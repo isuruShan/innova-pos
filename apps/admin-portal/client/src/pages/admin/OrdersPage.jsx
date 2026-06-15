@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../../api/axios';
 import Badge from '../../components/Badge';
+import { unwrapPagedList } from '../../utils/unwrapPagedList';
 
 export default function OrdersPage() {
   const [selectedStore, setSelectedStore] = useState('all');
@@ -18,7 +19,7 @@ export default function OrdersPage() {
   // Fetch stores for store mapping & selector
   const { data: stores = [] } = useQuery({
     queryKey: ['admin-stores-list'],
-    queryFn: () => api.get('/stores').then((r) => r.data),
+    queryFn: () => api.get('/stores').then((r) => unwrapPagedList(r.data).items),
   });
 
   const storeMap = useMemo(() => {
