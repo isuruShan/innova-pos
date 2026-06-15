@@ -66,6 +66,58 @@ async function activateSubscriptionForTenant(tenantId, plan, options = {}) {
   const extensionDays = plan.durationDays || 30;
   const convertFromTrial = shouldActivateSubscriptionImmediately(tenant);
 
+  // Fulfill/activate deferred trial addons, and deactivate any excluded addons, stores, or user seats
+  if (tenant.paidAddons) {
+    const { computeAddonPeriodEnd } = require('./addonPeriod');
+    const { ENTITLEMENT_BY_CODE, emptyEntitlement } = require('@innovapos/paid-addons');
+    const excludeSet = new Set((excludeAddons || []).map(c => String(c).trim().toLowerCase()));
+
+    Object.keys(tenant.paidAddons).forEach((key) => {
+      if (tenant.paidAddons[key] && tenant.paidAddons[key].active) {
+        const code = Object.keys(ENTITLEMENT_BY_CODE).find(c => ENTITLEMENT_BY_CODE[c] === key);
+        if (code && excludeSet.has(code.toLowerCase())) {
+          tenant.paidAddons[key] = emptyEntitlement();
+        } else if (!tenant.paidAddons[key].activatedAt) {
+          tenant.paidAddons[key].activatedAt = now;
+          tenant.paidAddons[key].periodEndsAt = computeAddonPeriodEnd(now, plan.billingCycle || 'monthly');
+        }
+      }
+    });
+    tenant.markModified('paidAddons');
+  }
+
+  const excludeSet = new Set((excludeAddons || []).map(c => String(c).trim().toLowerCase()));
+  if (excludeSet.size > 0) {
+    if (excludeSet.has('additional_store')) {
+      const Store = require('../models/Store');
+      const stores = await Store.find({ tenantId: tenant._id, isActive: true }).sort({ createdAt: 1 });
+      if (stores.length > 1) {
+        for (let i = 1; i < stores.length; i++) {
+          stores[i].isActive = false;
+          await stores[i].save();
+        }
+      }
+    }
+
+    const User = require('../models/User');
+    for (const key of excludeSet) {
+      if (key.startsWith('user_license_')) {
+        const role = key.substring('user_license_'.length);
+        await User.updateMany(
+          { tenantId: tenant._id, role, role: { $ne: 'merchant_admin' } },
+          { $set: { isActive: false } }
+        );
+      }
+      if (key.startsWith('user_extra_stores_')) {
+        const role = key.substring('user_extra_stores_'.length);
+        await User.updateMany(
+          { tenantId: tenant._id, role },
+          { $set: { licensedStoreSlots: 1 } }
+        );
+      }
+    }
+  }
+
   if (convertFromTrial) {
     const startDate = now;
     const newEnd = new Date(now);
@@ -107,28 +159,6 @@ async function activateSubscriptionForTenant(tenantId, plan, options = {}) {
     tenant.subscriptionDeactivationNotifiedForEndDate = null;
     tenant.suspensionReason = '';
     tenant.updatedBy = activatedBy;
-
-    // Fulfill/activate deferred trial addons post-trial
-    if (tenant.paidAddons) {
-      const { computeAddonPeriodEnd } = require('./addonPeriod');
-      const { ENTITLEMENT_BY_CODE, emptyEntitlement } = require('@innovapos/paid-addons');
-      const excludeSet = new Set((excludeAddons || []).map(c => String(c).trim().toLowerCase()));
-
-      Object.keys(tenant.paidAddons).forEach((key) => {
-        if (tenant.paidAddons[key] && tenant.paidAddons[key].active) {
-          // Find the catalog code for this entitlement key
-          const code = Object.keys(ENTITLEMENT_BY_CODE).find(c => ENTITLEMENT_BY_CODE[c] === key);
-          if (code && excludeSet.has(code.toLowerCase())) {
-            tenant.paidAddons[key] = emptyEntitlement();
-          } else if (!tenant.paidAddons[key].activatedAt) {
-            tenant.paidAddons[key].activatedAt = now;
-            tenant.paidAddons[key].periodEndsAt = computeAddonPeriodEnd(now, plan.billingCycle || 'monthly');
-          }
-        }
-      });
-      // Force Mongoose to notice changes inside subdocuments
-      tenant.markModified('paidAddons');
-    }
 
     await tenant.save();
     await invalidateTenantSubscriptionCache(tenant._id);

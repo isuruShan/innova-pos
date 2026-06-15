@@ -306,7 +306,7 @@ async function computeSubscriptionRenewalExpected(tenant, planOverride = null, o
   }
 
   const storeLine = await computeAdditionalStoresSubscriptionLine(t._id, plan);
-  if (storeLine) {
+  if (storeLine && !excludeSet.has('additional_store')) {
     addons.push({
       code: storeLine.code,
       label: storeLine.label,
@@ -358,6 +358,9 @@ async function computeSubscriptionRenewalExpected(tenant, planOverride = null, o
       }
 
       for (const [role, count] of Object.entries(usersByRole)) {
+        if (excludeSet.has(`user_license_${role}`)) {
+          continue;
+        }
         const pricing = await getRolePricing(role, t.countryIso, 'userSeat');
         const unit = cycle === 'yearly' ? pricing.yearlyAmount : pricing.monthlyAmount;
         if (unit > 0) {
@@ -419,6 +422,9 @@ async function computeSubscriptionRenewalExpected(tenant, planOverride = null, o
     }
 
     for (const [role, count] of Object.entries(extraStoreSlotsByRole)) {
+      if (excludeSet.has(`user_extra_stores_${role}`)) {
+        continue;
+      }
       const pricing = await getRolePricing(role, t.countryIso, 'extraStore');
       const unit = cycle === 'yearly' ? pricing.yearlyAmount : pricing.monthlyAmount;
       if (unit > 0) {

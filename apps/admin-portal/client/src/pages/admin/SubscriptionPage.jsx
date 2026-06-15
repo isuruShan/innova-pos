@@ -309,6 +309,94 @@ export default function SubscriptionPage() {
   }, [tenant?.billingCycle]);
 
   const billingBreakdown = breakdownData?.billingBreakdown;
+
+  const activeAddonsList = useMemo(() => {
+    const list = [];
+    if (!tenant) return list;
+
+    // 1. Paid Addons from tenant
+    if (tenant.paidAddons) {
+      Object.keys(tenant.paidAddons).forEach((key) => {
+        const ent = tenant.paidAddons[key];
+        if (ent?.active) {
+          const code = {
+            qrOrdering: 'qr_ordering',
+            loyalty: 'loyalty',
+            tableManagement: 'table_management',
+            uberEats: 'uber_eats',
+            accounting: 'accounting',
+            dualScreen: 'dual_screen',
+            whatsapp: 'whatsapp_integration',
+          }[key] || key;
+
+          const label = {
+            qrOrdering: 'QR Ordering',
+            loyalty: 'Loyalty Program',
+            tableManagement: 'Table Management',
+            uberEats: 'Uber Eats Integration',
+            accounting: 'Advanced Accounting Module',
+            dualScreen: 'Dual Screen Customer Terminal',
+            whatsapp: 'WhatsApp Business Integration',
+          }[key] || key;
+
+          list.push({ code, label, badge: 'Trial Active' });
+        }
+      });
+    }
+
+    // 2. Additional Stores from breakdown
+    if (billingBreakdown?.storesDetail && billingBreakdown.storesDetail.length > 1) {
+      const extraCount = billingBreakdown.storesDetail.length - 1;
+      list.push({
+        code: 'additional_store',
+        label: `Additional Stores (×${extraCount})`,
+        badge: `${extraCount} Extra Store${extraCount > 1 ? 's' : ''}`,
+      });
+    }
+
+    // 3. User Seats from breakdown (excluding merchant_admin)
+    if (billingBreakdown?.usersDetail) {
+      // Group by role and check seat cost
+      const rolesCount = {};
+      billingBreakdown.usersDetail.forEach((u) => {
+        if (u.seatCost > 0 && u.role !== 'merchant_admin') {
+          rolesCount[u.role] = (rolesCount[u.role] || 0) + 1;
+        }
+      });
+      Object.entries(rolesCount).forEach(([role, count]) => {
+        const roleLabel = role
+          .split('_')
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ');
+        list.push({
+          code: `user_license_${role}`,
+          label: `${roleLabel} User Seat${count > 1 ? 's' : ''} (×${count})`,
+          badge: `${count} Extra Seat${count > 1 ? 's' : ''}`,
+        });
+      });
+
+      // Group by role and check extra store slots cost
+      const extraStoreSlotsCount = {};
+      billingBreakdown.usersDetail.forEach((u) => {
+        if (u.extraStoreSlotsCost > 0 && u.role !== 'merchant_admin') {
+          extraStoreSlotsCount[u.role] = (extraStoreSlotsCount[u.role] || 0) + u.extraStoreSlots;
+        }
+      });
+      Object.entries(extraStoreSlotsCount).forEach(([role, count]) => {
+        const roleLabel = role
+          .split('_')
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ');
+        list.push({
+          code: `user_extra_stores_${role}`,
+          label: `${roleLabel} Extra Store Slot${count > 1 ? 's' : ''} (×${count})`,
+          badge: `${count} Extra Store Slot${count > 1 ? 's' : ''}`,
+        });
+      });
+    }
+
+    return list;
+  }, [tenant, billingBreakdown?.storesDetail, billingBreakdown?.usersDetail]);
   const receipts = receiptList.items || [];
   const subscriptions = data?.subscriptions || [];
 
@@ -374,12 +462,12 @@ export default function SubscriptionPage() {
   }, [tenant, payPlans, nextBillingPlanId, form.planId]);
 
   useEffect(() => {
-    const total =
-      billingBreakdown?.total > 0
-        ? billingBreakdown.total
-        : (selectedCycle === 'yearly' ? selectedPlan?.yearlyPrice : selectedPlan?.monthlyPrice);
+    const isBreakdownStale = !billingBreakdown || String(billingBreakdown?.plan?._id) !== String(form.planId);
+    const total = !isBreakdownStale && billingBreakdown?.total > 0
+      ? billingBreakdown.total
+      : (selectedCycle === 'yearly' ? selectedPlan?.yearlyPrice : selectedPlan?.monthlyPrice);
     if (total != null) setForm((f) => ({ ...f, amount: String(total) }));
-  }, [selectedPlan?._id, selectedPlan?.monthlyPrice, selectedPlan?.yearlyPrice, billingBreakdown?.total, selectedCycle]);
+  }, [selectedPlan?._id, selectedPlan?.monthlyPrice, selectedPlan?.yearlyPrice, billingBreakdown?.total, selectedCycle, form.planId, billingBreakdown?.plan?._id]);
 
   useEffect(() => {
     const wantPaypal =
@@ -1418,61 +1506,37 @@ export default function SubscriptionPage() {
                   </div>
 
                   {/* Active trial add-ons cost breakdown selection */}
-                  {tenant?.subscriptionStatus === 'trial' && tenant?.paidAddons && Object.keys(tenant.paidAddons).some(k => tenant.paidAddons[k]?.active) && (
+                  {tenant?.subscriptionStatus === 'trial' && activeAddonsList.length > 0 && (
                     <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 space-y-3 mt-6">
                       <div>
-                        <h4 className="font-bold text-gray-900 text-sm">Trial Add-ons Billing Bundling</h4>
+                        <h4 className="font-bold text-gray-900 text-sm">Trial Add-ons & Resources Billing Bundling</h4>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          You have subscribed to these add-ons during your trial period. Select which ones you want to keep and pay for. Unchecked add-ons will be disabled immediately after payment.
+                          You have enabled these add-ons, additional stores, or extra user seats during your trial period. Select which ones you want to keep and pay for. Unchecked items will be deactivated immediately after payment.
                         </p>
                       </div>
                       <div className="divide-y divide-gray-150">
-                        {Object.keys(tenant.paidAddons).map((key) => {
-                          const addonEnt = tenant.paidAddons[key];
-                          if (!addonEnt?.active) return null;
-
-                          // Translate entitlement key to catalog code
-                          const code = {
-                            qrOrdering: 'qr_ordering',
-                            loyalty: 'loyalty',
-                            tableManagement: 'table_management',
-                            uberEats: 'uber_eats',
-                            accounting: 'accounting',
-                            dualScreen: 'dual_screen',
-                            whatsapp: 'whatsapp_integration',
-                          }[key] || key;
-
-                          const label = {
-                            qrOrdering: 'QR Ordering',
-                            loyalty: 'Loyalty Program',
-                            tableManagement: 'Table Management',
-                            uberEats: 'Uber Eats Integration',
-                            accounting: 'Advanced Accounting Module',
-                            dualScreen: 'Dual Screen Customer Terminal',
-                            whatsapp: 'WhatsApp Business Integration',
-                          }[key] || key;
-
-                          const isExcluded = excludeAddons.includes(code);
+                        {activeAddonsList.map((item) => {
+                          const isExcluded = excludeAddons.includes(item.code);
 
                           return (
-                            <div key={key} className="flex items-center justify-between py-3">
+                            <div key={item.code} className="flex items-center justify-between py-3">
                               <label className="flex items-center gap-3 cursor-pointer select-none">
                                 <input
                                   type="checkbox"
                                   checked={!isExcluded}
                                   onChange={(e) => {
                                     if (e.target.checked) {
-                                      setExcludeAddons(prev => prev.filter(c => c !== code));
+                                      setExcludeAddons(prev => prev.filter(c => c !== item.code));
                                     } else {
-                                      setExcludeAddons(prev => [...prev, code]);
+                                      setExcludeAddons(prev => [...prev, item.code]);
                                     }
                                   }}
                                   className="w-4 h-4 text-brand-orange border-gray-300 rounded focus:ring-brand-orange cursor-pointer"
                                 />
-                                <span className="text-sm font-semibold text-gray-900">{label}</span>
+                                <span className="text-sm font-semibold text-gray-900">{item.label}</span>
                               </label>
                               <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full">
-                                Trial Active
+                                {item.badge}
                               </span>
                             </div>
                           );
