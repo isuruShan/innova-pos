@@ -9,6 +9,7 @@ import {
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import api from '../api';
+import { useTheme } from '../context/ThemeContext';
 import { buildPlanCardBackground, buildPlanTagBackground, planUsesLightText } from '../utils/planAppearance';
 import { fieldAttrs, validateContactForm } from '../utils/formFields';
 
@@ -82,29 +83,6 @@ const ENTERPRISE_DISPLAY = {
   ],
 };
 
-// High-fidelity SVG Logos for Uber Eats and PickMe
-function UberEatsLogo({ className = "h-8" }) {
-  return (
-    <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="100" height="100" rx="20" fill="#06C167"/>
-      <text x="50" y="45" fill="black" fontFamily="sans-serif" fontWeight="900" fontSize="18" textAnchor="middle">Uber</text>
-      <text x="50" y="70" fill="black" fontFamily="sans-serif" fontWeight="900" fontSize="18" textAnchor="middle">Eats</text>
-    </svg>
-  );
-}
-
-function PickMeLogo({ className = "h-8" }) {
-  return (
-    <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="100" height="100" rx="20" fill="#FFC61A"/>
-      {/* PickMe Wave hand P representation */}
-      <path d="M30 75V25H55C65 25 70 30 70 38C70 46 65 50 55 50H42V75H30Z" fill="black" stroke="black" strokeWidth="2"/>
-      <circle cx="50" cy="22" r="5" fill="black"/>
-      <text x="50" y="88" fill="black" fontFamily="sans-serif" fontWeight="900" fontSize="16" textAnchor="middle">Food</text>
-    </svg>
-  );
-}
-
 function ContactSection() {
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [errors, setErrors] = useState({});
@@ -139,11 +117,11 @@ function ContactSection() {
   };
 
   return (
-    <section id="contact" className="py-20 bg-slate-900 border-t border-white/5">
+    <section id="contact" className="py-20 bg-theme-bg-card border-t border-theme-border/60 transition-colors duration-250">
       <div className="max-w-3xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-extrabold text-white mb-3">Let's talk operations</h2>
-          <p className="text-slate-400 mb-6">Have questions about migrating from your old POS system? We are here to help.</p>
+          <h2 className="text-3xl font-extrabold text-theme-text-header mb-3">Let's talk operations</h2>
+          <p className="text-theme-text-muted mb-6">Have custom development requirements, integration requests, or questions about migrating from your old POS system? We are here to help.</p>
           <a
             href="https://wa.me/94772539443"
             target="_blank"
@@ -162,20 +140,20 @@ function ContactSection() {
         </div>
 
         {status === 'success' ? (
-          <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-8 text-center">
-            <CheckCircle size={40} className="text-green-400 mx-auto mb-3" />
-            <p className="font-semibold text-white">Message received!</p>
-            <p className="text-slate-300 text-sm mt-1">We'll get back to you within 24 hours.</p>
+          <div className="bg-green-500/10 border border-green-550/20 rounded-2xl p-8 text-center">
+            <CheckCircle size={40} className="text-green-500 mx-auto mb-3" />
+            <p className="font-semibold text-theme-text-header">Message received!</p>
+            <p className="text-theme-text-muted text-sm mt-1">We'll get back to you within 24 hours.</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-700 p-8 space-y-5">
+          <form onSubmit={handleSubmit} className="bg-theme-bg-surface/25 backdrop-blur-md rounded-2xl border border-theme-border p-8 space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {[
                 { label: 'Full name', key: 'name', type: 'text', attrs: nameAttrs },
                 { label: 'Email address', key: 'email', type: 'email', attrs: emailAttrs },
               ].map((field) => (
                 <div key={field.key}>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">{field.label}</label>
+                  <label className="block text-sm font-medium text-theme-text-muted mb-1">{field.label}</label>
                   <input
                     type={field.type}
                     value={form[field.key]}
@@ -186,16 +164,16 @@ function ContactSection() {
                     placeholder={field.attrs.placeholder}
                     maxLength={field.attrs.maxLength}
                     autoComplete={field.attrs.autoComplete}
-                    className={`w-full border bg-slate-900 border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
-                      errors[field.key] ? 'border-red-500' : 'border-slate-700'
+                    className={`w-full border bg-theme-bg-surface/30 border-theme-border text-theme-text-main rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all ${
+                      errors[field.key] ? 'border-red-500' : 'border-theme-border'
                     }`}
                   />
-                  {errors[field.key] && <p className="text-xs text-red-400 mt-1">{errors[field.key]}</p>}
+                  {errors[field.key] && <p className="text-xs text-red-500 mt-1">{errors[field.key]}</p>}
                 </div>
               ))}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Subject</label>
+              <label className="block text-sm font-medium text-theme-text-muted mb-1">Subject / Requirement type</label>
               <input
                 type="text"
                 value={form.subject}
@@ -203,16 +181,16 @@ function ContactSection() {
                   setForm((f) => ({ ...f, subject: e.target.value }));
                   if (errors.subject) setErrors((err) => ({ ...err, subject: '' }));
                 }}
-                placeholder={subjectAttrs.placeholder}
+                placeholder="e.g. Custom Integration / Feature Request"
                 maxLength={subjectAttrs.maxLength}
-                className={`w-full border bg-slate-900 border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
-                  errors.subject ? 'border-red-500' : 'border-slate-700'
+                className={`w-full border bg-theme-bg-surface/30 border-theme-border text-theme-text-main rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all ${
+                  errors.subject ? 'border-red-500' : 'border-theme-border'
                 }`}
               />
-              {errors.subject && <p className="text-xs text-red-400 mt-1">{errors.subject}</p>}
+              {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Message</label>
+              <label className="block text-sm font-medium text-theme-text-muted mb-1">Tell us your custom requirements</label>
               <textarea
                 value={form.message}
                 onChange={(e) => {
@@ -220,21 +198,21 @@ function ContactSection() {
                   if (errors.message) setErrors((err) => ({ ...err, message: '' }));
                 }}
                 rows={4}
-                placeholder={messageAttrs.placeholder}
+                placeholder="Describe what specific feature, report, or integration you need us to build..."
                 maxLength={messageAttrs.maxLength}
-                className={`w-full border bg-slate-900 border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange resize-none ${
-                  errors.message ? 'border-red-500' : 'border-slate-700'
+                className={`w-full border bg-theme-bg-surface/30 border-theme-border text-theme-text-main rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange resize-none transition-all ${
+                  errors.message ? 'border-red-500' : 'border-theme-border'
                 }`}
               />
-              {errors.message && <p className="text-xs text-red-400 mt-1">{errors.message}</p>}
+              {errors.message && <p className="text-xs text-red-500 mt-1">{errors.message}</p>}
             </div>
-            {status === 'error' && <p className="text-sm text-red-400">Failed to send. Please try again.</p>}
+            {status === 'error' && <p className="text-sm text-red-550">Failed to send. Please try again.</p>}
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="w-full py-3 rounded-lg bg-brand-orange text-white text-sm font-semibold transition-all hover:bg-brand-orange-hover hover:scale-[1.01] disabled:opacity-60"
+              className="w-full py-3 rounded-lg bg-brand-orange text-white text-sm font-semibold transition-all hover:bg-brand-orange-hover hover:scale-[1.01] disabled:opacity-60 cursor-pointer"
             >
-              {status === 'loading' ? 'Sending message...' : 'Send message'}
+              {status === 'loading' ? 'Sending message...' : 'Send custom request'}
             </button>
           </form>
         )}
@@ -251,10 +229,11 @@ export default function LandingPage() {
   const [exchangeRates, setExchangeRates] = useState(null);
   const [selectedCycle, setSelectedCycle] = useState('monthly');
   const [showCycleBanner, setShowCycleBanner] = useState(false);
+  const { theme } = useTheme();
   
   const pricingCarouselRef = useRef(null);
   const [pricingSlide, setPricingSlide] = useState(0);
-  const [activeDeviceTab, setActiveDeviceTab] = useState('double_pos');
+  const [activeDeviceTab, setActiveDeviceTab] = useState('counter_register');
 
   const pricingSlideCount = useMemo(() => {
     if (plansLoading) return 3;
@@ -363,7 +342,7 @@ export default function LandingPage() {
     };
   }, [catalogAudience]);
 
-  // Dynamic price display helper (Professional layout)
+  // Dynamic price display helper
   const getFormattedPriceInfo = (plan, cycle = selectedCycle) => {
     const amount = Number(cycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice) || 0;
     if (catalogAudience === 'local' || !countryCode || countryCode === 'US' || !exchangeRates) {
@@ -390,373 +369,103 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased selection:bg-brand-orange selection:text-white">
+    <div className="min-h-screen bg-theme-bg-main text-theme-text-main font-sans antialiased selection:bg-brand-orange selection:text-white transition-colors duration-250">
       <Navbar />
 
       {/* Hero Header */}
-      <section className="relative overflow-hidden pt-32 pb-24 px-4 sm:px-6 lg:px-8 text-white">
+      <section className="relative overflow-hidden pt-32 pb-24 px-4 sm:px-6 lg:px-8">
         <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950" />
+          <div className="absolute inset-0 bg-theme-hero-gradient transition-colors duration-250" />
           <div className="absolute -left-[10%] -top-[20%] h-[500px] w-[500px] rounded-full bg-brand-orange/10 blur-[120px]" />
-          <div className="absolute -right-[10%] top-[10%] h-[500px] w-[500px] rounded-full bg-orange-600/10 blur-[120px]" />
+          <div className="absolute -right-[10%] top-[10%] h-[500px] w-[500px] rounded-full bg-brand-orange/10 blur-[120px]" />
         </div>
 
         <div className="relative z-10 max-w-5xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-slate-800/80 border border-slate-700/80 rounded-full px-4 py-1.5 text-xs sm:text-sm mb-8 text-slate-300 backdrop-blur-md">
+          <div className="inline-flex items-center gap-2 bg-theme-bg-card/80 border border-theme-border/80 rounded-full px-4 py-1.5 text-xs sm:text-sm mb-8 text-theme-text-muted backdrop-blur-md">
             <Star size={12} className="text-brand-orange fill-brand-orange animate-pulse" />
             <span>14-day free trial, self-service setup in minutes</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight mb-6 bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight mb-6 text-theme-text-header">
             Run your venue without the chaos.
-            <span className="block text-slate-300 font-medium text-2xl sm:text-3xl lg:text-4xl mt-3">Registers, kitchen routing, table maps, and delivery in sync.</span>
+            <span className="block text-theme-text-muted font-medium text-2xl sm:text-3xl lg:text-4xl mt-3">Registers, kitchen routing, table maps, and business metrics in sync.</span>
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-400 max-w-3xl mx-auto mb-10 leading-relaxed">
-            <strong className="font-semibold text-slate-200">Cafinity</strong> is the unified Point of Sale engineered for busy cafés, premium coffee spots, and full-size fine dining restaurants. Synchronize counter billing, table floor plan service, kitchen queues, and third-party delivery orders instantly.
+          <p className="text-base sm:text-lg text-theme-text-muted max-w-3xl mx-auto mb-10 leading-relaxed">
+            <strong className="font-semibold text-theme-text-header">Cafinity</strong> is the unified Point of Sale engineered for busy cafes, premium coffee spots, and full-size fine dining restaurants. Synchronize counter speed billing, live table floor plan service, kitchen KDS queues, and automated reporting.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
             <Link to="/signup"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold text-base shadow-lg shadow-brand-orange/20 transition-all hover:scale-[1.02]"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold text-base shadow-lg shadow-brand-orange/20 transition-all hover:scale-[1.02] cursor-pointer"
             >
               Get started for free
               <ArrowRight size={18} />
             </Link>
             <a href="#features"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-semibold text-base bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-semibold text-base bg-theme-bg-surface hover:bg-theme-bg-surface/80 text-theme-text-main border border-theme-border transition-all cursor-pointer"
             >
               Explore platform
             </a>
           </div>
 
           {/* Interactive Platform Live View Showcase */}
-          <div className="mt-8 border border-slate-800 rounded-3xl bg-slate-900/60 backdrop-blur-lg overflow-hidden shadow-2xl">
-            <div className="flex border-b border-slate-800 bg-slate-950/40 p-2 overflow-x-auto gap-2">
+          <div className="mt-8 border border-theme-border/60 rounded-3xl bg-theme-bg-card/65 backdrop-blur-lg overflow-hidden shadow-2xl transition-all duration-250">
+            <div className="flex border-b border-theme-border/60 bg-theme-bg-card/40 p-2 overflow-x-auto gap-2">
               {[
-                { id: 'double_pos', label: 'Double-Sided POS', icon: ShoppingCart },
-                { id: 'kds', label: 'Barista & Kitchen KDS', icon: ChefHat },
-                { id: 'admin', label: 'Admin Portal & Control', icon: Laptop },
-                { id: 'mobile', label: 'Table Ordering & Mobile (Waiter)', icon: Smartphone },
-                { id: 'ai_preview', label: 'AI Insights (Beta Preview)', icon: Sparkles }
+                { id: 'counter_register', label: 'Counter Register', icon: ShoppingCart },
+                { id: 'kds_board', label: 'Table & Kitchen KDS', icon: ChefHat },
+                { id: 'menu_stock', label: 'Menu & Stock Manager', icon: Laptop },
+                { id: 'sales_hq', label: 'HQ Sales Dashboard', icon: BarChart3 },
+                { id: 'channel_analytics', label: 'Channel Analytics', icon: BarChart4 }
               ].map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveDeviceTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
                     activeDeviceTab === tab.id
-                      ? 'bg-slate-800 text-white border border-slate-700/50'
-                      : 'text-slate-400 hover:text-slate-200 bg-transparent border border-transparent'
+                      ? 'bg-theme-bg-surface text-theme-text-header border border-theme-border/80 shadow-sm'
+                      : 'text-theme-text-muted hover:text-theme-text-header bg-transparent border border-transparent'
                   }`}
                 >
-                  <tab.icon size={14} className={activeDeviceTab === tab.id ? 'text-brand-orange' : 'text-slate-400'} />
+                  <tab.icon size={14} className={activeDeviceTab === tab.id ? 'text-brand-orange' : 'text-theme-text-muted'} />
                   {tab.label}
                 </button>
               ))}
             </div>
 
-            {/* Displaying Live Interactive Mockups */}
-            <div className="p-4 sm:p-8 bg-slate-950/20 min-h-[380px] sm:min-h-[460px] flex items-center justify-center">
-              {activeDeviceTab === 'double_pos' && (
-                <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
-                  {/* Left Screen: Register */}
-                  <div className="border border-slate-800 rounded-2xl bg-slate-900 overflow-hidden shadow-lg">
-                    <div className="bg-slate-950 px-4 py-2 text-[10px] uppercase font-bold tracking-widest text-slate-400 border-b border-slate-800 flex justify-between">
-                      <span>POS Register · Counter A</span>
-                      <span className="text-emerald-500 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" /> Online</span>
-                    </div>
-                    <div className="p-4 space-y-3">
-                      <div className="grid grid-cols-3 gap-2">
-                        {['Espresso', 'Flat White', 'Steak Frites', 'Iced Latte', 'Truffle Pasta', 'Croissant'].map((item, i) => (
-                          <div key={item} className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
-                            i === 2 ? 'border-brand-orange/40 bg-brand-orange/5' : 'border-slate-800 bg-slate-950 hover:border-slate-700'
-                          }`}>
-                            <p className="text-xs font-semibold text-white">{item}</p>
-                            <p className="text-[10px] text-slate-400 mt-1">{i >= 2 && i <= 4 ? 'LKR 2,400' : 'LKR 650'}</p>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="border-t border-slate-800/80 pt-3 space-y-2">
-                        <div className="flex justify-between text-xs text-slate-300">
-                          <span>1x Steak Frites (Medium Rare)</span>
-                          <span>LKR 2,400</span>
-                        </div>
-                        <div className="flex justify-between text-xs text-slate-300">
-                          <span>1x Truffle Pasta</span>
-                          <span>LKR 2,200</span>
-                        </div>
-                        <div className="flex justify-between text-sm font-bold text-white pt-2 border-t border-slate-800">
-                          <span>Subtotal Due (Table 12)</span>
-                          <span>LKR 4,600</span>
-                        </div>
-                      </div>
-                      <button type="button" className="w-full py-2.5 rounded-xl bg-brand-orange hover:bg-brand-orange-hover text-white text-xs font-bold transition-all">
-                        Pay & Print Receipt
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Right Screen: Customer Display */}
-                  <div className="border border-slate-800 rounded-2xl bg-slate-900 overflow-hidden shadow-lg flex flex-col justify-between">
-                    <div className="bg-slate-950 px-4 py-2 text-[10px] uppercase font-bold tracking-widest text-slate-400 border-b border-slate-800 text-center">
-                      Customer Facing Display
-                    </div>
-                    <div className="p-6 text-center space-y-4 my-auto">
-                      <p className="text-xs text-slate-400 uppercase tracking-widest">Total Amount Due</p>
-                      <h3 className="text-4xl font-extrabold text-white tracking-tight">LKR 4,600</h3>
-                      <div className="w-28 h-28 bg-white mx-auto p-2 rounded-xl flex items-center justify-center">
-                        {/* Mock QR Code */}
-                        <div className="grid grid-cols-5 gap-1 w-full h-full opacity-90">
-                          {Array.from({ length: 25 }).map((_, i) => (
-                            <div key={i} className={`rounded-xs ${i % 3 === 0 || i % 4 === 1 ? 'bg-slate-950' : 'bg-transparent'}`} />
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-xs text-slate-300">Scan QR to pay instantly or claim loyalty rewards</p>
-                    </div>
-                    <div className="bg-slate-950/50 p-3 text-center text-[10px] text-slate-500 border-t border-slate-800/60">
-                      Powered by Cafinity Premium Terminal OS
-                    </div>
-                  </div>
+            {/* Displaying Live Interactive Mockups / Images */}
+            <div className="p-4 sm:p-8 bg-theme-bg-surface/10 min-h-[380px] sm:min-h-[460px] flex items-center justify-center">
+              <div className="w-full max-w-4xl border border-theme-border/80 rounded-2xl bg-theme-bg-card overflow-hidden shadow-xl animate-fade-in transition-all duration-250">
+                <div className="bg-theme-bg-card/90 px-4 py-2.5 text-[10px] uppercase font-bold tracking-widest text-theme-text-muted border-b border-theme-border flex justify-between items-center">
+                  <span>
+                    {activeDeviceTab === 'counter_register' && 'POS Cashier Terminal Interface'}
+                    {activeDeviceTab === 'kds_board' && 'Order Board & Kitchen Display System'}
+                    {activeDeviceTab === 'menu_stock' && 'Menu Items, Combos & Stock Management'}
+                    {activeDeviceTab === 'sales_hq' && 'HQ Business Sales & Performance Dashboard'}
+                    {activeDeviceTab === 'channel_analytics' && 'Order Distribution & Device Breakdown Reports'}
+                  </span>
+                  <span className="text-emerald-500 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live View
+                  </span>
                 </div>
-              )}
-
-              {activeDeviceTab === 'kds' && (
-                <div className="w-full max-w-4xl border border-slate-800 rounded-2xl bg-slate-900 overflow-hidden shadow-2xl animate-fade-in">
-                  <div className="bg-slate-950 px-4 py-3 border-b border-slate-800 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <ChefHat className="text-brand-orange" size={16} />
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">Kitchen Display System (KDS)</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-[10px]">Kitchen Line 1</span>
-                      <span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold">Avg prep: 4m 12s</span>
-                    </div>
-                  </div>
-                  <div className="p-4 sm:p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {/* Order Item 1 */}
-                    <div className="border border-brand-orange/30 bg-brand-orange/[0.02] rounded-xl p-3 flex flex-col justify-between min-h-[160px]">
-                      <div>
-                        <div className="flex justify-between border-b border-slate-800 pb-2 mb-2">
-                          <span className="text-xs font-bold text-white">#1249 · Dining Room</span>
-                          <span className="text-[10px] text-brand-orange font-bold animate-pulse">4m ago</span>
-                        </div>
-                        <ul className="text-xs text-slate-300 space-y-1 text-left">
-                          <li className="font-semibold text-white">1x Steak Frites</li>
-                          <li className="text-[10px] text-slate-400 pl-3">· Medium Rare</li>
-                          <li className="text-[10px] text-slate-400 pl-3">· Extra Garlic Butter</li>
-                        </ul>
-                      </div>
-                      <button type="button" className="mt-3 w-full py-1.5 rounded-lg bg-brand-orange/20 text-brand-orange hover:bg-brand-orange hover:text-white text-xs font-bold transition-all">
-                        Mark Ready
-                      </button>
-                    </div>
-
-                    {/* Order Item 2 */}
-                    <div className="border border-slate-800 bg-slate-950/60 rounded-xl p-3 flex flex-col justify-between min-h-[160px]">
-                      <div>
-                        <div className="flex justify-between border-b border-slate-800 pb-2 mb-2">
-                          <span className="text-xs font-bold text-white">#1250 · Table 12</span>
-                          <span className="text-[10px] text-slate-400">1m ago</span>
-                        </div>
-                        <ul className="text-xs text-slate-300 space-y-1 text-left">
-                          <li className="font-semibold text-white">1x Truffle Pasta</li>
-                          <li className="font-semibold text-white">1x Caesar Salad</li>
-                        </ul>
-                      </div>
-                      <button type="button" className="mt-3 w-full py-1.5 rounded-lg bg-slate-850 text-slate-300 hover:bg-brand-orange hover:text-white text-xs font-bold transition-all">
-                        Mark Ready
-                      </button>
-                    </div>
-
-                    {/* Order Item 3 */}
-                    <div className="border border-slate-800 bg-slate-950/60 rounded-xl p-3 flex flex-col justify-between min-h-[160px] opacity-75">
-                      <div>
-                        <div className="flex justify-between border-b border-slate-800 pb-2 mb-2">
-                          <span className="text-xs font-bold text-white">#1248 · Uber Eats</span>
-                          <span className="text-[10px] text-emerald-400 font-bold">Completed</span>
-                        </div>
-                        <ul className="text-xs text-slate-400 space-y-1 text-left">
-                          <li>1x Ribeye Steak</li>
-                          <li>1x Grilled Asparagus</li>
-                        </ul>
-                      </div>
-                      <div className="mt-3 text-center text-[10px] text-slate-500 font-medium py-1.5 bg-slate-900 rounded-lg">
-                        Done in 8m 45s
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeDeviceTab === 'admin' && (
-                <div className="w-full max-w-4xl border border-slate-800 rounded-2xl bg-slate-900 overflow-hidden shadow-2xl flex flex-col md:flex-row animate-fade-in text-left">
-                  {/* Left panel: Merchant Settings & Analytics */}
-                  <div className="flex-1 p-5 border-r border-slate-800/80">
-                    <div className="flex justify-between items-center mb-6">
-                      <div>
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-450">Admin Portal</h4>
-                        <p className="text-lg font-extrabold text-white mt-0.5">Vivid Controls & Management</p>
-                      </div>
-                      <span className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-[10px] font-semibold border border-slate-700/50">
-                        HQ Control
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 mb-5">
-                      <div className="p-3 bg-slate-950 border border-slate-850 rounded-xl">
-                        <div className="flex items-center gap-1.5 text-slate-400 mb-1">
-                          <Settings2 size={12} className="text-brand-orange" />
-                          <span className="text-[10px] font-bold">Menu & Catalog Manager</span>
-                        </div>
-                        <p className="text-xs text-slate-300 leading-normal">Override item layouts, tax tiers, variant rates, and delivery pricing globally.</p>
-                      </div>
-                      <div className="p-3 bg-slate-950 border border-slate-850 rounded-xl">
-                        <div className="flex items-center gap-1.5 text-slate-400 mb-1">
-                          <Users size={12} className="text-brand-orange" />
-                          <span className="text-[10px] font-bold">Staff Roles & Shift Logs</span>
-                        </div>
-                        <p className="text-xs text-slate-300 leading-normal">Delegate barista, kitchen, floor, and admin roles with strict security parameters.</p>
-                      </div>
-                    </div>
-
-                    {/* Sales & Decisions Widget */}
-                    <div className="bg-slate-950 rounded-xl p-3 border border-slate-850">
-                      <div className="flex justify-between items-center mb-2">
-                        <p className="text-[10px] text-slate-400 font-bold">Decision-Ready Reporting</p>
-                        <span className="text-[9px] text-emerald-400 font-bold">+14.6% vs last week</span>
-                      </div>
-                      <div className="flex items-end justify-between h-20 pt-2 px-1">
-                        {[40, 60, 30, 85, 95, 70, 50, 80, 110].map((val, idx) => (
-                          <div key={idx} className="w-6 bg-slate-800 rounded-t-sm flex flex-col justify-end h-full">
-                            <div className="bg-brand-orange rounded-t-sm" style={{ height: `${val / 1.2}%` }} />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right panel: Live Actions */}
-                  <div className="w-full md:w-72 bg-slate-950/60 p-5 flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center gap-2 border-b border-slate-800 pb-3 mb-4">
-                        <BarChart4 className="text-brand-orange" size={16} />
-                        <span className="text-xs font-bold text-white uppercase tracking-wider">Unified Overview</span>
-                      </div>
-                      <div className="space-y-3">
-                        <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-[11px] text-slate-300">
-                          <span className="font-bold text-white block mb-0.5">Real-time Stock Alert</span>
-                          Oat milk inventory is running low. Average consumption predicts exhaustion by 4:00 PM.
-                        </div>
-                        <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-[11px] text-slate-300">
-                          <span className="font-bold text-white block mb-0.5">Sales Mix Shift</span>
-                          Pasta and steaks comprise 64% of net profit during this Sunday dinner shift.
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-4 pt-3 border-t border-slate-800/80">
-                      <a href="/signup" className="block text-center py-2 bg-brand-orange hover:bg-brand-orange-hover text-white text-[11px] font-bold rounded-lg transition-all">
-                        Launch HQ Workspace
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeDeviceTab === 'mobile' && (
-                <div className="w-full max-w-sm border-4 border-slate-800 rounded-[36px] bg-slate-950 p-3 shadow-2xl relative animate-fade-in overflow-hidden">
-                  {/* Phone Notch */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-slate-800 h-4 w-28 rounded-b-xl z-20" />
-                  
-                  <div className="border border-slate-900 rounded-[28px] bg-slate-900 overflow-hidden text-left flex flex-col justify-between min-h-[360px]">
-                    <div className="bg-slate-950 px-4 pt-4 pb-2 border-b border-slate-850 flex justify-between items-center">
-                      <span className="text-xs font-bold text-white">Table-Side Ordering</span>
-                      <span className="text-[10px] bg-brand-orange/20 text-brand-orange px-2 py-0.5 rounded-full font-bold">Table 12</span>
-                    </div>
-
-                    <div className="p-4 space-y-3 flex-1 flex flex-col justify-center">
-                      <div>
-                        <p className="text-[10px] text-slate-400 uppercase tracking-widest">Active Table Cart</p>
-                        <h4 className="text-sm font-bold text-white mt-1">Dining Room Floor B</h4>
-                      </div>
-
-                      <div className="space-y-1 text-xs">
-                        <div className="flex justify-between text-slate-300">
-                          <span>1x Ribeye (Medium)</span>
-                          <span>LKR 3,400</span>
-                        </div>
-                        <div className="flex justify-between text-slate-300">
-                          <span>1x Roasted Potato</span>
-                          <span>LKR 450</span>
-                        </div>
-                      </div>
-
-                      <button type="button" className="w-full py-2 bg-brand-orange text-white rounded-lg text-xs font-bold text-center">
-                        Fire To Kitchen KDS
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeDeviceTab === 'ai_preview' && (
-                <div className="w-full max-w-lg border border-slate-800 rounded-2xl bg-slate-900 p-6 shadow-2xl animate-fade-in text-left space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="text-brand-orange animate-pulse" size={18} />
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-white">AI Insights & Forecasting</h4>
-                    </div>
-                    <span className="bg-slate-800 text-slate-400 border border-slate-700/50 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                      Upcoming Feature Glimpse
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Here is a glimpse of the AI-native features we are building to help you manage your business decisions automatically:
-                  </p>
-
-                  <div className="space-y-2.5">
-                    <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-850/60">
-                      <p className="text-xs font-semibold text-white">📈 Automated Volume Forecasts</p>
-                      <p className="text-[11px] text-slate-400 mt-1">Predicts next weekend's demand based on weather, holiday calendars, and historic sales, suggesting prep lists.</p>
-                    </div>
-                    <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-850/60">
-                      <p className="text-xs font-semibold text-white">📅 Smart Staff Schedule Assistant</p>
-                      <p className="text-[11px] text-slate-400 mt-1">Automatically generates shifts schedules matching predicted peak hours to reduce labor overhead.</p>
-                    </div>
-                  </div>
-
-                  <p className="text-[10px] text-slate-500 italic text-center pt-2">
-                    Note: Predictive modeling and smart schedule suggestions are currently in private developer testing.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Delivery partner integrations - Uber Eats & PickMe */}
-          <div className="mt-20 max-w-4xl mx-auto">
-            <p className="text-xs uppercase font-bold tracking-widest text-slate-400 mb-8">Deep Integration With Sri Lanka's Leading Delivery Platforms</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 items-stretch justify-center max-w-2xl mx-auto text-left">
-              {/* Uber Eats */}
-              <div className="p-6 rounded-2xl border border-emerald-500/20 bg-[#000000]/40 flex gap-4 items-start">
-                <UberEatsLogo className="w-14 h-14 shrink-0 rounded-xl overflow-hidden" />
-                <div>
-                  <h4 className="font-extrabold text-white text-base">Uber Eats Fully Fledged Integration</h4>
-                  <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                    Manage your delivery orders from start to finish directly on your POS terminal. Configure specific menu pricing and modifier rules for the Uber platform, and track incoming payouts natively.
-                  </p>
-                </div>
-              </div>
-
-              {/* PickMe */}
-              <div className="p-6 rounded-2xl border border-yellow-500/20 bg-[#FFC61A]/5 flex gap-4 items-start">
-                <PickMeLogo className="w-14 h-14 shrink-0 rounded-xl overflow-hidden" />
-                <div>
-                  <h4 className="font-extrabold text-white text-base">PickMe Food Integration</h4>
-                  <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-                    Maintain PickMe delivery orders separately. Perform automatic commission splits, track payouts, and configure custom, dedicated menu listings specifically for PickMe buyers.
-                  </p>
+                
+                <div className="relative group bg-theme-bg-main/50">
+                  {activeDeviceTab === 'counter_register' && (
+                    <img src="/pos-register.png" alt="Counter Register" className="w-full h-auto object-cover max-h-[520px] transition-transform duration-300 hover:scale-[1.005]" />
+                  )}
+                  {activeDeviceTab === 'kds_board' && (
+                    <img src="/order-board.png" alt="Kitchen Order Board" className="w-full h-auto object-cover max-h-[520px] transition-transform duration-300 hover:scale-[1.005]" />
+                  )}
+                  {activeDeviceTab === 'menu_stock' && (
+                    <img src="/menu-items.png" alt="Menu & Stock Manager" className="w-full h-auto object-cover max-h-[520px] transition-transform duration-300 hover:scale-[1.005]" />
+                  )}
+                  {activeDeviceTab === 'sales_hq' && (
+                    <img src="/sales-dashboard.png" alt="HQ Sales Dashboard" className="w-full h-auto object-cover max-h-[520px] transition-transform duration-300 hover:scale-[1.005]" />
+                  )}
+                  {activeDeviceTab === 'channel_analytics' && (
+                    <img src="/order-channel-report.png" alt="Order Distribution Analytics" className="w-full h-auto object-cover max-h-[520px] transition-transform duration-300 hover:scale-[1.005]" />
+                  )}
                 </div>
               </div>
             </div>
@@ -764,62 +473,218 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Deep-Dive Features Sections */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-theme-border/60 bg-theme-bg-surface/10 relative transition-colors duration-250">
+        <div className="max-w-6xl mx-auto space-y-24">
+          
+          {/* Section 1: Table Plans & Restaurant Transformation */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-7 space-y-6">
+              <div className="inline-flex items-center gap-2 bg-brand-orange/15 text-brand-orange px-4 py-1.5 rounded-full text-xs font-bold border border-brand-orange/20">
+                <Layers size={14} />
+                <span>Full-Service Tables Plan</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-theme-text-header tracking-tight">
+                Transform customer experiences with live table floorplans.
+              </h2>
+              <p className="text-theme-text-muted text-sm sm:text-base leading-relaxed">
+                Give your restaurant staff absolute clarity on the dining floor. Cafinity's live floor plans allow hosts and stewards to monitor table occupancy in real time, fire orders directly from tablet handhelds, and keep preparation stages completely synchronized.
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Steward Mobile App</h4>
+                  <p className="text-xs text-theme-text-muted">Waiters ring items, record cooking modifiers, and send tickets directly to kitchen displays from their handhelds.</p>
+                </div>
+                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Split Bills & Seats</h4>
+                  <p className="text-xs text-theme-text-muted">Divide bills by seat count, items ordered, or exact shares instantly without cashier math loops.</p>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <p className="text-xs font-semibold text-brand-orange flex items-center gap-1.5">
+                  <Check size={14} /> Ready to expand: Supports adding multi-floor maps, custom VIP sections, and table-side QR check-ins.
+                </p>
+              </div>
+            </div>
+            
+            <div className="lg:col-span-5 relative group">
+              <div className="absolute inset-0 bg-brand-orange/5 rounded-2xl filter blur-xl opacity-60 group-hover:opacity-100 transition-opacity" />
+              <div className="relative border border-theme-border/80 rounded-2xl overflow-hidden bg-theme-bg-card shadow-lg p-2">
+                <img src="/order-board.png" alt="Live Table Board" className="w-full h-auto object-cover rounded-xl transition-all duration-300 group-hover:scale-[1.01]" />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Counter Plans & Cafe Growth */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center lg:flex-row-reverse">
+            <div className="lg:col-span-5 lg:order-2 space-y-6">
+              <div className="inline-flex items-center gap-2 bg-brand-orange/15 text-brand-orange px-4 py-1.5 rounded-full text-xs font-bold border border-brand-orange/20">
+                <Zap size={14} />
+                <span>Quick-Service Counter Plan</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-theme-text-header tracking-tight">
+                Streamline coffee shops & high-volume cafe queues.
+              </h2>
+              <p className="text-theme-text-muted text-sm sm:text-base leading-relaxed">
+                Speed is the currency of fast-casual dining. The Cafinity Counter Plan is built for high-throughput espresso bars, bakeries, and food trucks. Ring transactions in milliseconds with our simplified touch-grid, customize hotkey layouts, and print labels automatically.
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">WhatsApp Catalog Add-on</h4>
+                  <p className="text-xs text-theme-text-muted">Push your POS menu options directly to your business WhatsApp Catalog so clients can browse and place pre-orders.</p>
+                </div>
+                <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Phone Number Loyalty</h4>
+                  <p className="text-xs text-theme-text-muted">Accumulate customer points dynamically via their mobile number at the terminal to drive morning brew habits.</p>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <p className="text-xs font-semibold text-brand-orange flex items-center gap-1.5">
+                  <Check size={14} /> Ready to expand: Easily connect kitchen KDS monitors, thermal label printers, and SMS receipt dispatch channels.
+                </p>
+              </div>
+            </div>
+
+            <div className="lg:col-span-7 lg:order-1 relative group">
+              <div className="absolute inset-0 bg-brand-orange/5 rounded-2xl filter blur-xl opacity-60 group-hover:opacity-100 transition-opacity" />
+              <div className="relative border border-theme-border/80 rounded-2xl overflow-hidden bg-theme-bg-card shadow-lg p-2">
+                <img src="/pos-register.png" alt="Counter Register UI" className="w-full h-auto object-cover rounded-xl transition-all duration-300 group-hover:scale-[1.01]" />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Future Roadmap / Innovation */}
+          <div className="border border-theme-border rounded-3xl bg-theme-bg-card/80 p-8 sm:p-12 relative overflow-hidden shadow-xl">
+            <div className="absolute right-0 top-0 w-[300px] h-[300px] rounded-full bg-brand-orange/5 blur-[120px] pointer-events-none" />
+            
+            <div className="relative z-10 max-w-3xl">
+              <div className="inline-flex items-center gap-2 bg-brand-orange/15 text-brand-orange px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-4 border border-brand-orange/10">
+                <Sparkles size={12} className="animate-pulse" />
+                <span>On the Horizon</span>
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-extrabold text-theme-text-header mb-4">
+                Upcoming roadmap & future integrations.
+              </h3>
+              <p className="text-theme-text-muted text-sm sm:text-base leading-relaxed mb-8">
+                We are constantly building tools to help you manage your business decisions automatically. Here are the features currently in private developer testing, which our merchants will be able to enjoy **very recently**:
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <div className="w-9 h-9 rounded-lg bg-theme-bg-surface flex items-center justify-center text-brand-orange border border-theme-border">
+                    <Cpu size={16} />
+                  </div>
+                  <h4 className="font-bold text-sm text-theme-text-header">AI Sales Forecasting</h4>
+                  <p className="text-xs text-theme-text-muted">Predict upcoming weekend volumes based on historical demand patterns, weather indicators, and public holidays.</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="w-9 h-9 rounded-lg bg-theme-bg-surface flex items-center justify-center text-brand-orange border border-theme-border">
+                    <Activity size={16} />
+                  </div>
+                  <h4 className="font-bold text-sm text-theme-text-header">Smart Shift Schedulers</h4>
+                  <p className="text-xs text-theme-text-muted">Auto-allocate employee shifts to perfectly match predicted peak customer hours, minimizing labor overhead.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="w-9 h-9 rounded-lg bg-theme-bg-surface flex items-center justify-center text-brand-orange border border-theme-border">
+                    <Laptop size={16} />
+                  </div>
+                  <h4 className="font-bold text-sm text-theme-text-header">Superadmin API Portal</h4>
+                  <p className="text-xs text-theme-text-muted">Direct developer API endpoints to sync your sales logs and ingredient expenditures to custom bookkeeping software.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Bespoke Custom Requirements */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center border border-theme-border rounded-3xl bg-theme-bg-surface/20 p-8">
+            <div className="lg:col-span-8 space-y-4">
+              <div className="flex items-center gap-2 text-brand-orange">
+                <HeartHandshake size={20} />
+                <h4 className="font-extrabold text-sm uppercase tracking-wider">Flexible For Your Needs</h4>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-extrabold text-theme-text-header">
+                Have specific custom requirements? We build them for you.
+              </h3>
+              <p className="text-theme-text-muted text-xs sm:text-sm leading-relaxed">
+                Every dining venue runs on distinct, specialized operational steps. Whether you need a bespoke accounting API, unique table checkout flows, customized receipt layouts, or localized taxation reports, our engineering team is ready to build tailored extensions matching your workflow.
+              </p>
+            </div>
+            <div className="lg:col-span-4 text-left lg:text-right">
+              <a
+                href="#contact"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-brand-orange hover:bg-brand-orange-hover text-white font-bold text-sm shadow-md shadow-brand-orange/10 transition-all hover:scale-[1.02] cursor-pointer"
+              >
+                Discuss custom needs
+                <ArrowRight size={16} />
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
       {/* High-Fidelity Features Section */}
-      <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-950 relative">
+      <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-theme-bg-main relative transition-colors duration-250">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-theme-text-header mb-4">
               Engineered for speed. Built for control.
             </h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-              Essential kitchen KDS layouts, offline support, and deep configurations to take total control of your operations.
+            <p className="text-theme-text-muted text-lg max-w-2xl mx-auto">
+              Essential kitchen KDS layouts, offline resilience, and deep configurations to take total control of your operations.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-8 rounded-3xl border border-slate-800 bg-slate-900/30 hover:border-slate-700 transition-all flex flex-col justify-between">
+            <div className="p-8 rounded-3xl border border-theme-border bg-theme-bg-card/45 hover:border-brand-orange/45 transition-all flex flex-col justify-between">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange">
+                <div className="w-12 h-12 rounded-2xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange border border-brand-orange/20">
                   <WifiOff size={24} />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-3">Offline Register Support</h3>
-                <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                <h3 className="text-lg font-bold text-theme-text-header mb-3">Offline Register Support</h3>
+                <p className="text-theme-text-muted text-sm leading-relaxed mb-6">
                   Internet dropouts shouldn't stall your business. Cafinity terminals run offline seamlessly. Ring orders, apply discounts, and print kitchen receipts natively. Transactions queue locally and sync to the cloud automatically once connection is restored.
                 </p>
               </div>
-              <ul className="text-xs text-slate-300 space-y-2 text-left">
+              <ul className="text-xs text-theme-text-muted space-y-2 text-left">
                 <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Local transaction buffer queue</li>
                 <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Seamless auto-sync on reconnect</li>
               </ul>
             </div>
 
-            <div className="p-8 rounded-3xl border border-slate-800 bg-slate-900/30 hover:border-slate-700 transition-all flex flex-col justify-between">
+            <div className="p-8 rounded-3xl border border-theme-border bg-theme-bg-card/45 hover:border-brand-orange/45 transition-all flex flex-col justify-between">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange">
+                <div className="w-12 h-12 rounded-2xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange border border-brand-orange/20">
                   <Settings2 size={24} />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-3">Vivid Admin Portal Controls</h3>
-                <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                <h3 className="text-lg font-bold text-theme-text-header mb-3">HQ Admin Control Portal</h3>
+                <p className="text-theme-text-muted text-sm leading-relaxed mb-6">
                   Take full control of your venue. Modify menus, set taxes, configure loyalty points multipliers, track staff shift hours, and manage roles. Make data-driven decisions using comprehensive sales breakdown summaries.
                 </p>
               </div>
-              <ul className="text-xs text-slate-300 space-y-2 text-left">
+              <ul className="text-xs text-theme-text-muted space-y-2 text-left">
                 <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Robust menu & taxes control</li>
                 <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Detailed shifts and security roles</li>
               </ul>
             </div>
 
-            <div className="p-8 rounded-3xl border border-slate-800 bg-slate-900/30 hover:border-slate-700 transition-all flex flex-col justify-between">
+            <div className="p-8 rounded-3xl border border-theme-border bg-theme-bg-card/45 hover:border-brand-orange/45 transition-all flex flex-col justify-between">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange">
+                <div className="w-12 h-12 rounded-2xl bg-brand-orange/10 flex items-center justify-center mb-6 text-brand-orange border border-brand-orange/20">
                   <Tablet size={24} />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-3">Mobile Order & KDS Sync</h3>
-                <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                <h3 className="text-lg font-bold text-theme-text-header mb-3">Mobile Order & KDS Sync</h3>
+                <p className="text-theme-text-muted text-sm leading-relaxed mb-6">
                   Give your waiters a fluid mobile ordering system. Send table selections and custom modifier rules directly from tablet handhelds to KDS barista screens in the kitchen. Keep the floor and the kitchen in perfect harmony.
                 </p>
               </div>
-              <ul className="text-xs text-slate-300 space-y-2 text-left">
+              <ul className="text-xs text-theme-text-muted space-y-2 text-left">
                 <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Handheld table floorplan service</li>
                 <li className="flex items-center gap-2"><Check size={14} className="text-brand-orange" /> Live ticket queue time metrics</li>
               </ul>
@@ -829,11 +694,11 @@ export default function LandingPage() {
       </section>
 
       {/* Business Transformation Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-900/40 border-t border-b border-slate-900">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-theme-bg-surface/10 border-t border-b border-theme-border/60 transition-colors duration-250">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
-            <h2 className="text-3xl font-extrabold text-white mb-3">Concrete business transformation</h2>
-            <p className="text-slate-400">Concrete improvements cafes and fine dining venues notice within the first 30 days of moving to Cafinity.</p>
+            <h2 className="text-3xl font-extrabold text-theme-text-header mb-3">Concrete business transformation</h2>
+            <p className="text-theme-text-muted">Improvements cafes and fine dining venues notice within the first 30 days of moving to Cafinity.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
             {[
@@ -841,9 +706,9 @@ export default function LandingPage() {
               { title: 'Optimized margin insight', desc: 'Automatically track component costs down to single milk cartons, syrup bottles, and bean bags. Know instantly which products bring true profit.' },
               { title: 'Elevated customer retention', desc: 'Built-in loyalty programs sync from counter payments directly to mobile numbers. Keep customers returning for their morning brew habits.' }
             ].map((pillar, idx) => (
-              <div key={idx} className="p-6 bg-slate-950/40 border border-slate-800/80 rounded-2xl">
-                <h3 className="font-bold text-base text-white mb-2">{pillar.title}</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">{pillar.desc}</p>
+              <div key={idx} className="p-6 bg-theme-bg-card/60 border border-theme-border rounded-2xl">
+                <h3 className="font-bold text-base text-theme-text-header mb-2">{pillar.title}</h3>
+                <p className="text-xs text-theme-text-muted leading-relaxed">{pillar.desc}</p>
               </div>
             ))}
           </div>
@@ -851,11 +716,11 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Catalog */}
-      <section id="pricing" className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-950">
+      <section id="pricing" className="py-24 px-4 sm:px-6 lg:px-8 bg-theme-bg-main transition-colors duration-250">
         <div className="max-w-[1400px] mx-auto flex flex-col items-center">
           <div className="text-center mb-16 w-full">
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mb-4">Transparent billing, zero hidden fees</h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto mb-8">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-theme-text-header mb-4">Transparent billing, zero hidden fees</h2>
+            <p className="text-theme-text-muted text-lg max-w-2xl mx-auto mb-8">
               {catalogAudience === 'local'
                 ? 'LKR pricing specifically for Sri Lankan venues. 14 days of full feature access on us.'
                 : 'International plans automatically localized for your local currency. Sri Lankan venues are billed natively in LKR.'}
@@ -863,14 +728,14 @@ export default function LandingPage() {
 
             {/* Billing Toggle */}
             <div className="flex flex-col items-center gap-4">
-              <div className="inline-flex rounded-xl border border-slate-800 p-1 bg-slate-900/50 backdrop-blur-md">
+              <div className="inline-flex rounded-xl border border-theme-border p-1 bg-theme-bg-card/50 backdrop-blur-md">
                 <button
                   type="button"
                   onClick={() => { setSelectedCycle('monthly'); setShowCycleBanner(true); }}
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer border-0 ${
                     selectedCycle === 'monthly'
                       ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20'
-                      : 'text-slate-400 hover:text-slate-200 bg-transparent'
+                      : 'text-theme-text-muted hover:text-theme-text-header bg-transparent'
                   }`}
                 >
                   Monthly billing (30 days)
@@ -881,7 +746,7 @@ export default function LandingPage() {
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer border-0 ${
                     selectedCycle === 'yearly'
                       ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20'
-                      : 'text-slate-400 hover:text-slate-200 bg-transparent'
+                      : 'text-theme-text-muted hover:text-theme-text-header bg-transparent'
                   }`}
                 >
                   Yearly billing (365 days)
@@ -889,16 +754,16 @@ export default function LandingPage() {
               </div>
 
               {showCycleBanner && (
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 max-w-xl text-center text-xs text-slate-300 animate-fade-in relative mt-2">
+                <div className="bg-theme-bg-card border border-theme-border rounded-2xl p-4 max-w-xl text-center text-xs text-theme-text-muted animate-fade-in relative mt-2">
                   <button
                     type="button"
                     onClick={() => setShowCycleBanner(false)}
-                    className="absolute right-3 top-3 text-slate-500 hover:text-slate-300 border-0 bg-transparent cursor-pointer"
+                    className="absolute right-3 top-3 text-theme-text-muted hover:text-theme-text-header border-0 bg-transparent cursor-pointer"
                     aria-label="Dismiss"
                   >
                     <X size={14} />
                   </button>
-                  <p className="font-semibold text-white mb-1">
+                  <p className="font-semibold text-theme-text-header mb-1">
                     {selectedCycle === 'yearly' ? 'Yearly Plan Option: 365 days validity' : 'Monthly Plan Option: 30 days validity'}
                   </p>
                   <p>
@@ -917,7 +782,7 @@ export default function LandingPage() {
               aria-label="Previous pricing plan"
               onClick={() => scrollPricingTo(pricingSlide - 1)}
               disabled={pricingSlide <= 0}
-              className="absolute left-0 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-slate-800 bg-slate-900 text-slate-300 shadow-lg hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-35 sm:flex md:-left-1 lg:-left-2"
+              className="absolute left-0 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-theme-border bg-theme-bg-card text-theme-text-main shadow-lg hover:bg-theme-bg-surface disabled:pointer-events-none disabled:opacity-35 sm:flex md:-left-1 lg:-left-2 cursor-pointer"
             >
               <ChevronLeft size={22} strokeWidth={2} />
             </button>
@@ -926,7 +791,7 @@ export default function LandingPage() {
               aria-label="Next pricing plan"
               onClick={() => scrollPricingTo(pricingSlide + 1)}
               disabled={pricingSlide >= pricingSlideCount - 1}
-              className="absolute right-0 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-slate-800 bg-slate-900 text-slate-300 shadow-lg hover:bg-slate-800 disabled:pointer-events-none disabled:opacity-35 sm:flex md:-right-1 lg:-right-2"
+              className="absolute right-0 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-theme-border bg-theme-bg-card text-theme-text-main shadow-lg hover:bg-theme-bg-surface disabled:pointer-events-none disabled:opacity-35 sm:flex md:-right-1 lg:-right-2 cursor-pointer"
             >
               <ChevronRight size={22} strokeWidth={2} />
             </button>
@@ -940,7 +805,7 @@ export default function LandingPage() {
                   return (
                     <div
                       key={`sk-${idx}`}
-                      className="min-h-[380px] w-[min(100%,280px)] shrink-0 snap-center rounded-2xl border border-slate-850 bg-slate-900 animate-pulse sm:w-[260px]"
+                      className="min-h-[380px] w-[min(100%,280px)] shrink-0 snap-center rounded-2xl border border-theme-border bg-theme-bg-card animate-pulse sm:w-[260px]"
                     />
                   );
                 }
@@ -955,12 +820,12 @@ export default function LandingPage() {
                   'relative shrink-0 w-[min(100%,280px)] sm:w-[260px] rounded-2xl p-7 border flex flex-col min-h-[380px] transition-all snap-center ';
                 let cardStyle = undefined;
                 if (customCardBg) {
-                  cardShell += lightOnCard ? 'shadow-lg border-white/25' : 'shadow-md border-slate-850';
+                  cardShell += lightOnCard ? 'shadow-lg border-white/25' : 'shadow-md border-theme-border/50';
                   cardStyle = { background: customCardBg };
                 } else if (builtInFeatured) {
-                  cardShell += 'border-brand-orange bg-slate-900 shadow-xl shadow-brand-orange/5';
+                  cardShell += 'border-brand-orange bg-theme-bg-card shadow-xl shadow-brand-orange/5';
                 } else {
-                  cardShell += 'border-slate-850 bg-slate-900/50 hover:border-slate-800';
+                  cardShell += 'border-theme-border bg-theme-bg-card/50 hover:border-theme-border';
                 }
 
                 const priceInfo = getFormattedPriceInfo(plan);
@@ -980,31 +845,31 @@ export default function LandingPage() {
                       </div>
                     )}
 
-                    <div className="text-sm font-semibold text-slate-300 mb-2">{plan.name}</div>
-                    <div className="text-xl sm:text-2xl font-extrabold text-white mb-0.5 tracking-tight">
+                    <div className="text-sm font-semibold text-theme-text-muted mb-2">{plan.name}</div>
+                    <div className="text-xl sm:text-2xl font-extrabold text-theme-text-header mb-0.5 tracking-tight">
                       {priceInfo.displayPrice}
                     </div>
                     {priceInfo.subtitle && (
-                      <div className="text-[10px] text-slate-400 font-semibold mb-1">
+                      <div className="text-[10px] text-theme-text-muted font-semibold mb-1">
                         {priceInfo.subtitle}
                       </div>
                     )}
-                    <div className="text-xs text-slate-500 mb-6 uppercase tracking-wider">
+                    <div className="text-xs text-theme-text-muted/70 mb-6 uppercase tracking-wider">
                       {selectedCycle === 'yearly' ? 'per 365 days' : 'per 30 days'}
                     </div>
 
                     <ul className="space-y-3 mb-8 flex-1">
                       {bulletLines.map((f, i) => (
-                        <li key={`${plan._id || plan.code}-${i}`} className="flex items-start gap-2 text-xs text-slate-300">
+                        <li key={`${plan._id || plan.code}-${i}`} className="flex items-start gap-2 text-xs text-theme-text-muted">
                           <CheckCircle size={14} className="shrink-0 mt-0.5 text-brand-orange" />
-                          <span className="leading-snug">{f}</span>
+                          <span className="leading-snug text-theme-text-main">{f}</span>
                         </li>
                       ))}
                     </ul>
 
                     <Link
                       to="/signup"
-                      className="mt-auto block text-center py-3 rounded-xl text-xs font-bold transition-all bg-brand-orange hover:bg-brand-orange-hover text-white shadow-md shadow-brand-orange/10"
+                      className="mt-auto block text-center py-3 rounded-xl text-xs font-bold transition-all bg-brand-orange hover:bg-brand-orange-hover text-white shadow-md shadow-brand-orange/10 cursor-pointer"
                     >
                       Start 14-day trial
                     </Link>
@@ -1013,24 +878,24 @@ export default function LandingPage() {
               })}
 
               {!plansLoading && (
-                <div className="relative flex min-h-[380px] w-[min(100%,280px)] shrink-0 snap-center flex-col rounded-2xl border border-slate-800 bg-slate-900 p-7 text-white shadow-lg sm:w-[260px]">
+                <div className="relative flex min-h-[380px] w-[min(100%,280px)] shrink-0 snap-center flex-col rounded-2xl border border-theme-border bg-theme-bg-card p-7 text-theme-text-main shadow-lg sm:w-[260px]">
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold bg-brand-orange text-white">
                     Tailor-made
                   </div>
-                  <div className="text-sm font-semibold mb-2 text-slate-300">{ENTERPRISE_DISPLAY.name}</div>
-                  <div className="text-2xl font-extrabold text-white mb-1 tracking-tight">{ENTERPRISE_DISPLAY.priceLabel}</div>
-                  <div className="text-xs text-slate-500 mb-6 uppercase tracking-wider">{ENTERPRISE_DISPLAY.cycle}</div>
+                  <div className="text-sm font-semibold mb-2 text-theme-text-muted">{ENTERPRISE_DISPLAY.name}</div>
+                  <div className="text-2xl font-extrabold text-theme-text-header mb-1 tracking-tight">{ENTERPRISE_DISPLAY.priceLabel}</div>
+                  <div className="text-xs text-theme-text-muted/75 mb-6 uppercase tracking-wider">{ENTERPRISE_DISPLAY.cycle}</div>
                   <ul className="space-y-3 mb-8 text-left flex-1">
                     {ENTERPRISE_DISPLAY.lines.map((f, i) => (
-                      <li key={`ent-${i}`} className="flex items-start gap-2 text-xs text-slate-300">
+                      <li key={`ent-${i}`} className="flex items-start gap-2 text-xs text-theme-text-muted">
                         <CheckCircle size={14} className="shrink-0 mt-0.5 text-brand-orange" />
-                        <span className="leading-snug">{f}</span>
+                        <span className="leading-snug text-theme-text-main">{f}</span>
                       </li>
                     ))}
                   </ul>
                   <a
                     href="#contact"
-                    className="mt-auto inline-flex justify-center w-full py-3 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-750 text-white border border-slate-700 transition-all"
+                    className="mt-auto inline-flex justify-center w-full py-3 rounded-xl text-xs font-bold bg-theme-bg-surface hover:bg-theme-bg-surface/80 text-theme-text-main border border-theme-border transition-all cursor-pointer"
                   >
                     Talk to sales
                   </a>
@@ -1048,8 +913,8 @@ export default function LandingPage() {
                     aria-selected={pricingSlide === i}
                     aria-label={`Show plan ${i + 1} of ${pricingSlideCount}`}
                     onClick={() => scrollPricingTo(i)}
-                    className={`h-1.5 rounded-full transition-all ${
-                      pricingSlide === i ? 'w-6 bg-brand-orange' : 'w-1.5 bg-slate-800 hover:bg-slate-700'
+                    className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                      pricingSlide === i ? 'w-6 bg-brand-orange' : 'w-1.5 bg-theme-bg-surface hover:bg-theme-bg-surface/80'
                     }`}
                   />
                 ))}
@@ -1060,17 +925,17 @@ export default function LandingPage() {
       </section>
 
       {/* Final Action CTA */}
-      <section className="relative overflow-hidden py-24 px-4 sm:px-6 lg:px-8 border-t border-slate-900">
-        <div className="absolute inset-0 bg-slate-950" aria-hidden />
+      <section className="relative overflow-hidden py-24 px-4 sm:px-6 lg:px-8 border-t border-theme-border/60 transition-colors duration-250">
+        <div className="absolute inset-0 bg-theme-bg-main" aria-hidden />
         <div className="absolute -bottom-1/2 left-1/2 -translate-x-1/2 h-[400px] w-[600px] rounded-full bg-brand-orange/5 blur-[120px] pointer-events-none" />
-        <div className="relative z-10 max-w-3xl mx-auto text-center text-white">
+        <div className="relative z-10 max-w-3xl mx-auto text-center text-theme-text-header">
           <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">Elevate your venue operations</h2>
-          <p className="text-slate-400 text-base sm:text-lg mb-10 leading-relaxed max-w-xl mx-auto">
-            Join specialty food venues and dining destinations running on Cafinity to supercharge registers, barista queues, and delivery streams.
+          <p className="text-theme-text-muted text-base sm:text-lg mb-10 leading-relaxed max-w-xl mx-auto">
+            Join specialty food venues and dining destinations running on Cafinity to supercharge counter registers, table-side floorplans, and dashboard insights.
           </p>
           <Link
             to="/signup"
-            className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-hover text-white font-bold px-8 py-4 rounded-xl text-base shadow-lg shadow-brand-orange/20 transition-all hover:scale-[1.02]"
+            className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-hover text-white font-bold px-8 py-4 rounded-xl text-base shadow-lg shadow-brand-orange/20 transition-all hover:scale-[1.02] cursor-pointer"
           >
             Get started for free
             <ArrowRight size={18} />

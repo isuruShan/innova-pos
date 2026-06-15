@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import LandingPage from './pages/LandingPage';
 import SignupPage from './pages/SignupPage';
 import SignupBusinessPage from './pages/SignupBusinessPage';
@@ -9,8 +10,9 @@ import CustomerCheckin from './pages/CustomerCheckin';
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/signup/business" element={<SignupBusinessPage />} />
@@ -19,6 +21,7 @@ export default function App() {
         <Route path="/merchant-guide/:slug" element={<MerchantGuideTopicPage />} />
         <Route path="/customer-checkin" element={<CustomerCheckin />} />
       </Routes>
-    </BrowserRouter>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }

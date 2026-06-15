@@ -1,18 +1,23 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, LogIn } from 'lucide-react';
+import { Menu, X, LogIn, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 import SignInPortalModal from './SignInPortalModal';
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [signInOpen, setSignInOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   return (
-    <nav className="fixed top-0 inset-x-0 z-50 bg-[#233d4d]/98 backdrop-blur-sm border-b border-white/10">
+    <nav className="fixed top-0 inset-x-0 z-50 bg-theme-bg-card/90 backdrop-blur-md border-b border-theme-border/60 transition-colors duration-250">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 relative">
           <Link to="/" className="flex items-center gap-2 shrink-0">
-            <img src="/logo-1.png" alt="Cafinity" className="h-9 w-auto rounded-lg shadow-sm" />
+            {/* Adaptive logo container */}
+            <div className="bg-theme-bg-surface/40 p-1 rounded-lg border border-theme-border/50">
+              <img src="/logo-1.png" alt="Cafinity" className="h-9 w-auto rounded-md shadow-xs" />
+            </div>
           </Link>
 
           <div className="hidden md:flex items-center gap-6 absolute left-1/2 -translate-x-1/2">
@@ -24,7 +29,7 @@ export default function Navbar() {
               <a
                 key={link.label}
                 href={link.href}
-                className="text-sm font-medium text-teal-100/85 hover:text-white transition-colors"
+                className="text-sm font-medium text-theme-text-muted hover:text-theme-text-header transition-colors"
               >
                 {link.label}
               </a>
@@ -32,10 +37,20 @@ export default function Navbar() {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
+            {/* Theme Toggle Switch */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-2.5 rounded-lg text-theme-text-muted hover:text-theme-text-header hover:bg-theme-bg-surface/50 border border-theme-border/40 transition-all cursor-pointer"
+              aria-label="Toggle theme"
+            >
+              {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+            </button>
+
             <button
               type="button"
               onClick={() => setSignInOpen(true)}
-              className="text-sm font-semibold text-teal-100/90 px-4 py-2 rounded-lg border border-white/25 hover:bg-white/10 hover:text-white transition-colors inline-flex items-center gap-1.5"
+              className="text-sm font-semibold text-theme-text-main px-4 py-2 rounded-lg border border-theme-border/80 hover:bg-theme-bg-surface/60 hover:text-theme-text-header transition-colors inline-flex items-center gap-1.5 cursor-pointer"
             >
               <LogIn size={16} />
               Sign in
@@ -48,14 +63,14 @@ export default function Navbar() {
             </Link>
           </div>
 
-          <button onClick={() => setOpen(!open)} className="md:hidden p-2 rounded-lg text-teal-100/85 hover:text-white">
+          <button onClick={() => setOpen(!open)} className="md:hidden p-2 rounded-lg text-theme-text-muted hover:text-theme-text-header">
             {open ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
       </div>
 
       {open && (
-        <div className="md:hidden bg-[#233d4d] px-4 py-4 space-y-3 border-t border-white/10">
+        <div className="md:hidden bg-theme-bg-card px-4 py-4 space-y-3 border-t border-theme-border/80">
           {[
             { href: '/#features', label: 'Features' },
             { href: '/#pricing', label: 'Pricing' },
@@ -65,30 +80,52 @@ export default function Navbar() {
               key={link.label}
               href={link.href}
               onClick={() => setOpen(false)}
-              className="block text-sm font-medium text-teal-100/90 py-2 hover:text-white"
+              className="block text-sm font-medium text-theme-text-muted py-2 hover:text-theme-text-header"
             >
               {link.label}
             </a>
           ))}
-          <div className="border-t border-white/10 pt-3 mt-1">
+          
+          <div className="flex justify-between items-center border-t border-theme-border/60 pt-3 mt-1">
+            <span className="text-sm font-medium text-theme-text-muted">Appearance</span>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="px-3 py-1.5 rounded-lg text-theme-text-muted hover:text-theme-text-header hover:bg-theme-bg-surface border border-theme-border/60 transition-colors flex items-center gap-2 cursor-pointer"
+            >
+              {theme === 'light' ? (
+                <>
+                  <Moon size={14} />
+                  <span className="text-xs font-semibold">Dark Mode</span>
+                </>
+              ) : (
+                <>
+                  <Sun size={14} />
+                  <span className="text-xs font-semibold">Light Mode</span>
+                </>
+              )}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              setSignInOpen(true);
-            }}
-            className="block w-full text-center text-sm font-semibold text-teal-100/90 px-4 py-2 rounded-lg border border-white/25 hover:bg-white/10"
-          >
-            Sign in
-          </button>
-          <Link
-            to="/signup"
-            onClick={() => setOpen(false)}
-            className="block text-center text-sm font-semibold text-white px-4 py-2 rounded-lg mt-2 bg-brand-orange hover:bg-brand-orange-hover"
-          >
-            Get Started Free
-          </Link>
+
+          <div className="border-t border-theme-border/60 pt-3 mt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setSignInOpen(true);
+              }}
+              className="block w-full text-center text-sm font-semibold text-theme-text-main px-4 py-2 rounded-lg border border-theme-border hover:bg-theme-bg-surface"
+            >
+              Sign in
+            </button>
+            <Link
+              to="/signup"
+              onClick={() => setOpen(false)}
+              className="block text-center text-sm font-semibold text-white px-4 py-2 rounded-lg mt-2 bg-brand-orange hover:bg-brand-orange-hover"
+            >
+              Get Started Free
+            </Link>
+          </div>
         </div>
       )}
 

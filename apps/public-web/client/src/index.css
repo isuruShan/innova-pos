@@ -1,7 +1,41 @@
 @import "tailwindcss";
 
+:root {
+  --color-theme-bg-main: #020617; /* slate-955 */
+  --color-theme-bg-card: #0f172a; /* slate-900 */
+  --color-theme-bg-surface: #1e293b; /* slate-800 */
+  --color-theme-text-main: #e2e8f0; /* slate-200 */
+  --color-theme-text-muted: #94a3b8; /* slate-400 */
+  --color-theme-text-header: #ffffff;
+  --color-theme-border: #1e293b; /* slate-800 */
+  --color-theme-border-subtle: rgba(255, 255, 255, 0.05);
+  --color-theme-hero-gradient: linear-gradient(to bottom, #0f172a, #020617, #020617);
+}
+
+html.light {
+  --color-theme-bg-main: #f8fafc; /* slate-50 */
+  --color-theme-bg-card: #ffffff; /* white */
+  --color-theme-bg-surface: #f1f5f9; /* slate-100 */
+  --color-theme-text-main: #1e293b; /* slate-800 */
+  --color-theme-text-muted: #64748b; /* slate-500 */
+  --color-theme-text-header: #0f172a; /* slate-900 */
+  --color-theme-border: #e2e8f0; /* slate-200 */
+  --color-theme-border-subtle: rgba(15, 23, 42, 0.05);
+  --color-theme-hero-gradient: linear-gradient(to bottom, #f1f5f9, #f8fafc, #f8fafc);
+}
+
 /* Brand: orange (primary CTAs), teal (accents/links), brown (dark surfaces & typography) */
 @theme {
+  --color-theme-bg-main: var(--color-theme-bg-main);
+  --color-theme-bg-card: var(--color-theme-bg-card);
+  --color-theme-bg-surface: var(--color-theme-bg-surface);
+  --color-theme-text-main: var(--color-theme-text-main);
+  --color-theme-text-muted: var(--color-theme-text-muted);
+  --color-theme-text-header: var(--color-theme-text-header);
+  --color-theme-border: var(--color-theme-border);
+  --color-theme-border-subtle: var(--color-theme-border-subtle);
+  --image-theme-hero-gradient: var(--color-theme-hero-gradient);
+
   --color-brand-orange: #ea580c;
   --color-brand-orange-hover: #c2410c;
   --color-brand-teal: #0d9488;
@@ -24,7 +58,7 @@
 
   body {
     font-family: 'Poppins', sans-serif;
-    @apply bg-white text-gray-900 antialiased;
+    @apply bg-theme-bg-main text-theme-text-main antialiased transition-colors duration-250;
   }
 }
 
@@ -66,4 +100,3 @@
     transform: translate3d(3%, -4%, 0) scale(0.98);
   }
 }
-

@@ -3,7 +3,19 @@ const { sendEmail } = require('../utils/mailer');
 const { validateContactForm } = require('@innovapos/form-validation');
 const Prospect = require('../models/Prospect');
 
+const { getPlatformContact } = require('@innovapos/platform-contact');
+
 const router = express.Router();
+
+router.get('/platform', async (req, res) => {
+  try {
+    const contact = await getPlatformContact();
+    res.json(contact);
+  } catch (err) {
+    console.error('Error fetching platform contact: ', err);
+    res.status(500).json({ message: 'Failed to retrieve contact details' });
+  }
+});
 
 router.post('/', async (req, res) => {
   const { name, email, subject, message } = req.body || {};

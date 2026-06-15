@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { getPosUrl } from '@innovapos/app-urls';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { StoreProvider } from './context/StoreContext';
 import { TenantCurrencyProvider } from './context/TenantCurrencyContext';
@@ -78,10 +79,32 @@ const PrivateRoute = ({ children, roles }) => {
 };
 
 const RootRedirect = () => {
-  const { user, isSuperAdmin } = useAuth();
+  const { user, isSuperAdmin, logout } = useAuth();
+  
+  const r = String(user?.role || '').trim().toLowerCase();
+  
+  useEffect(() => {
+    if (user && ['cashier', 'steward', 'kitchen'].includes(r)) {
+      logout();
+      window.location.href = getPosUrl();
+    }
+  }, [user, r, logout]);
+
   if (!user) return <Navigate to="/login" replace />;
   if (isSuperAdmin) return <Navigate to="/superadmin/dashboard" replace />;
-  return <Navigate to="/dashboard" replace />;
+  
+  if (r === 'merchant_admin') return <Navigate to="/dashboard" replace />;
+  if (r === 'manager') return <Navigate to="/accounting" replace />;
+  
+  if (['cashier', 'steward', 'kitchen'].includes(r)) {
+    return (
+      <div className="min-h-screen bg-brand-brown-deep flex items-center justify-center text-white">
+        Redirecting to POS client...
+      </div>
+    );
+  }
+  
+  return <Navigate to="/login" replace />;
 };
 
 export default function App() {
