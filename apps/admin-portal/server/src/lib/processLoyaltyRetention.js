@@ -16,8 +16,12 @@ async function processLoyaltyRetentionPeriods(logger) {
 
   const now = new Date();
   for (const cfg of configs) {
-    const tenant = await Tenant.findById(cfg.tenantId).select('paidAddons').lean();
-    if (!isLoyaltyEffective(tenant?.paidAddons)) continue;
+    require('../models/SubscriptionPlan');
+    const tenant = await Tenant.findById(cfg.tenantId)
+      .select('paidAddons assignedPlanId')
+      .populate('assignedPlanId')
+      .lean();
+    if (!tenant || !isLoyaltyEffective(tenant)) continue;
     const end = getRetentionPeriodEnd(cfg.pointsRetentionStartDate, cfg.pointsRetentionMode);
     if (!end || now < end) continue;
 

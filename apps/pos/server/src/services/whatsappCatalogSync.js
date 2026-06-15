@@ -14,8 +14,12 @@ async function syncCatalogItem(menuItem) {
     const Store = mongoose.model('Store');
 
     // 1. Resolve tenant and check paid entitlement
-    const tenant = await Tenant.findById(menuItem.tenantId).select('paidAddons').lean();
-    if (!tenant || !isWhatsappEffective(tenant.paidAddons)) {
+    require('../models/SubscriptionPlan');
+    const tenant = await Tenant.findById(menuItem.tenantId)
+      .select('paidAddons assignedPlanId')
+      .populate('assignedPlanId')
+      .lean();
+    if (!tenant || !isWhatsappEffective(tenant)) {
       // Entitlement not active; skip synchronization silently
       return;
     }

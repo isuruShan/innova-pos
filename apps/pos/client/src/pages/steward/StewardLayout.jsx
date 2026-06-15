@@ -4,10 +4,13 @@ import { LogOut, Home, ClipboardList, Calendar } from 'lucide-react';
 import PosNotificationStream from '../../components/PosNotificationStream';
 import PushPermissionBanner from '../../components/PushPermissionBanner';
 import WaiterCallBar from '../../components/WaiterCallBar';
+import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 
 export default function StewardLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { data: paidAddons, isPending } = useTenantPaidAddons();
+  const tableMgmt = paidAddons?.tableManagement === true;
 
   const handleLogout = async () => {
     await logout();
@@ -46,7 +49,18 @@ export default function StewardLayout() {
 
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto bg-gray-50 relative">
-        <Outlet />
+        {isPending ? (
+          <div className="p-4 flex justify-center items-center h-full text-gray-400">
+            Loading...
+          </div>
+        ) : tableMgmt ? (
+          <Outlet />
+        ) : (
+          <div className="p-4 text-center mt-10">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Add-on Required</h2>
+            <p className="text-gray-500">Table Management must be enabled to use Steward features.</p>
+          </div>
+        )}
       </main>
 
       {/* Bottom Navigation */}

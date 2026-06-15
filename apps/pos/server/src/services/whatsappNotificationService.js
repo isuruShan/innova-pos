@@ -21,8 +21,12 @@ async function sendOrderStatusNotification(order, status) {
     const Store = mongoose.model('Store');
 
     // 1. Check paid entitlement
-    const tenant = await Tenant.findById(order.tenantId).select('paidAddons').lean();
-    if (!tenant || !isWhatsappEffective(tenant.paidAddons)) {
+    require('../models/SubscriptionPlan');
+    const tenant = await Tenant.findById(order.tenantId)
+      .select('paidAddons assignedPlanId')
+      .populate('assignedPlanId')
+      .lean();
+    if (!tenant || !isWhatsappEffective(tenant)) {
       return;
     }
 

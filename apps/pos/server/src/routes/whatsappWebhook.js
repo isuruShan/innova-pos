@@ -71,8 +71,12 @@ router.post('/', async (req, res) => {
     }
 
     // 2. Resolve tenant and check paid entitlement
-    const tenant = await Tenant.findById(store.tenantId).select('paidAddons').lean();
-    if (!tenant || !isWhatsappEffective(tenant.paidAddons)) {
+    require('../models/SubscriptionPlan');
+    const tenant = await Tenant.findById(store.tenantId)
+      .select('paidAddons assignedPlanId')
+      .populate('assignedPlanId')
+      .lean();
+    if (!tenant || !isWhatsappEffective(tenant)) {
       console.warn(`[WhatsApp Gating Alert] Tenant ${store.tenantId} attempting WhatsApp order without subscription.`);
       return res.status(402).json({ message: 'WhatsApp integration paid add-on is required' });
     }

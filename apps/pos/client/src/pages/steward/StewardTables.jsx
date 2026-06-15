@@ -73,15 +73,6 @@ export default function StewardTables() {
     );
   }
 
-  if (!tableMgmt) {
-    return (
-      <div className="p-4 text-center mt-10">
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Add-on Required</h2>
-        <p className="text-gray-500">Table Management must be enabled to use Steward features.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="h-full flex flex-col bg-slate-50">
       <div className="bg-white border-b border-gray-200 px-4 py-3 shrink-0">
