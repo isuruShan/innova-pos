@@ -8,6 +8,24 @@ import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
 import PageHeader from '../../components/PageHeader';
 
+const COUNTRY_CODES = [
+  { code: '+94', name: 'LK', flag: '🇱🇰' },
+  { code: '+1', name: 'US/CA', flag: '🇺🇸' },
+  { code: '+44', name: 'UK', flag: '🇬🇧' },
+  { code: '+61', name: 'AU', flag: '🇦🇺' },
+  { code: '+971', name: 'AE', flag: '🇦🇪' },
+  { code: '+65', name: 'SG', flag: '🇸🇬' },
+];
+
+const parsePhone = (phoneStr) => {
+  if (!phoneStr) return { code: '+94', number: '' };
+  const matched = COUNTRY_CODES.find((c) => phoneStr.startsWith(c.code));
+  if (matched) {
+    return { code: matched.code, number: phoneStr.slice(matched.code.length) };
+  }
+  return { code: '+94', number: phoneStr };
+};
+
 const STATUS_STYLES = {
   pending: { bg: 'bg-amber-50 text-amber-700 border-amber-200/60', label: 'Pending' },
   confirmed: { bg: 'bg-blue-50 text-blue-700 border-blue-200/60', label: 'Confirmed' },
@@ -127,6 +145,8 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
     specialRequests: '',
     source: 'phone',
   });
+  const [countryCode, setCountryCode] = useState('+94');
+  const [phoneNo, setPhoneNo] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -142,6 +162,8 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
         specialRequests: '',
         source: 'phone',
       });
+      setCountryCode('+94');
+      setPhoneNo('');
     }
   }, [isOpen]);
 
@@ -150,7 +172,7 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
     const dateTime = new Date(`${form.reservationDate}T${form.reservationTime}`);
     onSubmit({
       guestName: form.guestName,
-      guestPhone: form.guestPhone,
+      guestPhone: phoneNo ? `${countryCode}${phoneNo.trim().replace(/\D/g, '')}` : '',
       guestEmail: form.guestEmail,
       partySize: form.partySize,
       reservationTime: dateTime.toISOString(),
@@ -181,19 +203,33 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
               required
               value={form.guestName}
               onChange={(e) => setForm({ ...form, guestName: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="w-full border border-gray-305 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Phone</label>
-              <input
-                type="tel"
-                value={form.guestPhone}
-                onChange={(e) => setForm({ ...form, guestPhone: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
+              <div className="flex gap-2">
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-2 py-2 bg-gray-50 text-gray-905 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                >
+                  {COUNTRY_CODES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.flag} {c.code}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  placeholder="e.g. 771234567"
+                  value={phoneNo}
+                  onChange={(e) => setPhoneNo(e.target.value)}
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Email</label>
@@ -322,13 +358,17 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, isPending, er
     duration: 90,
     specialRequests: '',
   });
+  const [countryCode, setCountryCode] = useState('+94');
+  const [phoneNo, setPhoneNo] = useState('');
 
   useEffect(() => {
     if (isOpen && reservation) {
       const time = new Date(reservation.reservationTime);
+      const parsed = parsePhone(reservation.guestPhone);
+      setCountryCode(parsed.code);
+      setPhoneNo(parsed.number);
       setForm({
         guestName: reservation.guestName || '',
-        guestPhone: reservation.guestPhone || '',
         guestEmail: reservation.guestEmail || '',
         partySize: reservation.partySize || 2,
         reservationDate: time.toISOString().split('T')[0],
@@ -345,7 +385,7 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, isPending, er
     const dateTime = new Date(`${form.reservationDate}T${form.reservationTime}`);
     onSubmit({
       guestName: form.guestName,
-      guestPhone: form.guestPhone,
+      guestPhone: phoneNo ? `${countryCode}${phoneNo.trim().replace(/\D/g, '')}` : '',
       guestEmail: form.guestEmail,
       partySize: form.partySize,
       reservationTime: dateTime.toISOString(),
@@ -382,12 +422,26 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, isPending, er
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Phone</label>
-              <input
-                type="tel"
-                value={form.guestPhone}
-                onChange={(e) => setForm({ ...form, guestPhone: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
+              <div className="flex gap-2">
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-2 py-2 bg-gray-50 text-gray-95 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                >
+                  {COUNTRY_CODES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.flag} {c.code}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  placeholder="e.g. 771234567"
+                  value={phoneNo}
+                  onChange={(e) => setPhoneNo(e.target.value)}
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Email</label>

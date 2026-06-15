@@ -10,18 +10,20 @@ router.get('/', protect, authorize('merchant_admin'), tenantScope, resolveSelect
     const filter = {
       tenantId: req.tenantId,
       ...buildStoreFilter(req),
-      status: 'completed',
     };
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
     if (req.query.since || req.query.until) {
       filter.createdAt = {};
       if (req.query.since) filter.createdAt.$gte = new Date(req.query.since);
       if (req.query.until) filter.createdAt.$lte = new Date(req.query.until);
     }
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 10));
+    const limit = Math.min(10000, Math.max(1, parseInt(req.query.limit, 10) || 10000));
     const orders = await Order.find(filter)
       .sort({ createdAt: -1 })
       .limit(limit)
-      .select('orderNumber totalAmount createdAt paymentMethod items')
+      .populate('customerId', 'name mobile email')
       .lean();
     res.json(orders);
   } catch (err) {

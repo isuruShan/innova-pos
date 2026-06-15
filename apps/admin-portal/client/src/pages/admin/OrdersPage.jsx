@@ -8,13 +8,48 @@ import api from '../../api/axios';
 import Badge from '../../components/Badge';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
 
+function toYMD(d) {
+  const x = new Date(d);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+}
+
+function addDays(d, n) {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+
 export default function OrdersPage() {
   const [selectedStore, setSelectedStore] = useState('all');
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
-  const [sinceDate, setSinceDate] = useState('');
-  const [untilDate, setUntilDate] = useState('');
+  const [sinceDate, setSinceDate] = useState(() => {
+    const today = new Date();
+    return toYMD(addDays(today, -6));
+  });
+  const [untilDate, setUntilDate] = useState(() => {
+    return toYMD(new Date());
+  });
+  const [quickPeriod, setQuickPeriod] = useState('7days');
   const [selectedOrder, setSelectedOrder] = useState(null);
+
+  const applyPreset = (preset) => {
+    const end = new Date();
+    const endStr = toYMD(end);
+    if (preset === '7days') {
+      setSinceDate(toYMD(addDays(end, -6)));
+      setUntilDate(endStr);
+      setQuickPeriod('7days');
+    } else if (preset === '30days') {
+      setSinceDate(toYMD(addDays(end, -29)));
+      setUntilDate(endStr);
+      setQuickPeriod('30days');
+    } else if (preset === 'month') {
+      setSinceDate(toYMD(new Date(end.getFullYear(), end.getMonth(), 1)));
+      setUntilDate(endStr);
+      setQuickPeriod('month');
+    }
+  };
 
   // Fetch stores for store mapping & selector
   const { data: stores = [] } = useQuery({
@@ -37,12 +72,8 @@ export default function OrdersPage() {
       const params = {};
       if (statusFilter) params.status = statusFilter;
       if (search.trim()) params.search = search.trim();
-      if (sinceDate) params.since = new Date(sinceDate).toISOString();
-      if (untilDate) {
-        const d = new Date(untilDate);
-        d.setHours(23, 59, 59, 999);
-        params.until = d.toISOString();
-      }
+      if (sinceDate) params.since = new Date(sinceDate + 'T00:00:00').toISOString();
+      if (untilDate) params.until = new Date(untilDate + 'T23:59:59.999').toISOString();
       return api.get('/orders', {
         params,
         headers: { 'x-store-id': selectedStore },
@@ -76,8 +107,7 @@ export default function OrdersPage() {
     setSelectedStore('all');
     setStatusFilter('');
     setSearch('');
-    setSinceDate('');
-    setUntilDate('');
+    applyPreset('7days');
   };
 
   return (
@@ -122,9 +152,32 @@ export default function OrdersPage() {
 
       {/* Filters Card */}
       <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
-          <Filter size={15} className="text-gray-500" />
-          <h3 className="text-sm font-bold text-gray-800">Filter Orders</h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+          <div className="flex items-center gap-2">
+            <Filter size={15} className="text-gray-500" />
+            <h3 className="text-sm font-bold text-gray-800">Filter Orders</h3>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-400 font-medium mr-1">Period:</span>
+            {[
+              { value: '7days', label: '7 Days' },
+              { value: '30days', label: '30 Days' },
+              { value: 'month', label: 'This Month' }
+            ].map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => applyPreset(p.value)}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer border ${
+                  quickPeriod === p.value
+                    ? 'bg-brand-orange text-white border-brand-orange shadow-sm'
+                    : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {/* Store selector */}
@@ -183,7 +236,10 @@ export default function OrdersPage() {
             <input
               type="date"
               value={sinceDate}
-              onChange={(e) => setSinceDate(e.target.value)}
+              onChange={(e) => {
+                setSinceDate(e.target.value);
+                setQuickPeriod('custom');
+              }}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 bg-white"
             />
           </div>
@@ -194,7 +250,10 @@ export default function OrdersPage() {
             <input
               type="date"
               value={untilDate}
-              onChange={(e) => setUntilDate(e.target.value)}
+              onChange={(e) => {
+                setUntilDate(e.target.value);
+                setQuickPeriod('custom');
+              }}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 bg-white"
             />
           </div>

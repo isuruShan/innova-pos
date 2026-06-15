@@ -140,6 +140,24 @@ const orderSchema = new mongoose.Schema(
         eta: { type: Date, default: null }
       }
     },
+    totalReturnedAmount: { type: Number, default: 0, min: 0 },
+    returns: [{
+      returnedAt: { type: Date, default: Date.now },
+      returnedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+      reason: { type: String, default: '', trim: true },
+      refundAmount: { type: Number, required: true, min: 0 },
+      isFullReturn: { type: Boolean, default: false },
+      paymentType: { type: String },
+      items: [{
+        lineId: { type: mongoose.Schema.Types.ObjectId },
+        menuItem: { type: mongoose.Schema.Types.ObjectId, ref: 'MenuItem' },
+        name: { type: String },
+        qty: { type: Number, min: 1 },
+        unitPrice: { type: Number, min: 0 },
+        lineRefund: { type: Number, min: 0 },
+      }],
+    }],
   },
   { timestamps: true },
 );
