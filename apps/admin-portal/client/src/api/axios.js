@@ -64,10 +64,14 @@ api.interceptors.response.use(
       window.location.href = '/login';
       return Promise.reject(err);
     } else if (err.response?.status === 401) {
-      localStorage.removeItem('admin_token');
-      localStorage.removeItem('admin_refresh_token');
-      localStorage.removeItem('admin_user');
-      window.location.href = '/login';
+      if (!isLoginCall) {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_refresh_token');
+        localStorage.removeItem('admin_user');
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+      }
     }
     return Promise.reject(err);
   }
