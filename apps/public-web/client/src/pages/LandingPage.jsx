@@ -376,8 +376,14 @@ export default function LandingPage() {
       <section className="relative overflow-hidden pt-32 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
           <div className="absolute inset-0 bg-theme-hero-gradient transition-colors duration-250" />
-          <div className="absolute -left-[10%] -top-[20%] h-[500px] w-[500px] rounded-full bg-brand-orange/10 blur-[120px]" />
-          <div className="absolute -right-[10%] top-[10%] h-[500px] w-[500px] rounded-full bg-brand-orange/10 blur-[120px]" />
+          {/* High prominence pulsing orange glow circles */}
+          <div className="absolute -left-[10%] -top-[25%] h-[600px] w-[600px] rounded-full bg-brand-orange/20 blur-[130px] animate-pulse-slow" />
+          <div className="absolute -right-[10%] top-[5%] h-[600px] w-[600px] rounded-full bg-brand-orange/20 blur-[130px] animate-pulse-slow" />
+          {/* Animated geometric shapes */}
+          <div className="absolute top-[18%] left-[12%] w-10 h-10 rounded-full border-[3px] border-brand-orange/20 animate-float-slow" />
+          <div className="absolute top-[45%] right-[15%] w-14 h-14 rounded-xl border-2 border-brand-teal/20 rotate-12 animate-float-reverse" />
+          <div className="absolute bottom-[10%] left-[25%] w-6 h-6 bg-brand-orange/10 rotate-45 animate-pulse-slow" />
+          <div className="absolute top-[25%] right-[28%] w-8 h-8 rounded-full bg-brand-teal/15 blur-[2px] animate-float-slow" />
         </div>
 
         <div className="relative z-10 max-w-5xl mx-auto text-center">
@@ -413,7 +419,15 @@ export default function LandingPage() {
 
       {/* Alternate Features Showcases with Contextual AI Images */}
       <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 border-t border-theme-border/60 bg-theme-bg-surface/10 relative transition-colors duration-250">
-        <div className="max-w-6xl mx-auto space-y-28">
+        {/* Floating shapes inside features section */}
+        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden>
+          <div className="absolute top-[10%] right-[8%] w-12 h-12 rounded-full border-[3px] border-brand-teal/15 animate-float-slow" />
+          <div className="absolute top-[35%] left-[5%] w-10 h-10 bg-brand-orange/5 rounded-lg rotate-12 animate-float-reverse" />
+          <div className="absolute top-[65%] right-[5%] w-14 h-14 rounded-full border-2 border-brand-orange/15 animate-pulse-slow" />
+          <div className="absolute bottom-[10%] left-[8%] w-8 h-8 border-2 border-brand-teal/15 rotate-45 animate-float-slow" />
+        </div>
+
+        <div className="max-w-6xl mx-auto space-y-28 relative z-10">
           
           {/* Section 1: Table Plans & Seating Selections (Full-Service Restaurant) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -878,7 +892,7 @@ export default function LandingPage() {
                   'relative shrink-0 w-[min(100%,280px)] sm:w-[260px] rounded-2xl p-7 border flex flex-col min-h-[380px] transition-all snap-center ';
                 let cardStyle = undefined;
                 if (customCardBg) {
-                  cardShell += lightOnCard ? 'shadow-lg border-white/25' : 'shadow-md border-theme-border/50';
+                  cardShell += lightOnCard ? 'shadow-lg border-white/20' : 'shadow-md border-slate-200';
                   cardStyle = { background: customCardBg };
                 } else if (builtInFeatured) {
                   cardShell += 'border-brand-orange bg-theme-bg-card shadow-xl shadow-brand-orange/5';
@@ -887,6 +901,26 @@ export default function LandingPage() {
                 }
 
                 const priceInfo = getFormattedPriceInfo(plan);
+
+                // Define plan text classes dynamically to support admin-configured plan text colors
+                const textMutedClass = customCardBg
+                  ? (lightOnCard ? 'text-white/70' : 'text-slate-500')
+                  : 'text-theme-text-muted';
+                const textHeaderClass = customCardBg
+                  ? (lightOnCard ? 'text-white' : 'text-slate-900')
+                  : 'text-theme-text-header';
+                const textMainClass = customCardBg
+                  ? (lightOnCard ? 'text-white/90' : 'text-slate-700')
+                  : 'text-theme-text-main';
+                const textSubtitleClass = customCardBg
+                  ? (lightOnCard ? 'text-white/75' : 'text-slate-500')
+                  : 'text-theme-text-muted';
+                const textDurationClass = customCardBg
+                  ? (lightOnCard ? 'text-white/60' : 'text-slate-400')
+                  : 'text-theme-text-muted/70';
+                const checkColorClass = customCardBg && lightOnCard
+                  ? 'text-white'
+                  : 'text-brand-orange';
 
                 return (
                   <div
@@ -903,24 +937,24 @@ export default function LandingPage() {
                       </div>
                     )}
 
-                    <div className="text-sm font-semibold text-theme-text-muted mb-2">{plan.name}</div>
-                    <div className="text-xl sm:text-2xl font-extrabold text-theme-text-header mb-0.5 tracking-tight">
+                    <div className={`text-sm font-semibold mb-2 ${textMutedClass}`}>{plan.name}</div>
+                    <div className={`text-xl sm:text-2xl font-extrabold mb-0.5 tracking-tight ${textHeaderClass}`}>
                       {priceInfo.displayPrice}
                     </div>
                     {priceInfo.subtitle && (
-                      <div className="text-[10px] text-theme-text-muted font-semibold mb-1">
+                      <div className={`text-[10px] font-semibold mb-1 ${textSubtitleClass}`}>
                         {priceInfo.subtitle}
                       </div>
                     )}
-                    <div className="text-xs text-theme-text-muted/70 mb-6 uppercase tracking-wider">
+                    <div className={`text-xs mb-6 uppercase tracking-wider ${textDurationClass}`}>
                       {selectedCycle === 'yearly' ? 'per 365 days' : 'per 30 days'}
                     </div>
 
                     <ul className="space-y-3 mb-8 flex-1">
                       {bulletLines.map((f, i) => (
-                        <li key={`${plan._id || plan.code}-${i}`} className="flex items-start gap-2 text-xs text-theme-text-muted">
-                          <CheckCircle size={14} className="shrink-0 mt-0.5 text-brand-orange" />
-                          <span className="leading-snug text-theme-text-main">{f}</span>
+                        <li key={`${plan._id || plan.code}-${i}`} className={`flex items-start gap-2 text-xs ${textMutedClass}`}>
+                          <CheckCircle size={14} className={`shrink-0 mt-0.5 ${checkColorClass}`} />
+                          <span className={`leading-snug ${textMainClass}`}>{f}</span>
                         </li>
                       ))}
                     </ul>
