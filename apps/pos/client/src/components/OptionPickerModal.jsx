@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { X, Search } from 'lucide-react';
+import { X, Search, RotateCw } from 'lucide-react';
 import { filterMenuItems } from '../utils/menuItemSearch';
 import useSwipeDismiss from '../hooks/useSwipeDismiss';
 
@@ -324,6 +324,8 @@ export function TablePickerModal({
   selectedTableId,
   onSelect,
   currentOrderId,
+  onRefresh,
+  isRefreshing = false,
 }) {
   const { style, bind } = useSwipeDismiss({ onClose, open });
 
@@ -354,14 +356,30 @@ export function TablePickerModal({
               Occupied tables are disabled
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition"
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            {onRefresh && (
+              <button
+                type="button"
+                disabled={isRefreshing}
+                onClick={onRefresh}
+                className={`p-2 rounded-xl text-slate-400 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition ${
+                  isRefreshing ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+                aria-label="Refresh Tables"
+                title="Refresh Tables"
+              >
+                <RotateCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Tables grid */}
@@ -455,6 +473,7 @@ export function CustomerPickerModal({
   countryIso = 'LK',
   validateMobileFn,
   validateEmailFn,
+  isOffline = false,
 }) {
   const [showNewForm, setShowNewForm] = useState(false);
   const [quickName, setQuickName] = useState('');
@@ -668,23 +687,30 @@ export function CustomerPickerModal({
 
               {/* Add new customer section */}
               <div className="pt-2 border-t border-slate-700/60">
-                <button
-                  type="button"
-                  onClick={() => setShowNewForm((v) => !v)}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-slate-700 hover:border-slate-600 text-slate-400 hover:text-slate-300 font-medium text-sm transition"
-                >
-                  {showNewForm ? (
-                    <>
-                      <X size={16} />
-                      Cancel New Customer
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-lg">+</span>
-                      Add New Customer
-                    </>
-                  )}
-                </button>
+                {isOffline ? (
+                  <div className="p-3.5 text-center rounded-xl bg-slate-800/40 border border-slate-700/50 text-xs text-slate-400 flex items-center justify-center gap-2">
+                    <span>⚠️</span>
+                    <span>Customer creation is disabled in offline mode.</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowNewForm((v) => !v)}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-slate-700 hover:border-slate-600 text-slate-400 hover:text-slate-300 font-medium text-sm transition"
+                  >
+                    {showNewForm ? (
+                      <>
+                        <X size={16} />
+                        Cancel New Customer
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-lg">+</span>
+                        Add New Customer
+                      </>
+                    )}
+                  </button>
+                )}
 
                 {showNewForm && (
                   <div className="mt-3 space-y-3 p-4 rounded-xl border border-slate-700 bg-[var(--pos-surface-inset)]">

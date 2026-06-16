@@ -733,18 +733,30 @@ export default function NewOrder() {
     staleTime: 60_000,
   });
 
-  const { data: cafeTables = [] } = useQuery({
+  const { data: cafeTables = [], refetch: refetchTables, isFetching: isTablesFetching } = useQuery({
     queryKey: ['cafe-tables', selectedStoreId],
     queryFn: () => api.get('/tables').then((r) => r.data),
     enabled: isStoreReady && tableMgmt,
   });
 
-  const { data: tableOccupancy = [] } = useQuery({
+  const { data: tableOccupancy = [], refetch: refetchOccupancy, isFetching: isOccupancyFetching } = useQuery({
     queryKey: ['table-occupancy', selectedStoreId],
     queryFn: () => api.get('/tables/occupancy').then((r) => r.data),
     enabled: isStoreReady && tableMgmt,
     refetchInterval: 12_000,
   });
+
+  const handleRefreshTables = async () => {
+    try {
+      await Promise.all([
+        refetchTables(),
+        refetchOccupancy(),
+      ]);
+      showToast('Tables refreshed successfully');
+    } catch (err) {
+      showToast('Failed to refresh tables');
+    }
+  };
 
   const occupancyByTable = useMemo(() => {
     const m = new Map();
@@ -2104,6 +2116,8 @@ export default function NewOrder() {
         occupancyMap={occupancyByTable}
         selectedTableId={selectedTableId}
         onSelect={(tableId) => setSelectedTableId(tableId)}
+        onRefresh={handleRefreshTables}
+        isRefreshing={isTablesFetching || isOccupancyFetching}
       />
 
       {/* Customer Picker Modal */}
@@ -2132,6 +2146,7 @@ export default function NewOrder() {
         countryIso={branding.countryIso || 'LK'}
         validateMobileFn={validateMobile}
         validateEmailFn={validateEmail}
+        isOffline={!online}
       />
     </div>
     </CashierSessionGate>

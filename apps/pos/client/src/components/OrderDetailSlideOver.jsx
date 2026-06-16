@@ -281,18 +281,29 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
     });
   }, [menuItems, categoryRows]);
 
-  const { data: cafeTables = [] } = useQuery({
+  const { data: cafeTables = [], refetch: refetchTables, isFetching: isTablesFetching } = useQuery({
     queryKey: ['cafe-tables', selectedStoreId],
     queryFn: () => api.get('/tables').then((r) => r.data),
     enabled: !!order && isStoreReady && tableMgmt,
   });
 
-  const { data: tableOccupancy = [] } = useQuery({
+  const { data: tableOccupancy = [], refetch: refetchOccupancy, isFetching: isOccupancyFetching } = useQuery({
     queryKey: ['table-occupancy', selectedStoreId],
     queryFn: () => api.get('/tables/occupancy').then((r) => r.data),
     enabled: !!order && isStoreReady && tableMgmt,
     refetchInterval: 12_000,
   });
+
+  const handleRefreshTables = async () => {
+    try {
+      await Promise.all([
+        refetchTables(),
+        refetchOccupancy(),
+      ]);
+    } catch (err) {
+      // ignore
+    }
+  };
 
   const occupancyByTable = useMemo(() => {
     const m = new Map();
@@ -972,6 +983,8 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
           setTableNumber(label);
           setDirty(true);
         }}
+        onRefresh={handleRefreshTables}
+        isRefreshing={isTablesFetching || isOccupancyFetching}
       />
     </SlideOver>
   );

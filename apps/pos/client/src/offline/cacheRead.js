@@ -17,6 +17,7 @@ export function shouldCacheSuccessfulGet(config) {
     p.includes('/tenant-settings') ||
     p.includes('/promotions') ||
     p.includes('/categories') ||
+    p.includes('/tables') ||
     p.includes('/reports/day-end') ||
     p.includes('/users') ||
     p.includes('/suppliers') ||

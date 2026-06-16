@@ -43,6 +43,9 @@ export async function processSyncQueue() {
       if (item.clientRequestId) {
         headers['x-client-request-id'] = item.clientRequestId;
       }
+      if (item.storeId) {
+        headers['x-store-id'] = item.storeId;
+      }
 
       let res;
       if (item.method === 'POST') {

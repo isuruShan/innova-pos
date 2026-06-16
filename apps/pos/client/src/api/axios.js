@@ -42,7 +42,8 @@ api.interceptors.response.use(
     const reqUrl = cfg?.url || '';
     const isLoginCall = reqUrl.includes('/auth/login');
 
-    if (cfg?.headers?.['x-pos-sync-replay']) {
+    const isReplay = cfg?.headers?.['x-pos-sync-replay'];
+    if (isReplay && err.response?.status !== 401) {
       return Promise.reject(err);
     }
 

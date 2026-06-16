@@ -65,6 +65,7 @@ export async function serveOfflineMutation(err) {
     const body = { ...base, clientRequestId };
     const user = getStoredUser();
     const synthetic = buildSyntheticOrderFromPostBody(body, clientRequestId, user);
+    const storeId = config.headers?.['x-store-id'] || null;
 
     console.log('[serveOfflineMutation] Saving to IndexedDB:', synthetic);
     await putPendingOrder(clientRequestId, synthetic);
@@ -76,6 +77,7 @@ export async function serveOfflineMutation(err) {
       body,
       clientRequestId,
       createdAt: Date.now(),
+      storeId,
     });
     dispatchQueueChanged();
 
@@ -99,6 +101,7 @@ export async function serveOfflineMutation(err) {
       await advanceOfflineKitchenOrder(orderId);
     }
 
+    const storeId = config.headers?.['x-store-id'] || null;
     await enqueue({
       id: generateUUID(),
       kind: 'PUT_ORDER_STATUS',
@@ -107,6 +110,7 @@ export async function serveOfflineMutation(err) {
       body,
       clientRequestId: null,
       createdAt: Date.now(),
+      storeId,
     });
     dispatchQueueChanged();
 
