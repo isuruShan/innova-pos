@@ -37,15 +37,7 @@ export default function Navbar() {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            {/* Theme Toggle Switch */}
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="p-2.5 rounded-lg text-theme-text-muted hover:text-theme-text-header hover:bg-theme-bg-surface/50 border border-theme-border/40 transition-all cursor-pointer"
-              aria-label="Toggle theme"
-            >
-              {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
-            </button>
+
 
             <button
               type="button"
@@ -86,26 +78,7 @@ export default function Navbar() {
             </a>
           ))}
           
-          <div className="flex justify-between items-center border-t border-theme-border/60 pt-3 mt-1">
-            <span className="text-sm font-medium text-theme-text-muted">Appearance</span>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="px-3 py-1.5 rounded-lg text-theme-text-muted hover:text-theme-text-header hover:bg-theme-bg-surface border border-theme-border/60 transition-colors flex items-center gap-2 cursor-pointer"
-            >
-              {theme === 'light' ? (
-                <>
-                  <Moon size={14} />
-                  <span className="text-xs font-semibold">Dark Mode</span>
-                </>
-              ) : (
-                <>
-                  <Sun size={14} />
-                  <span className="text-xs font-semibold">Light Mode</span>
-                </>
-              )}
-            </button>
-          </div>
+
 
           <div className="border-t border-theme-border/60 pt-3 mt-1">
             <button

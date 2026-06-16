@@ -440,7 +440,7 @@ export default function LandingPage() {
                 Transform restaurant experiences with Table Management.
               </h2>
               <p className="text-theme-text-muted text-sm sm:text-base leading-relaxed">
-                Elevate your service with our advanced **Tables Plan** controls. Designed to bring total operational control to sit-down dining spots, Cafinity bridges the gap between customer convenience and kitchen execution.
+                Elevate your service with our advanced **Table Plan** controls. Designed to bring total operational control to sit-down dining spots, Cafinity bridges the gap between customer convenience and kitchen execution.
               </p>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
@@ -492,7 +492,7 @@ export default function LandingPage() {
                 </div>
                 <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
                   <h4 className="font-bold text-sm text-theme-text-header mb-1">Receipt Customization</h4>
-                  <p className="text-xs text-theme-text-muted">Format print templates, design customizable headers, and send electronic receipts seamlessly.</p>
+                  <p className="text-xs text-theme-text-muted">Format print templates, customize headers and footers, and design perfect physical receipts for your brand.</p>
                 </div>
               </div>
 
@@ -571,8 +571,8 @@ export default function LandingPage() {
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
                 <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
-                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Self-Checkout & Payments</h4>
-                  <p className="text-xs text-theme-text-muted">Allow guests to pay directly from their phones, cutting cashier workload and table turnover times.</p>
+                  <h4 className="font-bold text-sm text-theme-text-header mb-1">Guest Self-Ordering</h4>
+                  <p className="text-xs text-theme-text-muted">Allow guests to browse and place orders directly from their tables, streamlining operations without phone payment complexity.</p>
                 </div>
                 <div className="p-4 rounded-xl border border-theme-border bg-theme-bg-card/45">
                   <h4 className="font-bold text-sm text-theme-text-header mb-1">Automatic Table Mapping</h4>
@@ -648,26 +648,26 @@ export default function LandingPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <div className="w-9 h-9 rounded-lg bg-theme-bg-surface flex items-center justify-center text-brand-orange border border-theme-border">
-                    <Cpu size={16} />
+                    <BarChart3 size={16} />
                   </div>
-                  <h4 className="font-bold text-sm text-theme-text-header">AI Sales Forecasts</h4>
-                  <p className="text-xs text-theme-text-muted">Predict next week's inventory requirements based on historical volumes, local weather indicators, and holiday calendars.</p>
+                  <h4 className="font-bold text-sm text-theme-text-header">Comprehensive Accounting Module</h4>
+                  <p className="text-xs text-theme-text-muted">Natively manage operational finances, balance sheets, and tax reports directly linked to your daily sales logs.</p>
                 </div>
                 
                 <div className="space-y-2">
                   <div className="w-9 h-9 rounded-lg bg-theme-bg-surface flex items-center justify-center text-brand-orange border border-theme-border">
-                    <Activity size={16} />
+                    <PhoneIcon size={16} />
                   </div>
-                  <h4 className="font-bold text-sm text-theme-text-header">Smart Staff Schedulers</h4>
-                  <p className="text-xs text-theme-text-muted">Automatically allocate employee shifts to match predicted peak hours, cutting wage overheads.</p>
+                  <h4 className="font-bold text-sm text-theme-text-header">WhatsApp Ordering Integration</h4>
+                  <p className="text-xs text-theme-text-muted">Allow customers to browse menus, select items, and place direct orders entirely inside their WhatsApp chat.</p>
                 </div>
 
                 <div className="space-y-2">
                   <div className="w-9 h-9 rounded-lg bg-theme-bg-surface flex items-center justify-center text-brand-orange border border-theme-border">
-                    <Laptop size={16} />
+                    <ArrowLeftRight size={16} />
                   </div>
-                  <h4 className="font-bold text-sm text-theme-text-header">HQ Developer APIs</h4>
-                  <p className="text-xs text-theme-text-muted">Direct API access to integrate your transaction logs and stock sheets with custom ERP and bookkeeping portals.</p>
+                  <h4 className="font-bold text-sm text-theme-text-header">Direct Food Partner Integrations</h4>
+                  <p className="text-xs text-theme-text-muted">Establish direct API synchronization with major food delivery platforms like Uber Eats and PickMe Foods.</p>
                 </div>
               </div>
             </div>
@@ -769,14 +769,14 @@ export default function LandingPage() {
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-theme-bg-surface/10 border-t border-b border-theme-border/60 transition-colors duration-250">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
-            <h2 className="text-3xl font-extrabold text-theme-text-header mb-3">Concrete business transformation</h2>
-            <p className="text-theme-text-muted">Improvements cafes and fine dining venues notice within the first 30 days of moving to Cafinity.</p>
+            <h2 className="text-3xl font-extrabold text-theme-text-header mb-3">Operational transformation you can measure</h2>
+            <p className="text-theme-text-muted">Clear improvements specialty food venues and busy restaurants experience within their first 30 days of switching to Cafinity.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
             {[
-              { title: 'Zero order drift', desc: 'No lost tickets, no barista confusion. Direct cloud KDS routing ensures the coffee being poured is exactly what the customer ordered at the terminal.' },
-              { title: 'Optimized margin insight', desc: 'Automatically track component costs down to single milk cartons, syrup bottles, and bean bags. Know instantly which products bring true profit.' },
-              { title: 'Elevated customer retention', desc: 'Built-in loyalty programs sync from counter payments directly to mobile numbers. Keep customers returning for their morning brew habits.' }
+              { title: 'Zero order drift', desc: 'Direct KDS routing fires counter register and table orders straight to the kitchen baristas. Zero lost kitchen tickets, zero prep errors.' },
+              { title: 'Offline operational resilience', desc: 'Never stop ringing or serving. Terminals cache orders locally during outages, auto-syncing with your database the moment the connection returns.' },
+              { title: 'Elevated customer retention', desc: 'Link loyalty points to phone numbers at checkout. Bring morning regulars back for their daily coffee habits automatically.' }
             ].map((pillar, idx) => (
               <div key={idx} className="p-6 bg-theme-bg-card/60 border border-theme-border rounded-2xl">
                 <h3 className="font-bold text-base text-theme-text-header mb-2">{pillar.title}</h3>
