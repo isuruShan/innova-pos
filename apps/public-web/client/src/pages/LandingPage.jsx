@@ -124,7 +124,7 @@ function ContactSection() {
           <h2 className="text-3xl font-extrabold text-theme-text-header mb-3">Let's talk operations</h2>
           <p className="text-theme-text-muted mb-6">Have custom development requirements, migration requests, or questions about migrating from your old POS system? We are here to help.</p>
           <a
-            href="https://wa.me/94772539443"
+            href="https://wa.me/94723539443"
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-2.5 px-6 py-3 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg shadow-emerald-950/20 hover:shadow-emerald-950/30 hover:scale-[1.02] active:scale-[0.98] transition-all text-sm group"
@@ -379,11 +379,11 @@ export default function LandingPage() {
           {/* High prominence pulsing orange glow circles */}
           <div className="absolute -left-[10%] -top-[25%] h-[600px] w-[600px] rounded-full bg-brand-orange/20 blur-[130px] animate-pulse-slow" />
           <div className="absolute -right-[10%] top-[5%] h-[600px] w-[600px] rounded-full bg-brand-orange/20 blur-[130px] animate-pulse-slow" />
-          {/* Animated geometric shapes */}
-          <div className="absolute top-[18%] left-[12%] w-10 h-10 rounded-full border-[3px] border-brand-orange/20 animate-float-slow" />
-          <div className="absolute top-[45%] right-[15%] w-14 h-14 rounded-xl border-2 border-brand-teal/20 rotate-12 animate-float-reverse" />
-          <div className="absolute bottom-[10%] left-[25%] w-6 h-6 bg-brand-orange/10 rotate-45 animate-pulse-slow" />
-          <div className="absolute top-[25%] right-[28%] w-8 h-8 rounded-full bg-brand-teal/15 blur-[2px] animate-float-slow" />
+          {/* Animated geometric shapes - Enlarged */}
+          <div className="absolute top-[15%] left-[8%] w-20 h-20 rounded-full border-[4px] border-brand-orange/25 animate-float-slow" />
+          <div className="absolute top-[40%] right-[10%] w-28 h-28 rounded-2xl border-[3px] border-brand-teal/20 rotate-12 animate-float-reverse" />
+          <div className="absolute bottom-[8%] left-[20%] w-14 h-14 bg-brand-orange/15 rotate-45 animate-pulse-slow" />
+          <div className="absolute top-[22%] right-[24%] w-24 h-24 rounded-full bg-brand-teal/10 blur-[4px] animate-float-slow" />
         </div>
 
         <div className="relative z-10 max-w-5xl mx-auto text-center">
@@ -419,12 +419,12 @@ export default function LandingPage() {
 
       {/* Alternate Features Showcases with Contextual AI Images */}
       <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 border-t border-theme-border/60 bg-theme-bg-surface/10 relative transition-colors duration-250">
-        {/* Floating shapes inside features section */}
+        {/* Floating shapes inside features section - Enlarged */}
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden>
-          <div className="absolute top-[10%] right-[8%] w-12 h-12 rounded-full border-[3px] border-brand-teal/15 animate-float-slow" />
-          <div className="absolute top-[35%] left-[5%] w-10 h-10 bg-brand-orange/5 rounded-lg rotate-12 animate-float-reverse" />
-          <div className="absolute top-[65%] right-[5%] w-14 h-14 rounded-full border-2 border-brand-orange/15 animate-pulse-slow" />
-          <div className="absolute bottom-[10%] left-[8%] w-8 h-8 border-2 border-brand-teal/15 rotate-45 animate-float-slow" />
+          <div className="absolute top-[8%] right-[6%] w-24 h-24 rounded-full border-[4px] border-brand-teal/15 animate-float-slow" />
+          <div className="absolute top-[32%] left-[4%] w-20 h-20 bg-brand-orange/5 rounded-2xl rotate-12 animate-float-reverse" />
+          <div className="absolute top-[60%] right-[4%] w-28 h-28 rounded-full border-[3px] border-brand-orange/15 animate-pulse-slow" />
+          <div className="absolute bottom-[8%] left-[6%] w-16 h-16 border-[3px] border-brand-teal/15 rotate-45 animate-float-slow" />
         </div>
 
         <div className="max-w-6xl mx-auto space-y-28 relative z-10">

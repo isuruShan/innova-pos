@@ -24,7 +24,6 @@ html.light {
   --color-theme-hero-gradient: radial-gradient(circle at 50% -20%, rgba(234, 88, 12, 0.16), rgba(241, 245, 249, 0.5) 60%, #f8fafc 100%);
 }
 
-/* Brand: orange (primary CTAs), teal (accents/links), brown (dark surfaces & typography) */
 @theme {
   --color-theme-bg-main: var(--color-theme-bg-main);
   --color-theme-bg-card: var(--color-theme-bg-card);
@@ -47,6 +46,35 @@ html.light {
   --animate-float-slow: float 14s ease-in-out infinite;
   --animate-float-reverse: float-reverse 16s ease-in-out infinite;
   --animate-pulse-slow: pulse-slow 8s ease-in-out infinite;
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+      transform: translateY(-20px) rotate(10deg);
+    }
+  }
+
+  @keyframes float-reverse {
+    0%, 100% {
+      transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+      transform: translateY(18px) rotate(-10deg);
+    }
+  }
+
+  @keyframes pulse-slow {
+    0%, 100% {
+      opacity: 0.15;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.45;
+      transform: scale(1.15);
+    }
+  }
 }
 
 @layer base {
@@ -105,31 +133,3 @@ html.light {
   }
 }
 
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
-  }
-  50% {
-    transform: translateY(-15px) rotate(8deg);
-  }
-}
-
-@keyframes float-reverse {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
-  }
-  50% {
-    transform: translateY(12px) rotate(-8deg);
-  }
-}
-
-@keyframes pulse-slow {
-  0%, 100% {
-    opacity: 0.15;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.35;
-    transform: scale(1.12);
-  }
-}
