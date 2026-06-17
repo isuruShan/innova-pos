@@ -67,7 +67,24 @@ app.get('/api/health', (_req, res) =>
 );
 
 if (servePublicStatic) {
-  app.get('/{*path}', (_req, res) => res.sendFile(path.join(publicClientDist, 'index.html')));
+  let cachedIndexHtml = null;
+  app.get('/{*path}', (req, res) => {
+    const indexPath = path.join(publicClientDist, 'index.html');
+    try {
+      if (!cachedIndexHtml || process.env.NODE_ENV !== 'production') {
+        cachedIndexHtml = fs.readFileSync(indexPath, 'utf8');
+      }
+      const host = req.get('host');
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const origin = `${protocol}://${host}`;
+      
+      const dynamicHtml = cachedIndexHtml.replace(/https:\/\/cafinity\.io/g, origin);
+      res.send(dynamicHtml);
+    } catch (err) {
+      logger.error('Failed to dynamically serve index.html, falling back to static sendFile', { error: err.message });
+      res.sendFile(indexPath);
+    }
+  });
 }
 
 // eslint-disable-next-line no-unused-vars
