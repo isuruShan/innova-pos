@@ -198,7 +198,7 @@ export default function PlatformContactSection() {
             className={inputClass}
             value={form.publicWebsiteUrl}
             onChange={set('publicWebsiteUrl')}
-            placeholder="https://cafinity.io"
+            placeholder="https://www.cafinity.io"
             maxLength={websiteAttrs.maxLength}
           />
         </div>

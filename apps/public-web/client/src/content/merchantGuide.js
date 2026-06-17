@@ -1072,7 +1072,7 @@ export const GUIDE_SECTIONS = [
         body:
           'When you encounter platform defects, billing disputes, or technical issues you cannot resolve with the steps in this guide, contact Cafinity support through the official channels. Proper documentation and clear communication speeds up resolution:\n\n' +
           '**How to Contact Support:**\n' +
-          '• Use the website contact form (typically https://cafinity.io/contact or https://cafinity.io/support)\n' +
+          '• Use the website contact form (typically https://www.cafinity.io/contact or https://www.cafinity.io/support)\n' +
           '• Email support: support@cafinity.io (if email address is provided on the website)\n' +
           '• In-app support: Click "Help" or "Support" link in admin portal or POS navigation (if available)\n' +
           '• Emergency hotline: Use the phone number provided in your approval email (for critical outages only: payment processor down, POS completely inaccessible, data loss)\n\n' +

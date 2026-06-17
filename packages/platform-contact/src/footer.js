@@ -129,7 +129,7 @@ function buildEmailFooterHtml(contact) {
 function buildEmailHeaderHtml(contact) {
   const brand = esc(contact?.brandName || 'Cafinity POS');
   // Use public web URL for logo, fallback to placeholder if not configured
-  const publicWebUrl = process.env.PUBLIC_WEB_URL || process.env.VITE_PUBLIC_WEB_URL || 'https://cafinity.io';
+  const publicWebUrl = process.env.PUBLIC_WEB_URL || process.env.VITE_PUBLIC_WEB_URL || 'https://www.cafinity.io';
   const logoUrl = `${publicWebUrl.replace(/\/$/, '')}/logo-1.png`;
   return `
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
