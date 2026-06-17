@@ -56,7 +56,7 @@ export default function SocialShareWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState(null);
 
-  const shareUrl = 'https://cafinity.io';
+  const shareUrl = 'https://www.cafinity.io';
   const shareTitle = 'Cafinity — Cloud POS for cafés, coffee bars, and counter-service venues';
 
   const triggerFeedback = (message) => {
