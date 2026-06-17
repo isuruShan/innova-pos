@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import SocialShareWidget from '../components/SocialShareWidget';
 import api from '../api';
 import { useTheme } from '../context/ThemeContext';
 import { buildPlanCardBackground, buildPlanTagBackground, planUsesLightText } from '../utils/planAppearance';
@@ -1037,6 +1038,7 @@ export default function LandingPage() {
 
       <ContactSection />
       <Footer />
+      <SocialShareWidget />
     </div>
   );
 }
