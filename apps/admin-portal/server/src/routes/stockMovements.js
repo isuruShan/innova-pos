@@ -1,5 +1,7 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const StockMovement = require('../models/StockMovement');
+const InventorySession = require('../models/InventorySession');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter } = require('../middleware/storeScope');
 
@@ -77,10 +79,29 @@ router.get('/by-item/:inventoryId', protect, authorize('manager', 'merchant_admi
 
 /**
  * GET /stock-movements/by-session/:sessionId
- * Get all movements for a specific session
+ * Get all movements for a specific session (handles mock movements during active draft sessions)
  */
 router.get('/by-session/:sessionId', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
+    const session = await InventorySession.findOne({
+      _id: req.params.sessionId,
+      tenantId: req.tenantId,
+    }).populate('adjustments.inventoryItemId', 'itemName unit quantity minThreshold');
+
+    if (session && session.status === 'active') {
+      const mockMovements = session.adjustments.map(adj => ({
+        _id: adj._id || new mongoose.Types.ObjectId(),
+        inventoryItemId: adj.inventoryItemId,
+        quantity: adj.quantity,
+        previousQty: adj.inventoryItemId?.quantity || 0,
+        newQty: Math.max(0, (adj.inventoryItemId?.quantity || 0) + adj.quantity),
+        reason: adj.reason,
+        notes: adj.notes || '',
+        createdBy: session.userId,
+      }));
+      return res.json(mockMovements);
+    }
+
     const movements = await StockMovement.find({
       tenantId: req.tenantId,
       sessionId: req.params.sessionId,

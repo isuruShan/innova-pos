@@ -4,13 +4,14 @@ import {
   Plus, Edit2, Package, X, AlertTriangle, Truck, Search,
   LineChart as LineChartIcon, Calendar, User, SlidersHorizontal,
   Eye, Trash2, BarChart2, TrendingDown, TrendingUp, Layers,
-  Download, Upload
+  Download, Upload, Calculator
 } from 'lucide-react';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, BarChart, Bar, Cell, PieChart, Pie, Legend,
 } from 'recharts';
 import api from '../../api/axios';
+import { formatCurrency } from '../../utils/format';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import SlideOver from '../../components/SlideOver';
 import Badge from '../../components/Badge';
@@ -23,6 +24,7 @@ import InventoryAdjustments from '../../components/inventory/InventoryAdjustment
 import PageHeader from '../../components/PageHeader';
 import ResponsiveTable from '../../components/ResponsiveTable';
 import ViewModeToggle from '../../components/ViewModeToggle';
+import ListPagination from '../../components/common/ListPagination';
 import ImportModal from '../../components/ImportModal';
 import {
   exportInventoryToCSV,
@@ -70,6 +72,20 @@ function SupplierPills({ suppliers }) {
     </div>
   );
 }
+
+const FORMULA_FIELDS = {
+  wac: 'wacCost',
+  fifo: 'fifoCost',
+  lifo: 'lifoCost',
+  last_cost: 'lastCost',
+};
+
+const FORMULA_LABELS = {
+  wac: 'WAC',
+  fifo: 'FIFO',
+  lifo: 'LIFO',
+  last_cost: 'Last Cost',
+};
 
 export default function InventoryManagement() {
   const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
@@ -138,13 +154,7 @@ export default function InventoryManagement() {
   const { sort, order, toggleSort, sortParams } = useListSort('name', 'asc');
   const { toast, showToast, clearToast } = useToast();
 
-  // Infinite Scroll States & Logic
-  const [visibleCount, setVisibleCount] = useState(20);
-  const infiniteScrollTriggerRef = useRef(null);
 
-  useEffect(() => {
-    setVisibleCount(20);
-  }, [searchQuery, filter, activeTab]);
 
   // Category States
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
@@ -221,11 +231,49 @@ export default function InventoryManagement() {
   // Graph States
   const [graphItem, setGraphItem] = useState(null);
 
-  const { data: items = [], isPending: invPending } = useQuery({
-    queryKey: ['inventory', selectedStoreId, sortParams],
-    queryFn: () => api.get('/inventory', { params: { sort, order } }).then(r => r.data),
+  const [selectedFormulaState, setSelectedFormulaState] = useState(null);
+
+  const { data: settings } = useQuery({
+    queryKey: ['tenant-settings'],
+    queryFn: () => api.get('/tenant-settings').then(r => r.data),
+  });
+
+  const selectedFormula = selectedFormulaState || settings?.inventoryCostingMethod || 'wac';
+
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [sessionPage, setSessionPage] = useState(1);
+  const [sessionLimit, setSessionLimit] = useState(20);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedCategoryId, filter, activeTab]);
+
+  useEffect(() => {
+    setSessionPage(1);
+  }, [sessionSearch, sessionStatus, activeTab]);
+
+  const { data: inventoryData = { items: [], total: 0, page: 1, pages: 1, summary: { lowStockCount: 0, categoryCounts: {} } }, isPending: invPending, isFetching: invFetching } = useQuery({
+    queryKey: ['inventory', selectedStoreId, page, limit, sort, order, searchQuery, selectedCategoryId, filter, activeTab],
+    queryFn: () => api.get('/inventory', {
+      params: {
+        paginate: activeTab === 'stock' && selectedCategoryId !== null ? 'true' : 'false',
+        page,
+        limit,
+        sort,
+        order,
+        search: searchQuery,
+        categoryId: selectedCategoryId,
+        stockStatus: filter
+      }
+    }).then(r => r.data),
     enabled: isStoreReady,
   });
+
+  const items = activeTab === 'stock' && selectedCategoryId !== null
+    ? (inventoryData.items || [])
+    : (Array.isArray(inventoryData) ? inventoryData : (inventoryData.items || []));
 
   const { data: suppliers = [], isPending: supPending } = useQuery({
     queryKey: ['suppliers', selectedStoreId],
@@ -234,11 +282,23 @@ export default function InventoryManagement() {
   });
 
   // Query for Sessions History
-  const { data: sessions = [], isPending: sessionsPending } = useQuery({
-    queryKey: ['inventory-sessions', selectedStoreId, sessionStatus],
-    queryFn: () => api.get('/inventory-sessions', { params: { status: sessionStatus === 'all' ? undefined : sessionStatus } }).then(r => r.data),
+  const { data: sessionsData = { items: [], total: 0, page: 1, pages: 1 }, isPending: sessionsPending, isFetching: sessionsFetching } = useQuery({
+    queryKey: ['inventory-sessions', selectedStoreId, sessionPage, sessionLimit, sessionSort, sessionOrder, sessionSearch, sessionStatus],
+    queryFn: () => api.get('/inventory-sessions', {
+      params: {
+        paginate: 'true',
+        page: sessionPage,
+        limit: sessionLimit,
+        sort: sessionSort,
+        order: sessionOrder,
+        search: sessionSearch,
+        status: sessionStatus === 'all' ? undefined : sessionStatus
+      }
+    }).then(r => r.data),
     enabled: isStoreReady && activeTab === 'sessions',
   });
+
+  const sessions = sessionsData.items || [];
 
   // Query for Session Movements Details
   const { data: sessionMovements = [], isPending: movementsPending } = useQuery({
@@ -341,20 +401,24 @@ export default function InventoryManagement() {
 
 
 
-  const handleExportInventory = () => {
-    let itemsToExport = items;
-    if (selectedCategoryId) {
-      if (selectedCategoryId === 'uncategorized') {
-        itemsToExport = items.filter(item => !item.category);
-      } else {
-        itemsToExport = items.filter(item => {
-          const catId = item.category?._id || item.category;
-          return String(catId) === String(selectedCategoryId);
-        });
-      }
+  const handleExportInventory = async () => {
+    try {
+      showToast('Preparing export...', 'info');
+      const res = await api.get('/inventory', {
+        params: {
+          paginate: 'false',
+          sort,
+          order,
+          search: searchQuery,
+          categoryId: selectedCategoryId,
+          stockStatus: filter
+        }
+      });
+      exportInventoryToCSV(res.data);
+      showToast(`Exported ${res.data.length} inventory items`, 'success');
+    } catch (err) {
+      showToast('Failed to export inventory', 'error');
     }
-    exportInventoryToCSV(itemsToExport);
-    showToast(`Exported ${itemsToExport.length} inventory items`, 'success');
   };
 
   const handleImportInventory = async (csvData, mapping, onProgress) => {
@@ -522,87 +586,10 @@ export default function InventoryManagement() {
 
   const filtered = useMemo(() => {
     let result = items;
-    if (selectedCategoryId) {
-      if (selectedCategoryId === 'uncategorized') {
-        result = result.filter(item => !item.category);
-      } else {
-        result = result.filter(item => {
-          const catId = item.category?._id || item.category;
-          return String(catId) === String(selectedCategoryId);
-        });
-      }
-    }
-    if (filter !== 'all') {
-      result = result.filter(item => {
-        const s = getStockStatus(item.quantity, item.minThreshold);
-        return s.variant === filter;
-      });
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(item => item.itemName.toLowerCase().includes(q));
-    }
     return result;
-  }, [items, filter, searchQuery, selectedCategoryId]);
+  }, [items]);
 
-  useEffect(() => {
-    if (viewMode !== 'grid' || activeTab !== 'stock') return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisibleCount((prev) => prev + 20);
-        }
-      },
-      { rootMargin: '200px' }
-    );
-    const currentTrigger = infiniteScrollTriggerRef.current;
-    if (currentTrigger) {
-      observer.observe(currentTrigger);
-    }
-    return () => {
-      if (currentTrigger) {
-        observer.unobserve(currentTrigger);
-      }
-    };
-  }, [viewMode, activeTab, filtered.length]);
-
-  const filteredSessions = useMemo(() => {
-    let result = sessions;
-    if (sessionSearch.trim()) {
-      const q = sessionSearch.toLowerCase();
-      result = result.filter(s => 
-        (s.notes || '').toLowerCase().includes(q) || 
-        (s.userId?.name || '').toLowerCase().includes(q)
-      );
-    }
-    return result;
-  }, [sessions, sessionSearch]);
-
-  const sortedSessions = useMemo(() => {
-    let result = [...filteredSessions];
-    const dir = sessionOrder === 'asc' ? 1 : -1;
-    result.sort((a, b) => {
-      if (sessionSort === 'createdAt') {
-        return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir;
-      }
-      if (sessionSort === 'staff') {
-        const nameA = a.userId?.name || '';
-        const nameB = b.userId?.name || '';
-        return nameA.localeCompare(nameB) * dir;
-      }
-      if (sessionSort === 'adjustments') {
-        return ((a.adjustmentCount || 0) - (b.adjustmentCount || 0)) * dir;
-      }
-      if (sessionSort === 'totalQty') {
-        return ((a.totalQuantityChanged || 0) - (b.totalQuantityChanged || 0)) * dir;
-      }
-      if (sessionSort === 'status') {
-        return (a.status || '').localeCompare(b.status || '') * dir;
-      }
-      return 0;
-    });
-    return result;
-  }, [filteredSessions, sessionSort, sessionOrder]);
+  const sortedSessions = sessions;
 
   const lowCount = items.filter(i => getStockStatus(i.quantity, i.minThreshold).variant !== 'ok').length;
   const isPending = createMutation.isPending || updateMutation.isPending;
@@ -776,6 +763,21 @@ export default function InventoryManagement() {
                   </div>
                   
                   <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
+
+                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                    <span className="text-xs text-gray-500 font-semibold font-sans flex items-center gap-1">
+                      <Calculator size={13} /> Costing:
+                    </span>
+                    <select
+                      value={selectedFormula}
+                      onChange={(e) => setSelectedFormulaState(e.target.value)}
+                      className="bg-white border border-gray-300 text-gray-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+                    >
+                      {Object.keys(FORMULA_LABELS).map(key => (
+                        <option key={key} value={key}>{FORMULA_LABELS[key]}</option>
+                      ))}
+                    </select>
+                  </div>
                   
                   <div className="relative self-end sm:self-auto" ref={filterContainerRef}>
                     <button
@@ -874,6 +876,15 @@ export default function InventoryManagement() {
                         render: (item) => <span className="text-gray-500">{item.unit}</span>,
                       },
                       {
+                        key: 'unitCost', header: `Unit Cost (${FORMULA_LABELS[selectedFormula]})`,
+                        className: 'text-right',
+                        headerClassName: 'text-right',
+                        render: (item) => {
+                          const cost = item[FORMULA_FIELDS[selectedFormula]] || 0;
+                          return <span className="text-gray-900 font-medium">{formatCurrency(cost)}</span>;
+                        },
+                      },
+                      {
                         key: 'threshold', header: 'Min',
                         mobileLabel: 'Min Threshold',
                         render: (item) => <span className="text-gray-500">{item.minThreshold}</span>,
@@ -917,62 +928,67 @@ export default function InventoryManagement() {
                       <p className="text-sm text-gray-400">No inventory items found</p>
                     </div>
                   ) : (
-                    <div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {filtered.slice(0, visibleCount).map((item) => {
-                          const status = getStockStatus(item.quantity, item.minThreshold);
-                          return (
-                            <div key={item._id} className="bg-white border border-gray-200 rounded-xl p-3.5 flex flex-col justify-between hover:border-gray-300 transition shadow-sm">
-                              <div>
-                                <div className="flex items-start justify-between gap-2 mb-2">
-                                  <h4 className="text-gray-900 font-bold text-sm truncate">{item.itemName}</h4>
-                                  <Badge label={status.label} variant={status.variant} className="text-[10px] px-1.5 py-0.5" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {filtered.map((item) => {
+                        const status = getStockStatus(item.quantity, item.minThreshold);
+                        return (
+                          <div key={item._id} className="bg-white border border-gray-200 rounded-xl p-3.5 flex flex-col justify-between hover:border-gray-300 transition shadow-sm">
+                            <div>
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <h4 className="text-gray-900 font-bold text-sm truncate">{item.itemName}</h4>
+                                <Badge label={status.label} variant={status.variant} className="text-[10px] px-1.5 py-0.5" />
+                              </div>
+                              <div className="grid grid-cols-3 gap-2 mt-3 bg-gray-50 rounded-lg p-2.5 text-xs border border-gray-150">
+                                <div>
+                                  <p className="text-[10px] text-gray-400">Quantity</p>
+                                  <p className="font-semibold text-gray-800">{item.quantity} {item.unit}</p>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 mt-3 bg-gray-50 rounded-lg p-2.5 text-xs border border-gray-150">
-                                  <div>
-                                    <p className="text-[10px] text-gray-400">Quantity</p>
-                                    <p className="font-semibold text-gray-800">{item.quantity} {item.unit}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[10px] text-gray-400">Min Threshold</p>
-                                    <p className="font-semibold text-gray-800">{item.minThreshold} {item.unit}</p>
-                                  </div>
+                                <div>
+                                  <p className="text-[10px] text-gray-400">Min Threshold</p>
+                                  <p className="font-semibold text-gray-800">{item.minThreshold} {item.unit}</p>
                                 </div>
-                                <div className="mt-3">
-                                  <p className="text-[10px] text-gray-400 mb-1">Suppliers</p>
-                                  <SupplierPills suppliers={item.suppliers} />
+                                <div>
+                                  <p className="text-[10px] text-gray-400">Unit Cost ({FORMULA_LABELS[selectedFormula]})</p>
+                                  <p className="font-semibold text-gray-850">{formatCurrency(item[FORMULA_FIELDS[selectedFormula]] || 0)}</p>
                                 </div>
                               </div>
-
-                              <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                                <span className="text-[10px] text-gray-400">
-                                  Updated: {new Date(item.lastUpdated || item.updatedAt).toLocaleDateString()}
-                                </span>
-                                <div className="flex items-center gap-1">
-                                  <button onClick={() => setGraphItem(item)}
-                                    className="p-1.5 rounded-lg bg-gray-50 text-gray-400 hover:text-brand-orange hover:bg-gray-100 border border-gray-200 transition"
-                                    title="View Stock Movements & Graph">
-                                    <LineChartIcon size={13} />
-                                  </button>
-                                  <button onClick={() => openEdit(item)}
-                                    className="p-1.5 rounded-lg bg-gray-50 text-gray-400 hover:text-gray-900 hover:bg-gray-100 border border-gray-200 transition"
-                                    title="Edit Item Details">
-                                    <Edit2 size={13} />
-                                  </button>
-                                </div>
+                              <div className="mt-3">
+                                <p className="text-[10px] text-gray-400 mb-1">Suppliers</p>
+                                <SupplierPills suppliers={item.suppliers} />
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                      {filtered.length > visibleCount && (
-                        <div ref={infiniteScrollTriggerRef} className="h-10 flex items-center justify-center my-4">
-                          <span className="text-sm text-gray-500">Loading more items...</span>
-                        </div>
-                      )}
+
+                            <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                              <span className="text-[10px] text-gray-400">
+                                Updated: {new Date(item.lastUpdated || item.updatedAt).toLocaleDateString()}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => setGraphItem(item)}
+                                  className="p-1.5 rounded-lg bg-gray-50 text-gray-400 hover:text-brand-orange hover:bg-gray-100 border border-gray-200 transition"
+                                  title="View Stock Movements & Graph">
+                                  <LineChartIcon size={13} />
+                                </button>
+                                <button onClick={() => openEdit(item)}
+                                  className="p-1.5 rounded-lg bg-gray-50 text-gray-400 hover:text-gray-900 hover:bg-gray-100 border border-gray-200 transition"
+                                  title="Edit Item Details">
+                                  <Edit2 size={13} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )
                 )}
+                <ListPagination
+                  page={page}
+                  pages={inventoryData.pages || 1}
+                  total={inventoryData.total || 0}
+                  onPageChange={setPage}
+                  isFetching={invFetching}
+                  className="mt-4"
+                />
               </>
             )}
           </>
@@ -1179,6 +1195,14 @@ export default function InventoryManagement() {
                 ))}
               </div>
             )}
+            <ListPagination
+              page={sessionPage}
+              pages={sessionsData.pages || 1}
+              total={sessionsData.total || 0}
+              onPageChange={setSessionPage}
+              isFetching={sessionsFetching}
+              className="mt-4"
+            />
           </>
         )}
 

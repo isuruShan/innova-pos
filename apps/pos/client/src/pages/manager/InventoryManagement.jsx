@@ -4,7 +4,7 @@ import {
   Plus, Edit2, Package, X, AlertTriangle, Truck, Search,
   LineChart as LineChartIcon, Calendar, User, SlidersHorizontal,
   Eye, Trash2, BarChart2, TrendingDown, TrendingUp, Layers,
-  Download, Upload
+  Download, Upload, Calculator
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -12,6 +12,7 @@ import {
   CartesianGrid, Tooltip, BarChart, Bar, Cell, PieChart, Pie, Legend,
 } from 'recharts';
 import api from '../../api/axios';
+import { formatCurrency } from '../../utils/format';
 import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
 import Badge from '../../components/Badge';
@@ -23,6 +24,7 @@ import { useListSort } from '../../hooks/useListSort';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import InventoryAdjustments from '../../components/inventory/InventoryAdjustments';
 import PageHeader from '../../components/PageHeader';
+import ListPagination from '../../components/ListPagination';
 import ResponsiveTable from '../../components/ResponsiveTable';
 import ViewModeToggle from '../../components/ViewModeToggle';
 import ImportModal from '../../components/ImportModal';
@@ -72,6 +74,20 @@ function SupplierPills({ suppliers }) {
     </div>
   );
 }
+
+const FORMULA_FIELDS = {
+  wac: 'wacCost',
+  fifo: 'fifoCost',
+  lifo: 'lifoCost',
+  last_cost: 'lastCost',
+};
+
+const FORMULA_LABELS = {
+  wac: 'WAC',
+  fifo: 'FIFO',
+  lifo: 'LIFO',
+  last_cost: 'Last Cost',
+};
 
 export default function InventoryManagement() {
   const { selectedStoreId, isStoreReady } = useStoreContext();
@@ -192,11 +208,49 @@ export default function InventoryManagement() {
   // Graph States
   const [graphItem, setGraphItem] = useState(null);
 
-  const { data: items = [], isPending: invPending } = useQuery({
-    queryKey: ['inventory', selectedStoreId, sortParams],
-    queryFn: () => api.get('/inventory', { params: { sort, order } }).then(r => r.data),
+  const [selectedFormulaState, setSelectedFormulaState] = useState(null);
+
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [sessionPage, setSessionPage] = useState(1);
+  const [sessionLimit, setSessionLimit] = useState(20);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedCategoryId, filter, activeTab]);
+
+  useEffect(() => {
+    setSessionPage(1);
+  }, [sessionSearch, sessionStatus, activeTab]);
+
+  const { data: settings } = useQuery({
+    queryKey: ['tenant-settings'],
+    queryFn: () => api.get('/tenant-settings').then(r => r.data),
+  });
+
+  const selectedFormula = selectedFormulaState || settings?.inventoryCostingMethod || 'wac';
+
+  const { data: inventoryData = { items: [], total: 0, page: 1, pages: 1, summary: { lowStockCount: 0, categoryCounts: {} } }, isPending: invPending, isFetching: invFetching } = useQuery({
+    queryKey: ['inventory', selectedStoreId, page, limit, sort, order, searchQuery, selectedCategoryId, filter, activeTab],
+    queryFn: () => api.get('/inventory', {
+      params: {
+        paginate: activeTab === 'stock' && selectedCategoryId !== null ? 'true' : 'false',
+        page,
+        limit,
+        sort,
+        order,
+        search: searchQuery,
+        categoryId: selectedCategoryId,
+        stockStatus: filter
+      }
+    }).then(r => r.data),
     enabled: isStoreReady,
   });
+
+  const items = activeTab === 'stock' && selectedCategoryId !== null 
+    ? (inventoryData.items || []) 
+    : (Array.isArray(inventoryData) ? inventoryData : (inventoryData.items || []));
 
   const { data: suppliers = [], isPending: supPending } = useQuery({
     queryKey: ['suppliers', selectedStoreId],
@@ -205,11 +259,23 @@ export default function InventoryManagement() {
   });
 
   // Query for Sessions History
-  const { data: sessions = [], isPending: sessionsPending } = useQuery({
-    queryKey: ['inventory-sessions', selectedStoreId, sessionStatus],
-    queryFn: () => api.get('/inventory-sessions', { params: { status: sessionStatus === 'all' ? undefined : sessionStatus } }).then(r => r.data),
+  const { data: sessionsData = { items: [], total: 0, page: 1, pages: 1 }, isPending: sessionsPending, isFetching: sessionsFetching } = useQuery({
+    queryKey: ['inventory-sessions', selectedStoreId, sessionPage, sessionLimit, sessionSort, sessionOrder, sessionSearch, sessionStatus],
+    queryFn: () => api.get('/inventory-sessions', {
+      params: {
+        paginate: 'true',
+        page: sessionPage,
+        limit: sessionLimit,
+        sort: sessionSort,
+        order: sessionOrder,
+        search: sessionSearch,
+        status: sessionStatus === 'all' ? undefined : sessionStatus
+      }
+    }).then(r => r.data),
     enabled: isStoreReady && activeTab === 'sessions',
   });
+
+  const sessions = sessionsData.items || [];
 
   // Query for Session Movements Details
   const { data: sessionMovements = [], isPending: movementsPending } = useQuery({
@@ -312,20 +378,24 @@ export default function InventoryManagement() {
 
 
 
-  const handleExportInventory = () => {
-    let itemsToExport = items;
-    if (selectedCategoryId) {
-      if (selectedCategoryId === 'uncategorized') {
-        itemsToExport = items.filter(item => !item.category);
-      } else {
-        itemsToExport = items.filter(item => {
-          const catId = item.category?._id || item.category;
-          return String(catId) === String(selectedCategoryId);
-        });
-      }
+  const handleExportInventory = async () => {
+    try {
+      showToast('Preparing export...', 'info');
+      const res = await api.get('/inventory', {
+        params: {
+          paginate: 'false',
+          sort,
+          order,
+          search: searchQuery,
+          categoryId: selectedCategoryId,
+          stockStatus: filter
+        }
+      });
+      exportInventoryToCSV(res.data);
+      showToast(`Exported ${res.data.length} inventory items`, 'success');
+    } catch (err) {
+      showToast('Failed to export inventory', 'error');
     }
-    exportInventoryToCSV(itemsToExport);
-    showToast(`Exported ${itemsToExport.length} inventory items`, 'success');
   };
 
   const handleImportInventory = async (csvData, mapping, onProgress) => {
@@ -491,70 +561,13 @@ export default function InventoryManagement() {
     setForm(f => ({ ...f, suppliers: f.suppliers.filter(s => s !== id) }));
   };
 
-  const filtered = useMemo(() => {
-    let result = items;
-    if (selectedCategoryId) {
-      if (selectedCategoryId === 'uncategorized') {
-        result = result.filter(item => !item.category);
-      } else {
-        result = result.filter(item => {
-          const catId = item.category?._id || item.category;
-          return String(catId) === String(selectedCategoryId);
-        });
-      }
-    }
-    if (filter !== 'all') {
-      result = result.filter(item => {
-        const s = getStockStatus(item.quantity, item.minThreshold);
-        return s.variant === filter;
-      });
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(item => item.itemName.toLowerCase().includes(q));
-    }
-    return result;
-  }, [items, filter, searchQuery, selectedCategoryId]);
-
-  const filteredSessions = useMemo(() => {
-    let result = sessions;
-    if (sessionSearch.trim()) {
-      const q = sessionSearch.toLowerCase();
-      result = result.filter(s => 
-        (s.notes || '').toLowerCase().includes(q) || 
-        (s.userId?.name || '').toLowerCase().includes(q)
-      );
-    }
-    return result;
-  }, [sessions, sessionSearch]);
-
-  const sortedSessions = useMemo(() => {
-    let result = [...filteredSessions];
-    const dir = sessionOrder === 'asc' ? 1 : -1;
-    result.sort((a, b) => {
-      if (sessionSort === 'createdAt') {
-        return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir;
-      }
-      if (sessionSort === 'staff') {
-        const nameA = a.userId?.name || '';
-        const nameB = b.userId?.name || '';
-        return nameA.localeCompare(nameB) * dir;
-      }
-      if (sessionSort === 'adjustments') {
-        return ((a.adjustmentCount || 0) - (b.adjustmentCount || 0)) * dir;
-      }
-      if (sessionSort === 'totalQty') {
-        return ((a.totalQuantityChanged || 0) - (b.totalQuantityChanged || 0)) * dir;
-      }
-      if (sessionSort === 'status') {
-        return (a.status || '').localeCompare(b.status || '') * dir;
-      }
-      return 0;
-    });
-    return result;
-  }, [filteredSessions, sessionSort, sessionOrder]);
-
-  const lowCount = items.filter(i => getStockStatus(i.quantity, i.minThreshold).variant !== 'ok').length;
+  const filtered = items;
+  const sortedSessions = sessions;
+  const lowCount = activeTab === 'stock' && selectedCategoryId !== null
+    ? (inventoryData.summary?.lowStockCount || 0)
+    : (Array.isArray(inventoryData)
+        ? inventoryData.filter(i => getStockStatus(i.quantity, i.minThreshold).variant !== 'ok').length
+        : (inventoryData.summary?.lowStockCount || 0));
   const isPending = createMutation.isPending || updateMutation.isPending;  return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
       <Navbar groups={MANAGER_NAV_GROUPS} />
@@ -630,7 +643,7 @@ export default function InventoryManagement() {
                     <div className="flex items-center justify-between mt-4 border-t border-slate-700/40 pt-3">
                       <span className="text-xs text-slate-500 font-medium">Stock Items</span>
                       <span className="bg-slate-755/50 text-slate-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-slate-700">
-                        {items.filter(item => !item.category).length}
+                        {inventoryData.summary?.categoryCounts?.uncategorized || 0}
                       </span>
                     </div>
                   </div>
@@ -642,10 +655,7 @@ export default function InventoryManagement() {
                     </div>
                   ) : (
                     categories.map(cat => {
-                      const count = items.filter(item => {
-                        const catId = item.category?._id || item.category;
-                        return String(catId) === String(cat._id);
-                      }).length;
+                      const count = inventoryData.summary?.categoryCounts?.[cat._id] || 0;
                       return (
                         <div
                           key={cat._id}
@@ -708,6 +718,21 @@ export default function InventoryManagement() {
                   </div>
                   
                   <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
+
+                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                    <span className="text-xs text-slate-400 font-semibold font-sans flex items-center gap-1">
+                      <Calculator size={13} /> Costing:
+                    </span>
+                    <select
+                      value={selectedFormula}
+                      onChange={(e) => setSelectedFormulaState(e.target.value)}
+                      className="bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                    >
+                      {Object.keys(FORMULA_LABELS).map(key => (
+                        <option key={key} value={key}>{FORMULA_LABELS[key]}</option>
+                      ))}
+                    </select>
+                  </div>
                   
                   <div className="relative self-end sm:self-auto">
                     <button
@@ -806,6 +831,16 @@ export default function InventoryManagement() {
                         render: (item) => <span className="text-slate-400">{item.unit}</span>,
                       },
                       {
+                        key: 'unitCost', header: `Unit Cost (${FORMULA_LABELS[selectedFormula]})`,
+                        className: 'text-right',
+                        headerClassName: 'text-right',
+                        sortField: FORMULA_FIELDS[selectedFormula],
+                        render: (item) => {
+                          const cost = item[FORMULA_FIELDS[selectedFormula]] || 0;
+                          return <span className="text-[var(--pos-text-primary)] font-medium">{formatCurrency(cost)}</span>;
+                        },
+                      },
+                      {
                         key: 'threshold', header: 'Min',
                         mobileLabel: 'Min Threshold',
                         render: (item) => <span className="text-slate-400">{item.minThreshold}</span>,
@@ -859,7 +894,7 @@ export default function InventoryManagement() {
                                 <h4 className="text-[var(--pos-text-primary)] font-bold text-sm truncate">{item.itemName}</h4>
                                 <Badge label={status.label} variant={status.variant} className="text-[10px] px-1.5 py-0.5" />
                               </div>
-                              <div className="grid grid-cols-2 gap-2 mt-3 bg-[var(--pos-surface-inset)] rounded-lg p-2.5 text-xs border border-slate-800/60">
+                              <div className="grid grid-cols-3 gap-2 mt-3 bg-[var(--pos-surface-inset)] rounded-lg p-2.5 text-xs border border-slate-800/60">
                                 <div>
                                   <p className="text-[10px] text-slate-500">Quantity</p>
                                   <p className="font-semibold text-slate-300">{item.quantity} {item.unit}</p>
@@ -867,6 +902,10 @@ export default function InventoryManagement() {
                                 <div>
                                   <p className="text-[10px] text-slate-500">Min Threshold</p>
                                   <p className="font-semibold text-slate-300">{item.minThreshold} {item.unit}</p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] text-slate-500">Unit Cost ({FORMULA_LABELS[selectedFormula]})</p>
+                                  <p className="font-semibold text-slate-200">{formatCurrency(item[FORMULA_FIELDS[selectedFormula]] || 0)}</p>
                                 </div>
                               </div>
                               <div className="mt-3">
@@ -898,6 +937,14 @@ export default function InventoryManagement() {
                     </div>
                   )
                 )}
+                <ListPagination
+                  page={page}
+                  pages={inventoryData.pages || 1}
+                  total={inventoryData.total || 0}
+                  onPageChange={setPage}
+                  isFetching={invFetching}
+                  className="mt-4"
+                />
               </>
             )}
           </>
@@ -1104,6 +1151,14 @@ export default function InventoryManagement() {
                 ))}
               </div>
             )}
+            <ListPagination
+              page={sessionPage}
+              pages={sessionsData.pages || 1}
+              total={sessionsData.total || 0}
+              onPageChange={setSessionPage}
+              isFetching={sessionsFetching}
+              className="mt-4"
+            />
           </>
         )}
 

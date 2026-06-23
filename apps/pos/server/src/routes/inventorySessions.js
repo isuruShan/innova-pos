@@ -2,9 +2,12 @@ const express = require('express');
 const InventorySession = require('../models/InventorySession');
 const StockMovement = require('../models/StockMovement');
 const Inventory = require('../models/Inventory');
+const User = require('../models/User');
+const { recalculateInventoryCosts } = require('../utils/costCalculation');
 const { notifyMerchantAdmins } = require('../lib/notificationHelpers');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
+const { parsePageQuery, paginated, parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
 
@@ -14,22 +17,56 @@ const router = express.Router();
  */
 router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
+    const { paginate, search, status, userId } = req.query;
     const filter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
     
-    if (req.query.status) {
-      filter.status = req.query.status;
+    if (status) {
+      filter.status = status;
     }
-    if (req.query.userId) {
-      filter.userId = req.query.userId;
+    if (userId) {
+      filter.userId = userId;
     }
 
-    const sessions = await InventorySession.find(filter)
-      .populate('userId', 'name email')
-      .populate('reviewedBy', 'name email')
-      .sort({ createdAt: -1 })
-      .limit(100);
+    if (search) {
+      const matchingUsers = await User.find({
+        name: { $regex: search, $options: 'i' }
+      }).select('_id');
+      const userIds = matchingUsers.map(u => u._id);
+      
+      filter.$or = [
+        { notes: { $regex: search, $options: 'i' } },
+        { userId: { $in: userIds } }
+      ];
+    }
 
-    res.json(sessions);
+    const sort = parseSortQuery(req, {
+      createdAt: 'createdAt',
+      endedAt: 'endedAt',
+      adjustmentCount: 'adjustmentCount',
+      totalQty: 'totalQuantityChanged',
+      status: 'status',
+    }, { createdAt: -1 });
+
+    if (paginate === 'true') {
+      const { page, limit, skip } = parsePageQuery(req);
+      const total = await InventorySession.countDocuments(filter);
+      const sessions = await InventorySession.find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .populate('userId', 'name email')
+        .populate('reviewedBy', 'name email');
+      
+      res.json(paginated(sessions, total, page, limit));
+    } else {
+      const sessions = await InventorySession.find(filter)
+        .populate('userId', 'name email')
+        .populate('reviewedBy', 'name email')
+        .sort(sort)
+        .limit(100);
+      
+      res.json(sessions);
+    }
   } catch (err) {
     sendRouteError(res, err, { req });
   }
@@ -86,6 +123,8 @@ router.post('/start', protect, authorize('manager', 'merchant_admin', 'superadmi
       tenantId: req.tenantId,
       storeId,
       userId: req.user.id,
+      status: 'active',
+      adjustments: [],
     });
 
     const populated = await InventorySession.findById(session._id).populate('userId', 'name email');
@@ -97,7 +136,7 @@ router.post('/start', protect, authorize('manager', 'merchant_admin', 'superadmi
 
 /**
  * POST /inventory-sessions/:id/close
- * Close an adjustment session and notify admins
+ * Complete an adjustment session, commit draft changes to database, and notify admins
  */
 router.post('/:id/close', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
@@ -114,16 +153,51 @@ router.post('/:id/close', protect, authorize('manager', 'merchant_admin', 'super
       return res.status(404).json({ message: 'Active session not found' });
     }
 
-    // Update session
+    // Commit draft adjustments to Inventory and StockMovements
+    const movements = [];
+    for (const adj of session.adjustments) {
+      const invItem = await Inventory.findOne({
+        _id: adj.inventoryItemId,
+        tenantId: req.tenantId,
+      });
+      if (!invItem) continue;
+
+      const previousQty = invItem.quantity || 0;
+      const newQty = Math.max(0, previousQty + adj.quantity);
+
+      // Update actual inventory stock quantity
+      invItem.quantity = newQty;
+      invItem.lastUpdated = Date.now();
+      invItem.updatedBy = req.user.id;
+      await invItem.save();
+
+      // Recalculate costing in the background
+      recalculateInventoryCosts(req.tenantId, session.storeId, invItem._id).catch((err) => {
+        console.error(`[inventorySession close] Failed to recalculate costs for ${invItem._id}:`, err);
+      });
+
+      // Create committed stock movement audit log
+      const movement = await StockMovement.create({
+        tenantId: req.tenantId,
+        storeId: session.storeId,
+        inventoryItemId: invItem._id,
+        sessionId: session._id,
+        type: 'adjustment',
+        quantity: adj.quantity,
+        previousQty,
+        newQty,
+        reason: adj.reason,
+        notes: adj.notes || '',
+        createdBy: req.user.id,
+      });
+      movements.push(movement);
+    }
+
+    // Update session status to completed (closed)
     session.status = 'closed';
     session.endedAt = new Date();
     session.notes = notes || '';
     await session.save();
-
-    // Get movements for this session to build summary
-    const movements = await StockMovement.find({ sessionId: session._id })
-      .populate('inventoryItemId', 'itemName unit')
-      .sort({ createdAt: 1 });
 
     // Notify merchant admins if there were adjustments
     if (session.adjustmentCount > 0 && movements.length > 0) {
@@ -139,8 +213,8 @@ router.post('/:id/close', protect, authorize('manager', 'merchant_admin', 'super
         if (summary) {
           await notifyMerchantAdmins(req.tenantId, {
             type: 'inventory_session_closed',
-            title: 'Inventory Adjustment Session Closed',
-            body: `${req.user.name} closed an adjustment session with ${session.adjustmentCount} changes: ${summary}${moreSummary}`,
+            title: 'Inventory Adjustment Session Completed',
+            body: `${req.user.name} completed an adjustment session with ${session.adjustmentCount} changes: ${summary}${moreSummary}`,
             meta: {
               resourceType: 'inventory_session',
               resourceId: String(session._id),
@@ -160,6 +234,33 @@ router.post('/:id/close', protect, authorize('manager', 'merchant_admin', 'super
       .populate('reviewedBy', 'name email');
 
     res.json(populated);
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
+/**
+ * POST /inventory-sessions/:id/cancel
+ * Ignore/discard an active adjustment session without applying draft changes
+ */
+router.post('/:id/cancel', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+  try {
+    const session = await InventorySession.findOne({
+      _id: req.params.id,
+      tenantId: req.tenantId,
+      userId: req.user.id,
+      status: 'active',
+    });
+
+    if (!session) {
+      return res.status(404).json({ message: 'Active session not found' });
+    }
+
+    session.status = 'cancelled';
+    session.endedAt = new Date();
+    await session.save();
+
+    res.json(session);
   } catch (err) {
     sendRouteError(res, err, { req });
   }
@@ -191,7 +292,7 @@ router.put('/:id/review', protect, authorize('merchant_admin', 'superadmin'), te
 
 /**
  * POST /inventory-sessions/:id/adjust/:inventoryId
- * Make an adjustment within an active session
+ * Record/edit a draft adjustment within an active session (without modifying inventory yet)
  */
 router.post('/:id/adjust/:inventoryId', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
@@ -228,40 +329,70 @@ router.post('/:id/adjust/:inventoryId', protect, authorize('manager', 'merchant_
       return res.status(404).json({ message: 'Inventory item not found' });
     }
 
-    const previousQty = invItem.quantity;
-    const newQty = Math.max(0, previousQty + quantity); // Ensure non-negative
+    // Add or edit draft adjustment inside session adjustments array
+    const existingIndex = session.adjustments.findIndex(
+      (adj) => String(adj.inventoryItemId) === String(invItem._id)
+    );
 
-    // Update inventory
-    invItem.quantity = newQty;
-    invItem.lastUpdated = Date.now();
-    invItem.updatedBy = req.user.id;
-    await invItem.save();
-
-    // Create stock movement
-    const movement = await StockMovement.create({
-      tenantId: req.tenantId,
-      storeId: session.storeId,
+    const adjustmentData = {
       inventoryItemId: invItem._id,
-      sessionId: session._id,
-      type: 'adjustment',
       quantity,
-      previousQty,
-      newQty,
       reason,
       notes: notes || '',
-      createdBy: req.user.id,
-    });
+    };
+
+    if (existingIndex >= 0) {
+      session.adjustments[existingIndex] = adjustmentData;
+    } else {
+      session.adjustments.push(adjustmentData);
+    }
 
     // Update session stats
-    session.adjustmentCount += 1;
-    session.totalQuantityChanged += Math.abs(quantity);
+    session.adjustmentCount = session.adjustments.length;
+    session.totalQuantityChanged = session.adjustments.reduce(
+      (sum, adj) => sum + Math.abs(adj.quantity),
+      0
+    );
+
     await session.save();
+    res.json(session);
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
 
-    const populated = await StockMovement.findById(movement._id)
-      .populate('inventoryItemId', 'itemName unit quantity minThreshold')
-      .populate('createdBy', 'name email');
+/**
+ * DELETE /inventory-sessions/:id/adjust/:inventoryId
+ * Remove a draft adjustment from an active session
+ */
+router.delete('/:id/adjust/:inventoryId', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+  try {
+    // Verify session is active and belongs to user
+    const session = await InventorySession.findOne({
+      _id: req.params.id,
+      tenantId: req.tenantId,
+      userId: req.user.id,
+      status: 'active',
+    });
 
-    res.json(populated);
+    if (!session) {
+      return res.status(404).json({ message: 'Active session not found' });
+    }
+
+    // Remove from adjustments array
+    session.adjustments = session.adjustments.filter(
+      (adj) => String(adj.inventoryItemId) !== String(req.params.inventoryId)
+    );
+
+    // Update session stats
+    session.adjustmentCount = session.adjustments.length;
+    session.totalQuantityChanged = session.adjustments.reduce(
+      (sum, adj) => sum + Math.abs(adj.quantity),
+      0
+    );
+
+    await session.save();
+    res.json(session);
   } catch (err) {
     sendRouteError(res, err, { req });
   }

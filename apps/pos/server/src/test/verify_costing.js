@@ -2,15 +2,12 @@
 
 require('dotenv').config({ path: `${__dirname}/../../.env` });
 const mongoose = require('mongoose');
+const { loadSecretsEnvOrExit } = require('@innovapos/runtime-env');
 const { getMongoConnectionString } = require('@innovapos/mongo-connection');
 
 const Inventory = require('../models/Inventory');
 const GoodsReceipt = require('../models/GoodsReceipt');
 const { recalculateInventoryCosts } = require('../utils/costCalculation');
-
-const MONGO_URI = getMongoConnectionString({
-  fallback: 'mongodb://127.0.0.1:27017/pos_fastfood',
-});
 
 function assert(condition, message) {
   if (!condition) {
@@ -20,6 +17,8 @@ function assert(condition, message) {
 }
 
 async function run() {
+  await loadSecretsEnvOrExit();
+  const MONGO_URI = getMongoConnectionString();
   console.log(`Connecting to: ${MONGO_URI}`);
   await mongoose.connect(MONGO_URI);
   console.log('Connected to database.');

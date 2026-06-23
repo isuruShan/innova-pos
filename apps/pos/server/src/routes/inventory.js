@@ -5,22 +5,111 @@ const IngredientLink = require('../models/IngredientLink');
 const StockMovement = require('../models/StockMovement');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
-const { parseSortQuery } = require('../lib/listPagination');
+const { parsePageQuery, paginated, parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
 
 router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
-    const sort = parseSortQuery(req, {
+    const { paginate, search, categoryId, stockStatus } = req.query;
+    const storeFilter = buildStoreFilter(req);
+    const filter = { tenantId: req.tenantId, ...storeFilter };
+
+    // Search query on itemName
+    if (search) {
+      filter.itemName = { $regex: search, $options: 'i' };
+    }
+
+    // Category filtering
+    if (categoryId) {
+      if (categoryId === 'uncategorized') {
+        filter.category = null;
+      } else {
+        filter.category = categoryId;
+      }
+    }
+
+    // Stock Status filtering
+    if (stockStatus && stockStatus !== 'all') {
+      if (stockStatus === 'critical') {
+        filter.$or = [
+          { quantity: { $lte: 0 } },
+          { $expr: { $lt: ["$quantity", "$minThreshold"] } }
+        ];
+      } else if (stockStatus === 'low') {
+        filter.$and = [
+          { quantity: { $gt: 0 } },
+          { $expr: { $lt: ["$quantity", { $multiply: ["$minThreshold", 1.5] }] } },
+          { $expr: { $gte: ["$quantity", "$minThreshold"] } }
+        ];
+      } else if (stockStatus === 'ok') {
+        filter.$and = [
+          { quantity: { $gt: 0 } },
+          { $expr: { $gte: ["$quantity", { $multiply: ["$minThreshold", 1.5] }] } }
+        ];
+      }
+    }
+
+    const allowedSortFields = {
       name: 'itemName',
       quantity: 'quantity',
       createdAt: 'createdAt',
-    }, { itemName: 1 });
-    const items = await Inventory.find({ tenantId: req.tenantId, ...buildStoreFilter(req) })
-      .sort(sort)
-      .populate('suppliers', 'name phone email')
-      .populate('category', 'name description');
-    res.json(items);
+      wacCost: 'wacCost',
+      fifoCost: 'fifoCost',
+      lifoCost: 'lifoCost',
+      lastCost: 'lastCost',
+      wac: 'wacCost',
+      fifo: 'fifoCost',
+      lifo: 'lifoCost',
+      last_cost: 'lastCost',
+    };
+    const sort = parseSortQuery(req, allowedSortFields, { itemName: 1 });
+
+    if (paginate === 'true') {
+      const { page, limit, skip } = parsePageQuery(req);
+      const total = await Inventory.countDocuments(filter);
+      const items = await Inventory.find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .populate('suppliers', 'name phone email')
+        .populate('category', 'name description');
+
+      // Calculate summaries (lowStockCount and categoryCounts)
+      const lowStockCount = await Inventory.countDocuments({
+        tenantId: req.tenantId,
+        ...storeFilter,
+        $or: [
+          { quantity: { $lte: 0 } },
+          { $expr: { $lt: ["$quantity", "$minThreshold"] } }
+        ]
+      });
+
+      const catCountsRaw = await Inventory.aggregate([
+        { $match: { tenantId: req.tenantId, ...storeFilter } },
+        { $group: { _id: "$category", count: { $sum: 1 } } }
+      ]);
+      
+      const categoryCounts = {};
+      catCountsRaw.forEach(group => {
+        const key = group._id ? String(group._id) : 'uncategorized';
+        categoryCounts[key] = group.count;
+      });
+
+      res.json({
+        ...paginated(items, total, page, limit),
+        summary: {
+          lowStockCount,
+          categoryCounts,
+        }
+      });
+    } else {
+      const items = await Inventory.find(filter)
+        .sort(sort)
+        .populate('suppliers', 'name phone email')
+        .populate('category', 'name description');
+      res.json(items);
+    }
   } catch (err) {
     sendRouteError(res, err, { req });
   }

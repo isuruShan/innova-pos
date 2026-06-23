@@ -35,10 +35,32 @@ const inventorySessionSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['active', 'closed'],
+      enum: ['active', 'closed', 'cancelled'],
       default: 'active',
       index: true,
     },
+    adjustments: [
+      {
+        inventoryItemId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Inventory',
+          required: true,
+        },
+        quantity: {
+          type: Number,
+          required: true,
+        },
+        reason: {
+          type: String,
+          required: true,
+        },
+        notes: {
+          type: String,
+          default: '',
+          trim: true,
+        }
+      }
+    ],
     adjustmentCount: {
       type: Number,
       default: 0,
