@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Calendar, DollarSign, Percent, BarChart3, ArrowUpRight, TrendingUp, Filter } from 'lucide-react';
+import { Calendar, DollarSign, Percent, BarChart3, ArrowUpRight, TrendingUp, Filter, Download } from 'lucide-react';
 import api from '../../api/axios';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
 import { useStoreContext } from '../../context/StoreContext';
+import { exportToCsv } from '../../utils/exportCsv';
 
 function toYMD(d) {
   const x = new Date(d);
@@ -82,11 +83,46 @@ export default function FoodmarketCommissionsPage() {
         .then((r) => r.data),
   });
 
+  const handleExport = () => {
+    if (!report || !report.orders || report.orders.length === 0) return;
+    const headers = [
+      'Order Number',
+      'Store Name',
+      'Date & Time',
+      'Channel',
+      'Order Amount',
+      'Commission Amount',
+    ];
+    const rows = report.orders.map((o) => [
+      `#${o.orderNumber}`,
+      o.storeName,
+      new Date(o.createdAt).toLocaleString(undefined, {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      }),
+      o.partnerName,
+      o.totalAmount.toFixed(2),
+      o.commissionAmount.toFixed(2),
+    ]);
+    exportToCsv('channel_commissions_report', headers, rows);
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Commissions & Channel Sales</h1>
-        <p className="text-gray-500 mt-1">Monitor revenue share, flat charges, and payouts for integrated food market channels.</p>
+      <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Commissions & Channel Sales</h1>
+          <p className="text-gray-500 mt-1">Monitor revenue share, flat charges, and payouts for integrated food market channels.</p>
+        </div>
+        {report && report.orders && report.orders.length > 0 && (
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 bg-brand-teal hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-xl text-sm transition shadow-sm cursor-pointer w-full md:w-auto justify-center"
+          >
+            <Download size={15} />
+            Export CSV
+          </button>
+        )}
       </div>
 
       {/* Filters Card */}
@@ -109,7 +145,7 @@ export default function FoodmarketCommissionsPage() {
                 onClick={() => applyPreset(p.value)}
                 className={`px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer border ${
                   quickPeriod === p.value
-                    ? 'bg-brand-orange text-white border-brand-orange shadow-sm'
+                    ? 'bg-brand-teal text-white border-brand-teal shadow-sm'
                     : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
                 }`}
               >
@@ -126,7 +162,7 @@ export default function FoodmarketCommissionsPage() {
             <select
               value={selectedStore}
               onChange={(e) => setSelectedStore(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 bg-white text-gray-955 font-medium"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/30 bg-white text-gray-955 font-medium"
             >
               <option value="all">All Stores</option>
               {stores.map((s) => (
@@ -142,7 +178,7 @@ export default function FoodmarketCommissionsPage() {
             <select
               value={partnerId}
               onChange={(e) => setPartnerId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 bg-white text-gray-955 font-medium"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/30 bg-white text-gray-955 font-medium"
             >
               <option value="">All Channels</option>
               {partners.map((p) => (
@@ -161,7 +197,7 @@ export default function FoodmarketCommissionsPage() {
                 setFrom(e.target.value);
                 setQuickPeriod('custom');
               }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 bg-white text-gray-955 font-medium"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/30 bg-white text-gray-955 font-medium"
             />
           </div>
           <div className="w-full">
@@ -173,7 +209,7 @@ export default function FoodmarketCommissionsPage() {
                 setTo(e.target.value);
                 setQuickPeriod('custom');
               }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 bg-white text-gray-955 font-medium"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/30 bg-white text-gray-955 font-medium"
             />
           </div>
         </div>
@@ -182,7 +218,7 @@ export default function FoodmarketCommissionsPage() {
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <button
             onClick={handleResetFilters}
-            className="px-3 py-1.5 border border-gray-300 hover:bg-gray-50 rounded-lg text-xs font-semibold text-gray-650 transition cursor-pointer"
+            className="px-3 py-1.5 border border-gray-300 hover:bg-gray-50 rounded-lg text-xs font-semibold text-gray-655 transition cursor-pointer"
           >
             Clear Filters
           </button>
@@ -192,7 +228,7 @@ export default function FoodmarketCommissionsPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
         {[
-          { label: 'Total Orders', value: report.ordersCount, icon: BarChart3, color: 'text-brand-orange bg-brand-orange/10' },
+          { label: 'Total Orders', value: report.ordersCount, icon: BarChart3, color: 'text-brand-teal bg-brand-teal/10' },
           { label: 'Gross Channel Sales', value: `${report.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, icon: TrendingUp, color: 'text-green-600 bg-green-50' },
           { label: 'Total Commissions', value: `${report.totalCommissions.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, icon: Percent, color: 'text-sky-600 bg-sky-50' },
         ].map((stat, idx) => (
@@ -226,7 +262,7 @@ export default function FoodmarketCommissionsPage() {
                 <div key={ps.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                   <div className="flex justify-between items-center mb-2">
                     <h4 className="font-bold text-gray-900">{ps.name}</h4>
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-brand-orange/10 text-brand-orange">
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-brand-teal/10 text-brand-teal">
                       {ps.ordersCount} orders
                     </span>
                   </div>
@@ -281,6 +317,12 @@ export default function FoodmarketCommissionsPage() {
                           {o.partnerName}
                         </span>
                       </div>
+                      {selectedStore === 'all' && (
+                        <div className="flex justify-between items-center mt-1">
+                          <span className="text-xs text-gray-500">Store:</span>
+                          <span className="text-xs text-gray-705 font-semibold">{o.storeName}</span>
+                        </div>
+                      )}
                       <div className="border-t border-gray-100 my-2 pt-2 flex justify-between text-xs font-medium">
                         <div>
                           <p className="text-[9px] text-gray-400">Amount</p>
@@ -290,16 +332,17 @@ export default function FoodmarketCommissionsPage() {
                           <p className="text-[9px] text-gray-400">Commission</p>
                           <p className="text-sky-700 font-bold">{o.commissionAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                         </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
             ) : (
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
                   <tr className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-200">
                     <th className="px-6 py-3">Order No</th>
+                    {selectedStore === 'all' && <th className="px-6 py-3">Store</th>}
                     <th className="px-6 py-3">Date</th>
                     <th className="px-6 py-3">Channel</th>
                     <th className="px-6 py-3 text-right">Amount</th>
@@ -310,6 +353,7 @@ export default function FoodmarketCommissionsPage() {
                   {report.orders.map((o) => (
                     <tr key={o._id} className="hover:bg-gray-50/70 transition-colors">
                       <td className="px-6 py-4 font-semibold text-gray-900">#{o.orderNumber}</td>
+                      {selectedStore === 'all' && <td className="px-6 py-4 text-gray-500">{o.storeName}</td>}
                       <td className="px-6 py-4 text-gray-500">
                         {new Date(o.createdAt).toLocaleString(undefined, {
                           dateStyle: 'short',

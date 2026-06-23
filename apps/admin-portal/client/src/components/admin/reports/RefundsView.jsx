@@ -160,7 +160,7 @@ export default function RefundsView({ dateFrom, dateTo, registerExport }) {
           </div>
         </div>
         <div className="bg-white border border-gray-250 rounded-xl p-4 flex items-center gap-3">
-          <div className="p-2.5 bg-brand-orange/10 text-brand-orange rounded-lg">
+          <div className="p-2.5 bg-brand-teal/10 text-brand-teal rounded-lg">
             <AlertTriangle size={18} />
           </div>
           <div>
@@ -207,7 +207,7 @@ export default function RefundsView({ dateFrom, dateTo, registerExport }) {
             <select
               value={reasonFilter}
               onChange={(e) => setReasonFilter(e.target.value)}
-              className="bg-white border border-gray-300 text-gray-800 text-xs rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+              className="bg-white border border-gray-300 text-gray-800 text-xs rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-teal/30"
             >
               <option value="">All Reasons</option>
               {uniqueReasons.map((r) => (
@@ -225,7 +225,7 @@ export default function RefundsView({ dateFrom, dateTo, registerExport }) {
                 placeholder="Min"
                 value={minAmount}
                 onChange={(e) => setMinAmount(e.target.value)}
-                className="bg-white border border-gray-300 text-gray-850 text-xs rounded-lg px-3 py-1.5 w-full focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+                className="bg-white border border-gray-300 text-gray-850 text-xs rounded-lg px-3 py-1.5 w-full focus:outline-none focus:ring-2 focus:ring-brand-teal/30"
               />
               <span className="text-gray-450 text-xs">to</span>
               <input
@@ -233,7 +233,7 @@ export default function RefundsView({ dateFrom, dateTo, registerExport }) {
                 placeholder="Max"
                 value={maxAmount}
                 onChange={(e) => setMaxAmount(e.target.value)}
-                className="bg-white border border-gray-300 text-gray-850 text-xs rounded-lg px-3 py-1.5 w-full focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+                className="bg-white border border-gray-300 text-gray-850 text-xs rounded-lg px-3 py-1.5 w-full focus:outline-none focus:ring-2 focus:ring-brand-teal/30"
               />
             </div>
           </div>
@@ -332,7 +332,7 @@ export default function RefundsView({ dateFrom, dateTo, registerExport }) {
               ) : (
                 sortedData.map((d) => (
                   <tr key={`${d.orderId}_${d.returnedAt}`} className="hover:bg-gray-50/50">
-                    <td className="px-4 py-3.5 font-bold text-brand-orange">
+                    <td className="px-4 py-3.5 font-bold text-brand-teal">
                       #{String(d.orderNumber).padStart(3, '0')}
                     </td>
                     <td className="px-4 py-3.5 text-gray-500">

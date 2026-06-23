@@ -233,7 +233,7 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
                     sortField: 'orders',
                     className: 'text-right',
                     headerClassName: 'text-right',
-                    render: (t) => <span className="font-mono text-slate-350">{t.orders}</span>,
+                    render: (t) => <span className="text-slate-350">{t.orders}</span>,
                   },
                   {
                     key: 'revenue',
@@ -241,7 +241,7 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
                     sortField: 'revenue',
                     className: 'text-right',
                     headerClassName: 'text-right',
-                    render: (t) => <span className="font-mono font-semibold text-slate-200">{formatCurrency(t.revenue)}</span>,
+                    render: (t) => <span className="font-semibold text-slate-200">{formatCurrency(t.revenue)}</span>,
                   },
                 ]}
               />
@@ -318,7 +318,7 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
                     sortField: 'orders',
                     className: 'text-right',
                     headerClassName: 'text-right',
-                    render: (s) => <span className="font-mono text-slate-355">{s.orders}</span>,
+                    render: (s) => <span className="text-slate-355">{s.orders}</span>,
                   },
                   {
                     key: 'revenue',
@@ -326,7 +326,7 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
                     sortField: 'revenue',
                     className: 'text-right',
                     headerClassName: 'text-right',
-                    render: (s) => <span className="font-mono font-semibold text-slate-200">{formatCurrency(s.revenue)}</span>,
+                    render: (s) => <span className="font-semibold text-slate-200">{formatCurrency(s.revenue)}</span>,
                   },
                 ]}
               />

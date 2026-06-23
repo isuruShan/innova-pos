@@ -147,10 +147,10 @@ export default function LoyaltyReportView({ dateFrom, dateTo, registerExport }) 
                 ) : (
                   [...trend].reverse().map((item) => (
                     <tr key={item.date} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-mono text-gray-500">{item.date}</td>
-                      <td className="px-4 py-3 text-right font-mono font-semibold text-amber-600">{item.issued}</td>
-                      <td className="px-4 py-3 text-right font-mono font-semibold text-teal-650">{item.redeemed}</td>
-                      <td className="px-4 py-3 text-right font-mono text-gray-800 font-semibold">{formatCurrency(item.discount)}</td>
+                      <td className="px-4 py-3 text-gray-500">{item.date}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-amber-600">{item.issued}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-teal-650">{item.redeemed}</td>
+                      <td className="px-4 py-3 text-right text-gray-800 font-semibold">{formatCurrency(item.discount)}</td>
                     </tr>
                   ))
                 )}

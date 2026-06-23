@@ -96,7 +96,7 @@ export default function HourlySalesView({ dateFrom, dateTo, registerExport }) {
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
-          <div className="p-2.5 bg-brand-orange/10 text-brand-orange rounded-lg">
+          <div className="p-2.5 bg-brand-teal/10 text-brand-teal rounded-lg">
             <Clock size={18} />
           </div>
           <div>
@@ -230,7 +230,7 @@ export default function HourlySalesView({ dateFrom, dateTo, registerExport }) {
             <span>Total: 24h Summary</span>
             <div className="flex gap-3">
               <span>Orders: <span className="text-gray-800">{totalOrders}</span></span>
-              <span>Sales: <span className="text-brand-orange">{formatCurrency(totalRevenue)}</span></span>
+              <span>Sales: <span className="text-brand-teal">{formatCurrency(totalRevenue)}</span></span>
             </div>
           </div>
         </div>

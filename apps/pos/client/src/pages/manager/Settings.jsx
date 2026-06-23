@@ -81,7 +81,18 @@ function ChargesTab() {
   });
 
   const set = (key, field, value) =>
-    setLocal(prev => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
+    setLocal(prev => {
+      const nextObj = { ...prev[key], [field]: value };
+      if (field === 'taxRate') {
+        const rateVal = parseFloat(value) || 0;
+        if (rateVal === 0) {
+          nextObj.taxComponents = [];
+        } else {
+          nextObj.taxComponents = [{ name: 'Tax', rate: rateVal, isCompound: false }];
+        }
+      }
+      return { ...prev, [key]: nextObj };
+    });
 
   if (!isStoreReady || isPending || !local) return <SettingsChargesSkeleton />;
 

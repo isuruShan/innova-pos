@@ -207,7 +207,7 @@ export default function PaymentReconciliationView({ dateFrom, dateTo, registerEx
             <span>Payment Summary</span>
             <div className="flex gap-4">
               <span>Orders: <span className="text-gray-700">{totalOrders}</span></span>
-              <span>Sales: <span className="text-brand-orange">{formatCurrency(totalRevenue)}</span></span>
+              <span>Sales: <span className="text-brand-teal">{formatCurrency(totalRevenue)}</span></span>
             </div>
           </div>
         </div>

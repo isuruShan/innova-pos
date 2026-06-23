@@ -331,10 +331,10 @@ export default function RefundsView({ dateFrom, dateTo, registerExport }) {
               ) : (
                 sortedData.map((d) => (
                   <tr key={`${d.orderId}_${d.returnedAt}`} className="hover:bg-slate-800/10">
-                    <td className="px-4 py-3.5 font-mono font-bold text-amber-500">
+                    <td className="px-4 py-3.5 font-bold text-amber-500">
                       #{String(d.orderNumber).padStart(3, '0')}
                     </td>
-                    <td className="px-4 py-3.5 font-mono text-slate-400">
+                    <td className="px-4 py-3.5 text-slate-400">
                       {formatDateTime(d.returnedAt)}
                     </td>
                     <td className="px-4 py-3.5 font-medium text-slate-200">
@@ -358,7 +358,7 @@ export default function RefundsView({ dateFrom, dateTo, registerExport }) {
                         {d.reason}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-right font-bold text-slate-200 font-mono">
+                    <td className="px-4 py-3.5 text-right font-bold text-slate-200">
                       {formatCurrency(d.refundAmount)}
                     </td>
                   </tr>

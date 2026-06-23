@@ -281,8 +281,14 @@ router.get('/foodmarket', protect, authorize('manager', 'merchant_admin', 'super
     };
 
     const [hotOrders, coldOrders] = await Promise.all([
-      Order.find(queryParams).populate({ path: 'foodmarketPartnerId', model: 'FoodmarketPartner', select: 'name commissionType commissionFlat commissionPercentage' }).lean(),
-      OrderArchive.find(queryParams).populate({ path: 'foodmarketPartnerId', model: 'FoodmarketPartner', select: 'name commissionType commissionFlat commissionPercentage' }).lean(),
+      Order.find(queryParams)
+        .populate({ path: 'foodmarketPartnerId', model: 'FoodmarketPartner', select: 'name commissionType commissionFlat commissionPercentage' })
+        .populate({ path: 'storeId', model: 'Store', select: 'name' })
+        .lean(),
+      OrderArchive.find(queryParams)
+        .populate({ path: 'foodmarketPartnerId', model: 'FoodmarketPartner', select: 'name commissionType commissionFlat commissionPercentage' })
+        .populate({ path: 'storeId', model: 'Store', select: 'name' })
+        .lean(),
     ]);
 
     const orders = [...hotOrders, ...coldOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -346,6 +352,7 @@ router.get('/foodmarket', protect, authorize('manager', 'merchant_admin', 'super
         subtotal: o.subtotal,
         commissionAmount: o._commissionAmount ?? o.commissionAmount ?? 0,
         partnerName: o.foodmarketPartnerId ? o.foodmarketPartnerId.name : 'Unknown Partner',
+        storeName: o.storeId ? (o.storeId.name || 'Unknown Store') : 'Unknown Store',
       })),
     });
   } catch (err) {

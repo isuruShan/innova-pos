@@ -192,9 +192,9 @@ export default function PaymentReconciliationView({ dateFrom, dateTo, registerEx
                         <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
                         {PAYMENT_LABELS[d.paymentType] || d.paymentType}
                       </td>
-                      <td className="px-4 py-3.5 text-right font-mono text-slate-400">{d.orders}</td>
-                      <td className="px-4 py-3.5 text-right font-semibold text-slate-200 font-mono">{formatCurrency(d.revenue)}</td>
-                      <td className="px-4 py-3.5 text-right font-mono text-slate-400">{formatCurrency(d.avgOrderValue)}</td>
+                      <td className="px-4 py-3.5 text-right text-slate-400">{d.orders}</td>
+                      <td className="px-4 py-3.5 text-right font-semibold text-slate-200">{formatCurrency(d.revenue)}</td>
+                      <td className="px-4 py-3.5 text-right text-slate-400">{formatCurrency(d.avgOrderValue)}</td>
                     </tr>
                   ))
                 )}

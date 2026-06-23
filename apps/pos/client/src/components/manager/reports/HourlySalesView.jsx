@@ -211,7 +211,7 @@ export default function HourlySalesView({ dateFrom, dateTo, registerExport }) {
                 sortField: 'orders',
                 className: 'text-right',
                 headerClassName: 'text-right',
-                render: (d) => <span className="font-mono text-slate-350">{d.orders}</span>,
+                render: (d) => <span className="text-slate-350">{d.orders}</span>,
               },
               {
                 key: 'revenue',
@@ -227,7 +227,7 @@ export default function HourlySalesView({ dateFrom, dateTo, registerExport }) {
                 sortField: 'avgOrderValue',
                 className: 'text-right',
                 headerClassName: 'text-right',
-                render: (d) => <span className="font-mono text-slate-400">{formatCurrency(d.avgOrderValue)}</span>,
+                render: (d) => <span className="text-slate-400">{formatCurrency(d.avgOrderValue)}</span>,
               },
             ]}
           />

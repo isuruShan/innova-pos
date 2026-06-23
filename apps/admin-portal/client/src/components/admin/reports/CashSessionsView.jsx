@@ -166,7 +166,7 @@ export default function CashSessionsView({ dateFrom, dateTo, registerExport }) {
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white border border-gray-250 rounded-xl p-4 flex items-center gap-3">
-          <div className="p-2.5 bg-brand-orange/10 text-brand-orange rounded-lg"><Wallet size={18} /></div>
+          <div className="p-2.5 bg-brand-teal/10 text-brand-teal rounded-lg"><Wallet size={18} /></div>
           <div>
             <p className="text-xs text-gray-500 font-medium">Total Shift Sessions</p>
             <p className="text-lg font-bold text-gray-900">{filteredData.length}</p>
@@ -226,7 +226,7 @@ export default function CashSessionsView({ dateFrom, dateTo, registerExport }) {
             <select
               value={cashierIdFilter}
               onChange={(e) => setCashierIdFilter(e.target.value)}
-              className="bg-white border border-gray-300 text-gray-800 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-orange/30 w-full"
+              className="bg-white border border-gray-300 text-gray-800 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-teal/30 w-full"
             >
               <option value="">All Cashiers</option>
               {cashiersList.map((cashier) => (
@@ -243,7 +243,7 @@ export default function CashSessionsView({ dateFrom, dateTo, registerExport }) {
             type="checkbox"
             checked={showDiscrepanciesOnly}
             onChange={(e) => setShowDiscrepanciesOnly(e.target.checked)}
-            className="rounded border-gray-300 text-brand-orange focus:ring-brand-orange/20"
+            className="rounded border-gray-300 text-brand-teal focus:ring-brand-teal/20"
           />
           <span>Show Discrepancies Only (Variance ≠ 0)</span>
         </label>
@@ -330,7 +330,7 @@ export default function CashSessionsView({ dateFrom, dateTo, registerExport }) {
               render: (d) => (
                 <button
                   onClick={() => setSelectedSessionId(d._id)}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 border border-gray-200 hover:bg-brand-orange/10 hover:text-brand-orange hover:border-brand-orange/20 text-gray-600 transition cursor-pointer"
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-gray-100 border border-gray-200 hover:bg-brand-teal/10 hover:text-brand-teal hover:border-brand-teal/20 text-gray-600 transition cursor-pointer"
                 >
                   View
                 </button>
