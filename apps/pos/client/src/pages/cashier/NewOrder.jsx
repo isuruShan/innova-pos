@@ -938,7 +938,8 @@ export default function NewOrder() {
   const menuLoading = !isStoreReady || menuPending || settingsPending;
 
   const typeSetting = settings?.orderTypes?.[orderType];
-  const taxRate = typeSetting?.taxRate ?? 0;
+  const taxComponents = typeSetting?.taxComponents || [];
+  const taxRate = typeSetting?.taxRate ?? taxComponents.reduce((sum, tc) => sum + (tc.rate || 0), 0);
   const serviceFeeType = typeSetting?.serviceFeeType ?? 'percentage';
   const serviceFeeRate = typeSetting?.serviceFeeRate ?? 0;
   const serviceFeeFixed = typeSetting?.serviceFeeFixed ?? 0;

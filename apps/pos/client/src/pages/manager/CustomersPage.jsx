@@ -4,6 +4,7 @@ import { Users, Plus, Search } from 'lucide-react';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
 import SlideOver from '../../components/SlideOver';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import LoyaltyAddonBanner from '../../components/LoyaltyAddonBanner';
 import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
@@ -28,6 +29,7 @@ export default function CustomersPage() {
   const [formErrors, setFormErrors] = useState({});
   const [pointsOpen, setPointsOpen] = useState(false);
   const [pointsForm, setPointsForm] = useState({ lifetimePoints: '', note: '' });
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const { sort, order, toggleSort, sortParams } = useListSort('createdAt', 'desc');
 
   const { data: rows = [], isPending } = useQuery({
@@ -65,6 +67,15 @@ export default function CustomersPage() {
       setPointsOpen(false);
       setPointsForm({ lifetimePoints: '', note: '' });
       setSlide(data);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => api.delete(`/customers/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['customers'] });
+      setSlide(null);
+      setConfirmDelete(null);
     },
   });
 
@@ -286,6 +297,15 @@ export default function CustomersPage() {
           >
             {save.isPending ? 'Saving…' : 'Save'}
           </button>
+          {slide?._id && (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(slide)}
+              className="w-full py-3 rounded-xl border border-red-500 hover:bg-red-500/10 text-red-500 font-semibold mt-2 transition"
+            >
+              Delete Customer
+            </button>
+          )}
         </form>
       </SlideOver>
 
@@ -344,6 +364,21 @@ export default function CustomersPage() {
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={Boolean(confirmDelete)}
+        variant="delete"
+        title="Delete customer?"
+        message={
+          confirmDelete?.lifetimePoints > 0
+            ? `This customer has ${confirmDelete.lifetimePoints} loyalty points. Deleting this customer will permanently remove their loyalty profile and points.\n\nAre you sure you want to proceed?`
+            : `Are you sure you want to permanently delete this customer?`
+        }
+        confirmLabel="Delete"
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate(confirmDelete._id)}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

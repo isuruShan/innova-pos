@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, Plus, Minus, Trash2, Save, Link2, Hash, AlertTriangle, Tag, CheckCircle, Loader2, Clock, XCircle, ChevronRight, Printer, Receipt, User, Phone, Mail } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 import api from '../api/axios';
 import { formatCurrency, formatDateTime as fmtDT } from '../utils/format';
 import SlideOver from './SlideOver';
@@ -31,27 +32,34 @@ function ItemRow({
   showDelivered,
   onDeliveredToggle,
 }) {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+
   return (
     <div className="flex items-center gap-3 py-2 border-b border-slate-700/40 last:border-0">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          {item.isCombo && <Link2 size={11} className="text-amber-400 flex-shrink-0" />}
-          <span className={`text-sm truncate ${item.isCombo ? 'text-amber-300 font-medium' : 'text-slate-200'}`}>
+          {item.isCombo && <Link2 size={11} className={`${isLight ? 'text-amber-600' : 'text-amber-400'} flex-shrink-0`} />}
+          <span className={`text-sm truncate ${
+            item.isCombo
+              ? isLight ? 'text-amber-850 font-semibold' : 'text-amber-300 font-medium'
+              : 'text-[var(--pos-text-primary)]'
+          }`}>
             {item.name}
           </span>
         </div>
         {item.variantName && (
-          <p className="text-xs text-amber-400/90 font-medium mt-0.5 truncate">↳ {item.variantName}</p>
+          <p className={`text-xs mt-0.5 truncate ${isLight ? 'text-amber-700 font-semibold' : 'text-amber-400/90 font-medium'}`}>↳ {item.variantName}</p>
         )}
         {item.isCombo && item.comboItems?.length > 0 && (
           <div className="ml-3 mt-0.5">
             {item.comboItems.map((ci, i) => (
-              <p key={i} className="text-xs text-slate-600">↳ {ci.name} ×{ci.qty}</p>
+              <p key={i} className="text-xs text-[var(--pos-text-muted)]">↳ {ci.name} ×{ci.qty}</p>
             ))}
           </div>
         )}
         {!hidePricing && (
-          <p className="text-xs text-slate-500 mt-0.5">{formatPrice(item.price)} each</p>
+          <p className="text-xs text-[var(--pos-text-muted)] mt-0.5">{formatPrice(item.price)} each</p>
         )}
       </div>
       {editable ? (
@@ -139,6 +147,8 @@ function AddItemRow({ menuItems, existingIds, onAdd, orderType, partners, getIte
 export default function OrderDetailSlideOver({ order, onClose, canCancel = true, hidePricing = false }) {
   const qc = useQueryClient();
   const branding = useBranding();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
   const { selectedStoreId, isStoreReady } = useStoreContext();
   const { data: paidAddons } = useTenantPaidAddons();
   const tableMgmt = paidAddons?.tableManagement === true;
@@ -477,7 +487,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
 
   const title = (
     <div className="flex items-center gap-3">
-      <span className="font-mono text-amber-400 font-bold">
+      <span className={`font-mono font-bold ${isLight ? 'text-amber-700' : 'text-amber-400'}`}>
         #{String(order.orderNumber).padStart(3, '0')}
       </span>
       <Badge label={order.status} variant={order.status} />
@@ -496,29 +506,29 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
         {/* Customer Information */}
         {order.customerId && (
           <div className="rounded-xl bg-slate-800/40 border border-slate-700/50 p-3.5 space-y-2 text-xs">
-            <div className="flex items-center gap-1.5 font-semibold text-slate-300 border-b border-slate-700/40 pb-2">
-              <User size={13} className="text-amber-400" />
+            <div className="flex items-center gap-1.5 font-semibold text-[var(--pos-text-secondary)] border-b border-slate-700/40 pb-2">
+              <User size={13} className={isLight ? 'text-amber-600' : 'text-amber-400'} />
               <span>Customer Information</span>
             </div>
             <div className="space-y-1.5 pt-0.5 text-[var(--pos-text-primary)]">
               <div className="flex items-center justify-between">
-                <span className="text-slate-400">Name</span>
-                <span className="text-slate-200 font-medium">{order.customerId.name}</span>
+                <span className="text-[var(--pos-text-muted)]">Name</span>
+                <span className="text-[var(--pos-text-primary)] font-medium">{order.customerId.name}</span>
               </div>
               {order.customerId.mobile && (
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400 flex items-center gap-1">
+                  <span className="text-[var(--pos-text-muted)] flex items-center gap-1">
                     <Phone size={10} className="text-slate-500" /> Phone
                   </span>
-                  <span className="text-slate-200 font-mono">{order.customerId.mobile}</span>
+                  <span className="text-[var(--pos-text-primary)] font-mono">{order.customerId.mobile}</span>
                 </div>
               )}
               {order.customerId.email && (
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400 flex items-center gap-1">
+                  <span className="text-[var(--pos-text-muted)] flex items-center gap-1">
                     <Mail size={10} className="text-slate-500" /> Email
                   </span>
-                  <span className="text-slate-300 truncate max-w-[180px]">{order.customerId.email}</span>
+                  <span className="text-[var(--pos-text-primary)] truncate max-w-[180px]">{order.customerId.email}</span>
                 </div>
               )}
             </div>
@@ -527,50 +537,50 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
 
         {/* Uber Eats Details */}
         {order.orderType === 'uber-eats' && order.uberDetails && (
-          <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/25 p-3.5 space-y-2 text-sm text-[var(--pos-text-primary)]">
-            <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2">
-              <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+          <div className={`rounded-xl border p-3.5 space-y-2 text-sm text-[var(--pos-text-primary)] ${isLight ? 'bg-emerald-50 border-emerald-250' : 'bg-emerald-500/10 border border-emerald-500/25'}`}>
+            <div className={`flex items-center justify-between border-b pb-2 ${isLight ? 'border-emerald-200' : 'border-emerald-500/20'}`}>
+              <span className={`font-bold flex items-center gap-1.5 ${isLight ? 'text-emerald-750' : 'text-emerald-400'}`}>
                 <span>🛵</span> Uber Eats Integration
               </span>
               {order.uberDetails.uberDisplayId && (
-                <span className="font-mono text-emerald-300 font-bold bg-emerald-950/50 px-2 py-0.5 rounded-lg border border-emerald-500/25 text-xs">
+                <span className={`font-mono font-bold px-2 py-0.5 rounded-lg border text-xs ${isLight ? 'text-emerald-800 bg-emerald-50 border-emerald-300' : 'text-emerald-300 bg-emerald-950/50 border-emerald-500/25'}`}>
                   ID: {order.uberDetails.uberDisplayId}
                 </span>
               )}
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div>
-                <span className="text-slate-400">Uber Status:</span>{' '}
-                <span className="font-semibold capitalize text-slate-200">{order.uberDetails.uberStatus || 'New'}</span>
+                <span className="text-[var(--pos-text-muted)]">Uber Status:</span>{' '}
+                <span className="font-semibold capitalize text-[var(--pos-text-primary)]">{order.uberDetails.uberStatus || 'New'}</span>
               </div>
               <div>
-                <span className="text-slate-400">Est. Prep Time:</span>{' '}
-                <span className="font-semibold text-slate-200">{order.uberDetails.estimatedPrepTime} mins</span>
+                <span className="text-[var(--pos-text-muted)]">Est. Prep Time:</span>{' '}
+                <span className="font-semibold text-[var(--pos-text-primary)]">{order.uberDetails.estimatedPrepTime} mins</span>
               </div>
               {order.uberDetails.denyReason && (
-                <div className="col-span-2 text-red-400">
-                  <span className="text-slate-400">Deny Reason:</span> {order.uberDetails.denyReason}
+                <div className={`col-span-2 ${isLight ? 'text-red-700' : 'text-red-400'}`}>
+                  <span className="text-[var(--pos-text-muted)]">Deny Reason:</span> {order.uberDetails.denyReason}
                 </div>
               )}
               {order.uberDetails.cancelReason && (
-                <div className="col-span-2 text-red-400">
-                  <span className="text-slate-400">Cancel Reason:</span> {order.uberDetails.cancelReason}
+                <div className={`col-span-2 ${isLight ? 'text-red-700' : 'text-red-400'}`}>
+                  <span className="text-[var(--pos-text-muted)]">Cancel Reason:</span> {order.uberDetails.cancelReason}
                 </div>
               )}
             </div>
             {order.uberDetails.riderInfo && order.uberDetails.riderInfo.name && (
-              <div className="border-t border-emerald-500/20 pt-2 space-y-1 text-xs">
-                <p className="font-bold text-slate-300">Rider Information</p>
-                <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-400">
-                  <div>Name: <span className="text-slate-200 font-semibold">{order.uberDetails.riderInfo.name}</span></div>
+              <div className={`border-t pt-2 space-y-1 text-xs ${isLight ? 'border-emerald-200' : 'border-emerald-500/20'}`}>
+                <p className="font-bold text-[var(--pos-text-primary)]">Rider Information</p>
+                <div className="grid grid-cols-2 gap-1 text-[11px] text-[var(--pos-text-muted)]">
+                  <div>Name: <span className="text-[var(--pos-text-primary)] font-semibold">{order.uberDetails.riderInfo.name}</span></div>
                   {order.uberDetails.riderInfo.phone && (
-                    <div>Phone: <span className="text-slate-200 font-semibold">{order.uberDetails.riderInfo.phone}</span></div>
+                    <div>Phone: <span className="text-[var(--pos-text-primary)] font-semibold">{order.uberDetails.riderInfo.phone}</span></div>
                   )}
                   {order.uberDetails.riderInfo.vehicle && (
-                    <div>Vehicle: <span className="text-slate-200 font-semibold">{order.uberDetails.riderInfo.vehicle}</span></div>
+                    <div>Vehicle: <span className="text-[var(--pos-text-primary)] font-semibold">{order.uberDetails.riderInfo.vehicle}</span></div>
                   )}
                   {order.uberDetails.riderInfo.eta && (
-                    <div>ETA: <span className="text-slate-200 font-semibold">{new Date(order.uberDetails.riderInfo.eta).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
+                    <div>ETA: <span className="text-[var(--pos-text-primary)] font-semibold">{new Date(order.uberDetails.riderInfo.eta).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
                   )}
                 </div>
               </div>
@@ -579,7 +589,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
         )}
 
         {order.paymentCollected === false && (order.orderType !== 'dine-in' || !tableMgmt) && (
-          <div className="rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-sm px-3 py-2">
+          <div className={`rounded-xl border text-sm px-3 py-2 ${isLight ? 'bg-amber-50 border-amber-300 text-amber-800 font-semibold' : 'bg-amber-500/10 border border-amber-500/25 text-amber-200'}`}>
             Payment pending — collect when completing this order.
           </div>
         )}
@@ -711,12 +721,12 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
         {/* Financial breakdown — hidden in kitchen / no-price views */}
         {!hidePricing && (
           <div className="space-y-1 pt-1 border-t border-slate-700/50 text-sm">
-            <div className="flex justify-between text-slate-400">
+            <div className="flex justify-between text-[var(--pos-text-muted)]">
               <span>Subtotal</span>
               <span>{formatPrice(isEditable ? subtotal : (order.subtotal ?? subtotal))}</span>
             </div>
             {!isEditable && (order.appliedPromotions || []).map((ap, i) => (
-              <div key={i} className="flex justify-between text-green-400">
+              <div key={i} className={`flex justify-between ${isLight ? 'text-green-700' : 'text-green-400'}`}>
                 <span className="flex items-center gap-1 truncate">
                   <Tag size={10} className="flex-shrink-0" />{ap.name}
                 </span>
@@ -724,26 +734,26 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
               </div>
             ))}
             {!isEditable && (order.discountTotal > 0) && (
-              <div className="flex justify-between text-green-300 font-medium">
+              <div className={`flex justify-between font-medium ${isLight ? 'text-green-800' : 'text-green-300'}`}>
                 <span>Total Discount</span>
                 <span>-{formatPrice(order.discountTotal)}</span>
               </div>
             )}
             {!isEditable && order.taxAmount > 0 && (
-              <div className="flex justify-between text-slate-400">
+              <div className="flex justify-between text-[var(--pos-text-muted)]">
                 <span>Tax ({order.taxRate}%)</span>
                 <span>{formatPrice(order.taxAmount)}</span>
               </div>
             )}
             {!isEditable && order.serviceFeeAmount > 0 && (
-              <div className="flex justify-between text-slate-400">
+              <div className="flex justify-between text-[var(--pos-text-muted)]">
                 <span>Service Fee</span>
                 <span>{formatPrice(order.serviceFeeAmount)}</span>
               </div>
             )}
             <div className="flex justify-between text-[var(--pos-text-primary)] font-bold text-base pt-1 border-t border-slate-700/40">
               <span>Total</span>
-              <span className="text-amber-400">
+              <span className={isLight ? 'text-amber-700 text-lg font-extrabold' : 'text-amber-400'}>
                 {formatPrice(isEditable ? subtotal : order.totalAmount)}
               </span>
             </div>
@@ -814,7 +824,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
             <button
               onClick={() => { if (confirm('Cancel this order?')) statusMutation.mutate('cancelled'); }}
               disabled={statusMutation.isPending}
-              className="w-full flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 font-semibold py-2.5 rounded-xl transition text-sm disabled:opacity-50"
+              className={`w-full flex items-center justify-center gap-2 border font-semibold py-2.5 rounded-xl transition text-sm disabled:opacity-50 ${isLight ? 'bg-red-50 hover:bg-red-100 border-red-200 text-red-700' : 'bg-red-500/10 hover:bg-red-500/20 border-red-500/30 text-red-400'}`}
             >
               {statusMutation.isPending ? 'Cancelling…' : '✕ Cancel Order'}
             </button>
@@ -822,8 +832,8 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
 
           {/* Uber Eats Actions */}
           {order.orderType === 'uber-eats' && (
-            <div className="space-y-3 p-3 bg-emerald-950/40 border border-emerald-500/20 rounded-xl mt-2">
-              <p className="text-xs font-semibold text-emerald-400">Uber Actions</p>
+            <div className={`space-y-3 p-3 border rounded-xl mt-2 ${isLight ? 'bg-emerald-50 border-emerald-250' : 'bg-emerald-950/40 border border-emerald-500/20'}`}>
+              <p className={`text-xs font-semibold ${isLight ? 'text-emerald-850' : 'text-emerald-400'}`}>Uber Actions</p>
               {order.status === 'pending' && (
                 <>
                   {!showUberDeny ? (
@@ -834,11 +844,11 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
                         className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-[var(--pos-surface-inset)] border border-slate-700 hover:border-slate-600 transition"
                       >
                         <div className="flex items-center gap-2">
-                          <Clock size={16} className="text-slate-400" />
-                          <span className="text-xs text-slate-400">Prep Time</span>
+                          <Clock size={16} className="text-slate-450" />
+                          <span className="text-xs text-[var(--pos-text-muted)]">Prep Time</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm font-semibold text-amber-400">{uberPrepTime} mins</span>
+                          <span className={`text-sm font-semibold ${isLight ? 'text-amber-700' : 'text-amber-400'}`}>{uberPrepTime} mins</span>
                           <ChevronRight size={14} className="text-slate-500" />
                         </div>
                       </button>
@@ -846,7 +856,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
                         <button
                           type="button"
                           onClick={() => setShowUberDeny(true)}
-                          className="flex-1 py-3 rounded-xl border border-red-500/40 text-red-400 hover:bg-red-500/10 font-bold text-sm transition"
+                          className={`flex-1 py-3 rounded-xl border font-bold text-sm transition ${isLight ? 'border-red-200 text-red-700 hover:bg-red-50' : 'border-red-500/40 text-red-400 hover:bg-red-500/10'}`}
                         >
                           Deny Order
                         </button>
@@ -869,11 +879,11 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
                         className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-[var(--pos-surface-inset)] border border-slate-700 hover:border-slate-600 transition"
                       >
                         <div className="flex items-center gap-2">
-                          <XCircle size={16} className="text-red-400" />
-                          <span className="text-xs text-slate-400">Denial Reason</span>
+                          <XCircle size={16} className={isLight ? 'text-red-650' : 'text-red-400'} />
+                          <span className="text-xs text-[var(--pos-text-muted)]">Denial Reason</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm font-semibold text-red-400">
+                          <span className={`text-sm font-semibold ${isLight ? 'text-red-700' : 'text-red-400'}`}>
                             {uberDenyReason === 'OUT_OF_ITEMS' && 'Out of Items'}
                             {uberDenyReason === 'KITCHEN_CLOSED' && 'Kitchen Closed'}
                             {uberDenyReason === 'TOO_BUSY' && 'Store Too Busy'}
@@ -886,7 +896,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
                         <button
                           type="button"
                           onClick={() => setShowUberDeny(false)}
-                          className="flex-1 py-3 rounded-xl border border-slate-700 text-slate-300 font-bold text-sm transition"
+                          className="flex-1 py-3 rounded-xl border border-slate-700 text-[var(--pos-text-secondary)] font-bold text-sm transition"
                         >
                           Back
                         </button>

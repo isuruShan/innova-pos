@@ -278,7 +278,7 @@ export default function CustomerTerminal() {
   // Generate QR URL
   const resolvedTenantId = orderState.tenantId || user?.tenantId || branding.tenantId || branding._id || '';
   const resolvedStoreId = orderState.storeId || selectedStoreId || '';
-  const qrTargetUrl = `${getPublicWebUrl() || 'http://localhost:5175'}/customer-checkin?tenantId=${resolvedTenantId}&storeId=${resolvedStoreId}&sessionId=${orderState.customerSessionId || ''}`;
+  const qrTargetUrl = `${getPublicWebUrl() || 'https://cafinity.io'}/customer-checkin?tenantId=${resolvedTenantId}&storeId=${resolvedStoreId}&sessionId=${orderState.customerSessionId || ''}`;
   const qrCodeImgSrc = orderState.customerSessionId
     ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrTargetUrl)}&color=ffffff&bgcolor=151f2e`
     : '';
@@ -398,33 +398,33 @@ export default function CustomerTerminal() {
       {/* Main content grid */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
         {/* Left Side: Order items */}
-        <div className="lg:col-span-7 flex flex-col border-r border-slate-800/80 p-6 overflow-y-auto">
-          <h2 className="text-lg font-semibold mb-4 text-white flex items-center gap-2">
+        <div className="lg:col-span-7 flex flex-col border-r border-slate-800/80 p-6 overflow-y-auto bg-slate-900/40">
+          <h2 className="text-lg font-bold mb-4 text-white flex items-center gap-2">
             <Package size={18} className="text-amber-500" />
             Your Order Details
           </h2>
 
           {orderState.items.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center py-16 text-slate-500">
-              <Package size={48} className="opacity-30 mb-3" />
-              <p className="text-base font-medium">Ready to take your order</p>
-              <p className="text-xs opacity-70 mt-1">Order details will appear here as items are added</p>
+            <div className="flex-1 flex flex-col items-center justify-center py-16 text-slate-400">
+              <Package size={48} className="opacity-45 mb-3 text-slate-400" />
+              <p className="text-base font-bold text-slate-200">Ready to take your order</p>
+              <p className="text-xs text-slate-450 mt-1">Order details will appear here as items are added</p>
             </div>
           ) : (
             <div className="flex-1 flex flex-col justify-between">
               <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
                 {orderState.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center bg-slate-800/30 border border-slate-800/60 p-3 rounded-lg">
+                  <div key={idx} className="flex justify-between items-center bg-slate-800/45 border border-slate-700/50 p-3 rounded-lg shadow-sm">
                     <div>
-                      <div className="font-semibold text-slate-200">{item.name}</div>
+                      <div className="font-bold text-slate-100">{item.name}</div>
                       {item.variantName && (
-                        <div className="text-xs text-slate-500">{item.variantName}</div>
+                        <div className="text-xs text-slate-400 font-medium">{item.variantName}</div>
                       )}
-                      <div className="text-xs text-slate-400 mt-0.5">
+                      <div className="text-xs text-slate-300 mt-0.5">
                         Qty: {item.qty} × {branding.currencySymbol}{Number(item.price).toFixed(2)}
                       </div>
                     </div>
-                    <div className="font-semibold text-white">
+                    <div className="font-bold text-white text-base">
                       {branding.currencySymbol}{(item.qty * item.price).toFixed(2)}
                     </div>
                   </div>
@@ -433,25 +433,25 @@ export default function CustomerTerminal() {
 
               {/* Totals panel */}
               <div className="mt-6 pt-4 border-t border-slate-800 space-y-2.5">
-                <div className="flex justify-between text-sm text-slate-400">
-                  <span>Subtotal</span>
-                  <span>{branding.currencySymbol}{Number(orderState.subtotal).toFixed(2)}</span>
+                <div className="flex justify-between text-sm font-medium">
+                  <span className="text-slate-350">Subtotal</span>
+                  <span className="text-slate-200">{branding.currencySymbol}{Number(orderState.subtotal).toFixed(2)}</span>
                 </div>
                 {orderState.discountTotal > 0 && (
-                  <div className="flex justify-between text-sm text-emerald-400">
+                  <div className="flex justify-between text-sm text-emerald-400 font-bold">
                     <span>Discount</span>
                     <span>-{branding.currencySymbol}{Number(orderState.discountTotal).toFixed(2)}</span>
                   </div>
                 )}
                 {orderState.taxAmount > 0 && (
-                  <div className="flex justify-between text-sm text-slate-400">
-                    <span>Tax</span>
-                    <span>{branding.currencySymbol}{Number(orderState.taxAmount).toFixed(2)}</span>
+                  <div className="flex justify-between text-sm font-medium">
+                    <span className="text-slate-350">Tax</span>
+                    <span className="text-slate-200">{branding.currencySymbol}{Number(orderState.taxAmount).toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-xl font-bold text-white pt-2 border-t border-slate-800/50">
+                <div className="flex justify-between text-xl font-bold text-white pt-2 border-t border-slate-850">
                   <span>Total Amount</span>
-                  <span className="text-amber-400">{branding.currencySymbol}{Number(orderState.totalAmount).toFixed(2)}</span>
+                  <span className="text-amber-400 font-extrabold text-2xl">{branding.currencySymbol}{Number(orderState.totalAmount).toFixed(2)}</span>
                 </div>
               </div>
             </div>

@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import {
   Clock, ChevronRight, ChevronLeft, RefreshCw,
   Link2, Eye, CalendarDays, Search, X, Printer, Receipt,
@@ -41,45 +42,78 @@ function thirtyDaysAgo() {
 
 const STATUSES = ['pending', 'preparing', 'ready', 'delivered', 'completed', 'cancelled'];
 
-const STATUS_META = {
-  pending: {
-    label: 'Pending', color: 'text-yellow-400', border: 'border-yellow-500/30',
-    bg: 'bg-yellow-500/5', dot: 'bg-yellow-400',
-    next: 'preparing', prev: null,
-    nextLabel: 'Start Preparing', nextClass: 'bg-yellow-500 hover:bg-yellow-400 text-[var(--pos-text-primary)]',
-  },
-  preparing: {
-    label: 'Preparing', color: 'text-blue-400', border: 'border-blue-500/30',
-    bg: 'bg-blue-500/5', dot: 'bg-blue-400',
-    next: 'ready', prev: 'pending',
-    nextLabel: 'Mark Ready', nextClass: 'bg-blue-500 hover:bg-blue-400 text-[var(--pos-text-primary)]',
-    prevLabel: '← Pending',
-  },
-  ready: {
-    label: 'Ready', color: 'text-green-400', border: 'border-green-500/30',
-    bg: 'bg-green-500/5', dot: 'bg-green-400',
-    next: 'completed', prev: 'preparing',
-    nextLabel: 'Complete ✓', nextClass: 'bg-green-500 hover:bg-green-400 text-white',
-    prevLabel: '← Preparing',
-  },
-  delivered: {
-    label: 'Delivered', color: 'text-purple-400', border: 'border-purple-500/30',
-    bg: 'bg-purple-500/5', dot: 'bg-purple-400',
-    next: 'completed', prev: 'ready',
-    nextLabel: 'Complete ✓', nextClass: 'bg-green-500 hover:bg-green-400 text-white',
-    prevLabel: '← Ready',
-  },
-  completed: {
-    label: 'Completed', color: 'text-slate-400', border: 'border-slate-600/30',
-    bg: 'bg-slate-700/10', dot: 'bg-slate-500',
-    next: null, prev: null,
-  },
-  cancelled: {
-    label: 'Cancelled', color: 'text-red-400', border: 'border-red-500/20',
-    bg: 'bg-red-500/5', dot: 'bg-red-500',
-    next: null, prev: null,
-  },
-};
+function getStatusMeta(status, isLight) {
+  const meta = {
+    pending: {
+      label: 'Pending',
+      color: isLight ? 'text-amber-700 font-bold' : 'text-yellow-400',
+      border: isLight ? 'border-amber-300' : 'border-yellow-500/30',
+      bg: isLight ? 'bg-amber-500/5' : 'bg-yellow-500/5',
+      dot: isLight ? 'bg-amber-600' : 'bg-yellow-400',
+      next: 'preparing', prev: null,
+      nextLabel: 'Start Preparing',
+      nextClass: isLight 
+        ? 'bg-amber-600 hover:bg-amber-500 text-white font-bold' 
+        : 'bg-yellow-500 hover:bg-yellow-400 text-[var(--pos-text-primary)]',
+    },
+    preparing: {
+      label: 'Preparing',
+      color: isLight ? 'text-blue-700 font-bold' : 'text-blue-400',
+      border: isLight ? 'border-blue-300' : 'border-blue-500/30',
+      bg: isLight ? 'bg-blue-500/5' : 'bg-blue-500/5',
+      dot: isLight ? 'bg-blue-600' : 'bg-blue-400',
+      next: 'ready', prev: 'pending',
+      nextLabel: 'Mark Ready',
+      nextClass: isLight 
+        ? 'bg-blue-600 hover:bg-blue-500 text-white font-bold' 
+        : 'bg-blue-500 hover:bg-blue-400 text-[var(--pos-text-primary)]',
+      prevLabel: '← Pending',
+    },
+    ready: {
+      label: 'Ready',
+      color: isLight ? 'text-emerald-700 font-bold' : 'text-green-400',
+      border: isLight ? 'border-emerald-300' : 'border-green-500/30',
+      bg: isLight ? 'bg-emerald-500/5' : 'bg-green-500/5',
+      dot: isLight ? 'bg-emerald-600' : 'bg-green-400',
+      next: 'completed', prev: 'preparing',
+      nextLabel: 'Complete ✓',
+      nextClass: isLight 
+        ? 'bg-emerald-600 hover:bg-emerald-500 text-white font-bold' 
+        : 'bg-green-500 hover:bg-green-400 text-white',
+      prevLabel: '← Preparing',
+    },
+    delivered: {
+      label: 'Delivered',
+      color: isLight ? 'text-purple-700 font-bold' : 'text-purple-400',
+      border: isLight ? 'border-purple-300' : 'border-purple-500/30',
+      bg: isLight ? 'bg-purple-500/5' : 'bg-purple-500/5',
+      dot: isLight ? 'bg-purple-600' : 'bg-purple-400',
+      next: 'completed', prev: 'ready',
+      nextLabel: 'Complete ✓',
+      nextClass: isLight 
+        ? 'bg-emerald-600 hover:bg-emerald-500 text-white font-bold' 
+        : 'bg-green-500 hover:bg-green-400 text-white',
+      prevLabel: '← Ready',
+    },
+    completed: {
+      label: 'Completed',
+      color: 'text-[var(--pos-text-muted)]',
+      border: isLight ? 'border-slate-300' : 'border-slate-600/30',
+      bg: isLight ? 'bg-slate-100' : 'bg-slate-700/10',
+      dot: 'bg-slate-500',
+      next: null, prev: null,
+    },
+    cancelled: {
+      label: 'Cancelled',
+      color: isLight ? 'text-red-700 font-bold' : 'text-red-400',
+      border: isLight ? 'border-red-300' : 'border-red-500/20',
+      bg: isLight ? 'bg-red-500/5' : 'bg-red-500/5',
+      dot: 'bg-red-500',
+      next: null, prev: null,
+    },
+  };
+  return meta[status];
+}
 
 const formatTime = iso => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -88,18 +122,24 @@ function normalizeRole(role) {
 }
 
 function ElapsedBadge({ createdAt, status }) {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
   if (['completed', 'cancelled'].includes(status)) return null;
   const mins = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
   const urgent = mins >= 15;
   return (
-    <span className={`flex items-center gap-1 text-xs ${urgent ? 'text-red-400 font-semibold' : 'text-slate-500'}`}>
+    <span className={`flex items-center gap-1 text-xs ${
+      urgent
+        ? isLight ? 'text-red-750 font-bold' : 'text-red-400 font-semibold'
+        : 'text-[var(--pos-text-muted)]'
+    }`}>
       <Clock size={11} />{mins < 1 ? '< 1m' : `${mins}m`}
     </span>
   );
 }
 
-function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selectedStore }) {
-  const meta = STATUS_META[order.status];
+function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selectedStore, isLight }) {
+  const meta = getStatusMeta(order.status, isLight);
   const isBusy = busyId === order._id;
 
   const hasPendingAdds = ['preparing', 'ready'].includes(order.status) &&
@@ -165,7 +205,7 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
               Pending sync
             </span>
           )}
-          <span className="font-mono font-bold text-amber-400 text-sm flex-shrink-0">
+          <span className={`font-mono font-bold text-sm flex-shrink-0 ${isLight ? 'text-amber-700' : 'text-amber-400'}`}>
             {order._offlinePending ? (
               <span title="Temporary reference until synced">#···</span>
             ) : (
@@ -183,7 +223,7 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
           />
           {hasPendingAdds && (
             <span
-              className="text-[9px] font-bold uppercase tracking-tight text-orange-200 bg-orange-500/20 border border-orange-500/35 rounded px-1.5 py-0.5 flex-shrink-0 animate-pulse"
+              className={`text-[9px] font-bold uppercase tracking-tight rounded px-1.5 py-0.5 flex-shrink-0 animate-pulse ${isLight ? 'text-orange-850 bg-orange-50 border border-orange-200' : 'text-orange-200 bg-orange-500/20 border border-orange-500/35'}`}
               title="New items added need kitchen preparation"
             >
               Adds Pending
@@ -192,7 +232,7 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <ElapsedBadge createdAt={order.createdAt} status={order.status} />
-          <span className="text-xs text-slate-600">{formatTime(order.createdAt)}</span>
+          <span className="text-xs text-[var(--pos-text-muted)]">{formatTime(order.createdAt)}</span>
           <button
             onClick={() => onViewEdit(order)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-[var(--pos-text-primary)] border border-slate-700/60 transition text-xs font-semibold"
@@ -211,21 +251,21 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <div className="flex items-center gap-1">
-                  {item.isCombo && <Link2 size={10} className="text-amber-400 flex-shrink-0" />}
+                  {item.isCombo && <Link2 size={10} className={`${isLight ? 'text-amber-600' : 'text-amber-400'} flex-shrink-0`} />}
                   <span className="text-xs text-slate-300 truncate">{item.name}</span>
                 </div>
                 {item.variantName && (
-                  <span className="text-[10px] text-amber-400/80 truncate ml-3 block">
+                  <span className={`text-[10px] truncate ml-3 block ${isLight ? 'text-amber-700 font-semibold' : 'text-amber-400/80'}`}>
                     ↳ {item.variantName}
                   </span>
                 )}
               </div>
-              <span className="text-xs text-slate-500 flex-shrink-0">×{item.qty}</span>
+              <span className="text-xs text-[var(--pos-text-muted)] flex-shrink-0">×{item.qty}</span>
             </div>
             {item.isCombo && item.comboItems?.length > 0 && (
               <div className="ml-3">
                 {item.comboItems.map((ci, j) => (
-                  <p key={j} className="text-xs text-slate-600">↳ {ci.name} ×{ci.qty}</p>
+                  <p key={j} className="text-xs text-[var(--pos-text-muted)]">↳ {ci.name} ×{ci.qty}</p>
                 ))}
               </div>
             )}
@@ -238,10 +278,10 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
         <div className="min-w-0">
           <span className="font-semibold text-[var(--pos-text-primary)] text-sm">{formatCurrency(order.totalAmount)}</span>
           {order.paymentCollected === false && (
-            <span className="block text-[10px] text-amber-400 font-medium">Payment pending</span>
+            <span className={`block text-[10px] font-bold ${isLight ? 'text-amber-755' : 'text-amber-400'}`}>Payment pending</span>
           )}
         </div>
-        <span className="text-xs text-slate-600">{order.createdBy?.name || '—'}</span>
+        <span className="text-xs text-[var(--pos-text-muted)]">{order.createdBy?.name || '—'}</span>
       </div>
 
       {/* Print buttons */}
@@ -308,8 +348,8 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
   );
 }
 
-function Column({ status, orders, onAdvanceStatus, onViewEdit, busyId, branding, selectedStore }) {
-  const meta = STATUS_META[status];
+function Column({ status, orders, onAdvanceStatus, onViewEdit, busyId, branding, selectedStore, isLight }) {
+  const meta = getStatusMeta(status, isLight);
   return (
     <div className="flex flex-col min-w-0 min-h-0">
       <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-700/50 flex-shrink-0">
@@ -321,7 +361,7 @@ function Column({ status, orders, onAdvanceStatus, onViewEdit, busyId, branding,
       </div>
       <div className="space-y-2.5 overflow-y-auto flex-1 pr-0.5">
         {orders.length === 0 ? (
-          <div className="text-center text-slate-700 text-xs py-8 border border-dashed border-slate-800 rounded-xl">
+          <div className="text-center text-[var(--pos-text-muted)] text-xs py-8 border border-dashed border-slate-700 rounded-xl">
             No {meta.label.toLowerCase()} orders
           </div>
         ) : (
@@ -334,6 +374,7 @@ function Column({ status, orders, onAdvanceStatus, onViewEdit, busyId, branding,
               busyId={busyId}
               branding={branding}
               selectedStore={selectedStore}
+              isLight={isLight}
             />
           ))
         )}
@@ -343,6 +384,8 @@ function Column({ status, orders, onAdvanceStatus, onViewEdit, busyId, branding,
 }
 
 export default function OrderBoard() {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
   const { showAlert } = useAlert();
   const fohr = useFohrMode();
   const qc = useQueryClient();
@@ -406,8 +449,8 @@ export default function OrderBoard() {
       if (sessionSince) {
         params.since = new Date(sessionSince).toISOString();
       } else if (fohr.isRegister && boardFrom) {
-        params.since = `${boardFrom}T00:00:00`;
-        if (boardTo) params.until = `${boardTo}T23:59:59`;
+        params.since = new Date(`${boardFrom}T00:00:00`).toISOString();
+        if (boardTo) params.until = new Date(`${boardTo}T23:59:59`).toISOString();
       }
       const remote = await api.get('/orders', { params }).then((r) => r.data);
       const pendingLocal = await listPendingOrders();
@@ -628,8 +671,10 @@ export default function OrderBoard() {
                 onClick={() => setDatePreset(key)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
                   datePreset === key
-                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-                    : 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-[var(--pos-text-primary)]'
+                    ? isLight
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-850 font-semibold'
+                      : 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                    : 'border-slate-700 text-[var(--pos-text-muted)] hover:border-slate-500 hover:text-[var(--pos-text-primary)]'
                 }`}
               >
                 {label}
@@ -671,6 +716,7 @@ export default function OrderBoard() {
                 busyId={busyId}
                 branding={branding}
                 selectedStore={selectedStore}
+                isLight={isLight}
               />
             ))}
           </div>

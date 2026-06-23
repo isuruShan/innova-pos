@@ -20,7 +20,9 @@ import PosDateField from '../../components/PosDateField';
 import { 
   exportOrdersToCSV, 
   getOrderImportFields, 
-  validateOrderRow 
+  validateOrderRow,
+  arrayToCSV,
+  downloadCSV
 } from '../../utils/csvExportImport';
 
 const ORDER_TYPE_OPTIONS = [
@@ -49,8 +51,6 @@ function threeDaysAgo() {
 }
 
 function sevenDaysAgo() {
-  // Keep date calculations in local timezone so the server `since/until` range
-  // matches what the Dashboard screen fetches.
   const d = new Date();
   d.setDate(d.getDate() - 6);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -89,7 +89,8 @@ export default function OrdersView() {
   const [statusFilter, setStatusFilter]     = useState([]);
   const [orderTypeFilter, setOrderTypeFilter] = useState([]);
   const [paymentTypeFilter, setPaymentTypeFilter] = useState([]);
-  // const [importModalOpen, setImportModalOpen] = useState(false); // Disabled - Coming Soon
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportMode, setExportMode] = useState('summary');
   const { sort, order, toggleSort, sortParams, setSort, setOrder } = useListSort('createdAt', 'desc');
 
   const selectedStore = useMemo(
@@ -185,48 +186,112 @@ export default function OrdersView() {
     return { total: orders.length, completed: completed.length, revenue, discounts };
   }, [orders]);
 
-  // Export handler
-  const handleExportOrders = () => {
-    exportOrdersToCSV(orders);
-    alert(`Exported ${orders.length} orders`);
-  };
+  const handleExecuteExport = () => {
+    if (!orders || orders.length === 0) return;
 
-  // Import handler - Coming Soon (disabled until analytics compatibility is added)
-  /* const handleImportOrders = async (csvData, mapping, onProgress) => {
-    const errors = [];
-    let successCount = 0;
-    
-    for (let i = 0; i < csvData.length; i++) {
-      const row = csvData[i];
-      const { order: orderData, errors: rowErrors } = validateOrderRow(row, mapping, i);
-      
-      if (rowErrors.length > 0) {
-        errors.push({ rowIndex: i, message: rowErrors.join('; ') });
-        onProgress({ total: csvData.length, current: i + 1, errors });
-        continue;
-      }
-      
-      try {
-        await api.post('/orders', orderData);
-        successCount++;
-      } catch (error) {
-        errors.push({ 
-          rowIndex: i, 
-          message: error.response?.data?.message || error.message 
+    const storeName = selectedStore?.name || 'Unknown Store';
+
+    if (exportMode === 'summary') {
+      const headers = [
+        'Order Number',
+        'Store Name',
+        'Customer Name',
+        'Order Type',
+        'Payment Type',
+        'Status',
+        'Subtotal',
+        'Discount Total',
+        'Tax Amount',
+        'Service Fee Amount',
+        'Channel Commission',
+        'Total Amount',
+        'Created At',
+        'Created By'
+      ];
+      const rows = orders.map(o => [
+        `#${o.orderNumber}`,
+        storeName,
+        o.customerId?.name || 'Walk-in',
+        o.orderType || 'dine-in',
+        o.paymentType || 'cash',
+        o.status,
+        Number(o.subtotal || 0).toFixed(2),
+        Number(o.discountTotal || 0).toFixed(2),
+        Number(o.taxAmount || 0).toFixed(2),
+        Number(o.serviceFeeAmount || 0).toFixed(2),
+        Number(o.commissionAmount || 0).toFixed(2),
+        Number(o.totalAmount || 0).toFixed(2),
+        new Date(o.createdAt).toLocaleString(),
+        o.createdBy?.name || ''
+      ]);
+      const csvContent = arrayToCSV(headers, rows);
+      downloadCSV('orders_summary_report', csvContent);
+    } else {
+      const headers = [
+        'Order Number',
+        'Store Name',
+        'Order Type',
+        'Payment Type',
+        'Status',
+        'Item Name',
+        'Variant Name',
+        'Quantity',
+        'Unit Price',
+        'Gross Revenue',
+        'Item Discount',
+        'Item Tax',
+        'Item Service Fee',
+        'Item Commission',
+        'Item Net Total',
+        'Created At',
+        'Created By'
+      ];
+      const rows = [];
+      orders.forEach(o => {
+        const orderItems = o.items || [];
+        const orderSubtotal = orderItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        const orderDiscount = o.discountTotal || 0;
+        const orderTax = o.taxAmount || 0;
+        const orderServiceFee = o.serviceFeeAmount || 0;
+        const orderCommission = o.commissionAmount || 0;
+
+        orderItems.forEach(i => {
+          const itemRevenue = i.price * i.qty;
+          const share = orderSubtotal > 0 ? (itemRevenue / orderSubtotal) : 0;
+
+          const itemDiscount = orderDiscount * share;
+          const itemTax = orderTax * share;
+          const itemServiceFee = orderServiceFee * share;
+          const itemCommission = orderCommission * share;
+
+          const itemNetTotal = itemRevenue - itemDiscount - itemCommission + itemTax + itemServiceFee;
+
+          rows.push([
+            `#${o.orderNumber}`,
+            storeName,
+            o.orderType || 'dine-in',
+            o.paymentType || 'cash',
+            o.status,
+            i.name,
+            i.variantName || '—',
+            i.qty,
+            Number(i.price || 0).toFixed(2),
+            Number(itemRevenue).toFixed(2),
+            Number(itemDiscount).toFixed(2),
+            Number(itemTax).toFixed(2),
+            Number(itemServiceFee).toFixed(2),
+            Number(itemCommission).toFixed(2),
+            Number(itemNetTotal).toFixed(2),
+            new Date(o.createdAt).toLocaleString(),
+            o.createdBy?.name || ''
+          ]);
         });
-      }
-      
-      onProgress({ total: csvData.length, current: i + 1, errors });
+      });
+      const csvContent = arrayToCSV(headers, rows);
+      downloadCSV('orders_itemized_report', csvContent);
     }
-    
-    await refetch();
-    
-    return {
-      total: csvData.length,
-      success: successCount,
-      errors
-    };
-  }; */
+    setShowExportModal(false);
+  };
 
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
@@ -237,13 +302,15 @@ export default function OrdersView() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
           <h1 className="text-xl font-bold text-[var(--pos-text-primary)]">Orders</h1>
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={handleExportOrders}
-              className="px-3 py-2 rounded-xl border border-slate-600 text-sm text-green-400 hover:bg-green-500/10 transition flex items-center gap-2"
-            >
-              <Download size={15} />
-              Export
-            </button>
+            {orders && orders.length > 0 && (
+              <button
+                onClick={() => setShowExportModal(true)}
+                className="px-3 py-2 rounded-xl border border-slate-600 text-sm text-green-400 hover:bg-green-500/10 transition flex items-center gap-2 cursor-pointer"
+              >
+                <Download size={15} />
+                Export
+              </button>
+            )}
             <button
               onClick={() => alert('Order Import is coming soon! This feature is being enhanced to support historical dates and full analytics compatibility.')}
               className="px-3 py-2 rounded-xl border border-slate-600 text-sm text-slate-500 hover:bg-slate-500/10 transition flex items-center gap-2"
@@ -255,7 +322,7 @@ export default function OrdersView() {
             <button
               onClick={() => refetch()}
               disabled={isFetching}
-              className="p-2 rounded-xl text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700 transition"
+              className="p-2 rounded-xl text-slate-400 hover:text-[var(--pos-text-primary)] bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
             >
               <RefreshCw size={15} className={isFetching ? 'animate-spin' : ''} />
             </button>
@@ -295,7 +362,7 @@ export default function OrdersView() {
 
           <button
             onClick={() => setShowFilters(f => !f)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium transition ${
+            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium transition cursor-pointer ${
               showFilters || activeFilterCount > 0
                 ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
                 : 'bg-[var(--pos-panel)] border-slate-700/50 text-slate-400 hover:text-[var(--pos-text-primary)]'
@@ -323,7 +390,7 @@ export default function OrdersView() {
                 <button
                   type="button"
                   onClick={() => setQuickDateRange(1)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition cursor-pointer ${
                     fromDate === oneDayAgo() && toDate === todayStr()
                       ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
                       : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
@@ -334,7 +401,7 @@ export default function OrdersView() {
                 <button
                   type="button"
                   onClick={() => setQuickDateRange(3)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition cursor-pointer ${
                     fromDate === threeDaysAgo() && toDate === todayStr()
                       ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
                       : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
@@ -345,7 +412,7 @@ export default function OrdersView() {
                 <button
                   type="button"
                   onClick={() => setQuickDateRange(7)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition cursor-pointer ${
                     fromDate === sevenDaysAgo() && toDate === todayStr()
                       ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
                       : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
@@ -382,7 +449,7 @@ export default function OrdersView() {
               <div className="flex flex-wrap gap-2">
                 {STATUS_OPTIONS.map(s => (
                   <button key={s} onClick={() => toggleFilter(statusFilter, setStatusFilter, s)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium border transition capitalize ${
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition capitalize cursor-pointer ${
                       statusFilter.includes(s)
                         ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
                         : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
@@ -399,7 +466,7 @@ export default function OrdersView() {
               <div className="flex flex-wrap gap-2">
                 {orderTypeOptions.map(t => (
                   <button key={t.value} onClick={() => toggleFilter(orderTypeFilter, setOrderTypeFilter, t.value)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition cursor-pointer ${
                       orderTypeFilter.includes(t.value)
                         ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
                         : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
@@ -419,7 +486,7 @@ export default function OrdersView() {
                     key={t.value}
                     type="button"
                     onClick={() => toggleFilter(paymentTypeFilter, setPaymentTypeFilter, t.value)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition cursor-pointer ${
                       paymentTypeFilter.includes(t.value)
                         ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)]'
                         : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
@@ -454,7 +521,7 @@ export default function OrdersView() {
                           setOrder(opt.value === 'createdAt' ? 'desc' : 'asc');
                         }
                       }}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition flex items-center gap-1.5 ${
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition flex items-center gap-1.5 cursor-pointer ${
                         active
                           ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)] font-semibold'
                           : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:text-[var(--pos-text-primary)]'
@@ -478,7 +545,7 @@ export default function OrdersView() {
                 setFromDate(oneDayAgo());
                 setToDate(todayStr());
               }}
-              className="text-xs text-slate-500 hover:text-red-400 transition"
+              className="text-xs text-slate-500 hover:text-red-400 transition cursor-pointer"
             >
               Reset filters
             </button>
@@ -562,15 +629,15 @@ export default function OrdersView() {
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <OrderTypeBadge 
-                        orderType={order.orderType} 
-                        tableNumber={order.tableNumber} 
-                        reference={order.reference} 
-                        logoUrl={order.orderTypeBranding?.logoUrl}
-                        icon={order.orderTypeBranding?.icon}
-                        color={order.orderTypeBranding?.color}
-                        size="xs" 
-                      />
-                      <span className="text-[10px] uppercase tracking-wide text-slate-500 bg-slate-800/80 px-2 py-0.5 rounded-md">
+                      orderType={order.orderType} 
+                      tableNumber={order.tableNumber} 
+                      reference={order.reference} 
+                      logoUrl={order.orderTypeBranding?.logoUrl}
+                      icon={order.orderTypeBranding?.icon}
+                      color={order.orderTypeBranding?.color}
+                      size="xs" 
+                    />
+                      <span className="text-[10px] uppercase tracking-wide text-slate-505 bg-slate-800/80 px-2 py-0.5 rounded-md">
                         {formatPaymentTypeLabel(order.paymentType)}
                       </span>
                       <span className="text-xs text-slate-500">{formatDateTime(order.createdAt)}</span>
@@ -590,16 +657,75 @@ export default function OrdersView() {
         )}
       </div>
 
-      {/* Order Import - Coming Soon (disabled until analytics compatibility is added)
-      <ImportModal
-        open={importModalOpen}
-        onClose={() => setImportModalOpen(false)}
-        title="Import Orders"
-        fields={getOrderImportFields()}
-        onImport={handleImportOrders}
-        templateName="orders"
-      />
-      */}
+      {/* Export Options Modal */}
+      {showExportModal && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs" onClick={() => setShowExportModal(false)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 space-y-4 text-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-slate-200 text-base">Export Orders</h3>
+              <button onClick={() => setShowExportModal(false)} className="text-slate-400 hover:text-slate-250 cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
+            
+            <p className="text-xs text-slate-500">
+              Choose how you want to structure the exported CSV file. Active filters will be applied to the exported dataset.
+            </p>
+
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition hover:bg-slate-800 border-slate-800">
+                <input
+                  type="radio"
+                  name="exportMode"
+                  checked={exportMode === 'summary'}
+                  onChange={() => setExportMode('summary')}
+                  className="mt-1 accent-amber-500"
+                />
+                <div>
+                  <span className="block text-xs font-bold text-slate-250">Order Summary</span>
+                  <span className="block text-[11px] text-slate-500 mt-0.5">
+                    One row per order. Exports order totals, taxes, service fees, discounts, and payments.
+                  </span>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition hover:bg-slate-800 border-slate-800">
+                <input
+                  type="radio"
+                  name="exportMode"
+                  checked={exportMode === 'item'}
+                  onChange={() => setExportMode('item')}
+                  className="mt-1 accent-amber-500"
+                />
+                <div>
+                  <span className="block text-xs font-bold text-slate-250">Item-level Breakdown</span>
+                  <span className="block text-[11px] text-slate-500 mt-0.5">
+                    One row per item/variant. Includes distributed item-level taxes, service fees, discounts, and commissions.
+                  </span>
+                </div>
+              </label>
+            </div>
+
+            <div className="flex gap-3 pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowExportModal(false)}
+                className="flex-1 bg-slate-800 hover:bg-slate-750 text-slate-300 font-semibold py-2 rounded-xl transition text-xs text-center cursor-pointer border border-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteExport}
+                className="flex-1 bg-amber-500 hover:bg-amber-400 text-white font-semibold py-2 rounded-xl transition text-xs text-center shadow-sm cursor-pointer"
+              >
+                Download CSV
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       <OrderDetailSlideOver
         order={liveSelected}

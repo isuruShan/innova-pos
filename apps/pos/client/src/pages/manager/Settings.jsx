@@ -1,11 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Save, ToggleLeft, ToggleRight, Settings as SettingsIcon,
   Percent, Hash, Users, Plus, Edit2, Trash2,
   ChefHat, ShoppingCart, Eye, EyeOff, LayoutGrid,
-  Monitor, Smartphone,
+  Monitor, Smartphone, Upload, Loader,
 } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../api/axios';
 import Navbar from '../../components/Navbar';
@@ -15,6 +16,7 @@ import { AvatarDisplay } from '../../components/ProfileSlideOver';
 import { useStoreContext } from '../../context/StoreContext';
 import { useAuth } from '../../context/AuthContext';
 import { SettingsChargesSkeleton, StaffListSkeleton } from '../../components/StoreSkeletons';
+import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 
 // ─── Order-charges tab ────────────────────────────────────────────────────────
 
@@ -258,8 +260,6 @@ const ROLE_CONFIG = {
   kitchen: { label: 'Kitchen', icon: ChefHat,      bg: 'bg-green-500/15',  text: 'text-green-400',  border: 'border-green-500/25' },
 };
 const AVATAR_COLORS = { cashier: 'bg-amber-500', kitchen: 'bg-green-500' };
-const EMPTY_FORM = { name: '', email: '', password: '', role: 'cashier' };
-
 function getInitials(name = '') {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
@@ -275,13 +275,7 @@ function UserAvatar({ user }) {
 }
 
 function UsersTab() {
-  const qc = useQueryClient();
   const { selectedStoreId, isStoreReady } = useStoreContext();
-  const [slideOpen, setSlideOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [formError, setFormError] = useState('');
-  const [showPw, setShowPw] = useState(false);
   const [filterRole, setFilterRole] = useState('all');
 
   const { data: users = [], isPending: usersPending } = useQuery({
@@ -290,26 +284,7 @@ function UsersTab() {
     enabled: isStoreReady,
   });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['staff-users'] });
-  const updateMutation = useMutation({ mutationFn: ({ id, d }) => api.put(`/users/${id}`, d), onSuccess: () => { invalidate(); closeSlide(); }, onError: (e) => setFormError(e.response?.data?.message || 'Failed') });
-  const deleteMutation = useMutation({ mutationFn: (id) => api.delete(`/users/${id}`), onSuccess: invalidate });
-
-  const openEdit = (u) => { setEditing(u); setForm({ name: u.name, email: u.email, password: '', role: u.role }); setFormError(''); setShowPw(false); setSlideOpen(true); };
-  const closeSlide = () => { setSlideOpen(false); setEditing(null); setForm(EMPTY_FORM); setFormError(''); };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setFormError('');
-    if (!form.name.trim()) return setFormError('Name is required');
-    if (!form.email.trim()) return setFormError('Email is required');
-    if (form.password && form.password.length < 6) return setFormError('Password must be at least 6 characters');
-    const payload = { name: form.name, email: form.email, role: form.role };
-    if (form.password) payload.password = form.password;
-    if (editing) updateMutation.mutate({ id: editing._id, d: payload });
-  };
-
   const filtered = filterRole === 'all' ? users : users.filter(u => u.role === filterRole);
-  const savePending = updateMutation.isPending;
   const cashierCount = users.filter(u => u.role === 'cashier').length;
   const kitchenCount = users.filter(u => u.role === 'kitchen').length;
 
@@ -355,78 +330,14 @@ function UsersTab() {
                   <p className="text-[var(--pos-text-primary)] font-semibold text-sm truncate">{user.name}</p>
                   <p className="text-slate-500 text-xs truncate">{user.email}</p>
                 </div>
-                <span className={`hidden sm:inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${cfg?.bg} ${cfg?.text} ${cfg?.border}`}>
+                <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${cfg?.bg} ${cfg?.text} ${cfg?.border}`}>
                   <Icon size={10} />{cfg?.label}
                 </span>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button onClick={() => openEdit(user)} className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition"><Edit2 size={13} /></button>
-                  <button onClick={() => { if (confirm(`Delete "${user.name}"?`)) deleteMutation.mutate(user._id); }} className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition"><Trash2 size={13} /></button>
-                </div>
               </div>
             );
           })}
         </div>
       )}
-
-      <SlideOver open={slideOpen} onClose={closeSlide} title="Edit User">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Role *</label>
-            <div className="grid grid-cols-2 gap-2">
-              {['cashier', 'kitchen'].map(role => {
-                const cfg = ROLE_CONFIG[role];
-                const Icon = cfg.icon;
-                return (
-                  <button key={role} type="button" onClick={() => setForm(f => ({ ...f, role }))}
-                    className={`flex items-center gap-2 px-3 py-3 rounded-xl border text-sm font-semibold transition ${
-                      form.role === role ? `${cfg.bg} ${cfg.text} ${cfg.border}` : 'bg-[var(--pos-surface-inset)] border-slate-700 text-slate-400 hover:border-slate-600'
-                    }`}>
-                    <Icon size={16} />{cfg.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Full Name *</label>
-            <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              placeholder="e.g. Sarah Smith" required
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Email *</label>
-            <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-              placeholder="e.g. sarah@burgerjoint.com" required
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
-              New Password (leave blank to keep)
-            </label>
-            <div className="relative">
-              <input type={showPw ? 'text' : 'password'} value={form.password}
-                onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                placeholder={editing ? 'Leave blank to keep current' : 'Min 6 characters'}
-                className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600" />
-              <button type="button" onClick={() => setShowPw(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition">
-                {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
-            </div>
-          </div>
-          {formError && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm">{formError}</div>
-          )}
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={closeSlide}
-              className="flex-1 bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-semibold py-2.5 rounded-xl transition text-sm">Cancel</button>
-            <button type="submit" disabled={savePending}
-              className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl transition text-sm">
-              {savePending ? 'Saving…' : 'Save Changes'}
-            </button>
-          </div>
-        </form>
-      </SlideOver>
     </>
   );
 }
@@ -706,8 +617,31 @@ const TABS = [
   { id: 'payments', label: 'Store Payments', icon: Hash },
 ];
 
+async function optimizeToWebP(file) {
+  const compressed = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1024, useWebWorker: true });
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        canvas.toBlob(blob => resolve(new File([blob], 'terminal_bg.webp', { type: 'image/webp' })), 'image/webp', 0.85);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(compressed);
+    reader.onerror = reject;
+  });
+}
+
 function CustomerScreenTab() {
   const qc = useQueryClient();
+  const fileTerminalBgRef = useRef(null);
+  const [terminalBgPreview, setTerminalBgPreview] = useState(null);
+  const [terminalBgFile, setTerminalBgFile] = useState(null);
   const [otpEnabled, setOtpEnabled] = useState(false);
   const [smsAllowed, setSmsAllowed] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -716,6 +650,9 @@ function CustomerScreenTab() {
     queryKey: ['tenant-settings-page'],
     queryFn: () => api.get('/tenant-settings').then(r => r.data),
   });
+
+  const { data: addons } = useTenantPaidAddons();
+  const dualScreenActive = addons?.dualScreen === true;
 
   useEffect(() => {
     if (tenantSettings) {
@@ -733,6 +670,56 @@ function CustomerScreenTab() {
     },
   });
 
+  const terminalBgMutation = useMutation({
+    mutationFn: (fd) => api.post('/tenant-settings/terminal-bg', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
+    onSuccess: () => {
+      setTerminalBgFile(null);
+      setTerminalBgPreview(null);
+      qc.invalidateQueries({ queryKey: ['tenant-settings-page'] });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    },
+    onError: (err) => alert(err.response?.data?.message || 'Background image upload failed'),
+  });
+
+  const removeTerminalBgMutation = useMutation({
+    mutationFn: () => api.delete('/tenant-settings/terminal-bg'),
+    onSuccess: () => {
+      setTerminalBgFile(null);
+      setTerminalBgPreview(null);
+      qc.invalidateQueries({ queryKey: ['tenant-settings-page'] });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    },
+    onError: (err) => alert(err.response?.data?.message || 'Failed to remove background image'),
+  });
+
+  const handleTerminalBgChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Invalid file type. Please select an image.');
+      if (fileTerminalBgRef.current) fileTerminalBgRef.current.value = '';
+      return;
+    }
+    const preview = URL.createObjectURL(file);
+    setTerminalBgPreview(preview);
+    try {
+      const webp = await optimizeToWebP(file);
+      setTerminalBgFile(webp);
+    } catch (err) {
+      console.error(err);
+      alert('Image optimization failed');
+    }
+  };
+
+  const handleUploadTerminalBg = async () => {
+    if (!terminalBgFile) return;
+    const fd = new FormData();
+    fd.append('terminalBg', terminalBgFile);
+    terminalBgMutation.mutate(fd);
+  };
+
   if (isPending) return <div className="text-sm text-slate-500">Loading settings...</div>;
 
   return (
@@ -741,6 +728,7 @@ function CustomerScreenTab() {
         Configure customer terminal display and login/registration behavior.
       </p>
       
+      {/* SMS OTP Verification */}
       <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div>
@@ -774,12 +762,83 @@ function CustomerScreenTab() {
         )}
       </div>
 
+      {/* Customer Terminal Background Image */}
+      {dualScreenActive && (
+        <div className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-2xl p-5 space-y-4">
+          <div>
+            <h4 className="text-sm font-semibold text-[var(--pos-text-primary)]">Customer Terminal Background</h4>
+            <p className="text-xs text-slate-500 mt-1">
+              Upload a background image for the customer terminal secondary monitor. This image is displayed on the check-in section and takes over the right panel once a customer has checked in.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-6 pt-2">
+            <div className="relative w-48 h-28 shrink-0">
+              <div className="w-full h-full rounded-xl border-2 border-dashed border-slate-700 flex items-center justify-center overflow-hidden bg-slate-800/30">
+                {terminalBgPreview || tenantSettings?.customerTerminalBgUrl ? (
+                  <img src={terminalBgPreview || tenantSettings.customerTerminalBgUrl} alt="terminal bg" className="w-full h-full object-cover" />
+                ) : (
+                  <Upload size={24} className="text-slate-600" />
+                )}
+                {(terminalBgPreview || tenantSettings?.customerTerminalBgUrl) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (terminalBgPreview) {
+                        setTerminalBgPreview(null);
+                        setTerminalBgFile(null);
+                        if (fileTerminalBgRef.current) fileTerminalBgRef.current.value = '';
+                        return;
+                      }
+                      if (confirm('Remove customer terminal background image?')) {
+                        removeTerminalBgMutation.mutate();
+                      }
+                    }}
+                    disabled={removeTerminalBgMutation.isPending}
+                    className="absolute top-1.5 right-1.5 w-7 h-7 rounded-lg bg-slate-900/80 backdrop-blur text-white hover:bg-red-650 disabled:opacity-60 flex items-center justify-center shadow-md transition-colors"
+                    title="Remove background"
+                    aria-label="Remove background"
+                  >
+                    {removeTerminalBgMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="text-center sm:text-left w-full sm:w-auto space-y-2">
+              <input ref={fileTerminalBgRef} type="file" accept="image/*" onChange={handleTerminalBgChange} className="hidden" />
+              <div className="flex justify-center sm:justify-start gap-2">
+                <button 
+                  type="button"
+                  onClick={() => fileTerminalBgRef.current?.click()}
+                  className="px-4 py-2 border border-slate-700 rounded-xl text-sm font-semibold text-slate-300 hover:bg-slate-800 transition"
+                >
+                  Choose image
+                </button>
+                {terminalBgFile && (
+                  <button 
+                    type="button"
+                    onClick={handleUploadTerminalBg} 
+                    disabled={terminalBgMutation.isPending}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 text-sm font-semibold text-white hover:bg-amber-400 disabled:opacity-60 transition"
+                  >
+                    {terminalBgMutation.isPending ? <Loader size={13} className="animate-spin" /> : <Upload size={13} />}
+                    Upload
+                  </button>
+                )}
+              </div>
+              <p className="text-[10px] text-slate-500">Recommended: 1920×1080px (16:9 ratio). Will be converted to WebP.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {saved && (
         <p className="text-xs text-green-400 text-center font-medium mt-2">Settings saved successfully!</p>
       )}
     </div>
   );
 }
+
 
 export default function SettingsPage() {
   const navigate = useNavigate();

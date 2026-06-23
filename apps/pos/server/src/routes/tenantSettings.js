@@ -1,6 +1,8 @@
 const express = require('express');
 const axios = require('axios');
-const { authenticateJWT, tenantScope } = require('@innovapos/shared-middleware');
+const multer = require('multer');
+const FormData = require('form-data');
+const { authenticateJWT, authorize, tenantScope } = require('@innovapos/shared-middleware');
 
 const router = express.Router();
 
@@ -23,12 +25,17 @@ const THEME_FIELDS = [
   'selectionTextColor',
 ];
 
-/**
- * GET /tenant-settings — proxy to admin-portal-server for tenant branding
- */
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
+
+const getAdminUrl = () => process.env.ADMIN_PORTAL_URL || 'http://localhost:5001';
+
+// GET /tenant-settings — proxy to admin-portal-server for tenant branding
 router.get('/', authenticateJWT, tenantScope, async (req, res) => {
   try {
-    const adminUrl = process.env.ADMIN_PORTAL_URL || 'http://localhost:5001';
+    const adminUrl = getAdminUrl();
     const { data } = await axios.get(`${adminUrl}/api/tenant-settings`, {
       headers: { Authorization: req.headers.authorization },
       timeout: 5000,
@@ -91,6 +98,63 @@ router.get('/', authenticateJWT, tenantScope, async (req, res) => {
       receiptPrintAtByOrderType: null,
       inventoryCostingMethod: 'wac',
     });
+  }
+});
+
+// PUT /tenant-settings — proxy to admin-portal-server
+router.put('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
+  try {
+    const adminUrl = getAdminUrl();
+    const { data } = await axios.put(`${adminUrl}/api/tenant-settings`, req.body, {
+      headers: { Authorization: req.headers.authorization }
+    });
+    res.json(data);
+  } catch (err) {
+    const status = err.response?.status || 500;
+    const msg = err.response?.data?.message || err.message;
+    res.status(status).json({ message: msg });
+  }
+});
+
+// POST /tenant-settings/terminal-bg — proxy image upload to admin-portal-server
+router.post('/terminal-bg', authenticateJWT, authorize('merchant_admin', 'superadmin'), tenantScope,
+  upload.single('terminalBg'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    try {
+      const adminUrl = getAdminUrl();
+      const fd = new FormData();
+      fd.append('terminalBg', req.file.buffer, {
+        filename: req.file.originalname || 'terminalBg.webp',
+        contentType: req.file.mimetype
+      });
+
+      const { data } = await axios.post(`${adminUrl}/api/tenant-settings/terminal-bg`, fd, {
+        headers: {
+          ...fd.getHeaders(),
+          Authorization: req.headers.authorization
+        }
+      });
+      res.json(data);
+    } catch (err) {
+      const status = err.response?.status || 500;
+      const msg = err.response?.data?.message || err.message;
+      res.status(status).json({ message: msg });
+    }
+  }
+);
+
+// DELETE /tenant-settings/terminal-bg — proxy to admin-portal-server
+router.delete('/terminal-bg', authenticateJWT, authorize('merchant_admin', 'superadmin'), tenantScope, async (req, res) => {
+  try {
+    const adminUrl = getAdminUrl();
+    const { data } = await axios.delete(`${adminUrl}/api/tenant-settings/terminal-bg`, {
+      headers: { Authorization: req.headers.authorization }
+    });
+    res.json(data);
+  } catch (err) {
+    const status = err.response?.status || 500;
+    const msg = err.response?.data?.message || err.message;
+    res.status(status).json({ message: msg });
   }
 });
 

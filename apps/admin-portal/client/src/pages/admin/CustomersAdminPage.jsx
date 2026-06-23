@@ -432,8 +432,13 @@ export default function CustomersAdminPage() {
         open={Boolean(confirmDeleteCustomer)}
         variant="delete"
         title="Delete customer?"
-        message={`"${confirmDeleteCustomer?.name || confirmDeleteCustomer?.email || 'this record'}" will be permanently removed.`}
+        message={
+          confirmDeleteCustomer?.lifetimePoints > 0
+            ? `"${confirmDeleteCustomer.name || confirmDeleteCustomer.email || 'this record'}" has ${confirmDeleteCustomer.lifetimePoints} loyalty points. Deleting this customer will permanently remove their loyalty profile and points.\n\nAre you sure you want to proceed?`
+            : `"${confirmDeleteCustomer?.name || confirmDeleteCustomer?.email || 'this record'}" will be permanently removed. Are you sure you want to proceed?`
+        }
         confirmLabel="Delete"
+        isLoading={deleteCustomer.isPending}
         onConfirm={() => { deleteCustomer.mutate(confirmDeleteCustomer._id); setConfirmDeleteCustomer(null); }}
         onCancel={() => setConfirmDeleteCustomer(null)}
       />

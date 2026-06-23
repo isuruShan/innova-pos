@@ -128,15 +128,31 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
 
     const brandingDoc = await TenantSettings.findOne({ tenantId: ctx.ids.tenantId })
       .select(
-        'businessName tagline logoUrl faviconUrl primaryColor accentColor sidebarColor textColor selectionTextColor currency currencySymbol qrOrdering',
+        'businessName tagline logoUrl faviconUrl logoKey primaryColor accentColor sidebarColor textColor selectionTextColor currency currencySymbol qrOrdering',
       )
       .lean();
+
+    let logoUrl = '';
+    if (brandingDoc) {
+      if (brandingDoc.logoKey) {
+        try {
+          const path = require('path');
+          const { presignObjectKey } = require(path.join(paths.posSrc, 'utils/s3Runtime.js'));
+          logoUrl = await presignObjectKey(brandingDoc.logoKey, 86400);
+        } catch (presignErr) {
+          console.error('[qr-order-server] Error presigning logo key:', presignErr);
+          logoUrl = brandingDoc.logoUrl || '';
+        }
+      } else {
+        logoUrl = brandingDoc.logoUrl || '';
+      }
+    }
 
     const branding = brandingDoc
       ? {
           businessName: brandingDoc.businessName || '',
           tagline: brandingDoc.tagline || '',
-          logoUrl: brandingDoc.logoUrl || '',
+          logoUrl: logoUrl,
           faviconUrl: brandingDoc.faviconUrl || '',
           primaryColor: brandingDoc.primaryColor || '#1a1a2e',
           accentColor: brandingDoc.accentColor || '#e94560',

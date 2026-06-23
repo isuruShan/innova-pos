@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, ChevronDown, ChevronUp, AlertCircle, Info, Calculator } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, AlertCircle, Info, Tag, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import api from '../../api/axios';
 import { formatCurrency } from '../../utils/format';
 import { useStoreContext } from '../../context/StoreContext';
 import ViewModeToggle from '../ViewModeToggle';
+import ListPagination from '../ListPagination';
 
 const FORMULA_FIELDS = {
   wac: 'wacCost',
@@ -22,16 +23,41 @@ const FORMULA_LABELS = {
 
 const STORAGE_KEY = 'view_mode_pos_recipe_profitability';
 
+function SortHeader({ label, field, currentSort, currentOrder, onSort, align = 'left' }) {
+  const active = currentSort === field;
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(field)}
+      className={`inline-flex items-center gap-1 hover:text-[var(--pos-text-primary)] transition-colors ${
+        align === 'right' ? 'justify-end w-full' : align === 'center' ? 'justify-center w-full' : ''
+      } ${active ? 'text-amber-400 font-semibold' : 'text-slate-400'}`}
+    >
+      <span>{label}</span>
+      {active ? (
+        currentOrder === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+      ) : (
+        <ArrowUpDown size={12} className="opacity-30" />
+      )}
+    </button>
+  );
+}
+
 export default function ProfitabilityAnalytics() {
   const { selectedStoreId, isStoreReady } = useStoreContext();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFormulaState, setSelectedFormulaState] = useState(null);
   const [expandedRows, setExpandedRows] = useState({});
   const [viewMode, setViewMode] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) return saved;
     return window.innerWidth < 768 ? 'grid' : 'table';
   });
+
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [sortField, setSortField] = useState('name');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [page, setPage] = useState(1);
+  const limit = 10;
 
   const handleSetViewMode = (mode) => {
     setViewMode(mode);
@@ -44,7 +70,7 @@ export default function ProfitabilityAnalytics() {
     queryFn: () => api.get('/tenant-settings').then(r => r.data),
   });
 
-  const selectedFormula = selectedFormulaState || settings?.inventoryCostingMethod || 'wac';
+  const selectedFormula = settings?.inventoryCostingMethod || 'wac';
 
   // 2. Fetch all Menu Items
   const { data: items = [], isPending: menuPending } = useQuery({
@@ -120,14 +146,75 @@ export default function ProfitabilityAnalytics() {
     return list;
   }, [items, ingredientLinks, selectedFormula]);
 
-  const filteredRows = useMemo(() => {
-    if (!searchQuery.trim()) return calculatedRows;
-    const q = searchQuery.toLowerCase();
-    return calculatedRows.filter(row =>
-      row.name.toLowerCase().includes(q) ||
-      (row.category || '').toLowerCase().includes(q)
+  // Extract unique categories from calculatedRows
+  const categoriesList = useMemo(() => {
+    const cats = calculatedRows.map(row => row.category).filter(Boolean);
+    return [...new Set(cats)].sort();
+  }, [calculatedRows]);
+
+  const handleToggleCategory = (cat) => {
+    setSelectedCategories(prev =>
+      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
     );
-  }, [calculatedRows, searchQuery]);
+  };
+
+  // Reset to page 1 when filters or search change
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, selectedCategories]);
+
+  // Combine search and category filters
+  const filteredRows = useMemo(() => {
+    return calculatedRows.filter(row => {
+      const matchesSearch = !searchQuery.trim() ||
+        row.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (row.category || '').toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesCategory = selectedCategories.length === 0 ||
+        selectedCategories.includes(row.category);
+        
+      return matchesSearch && matchesCategory;
+    });
+  }, [calculatedRows, searchQuery, selectedCategories]);
+
+  // Sort rows
+  const sortedRows = useMemo(() => {
+    return [...filteredRows].sort((a, b) => {
+      let valA = a[sortField];
+      let valB = b[sortField];
+
+      if (valA === undefined || valA === null) valA = '';
+      if (valB === undefined || valB === null) valB = '';
+
+      if (typeof valA === 'string') {
+        valA = valA.toLowerCase();
+        valB = valB.toLowerCase();
+      }
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filteredRows, sortField, sortOrder]);
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  // Pagination calculations
+  const totalItems = sortedRows.length;
+  const totalPages = Math.ceil(totalItems / limit);
+  const activePage = Math.max(1, Math.min(page, totalPages || 1));
+
+  const paginatedRows = useMemo(() => {
+    const startIndex = (activePage - 1) * limit;
+    return sortedRows.slice(startIndex, startIndex + limit);
+  }, [sortedRows, activePage, limit]);
 
   const loading = menuPending || linksPending;
 
@@ -185,23 +272,46 @@ export default function ProfitabilityAnalytics() {
           />
         </div>
 
-        {/* Controls — wrap on mobile */}
-        <div className="flex flex-wrap items-center gap-3 justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 flex items-center gap-1 whitespace-nowrap">
-              <Calculator size={13} /> Formula:
+        {/* Categories row & ViewMode Toggle */}
+        <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center pt-2 border-t border-slate-700/50">
+          <div className="flex flex-wrap gap-1.5 items-center">
+            <span className="text-xs text-slate-400 flex items-center gap-1 mr-1">
+              <Tag size={12} /> Categories:
             </span>
-            <select
-              value={selectedFormula}
-              onChange={(e) => setSelectedFormulaState(e.target.value)}
-              className="bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
-            >
-              {Object.keys(FORMULA_LABELS).map(key => (
-                <option key={key} value={key}>{FORMULA_LABELS[key]}</option>
-              ))}
-            </select>
+            {categoriesList.length === 0 ? (
+              <span className="text-xs text-slate-500 italic">No categories found</span>
+            ) : (
+              categoriesList.map((cat) => {
+                const active = selectedCategories.includes(cat);
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => handleToggleCategory(cat)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
+                      active
+                        ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)] shadow-lg shadow-amber-500/20'
+                        : 'text-slate-400 border-slate-700 hover:text-[var(--pos-text-primary)] bg-[var(--pos-surface-inset)] hover:bg-slate-700/50'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })
+            )}
+            {selectedCategories.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedCategories([])}
+                className="text-xs text-red-400 hover:underline hover:text-red-300 ml-2"
+              >
+                Clear
+              </button>
+            )}
           </div>
-          <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
+          <div className="flex justify-end shrink-0 self-stretch md:self-auto">
+            <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
+          </div>
         </div>
       </div>
 
@@ -220,171 +330,195 @@ export default function ProfitabilityAnalytics() {
       {/* Content */}
       {loading ? (
         <div className="text-center py-16 text-slate-500">Loading profitability analytics...</div>
-      ) : filteredRows.length === 0 ? (
+      ) : sortedRows.length === 0 ? (
         <div className="text-center py-16 bg-[var(--pos-panel)] rounded-2xl border border-slate-700 text-slate-400">
           <AlertCircle size={36} className="mx-auto opacity-35 mb-2" />
           <p className="text-sm">No recipe profitability records found</p>
         </div>
-      ) : viewMode === 'grid' ? (
-        /* ── GRID VIEW ── */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredRows.map(row => {
-            const isExpanded = !!expandedRows[row.id];
-            return (
-              <div key={row.id} className="bg-[var(--pos-panel)] border border-slate-700/65 rounded-2xl p-4 shadow-sm flex flex-col hover:border-slate-600 transition">
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <h4 className="font-semibold text-[var(--pos-text-primary)] text-sm truncate">{row.name}</h4>
-                      <p className="text-xs text-slate-500 mt-0.5">{row.category || '—'}</p>
-                      {row.isVariant && <span className="text-[10px] text-purple-400 font-medium">Variant</span>}
-                    </div>
-                    <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold shrink-0 ${getMarginBadgeVariant(row.margin)}`}>
-                      {row.margin.toFixed(1)}%
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-slate-700/50 text-xs">
-                    <div>
-                      <p className="text-slate-500">Sell Price</p>
-                      <p className="font-semibold text-[var(--pos-text-primary)] mt-0.5">{formatCurrency(row.sellPrice)}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500">Recipe Cost</p>
-                      <p className="font-semibold text-slate-300 mt-0.5">{formatCurrency(row.totalCogs)}</p>
-                    </div>
-                    <div className="col-span-2 pt-2 border-t border-slate-700/40 flex items-center justify-between">
-                      <div>
-                        <p className="text-slate-500">Estimated Profit</p>
-                        <p className={`font-bold mt-0.5 ${row.profit < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                          {formatCurrency(row.profit)}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => toggleRow(row.id)}
-                        className="flex items-center gap-1 text-xs font-semibold text-amber-400 hover:underline px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 transition cursor-pointer"
-                      >
-                        {isExpanded ? 'Hide Recipe' : 'View Recipe'}
-                        {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {isExpanded && <RecipeBreakdown row={row} />}
-              </div>
-            );
-          })}
-        </div>
       ) : (
-        /* ── TABLE VIEW ── */
-        <div className="bg-[var(--pos-panel)] border border-slate-700/65 rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-700/50 bg-slate-800/30 text-slate-400 text-xs font-semibold uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Menu Item / Variant</th>
-                  <th className="py-3.5 px-4 hidden sm:table-cell">Category</th>
-                  <th className="py-3.5 px-4 text-right">Sell Price</th>
-                  <th className="py-3.5 px-4 text-right hidden md:table-cell">Recipe Cost</th>
-                  <th className="py-3.5 px-4 text-right">Profit</th>
-                  <th className="py-3.5 px-4 text-right">Margin</th>
-                  <th className="py-3.5 px-4 w-10"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-700/30 text-sm">
-                {filteredRows.map(row => {
-                  const isExpanded = !!expandedRows[row.id];
-                  return (
-                    <>
-                      <tr key={row.id} className="hover:bg-slate-800/20 transition-colors">
-                        <td className="py-3.5 px-4">
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-[var(--pos-text-primary)]">{row.name}</span>
-                            {row.isVariant && <span className="text-[10px] text-purple-400 font-medium">Variant</span>}
+        <div className="space-y-4">
+          {viewMode === 'grid' ? (
+            /* ── GRID VIEW ── */
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {paginatedRows.map(row => {
+                const isExpanded = !!expandedRows[row.id];
+                return (
+                  <div key={row.id} className="bg-[var(--pos-panel)] border border-slate-700/65 rounded-2xl p-4 shadow-sm flex flex-col hover:border-slate-600 transition">
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h4 className="font-semibold text-[var(--pos-text-primary)] text-sm truncate">{row.name}</h4>
+                          <p className="text-xs text-slate-500 mt-0.5">{row.category || '—'}</p>
+                          {row.isVariant && <span className="text-[10px] text-purple-400 font-medium">Variant</span>}
+                        </div>
+                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold shrink-0 ${getMarginBadgeVariant(row.margin)}`}>
+                          {row.margin.toFixed(1)}%
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-slate-700/50 text-xs">
+                        <div>
+                          <p className="text-slate-500">Sell Price</p>
+                          <p className="font-semibold text-[var(--pos-text-primary)] mt-0.5">{formatCurrency(row.sellPrice)}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-500">Recipe Cost</p>
+                          <p className="font-semibold text-slate-300 mt-0.5">{formatCurrency(row.totalCogs)}</p>
+                        </div>
+                        <div className="col-span-2 pt-2 border-t border-slate-700/40 flex items-center justify-between">
+                          <div>
+                            <p className="text-slate-500">Estimated Profit</p>
+                            <p className={`font-bold mt-0.5 ${row.profit < 0 ? 'text-red-400' : 'text-green-400'}`}>
+                              {formatCurrency(row.profit)}
+                            </p>
                           </div>
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-400 hidden sm:table-cell">{row.category || '—'}</td>
-                        <td className="py-3.5 px-4 text-right font-medium text-[var(--pos-text-primary)]">
-                          {formatCurrency(row.sellPrice)}
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-medium text-slate-300 hidden md:table-cell">
-                          {formatCurrency(row.totalCogs)}
-                        </td>
-                        <td className={`py-3.5 px-4 text-right font-bold ${row.profit < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                          {formatCurrency(row.profit)}
-                        </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${getMarginBadgeVariant(row.margin)}`}>
-                            {row.margin.toFixed(1)}%
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
                           <button
                             type="button"
                             onClick={() => toggleRow(row.id)}
-                            className="p-1 rounded text-slate-400 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition cursor-pointer"
-                            title="Toggle Recipe Breakdown"
+                            className="flex items-center gap-1 text-xs font-semibold text-amber-400 hover:underline px-2.5 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 transition cursor-pointer"
                           >
-                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            {isExpanded ? 'Hide Recipe' : 'View Recipe'}
+                            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                           </button>
-                        </td>
-                      </tr>
-                      {isExpanded && (
-                        <tr key={`${row.id}-detail`}>
-                          <td colSpan={7} className="bg-slate-800/20 px-6 py-4 border-t border-slate-700/30">
-                            <div className="space-y-3 max-w-3xl">
-                              <div className="flex items-center justify-between border-b border-slate-700/50 pb-2">
-                                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Recipe Breakdown</span>
-                                <span className="text-xs text-slate-500">Ingredients: {row.breakdown.length}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isExpanded && <RecipeBreakdown row={row} />}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* ── TABLE VIEW ── */
+            <div className="bg-[var(--pos-panel)] border border-slate-700/65 rounded-2xl sm:overflow-visible">
+              <div className="overflow-x-auto sm:overflow-visible">
+                <table className="w-full text-left border-collapse">
+                  <thead className="sticky top-[64px] bg-[var(--pos-panel)] z-10 border-b border-slate-700">
+                    <tr className="border-b border-slate-700 bg-slate-800/30 text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                      <th className="py-3.5 px-4 bg-[var(--pos-panel)]">
+                        <SortHeader label="Menu Item / Variant" field="name" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} />
+                      </th>
+                      <th className="py-3.5 px-4 hidden sm:table-cell bg-[var(--pos-panel)]">
+                        <SortHeader label="Category" field="category" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} />
+                      </th>
+                      <th className="py-3.5 px-4 text-right bg-[var(--pos-panel)]">
+                        <SortHeader label="Sell Price" field="sellPrice" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} align="right" />
+                      </th>
+                      <th className="py-3.5 px-4 text-right hidden md:table-cell bg-[var(--pos-panel)]">
+                        <SortHeader label="Recipe Cost" field="totalCogs" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} align="right" />
+                      </th>
+                      <th className="py-3.5 px-4 text-right bg-[var(--pos-panel)]">
+                        <SortHeader label="Profit" field="profit" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} align="right" />
+                      </th>
+                      <th className="py-3.5 px-4 text-right bg-[var(--pos-panel)]">
+                        <SortHeader label="Margin" field="margin" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} align="right" />
+                      </th>
+                      <th className="py-3.5 px-4 w-10 bg-[var(--pos-panel)]"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-700/30 text-sm">
+                    {paginatedRows.map(row => {
+                      const isExpanded = !!expandedRows[row.id];
+                      return (
+                        <>
+                          <tr key={row.id} className="hover:bg-slate-800/20 transition-colors">
+                            <td className="py-3.5 px-4">
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-[var(--pos-text-primary)]">{row.name}</span>
+                                {row.isVariant && <span className="text-[10px] text-purple-400 font-medium">Variant</span>}
                               </div>
-                              {row.breakdown.length === 0 ? (
-                                <p className="text-xs text-slate-500 italic py-2">No ingredients linked.</p>
-                              ) : (
-                                <div className="overflow-x-auto">
-                                  <table className="w-full text-left text-xs border-collapse">
-                                    <thead>
-                                      <tr className="border-b border-slate-700/50 text-slate-500 font-semibold">
-                                        <th className="py-2 px-2">Ingredient</th>
-                                        <th className="py-2 px-2 text-right">Usage Qty</th>
-                                        <th className="py-2 px-2 text-right hidden sm:table-cell">Wastage %</th>
-                                        <th className="py-2 px-2 text-right hidden sm:table-cell">Unit Cost</th>
-                                        <th className="py-2 px-2 text-right">Contribution</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-700/30 text-slate-350">
-                                      {row.breakdown.map((item, idx) => (
-                                        <tr key={idx} className="hover:bg-slate-800/30">
-                                          <td className="py-2 px-2 font-medium text-slate-200">{item.ingredientName}</td>
-                                          <td className="py-2 px-2 text-right">{item.usageQty} {item.unit}</td>
-                                          <td className="py-2 px-2 text-right hidden sm:table-cell">{item.wastage}%</td>
-                                          <td className="py-2 px-2 text-right hidden sm:table-cell">{formatCurrency(item.unitCost)}</td>
-                                          <td className="py-2 px-2 text-right font-semibold text-slate-300">
-                                            {formatCurrency(item.contribution)}
-                                          </td>
-                                        </tr>
-                                      ))}
-                                      <tr className="border-t border-slate-600/50 text-slate-200 font-bold">
-                                        <td colSpan={4} className="py-2 px-2 text-right">Total Recipe Cost:</td>
-                                        <td className="py-2 px-2 text-right text-amber-400">
-                                          {formatCurrency(row.totalCogs)}
-                                        </td>
-                                      </tr>
-                                    </tbody>
-                                  </table>
+                            </td>
+                            <td className="py-3.5 px-4 text-slate-400 hidden sm:table-cell">{row.category || '—'}</td>
+                            <td className="py-3.5 px-4 text-right font-medium text-[var(--pos-text-primary)]">
+                              {formatCurrency(row.sellPrice)}
+                            </td>
+                            <td className="py-3.5 px-4 text-right font-medium text-slate-300 hidden md:table-cell">
+                              {formatCurrency(row.totalCogs)}
+                            </td>
+                            <td className={`py-3.5 px-4 text-right font-bold ${row.profit < 0 ? 'text-red-400' : 'text-green-400'}`}>
+                              {formatCurrency(row.profit)}
+                            </td>
+                            <td className="py-3.5 px-4 text-right">
+                              <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-bold ${getMarginBadgeVariant(row.margin)}`}>
+                                {row.margin.toFixed(1)}%
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <button
+                                type="button"
+                                onClick={() => toggleRow(row.id)}
+                                className="p-1 rounded text-slate-400 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition cursor-pointer"
+                                title="Toggle Recipe Breakdown"
+                              >
+                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                              </button>
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr key={`${row.id}-detail`}>
+                              <td colSpan={7} className="bg-slate-800/20 px-6 py-4 border-t border-slate-700/30">
+                                <div className="space-y-3 max-w-3xl">
+                                  <div className="flex items-center justify-between border-b border-slate-700/50 pb-2">
+                                    <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Recipe Breakdown</span>
+                                    <span className="text-xs text-slate-500">Ingredients: {row.breakdown.length}</span>
+                                  </div>
+                                  {row.breakdown.length === 0 ? (
+                                    <p className="text-xs text-slate-500 italic py-2">No ingredients linked.</p>
+                                  ) : (
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-left text-xs border-collapse">
+                                        <thead>
+                                          <tr className="border-b border-slate-700/50 text-slate-500 font-semibold">
+                                            <th className="py-2 px-2">Ingredient</th>
+                                            <th className="py-2 px-2 text-right">Usage Qty</th>
+                                            <th className="py-2 px-2 text-right hidden sm:table-cell">Wastage %</th>
+                                            <th className="py-2 px-2 text-right hidden sm:table-cell">Unit Cost</th>
+                                            <th className="py-2 px-2 text-right">Contribution</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-700/30 text-slate-350">
+                                          {row.breakdown.map((item, idx) => (
+                                            <tr key={idx} className="hover:bg-slate-800/30">
+                                              <td className="py-2 px-2 font-medium text-slate-200">{item.ingredientName}</td>
+                                              <td className="py-2 px-2 text-right">{item.usageQty} {item.unit}</td>
+                                              <td className="py-2 px-2 text-right hidden sm:table-cell">{item.wastage}%</td>
+                                              <td className="py-2 px-2 text-right hidden sm:table-cell">{formatCurrency(item.unitCost)}</td>
+                                              <td className="py-2 px-2 text-right font-semibold text-slate-300">
+                                                {formatCurrency(item.contribution)}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                          <tr className="border-t border-slate-600/50 text-slate-200 font-bold">
+                                            <td colSpan={4} className="py-2 px-2 text-right">Total Recipe Cost:</td>
+                                            <td className="py-2 px-2 text-right text-amber-400">
+                                              {formatCurrency(row.totalCogs)}
+                                            </td>
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <ListPagination
+            page={activePage}
+            pages={totalPages}
+            total={totalItems}
+            onPageChange={(p) => setPage(p)}
+            isFetching={loading}
+          />
         </div>
       )}
     </div>

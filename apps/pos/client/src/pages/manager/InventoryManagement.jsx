@@ -208,8 +208,6 @@ export default function InventoryManagement() {
   // Graph States
   const [graphItem, setGraphItem] = useState(null);
 
-  const [selectedFormulaState, setSelectedFormulaState] = useState(null);
-
   // Pagination states
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
@@ -229,7 +227,7 @@ export default function InventoryManagement() {
     queryFn: () => api.get('/tenant-settings').then(r => r.data),
   });
 
-  const selectedFormula = selectedFormulaState || settings?.inventoryCostingMethod || 'wac';
+  const selectedFormula = settings?.inventoryCostingMethod || 'wac';
 
   const { data: inventoryData = { items: [], total: 0, page: 1, pages: 1, summary: { lowStockCount: 0, categoryCounts: {} } }, isPending: invPending, isFetching: invFetching } = useQuery({
     queryKey: ['inventory', selectedStoreId, page, limit, sort, order, searchQuery, selectedCategoryId, filter, activeTab],
@@ -719,20 +717,7 @@ export default function InventoryManagement() {
                   
                   <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
 
-                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
-                    <span className="text-xs text-slate-400 font-semibold font-sans flex items-center gap-1">
-                      <Calculator size={13} /> Costing:
-                    </span>
-                    <select
-                      value={selectedFormula}
-                      onChange={(e) => setSelectedFormulaState(e.target.value)}
-                      className="bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
-                    >
-                      {Object.keys(FORMULA_LABELS).map(key => (
-                        <option key={key} value={key}>{FORMULA_LABELS[key]}</option>
-                      ))}
-                    </select>
-                  </div>
+
                   
                   <div className="relative self-end sm:self-auto">
                     <button

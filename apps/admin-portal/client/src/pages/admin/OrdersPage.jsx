@@ -3,11 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import {
   Search, Loader2, Eye, Calendar, Store, Filter, RefreshCw, X,
-  Receipt, Sparkles, User, Phone, Mail, Clock, DollarSign
+  Receipt, Sparkles, User, Phone, Mail, Clock, DollarSign, Download
 } from 'lucide-react';
 import api from '../../api/axios';
 import Badge from '../../components/Badge';
 import { unwrapPagedList } from '../../utils/unwrapPagedList';
+import { exportToCsv } from '../../utils/exportCsv';
 
 function toYMD(d) {
   const x = new Date(d);
@@ -39,6 +40,8 @@ export default function OrdersPage() {
   });
   const [quickPeriod, setQuickPeriod] = useState('7days');
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportMode, setExportMode] = useState('summary');
 
   const applyPreset = (preset) => {
     const end = new Date();
@@ -117,24 +120,134 @@ export default function OrdersPage() {
     applyPreset('7days');
   };
 
+  const handleExecuteExport = () => {
+    if (!orders || orders.length === 0) return;
+    
+    if (exportMode === 'summary') {
+      const headers = [
+        'Order Number',
+        'Store Name',
+        'Date & Time',
+        'Customer Name',
+        'Order Type',
+        'Payment Type',
+        'Status',
+        'Subtotal',
+        'Discount Total',
+        'Tax Amount',
+        'Service Fee Amount',
+        'Channel Commission',
+        'Net Total'
+      ];
+      const rows = orders.map(o => [
+        `#${o.orderNumber}`,
+        storeMap[o.storeId] || o.storeName || 'Unknown Store',
+        new Date(o.createdAt).toLocaleString(),
+        o.customerId?.name || 'Walk-in',
+        o.orderType || 'dine-in',
+        o.paymentType || 'cash',
+        o.status,
+        Number(o.subtotal || 0).toFixed(2),
+        Number(o.discountTotal || 0).toFixed(2),
+        Number(o.taxAmount || 0).toFixed(2),
+        Number(o.serviceFeeAmount || 0).toFixed(2),
+        Number(o.commissionAmount || 0).toFixed(2),
+        Number(o.totalAmount || 0).toFixed(2)
+      ]);
+      exportToCsv('orders_summary_report', headers, rows);
+    } else {
+      const headers = [
+        'Order Number',
+        'Store Name',
+        'Date & Time',
+        'Order Type',
+        'Payment Type',
+        'Status',
+        'Item Name',
+        'Variant Name',
+        'Quantity',
+        'Unit Price',
+        'Gross Revenue',
+        'Item Discount',
+        'Item Tax',
+        'Item Service Fee',
+        'Item Commission',
+        'Item Net Total'
+      ];
+      const rows = [];
+      orders.forEach(o => {
+        const orderItems = o.items || [];
+        const orderSubtotal = orderItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
+        const orderDiscount = o.discountTotal || 0;
+        const orderTax = o.taxAmount || 0;
+        const orderServiceFee = o.serviceFeeAmount || 0;
+        const orderCommission = o.commissionAmount || 0;
+
+        orderItems.forEach(i => {
+          const itemRevenue = i.price * i.qty;
+          const share = orderSubtotal > 0 ? (itemRevenue / orderSubtotal) : 0;
+
+          const itemDiscount = orderDiscount * share;
+          const itemTax = orderTax * share;
+          const itemServiceFee = orderServiceFee * share;
+          const itemCommission = orderCommission * share;
+
+          const itemNetTotal = itemRevenue - itemDiscount - itemCommission + itemTax + itemServiceFee;
+
+          rows.push([
+            `#${o.orderNumber}`,
+            storeMap[o.storeId] || o.storeName || 'Unknown Store',
+            new Date(o.createdAt).toLocaleString(),
+            o.orderType || 'dine-in',
+            o.paymentType || 'cash',
+            o.status,
+            i.name,
+            i.variantName || '—',
+            i.qty,
+            Number(i.price || 0).toFixed(2),
+            Number(itemRevenue).toFixed(2),
+            Number(itemDiscount).toFixed(2),
+            Number(itemTax).toFixed(2),
+            Number(itemServiceFee).toFixed(2),
+            Number(itemCommission).toFixed(2),
+            Number(itemNetTotal).toFixed(2)
+          ]);
+        });
+      });
+      exportToCsv('orders_itemized_report', headers, rows);
+    }
+    setShowExportModal(false);
+  };
+
   return (
     <div className="space-y-6">
       {/* Title block */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-950">Comprehensive Orders Tracker</h2>
+          <h2 className="text-xl font-bold text-gray-955">Comprehensive Orders Tracker</h2>
           <p className="text-xs text-gray-500 mt-1">
             Monitor and track sales, order statuses, and returns across all stores.
           </p>
         </div>
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-semibold text-gray-700 transition shadow-sm cursor-pointer disabled:opacity-50"
-        >
-          {isFetching ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {orders && orders.length > 0 && (
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-brand-teal hover:bg-teal-700 text-white rounded-lg text-sm font-semibold transition shadow-sm cursor-pointer"
+            >
+              <Download size={15} />
+              Export
+            </button>
+          )}
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-semibold text-gray-700 transition shadow-sm cursor-pointer disabled:opacity-50"
+          >
+            {isFetching ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Quick Stats Grid */}
@@ -177,7 +290,7 @@ export default function OrdersPage() {
                 onClick={() => applyPreset(p.value)}
                 className={`px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer border ${
                   quickPeriod === p.value
-                    ? 'bg-brand-orange text-white border-brand-orange shadow-sm'
+                    ? 'bg-brand-teal text-white border-brand-teal shadow-sm'
                     : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
                 }`}
               >
@@ -193,7 +306,7 @@ export default function OrdersPage() {
             <select
               value={selectedStore}
               onChange={(e) => setSelectedStore(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 bg-white"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/30 bg-white"
             >
               <option value="all">All Stores</option>
               {stores.map((s) => (
@@ -210,7 +323,7 @@ export default function OrdersPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 bg-white"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/30 bg-white"
             >
               <option value="">All Statuses</option>
               <option value="pending">Pending</option>
@@ -232,7 +345,7 @@ export default function OrdersPage() {
                 placeholder="Order # or customer"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 bg-white"
+                className="w-full border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/30 bg-white"
               />
             </div>
           </div>
@@ -247,7 +360,7 @@ export default function OrdersPage() {
                 setSinceDate(e.target.value);
                 setQuickPeriod('custom');
               }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 bg-white"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/30 bg-white"
             />
           </div>
 
@@ -261,7 +374,7 @@ export default function OrdersPage() {
                 setUntilDate(e.target.value);
                 setQuickPeriod('custom');
               }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 bg-white"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/30 bg-white"
             />
           </div>
         </div>
@@ -281,7 +394,7 @@ export default function OrdersPage() {
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         {isPending ? (
           <div className="py-24 text-center">
-            <Loader2 size={24} className="animate-spin text-brand-orange mx-auto" />
+            <Loader2 size={24} className="animate-spin text-brand-teal mx-auto" />
             <p className="text-gray-500 text-sm mt-2 font-medium">Fetching orders database...</p>
           </div>
         ) : orders.length === 0 ? (
@@ -331,7 +444,7 @@ export default function OrdersPage() {
                     <td className="px-6 py-4">
                       <Badge label={o.status} variant={o.status} />
                     </td>
-                    <td className="px-6 py-4 font-semibold text-gray-950">
+                    <td className="px-6 py-4 font-semibold text-gray-955">
                       Rs. {Number(o.totalAmount || 0).toFixed(2)}
                       {(o.totalReturnedAmount || 0) > 0 && (
                         <p className="text-[10px] text-rose-500 font-medium">
@@ -356,6 +469,76 @@ export default function OrdersPage() {
         )}
       </div>
 
+      {/* Export Options Modal */}
+      {showExportModal && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs" onClick={() => setShowExportModal(false)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] w-full max-w-md bg-white border border-gray-200 rounded-2xl shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-150 pb-3">
+              <h3 className="font-bold text-gray-955 text-base">Export Orders</h3>
+              <button onClick={() => setShowExportModal(false)} className="text-gray-400 hover:text-gray-650 cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
+            
+            <p className="text-xs text-gray-500">
+              Choose how you want to structure the exported CSV file. Active filters will be applied to the exported dataset.
+            </p>
+
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition hover:bg-gray-50 border-gray-200">
+                <input
+                  type="radio"
+                  name="exportMode"
+                  checked={exportMode === 'summary'}
+                  onChange={() => setExportMode('summary')}
+                  className="mt-1 accent-brand-teal"
+                />
+                <div>
+                  <span className="block text-xs font-bold text-gray-900">Order Summary</span>
+                  <span className="block text-[11px] text-gray-500 mt-0.5">
+                    One row per order. Exports order totals, taxes, service fees, discounts, and payments.
+                  </span>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition hover:bg-gray-50 border-gray-200">
+                <input
+                  type="radio"
+                  name="exportMode"
+                  checked={exportMode === 'item'}
+                  onChange={() => setExportMode('item')}
+                  className="mt-1 accent-brand-teal"
+                />
+                <div>
+                  <span className="block text-xs font-bold text-gray-900">Item-level Breakdown</span>
+                  <span className="block text-[11px] text-gray-500 mt-0.5">
+                    One row per item/variant. Includes distributed item-level taxes, service fees, discounts, and commissions.
+                  </span>
+                </div>
+              </label>
+            </div>
+
+            <div className="flex gap-3 pt-3 border-t border-gray-150">
+              <button
+                type="button"
+                onClick={() => setShowExportModal(false)}
+                className="flex-1 bg-gray-100 hover:bg-gray-250 text-gray-700 font-semibold py-2 rounded-xl transition text-xs text-center cursor-pointer border border-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteExport}
+                className="flex-1 bg-brand-teal hover:bg-teal-700 text-white font-semibold py-2 rounded-xl transition text-xs text-center shadow-sm cursor-pointer"
+              >
+                Download CSV
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Order Details SlideOver / Modal */}
       {selectedOrder && (
         <>
@@ -364,14 +547,14 @@ export default function OrdersPage() {
             {/* Header */}
             <div className="flex items-center justify-between pb-4 border-b border-gray-150 mb-4 shrink-0">
               <div className="flex items-center gap-2">
-                <Receipt size={18} className="text-brand-orange" />
-                <h3 className="font-bold text-gray-950 text-base">
+                <Receipt size={18} className="text-brand-teal" />
+                <h3 className="font-bold text-gray-955 text-base">
                   Order #{String(selectedOrder.orderNumber).padStart(3, '0')} Details
                 </h3>
               </div>
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="text-gray-400 hover:text-gray-650 p-1 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200"
+                className="text-gray-400 hover:text-gray-655 p-1 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200"
               >
                 <X size={18} />
               </button>
@@ -404,7 +587,7 @@ export default function OrdersPage() {
               {/* Customer details */}
               <div className="rounded-xl border border-gray-200 p-4 space-y-3">
                 <div className="flex items-center gap-1.5 font-bold text-gray-800 border-b border-gray-100 pb-2">
-                  <User size={14} className="text-brand-orange" />
+                  <User size={14} className="text-brand-teal" />
                   <span>Customer Details</span>
                 </div>
                 {selectedOrder.customerId ? (
@@ -488,7 +671,7 @@ export default function OrdersPage() {
                     <span>Rs. {Number(selectedOrder.commissionAmount).toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between font-bold text-gray-900 text-sm pt-2 border-t border-gray-200">
+                <div className="flex justify-between font-bold text-gray-950 text-sm pt-2 border-t border-gray-200">
                   <span>Net Total</span>
                   <span>Rs. {Number(selectedOrder.totalAmount || 0).toFixed(2)}</span>
                 </div>

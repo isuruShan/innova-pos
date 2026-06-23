@@ -30,7 +30,7 @@ export function getAdminUrl() {
 
 /** Public marketing / signup site. */
 export function getPublicWebUrl() {
-  return normalizeBase(env('VITE_PUBLIC_WEB_URL')) || devFallback(5175);
+  return normalizeBase(env('VITE_PUBLIC_WEB_URL')) || 'https://cafinity.io';
 }
 
 /** Guest QR table-order SPA (not the POS host). */
