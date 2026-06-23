@@ -6,6 +6,9 @@ import AdminDateField from '../../components/AdminDateField';
 
 // Report views
 import MenuMixView from '../../components/admin/reports/MenuMixView';
+import CogsView from '../../components/admin/reports/CogsView';
+import WastageReportView from '../../components/admin/reports/WastageReportView';
+import LoyaltyReportView from '../../components/admin/reports/LoyaltyReportView';
 import OrderDistributionView from '../../components/admin/reports/OrderDistributionView';
 import HourlySalesView from '../../components/admin/reports/HourlySalesView';
 import PaymentReconciliationView from '../../components/admin/reports/PaymentReconciliationView';
@@ -68,6 +71,9 @@ export default function ReportsPortal() {
   // Map reportType to readable name
   const reportLabels = {
     'menu-mix': 'Menu Mix Report',
+    'cogs': 'COGS & Margins Report',
+    'wastage': 'Inventory Wastage & Audit',
+    'loyalty': 'Loyalty Program Performance',
     'order-distribution': 'Order Channel Distribution',
     'hourly-sales': 'Hourly Sales Trends',
     'payment-reconciliation': 'Payment Reconciliation Summary',
@@ -183,6 +189,27 @@ export default function ReportsPortal() {
         <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 shadow-sm">
           {reportType === 'menu-mix' && (
             <MenuMixView
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              registerExport={registerExport}
+            />
+          )}
+          {reportType === 'cogs' && (
+            <CogsView
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              registerExport={registerExport}
+            />
+          )}
+          {reportType === 'wastage' && (
+            <WastageReportView
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              registerExport={registerExport}
+            />
+          )}
+          {reportType === 'loyalty' && (
+            <LoyaltyReportView
               dateFrom={dateFrom}
               dateTo={dateTo}
               registerExport={registerExport}

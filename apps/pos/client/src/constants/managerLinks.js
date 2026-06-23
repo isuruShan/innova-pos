@@ -17,6 +17,9 @@ export const MANAGER_NAV_GROUPS = [
     title: 'Reporting',
     items: [
       { to: '/manager/reports/menu-mix', label: 'Menu Mix', icon: ClipboardList },
+      { to: '/manager/reports/cogs', label: 'COGS & Margins', icon: ClipboardList },
+      { to: '/manager/reports/wastage', label: 'Inventory Wastage', icon: ClipboardList },
+      { to: '/manager/reports/loyalty', label: 'Loyalty Report', icon: Gift, addon: 'loyalty' },
       { to: '/manager/reports/order-distribution', label: 'Order Distribution', icon: BarChart3 },
       { to: '/manager/reports/hourly-sales', label: 'Hourly Trends', icon: BarChart3 },
       // { to: '/manager/reports/payment-reconciliation', label: 'Payment Reconciliation', icon: Wallet },

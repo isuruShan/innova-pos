@@ -9,6 +9,9 @@ import FilterPanel from '../../components/FilterPanel';
 
 // Report views
 import MenuMixView from '../../components/manager/reports/MenuMixView';
+import CogsView from '../../components/manager/reports/CogsView';
+import WastageReportView from '../../components/manager/reports/WastageReportView';
+import LoyaltyReportView from '../../components/manager/reports/LoyaltyReportView';
 import OrderDistributionView from '../../components/manager/reports/OrderDistributionView';
 import HourlySalesView from '../../components/manager/reports/HourlySalesView';
 import PaymentReconciliationView from '../../components/manager/reports/PaymentReconciliationView';
@@ -72,6 +75,9 @@ export default function ReportsPortal() {
   // Map reportType to readable name
   const reportLabels = {
     'menu-mix': 'Menu Mix Report',
+    'cogs': 'COGS & Margins Report',
+    'wastage': 'Inventory Wastage & Audit',
+    'loyalty': 'Loyalty Program Performance',
     'order-distribution': 'Order Channel Distribution',
     'hourly-sales': 'Hourly Sales Trends',
     // 'payment-reconciliation': 'Payment Reconciliation Summary',
@@ -185,6 +191,27 @@ export default function ReportsPortal() {
           <div className="bg-[var(--pos-panel)] border border-slate-700/40 rounded-2xl p-5 sm:p-6 shadow-xl">
             {reportType === 'menu-mix' && (
               <MenuMixView
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+                registerExport={registerExport}
+              />
+            )}
+            {reportType === 'cogs' && (
+              <CogsView
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+                registerExport={registerExport}
+              />
+            )}
+            {reportType === 'wastage' && (
+              <WastageReportView
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+                registerExport={registerExport}
+              />
+            )}
+            {reportType === 'loyalty' && (
+              <LoyaltyReportView
                 dateFrom={dateFrom}
                 dateTo={dateTo}
                 registerExport={registerExport}

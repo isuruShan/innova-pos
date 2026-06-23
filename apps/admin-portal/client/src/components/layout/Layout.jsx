@@ -53,6 +53,9 @@ const ADMIN_NAV_GROUPS = [
         to: '/reports',
         subItems: [
           { label: 'Menu Mix', to: '/reports/menu-mix' },
+          { label: 'COGS & Margins', to: '/reports/cogs' },
+          { label: 'Inventory Wastage', to: '/reports/wastage' },
+          { label: 'Loyalty Report', to: '/reports/loyalty', requiresAddon: 'loyalty' },
           { label: 'Order Distribution', to: '/reports/order-distribution' },
           { label: 'Hourly Trends', to: '/reports/hourly-sales' },
           { label: 'Payment Reconciliation', to: '/reports/payment-reconciliation' },
@@ -258,12 +261,23 @@ export default function Layout({ children }) {
     
     return ADMIN_NAV_GROUPS.map((group) => ({
       ...group,
-      items: group.items.filter((item) => {
-        // Show items that don't require an addon
-        if (!item.requiresAddon) return true;
-        // Show items only if the addon is active
-        return activeAddons.includes(item.requiresAddon);
-      }),
+      items: group.items
+        .filter((item) => {
+          if (!item.requiresAddon) return true;
+          return activeAddons.includes(item.requiresAddon);
+        })
+        .map((item) => {
+          if (item.subItems) {
+            return {
+              ...item,
+              subItems: item.subItems.filter((sub) => {
+                if (!sub.requiresAddon) return true;
+                return activeAddons.includes(sub.requiresAddon);
+              }),
+            };
+          }
+          return item;
+        }),
     })).filter((group) => group.items.length > 0); // Remove empty groups
   }, [subscriptionLocked, addonStatus?.activeAddons]);
 
