@@ -13,7 +13,7 @@ function SortHeader({ label, field, currentSort, currentOrder, onSort }) {
       type="button"
       onClick={() => onSort(field)}
       className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider hover:text-gray-900 transition-colors ${
-        active ? 'text-brand-orange' : 'text-gray-500'
+        active ? 'text-brand-teal' : 'text-gray-500'
       }`}
     >
       <span>{label}</span>
@@ -332,10 +332,10 @@ export default function RefundsView({ dateFrom, dateTo, registerExport }) {
               ) : (
                 sortedData.map((d) => (
                   <tr key={`${d.orderId}_${d.returnedAt}`} className="hover:bg-gray-50/50">
-                    <td className="px-4 py-3.5 font-mono font-bold text-brand-orange">
+                    <td className="px-4 py-3.5 font-bold text-brand-orange">
                       #{String(d.orderNumber).padStart(3, '0')}
                     </td>
-                    <td className="px-4 py-3.5 font-mono text-gray-500">
+                    <td className="px-4 py-3.5 text-gray-500">
                       {formatDateTime(d.returnedAt)}
                     </td>
                     <td className="px-4 py-3.5 font-medium text-gray-800">
@@ -359,7 +359,7 @@ export default function RefundsView({ dateFrom, dateTo, registerExport }) {
                         {d.reason}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-right font-bold text-gray-800 font-mono">
+                    <td className="px-4 py-3.5 text-right font-bold text-gray-800">
                       {formatCurrency(d.refundAmount)}
                     </td>
                   </tr>

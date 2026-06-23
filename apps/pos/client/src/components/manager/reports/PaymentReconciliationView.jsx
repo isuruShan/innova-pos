@@ -128,24 +128,44 @@ export default function PaymentReconciliationView({ dateFrom, dateTo, registerEx
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-950/40 text-slate-500 border-b border-slate-800">
+                <tr className="bg-slate-950/40 border-b border-slate-800">
                   <th className="px-4 py-3.5">
-                    <button onClick={() => handleSort('paymentType')} className="hover:text-slate-300 inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider">
+                    <button
+                      onClick={() => handleSort('paymentType')}
+                      className={`inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider hover:text-[var(--pos-text-primary)] transition-colors ${
+                        sortField === 'paymentType' ? 'text-amber-600 dark:text-amber-500' : 'text-[var(--pos-text-muted)]'
+                      }`}
+                    >
                       Payment Type {sortField === 'paymentType' ? (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
                     </button>
                   </th>
                   <th className="px-4 py-3.5 text-right">
-                    <button onClick={() => handleSort('orders')} className="hover:text-slate-300 inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider">
+                    <button
+                      onClick={() => handleSort('orders')}
+                      className={`inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider hover:text-[var(--pos-text-primary)] transition-colors ${
+                        sortField === 'orders' ? 'text-amber-600 dark:text-amber-500' : 'text-[var(--pos-text-muted)]'
+                      }`}
+                    >
                       Orders Count {sortField === 'orders' ? (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
                     </button>
                   </th>
                   <th className="px-4 py-3.5 text-right">
-                    <button onClick={() => handleSort('revenue')} className="hover:text-slate-300 inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider">
+                    <button
+                      onClick={() => handleSort('revenue')}
+                      className={`inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider hover:text-[var(--pos-text-primary)] transition-colors ${
+                        sortField === 'revenue' ? 'text-amber-600 dark:text-amber-500' : 'text-[var(--pos-text-muted)]'
+                      }`}
+                    >
                       Settled Sales {sortField === 'revenue' ? (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
                     </button>
                   </th>
                   <th className="px-4 py-3.5 text-right">
-                    <button onClick={() => handleSort('avgOrderValue')} className="hover:text-slate-300 inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider">
+                    <button
+                      onClick={() => handleSort('avgOrderValue')}
+                      className={`inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider hover:text-[var(--pos-text-primary)] transition-colors ${
+                        sortField === 'avgOrderValue' ? 'text-amber-600 dark:text-amber-500' : 'text-[var(--pos-text-muted)]'
+                      }`}
+                    >
                       Average Ticket {sortField === 'avgOrderValue' ? (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
                     </button>
                   </th>

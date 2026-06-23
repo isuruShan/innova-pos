@@ -459,6 +459,96 @@ router.get(
 );
 
 /**
+ * GET /api/reports/extended/cashier-sessions/:id/detail
+ * Fetch cashier session detail including orders and returns.
+ */
+router.get(
+  '/cashier-sessions/:id/detail',
+  protect,
+  authorize(...readRoles),
+  tenantScope,
+  resolveSelectedStore,
+  async (req, res) => {
+    try {
+      const session = await CashierSession.findOne({
+        _id: req.params.id,
+        tenantId: req.tenantId,
+        storeId: req.storeId,
+      }).populate('cashierId', 'name email').lean();
+
+      if (!session) {
+        return res.status(404).json({ message: 'Cashier session not found' });
+      }
+
+      const Order = require('../models/Order');
+      
+      const openedAt = new Date(session.openedAt);
+      const closedAt = session.closedAt ? new Date(session.closedAt) : new Date();
+      const cashierId = session.cashierId?._id || session.cashierId;
+
+      const orderMatch = {
+        tenantId: req.tenantId,
+        storeId: req.storeId,
+        status: { $ne: 'cancelled' },
+        paymentCollected: true,
+        updatedAt: { $gte: openedAt, $lte: closedAt },
+        $or: [
+          { updatedBy: cashierId },
+          { createdBy: cashierId, updatedBy: { $in: [null, undefined] } }
+        ],
+      };
+
+      const orders = await Order.find(orderMatch)
+        .select('orderNumber status paymentType totalAmount discountTotal createdAt')
+        .sort({ createdAt: -1 })
+        .lean();
+
+      const returnsMatch = {
+        tenantId: req.tenantId,
+        storeId: req.storeId,
+        'returns.returnedBy': cashierId,
+        'returns.returnedAt': { $gte: openedAt, $lte: closedAt },
+      };
+
+      const returnedOrders = await Order.find(returnsMatch)
+        .select('orderNumber paymentType returns')
+        .lean();
+
+      const returnsList = [];
+      returnedOrders.forEach(o => {
+        (o.returns || []).forEach(r => {
+          if (
+            String(r.returnedBy) === String(cashierId) &&
+            new Date(r.returnedAt) >= openedAt &&
+            new Date(r.returnedAt) <= closedAt
+          ) {
+            returnsList.push({
+              orderId: o._id,
+              orderNumber: o.orderNumber,
+              paymentType: o.paymentType,
+              refundAmount: r.refundAmount,
+              returnedAt: r.returnedAt,
+              notes: r.notes || '',
+              items: r.items || [],
+            });
+          }
+        });
+      });
+
+      returnsList.sort((a, b) => new Date(b.returnedAt) - new Date(a.returnedAt));
+
+      res.json({
+        session,
+        orders,
+        returns: returnsList,
+      });
+    } catch (err) {
+      sendRouteError(res, err, { req });
+    }
+  }
+);
+
+/**
  * GET /api/reports/extended/cogs
  * COGS & Gross Profit Margin Report
  */
@@ -484,10 +574,15 @@ router.get(
       // 1. Fetch completed orders
       const orders = await Order.find(match).lean();
 
-      // 2. Aggregate quantity sold and revenue per menu item + variant
+      // 2. Aggregate quantity sold, revenue, and distributed discount+commission per menu item + variant
       const soldMap = {};
       orders.forEach(order => {
-        (order.items || []).forEach(item => {
+        const orderItems = order.items || [];
+        const orderSubtotal = orderItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
+        const orderDiscount = order.discountTotal || 0;
+        const orderCommission = order.commissionAmount || 0;
+
+        orderItems.forEach(item => {
           if (!item.menuItem) return;
           const key = `${item.menuItem}_${item.variantId || 'base'}`;
           if (!soldMap[key]) {
@@ -497,13 +592,29 @@ router.get(
               itemName: item.name + (item.variantName ? ` (${item.variantName})` : ''),
               category: item.category || 'Other',
               quantitySold: 0,
-              totalRevenue: 0
+              totalRevenue: 0,
+              totalDiscount: 0,
+              totalCommission: 0,
             };
           }
+          const itemRevenue = item.price * item.qty;
           soldMap[key].quantitySold += item.qty;
-          soldMap[key].totalRevenue += item.price * item.qty;
+          soldMap[key].totalRevenue += itemRevenue;
+
+          // Distribute order-level discount + commission proportionally by item's revenue share
+          if (orderSubtotal > 0) {
+            const share = itemRevenue / orderSubtotal;
+            if (orderDiscount > 0) {
+              soldMap[key].totalDiscount += orderDiscount * share;
+            }
+            if (orderCommission > 0) {
+              soldMap[key].totalCommission += orderCommission * share;
+            }
+          }
         });
       });
+
+
 
       const menuItemIds = [...new Set(Object.values(soldMap).map(s => s.menuItemId))];
 
@@ -548,22 +659,32 @@ router.get(
       };
 
       // 5. Build final report payload
+      // Note on tax: item.price is tax-exclusive (tax is additive: totalAmount = subtotal + taxAmount).
+      // So totalRevenue already represents pre-tax income — no further tax deduction needed here.
       const results = Object.values(soldMap).map(sold => {
         const unitCost = calculateUnitCost(sold.menuItemId, sold.variantId);
         const totalCost = unitCost * sold.quantitySold;
-        const grossProfit = sold.totalRevenue - totalCost;
-        const marginPercentage = sold.totalRevenue > 0 ? (grossProfit / sold.totalRevenue) * 100 : 0;
+        const totalDiscount = Math.round((sold.totalDiscount || 0) * 100) / 100;
+        const totalCommission = Math.round((sold.totalCommission || 0) * 100) / 100;
+        // Net revenue = gross revenue minus discounts given and channel commissions paid
+        const netRevenue = Math.round((sold.totalRevenue - totalDiscount - totalCommission) * 100) / 100;
+        const grossProfit = Math.round((netRevenue - totalCost) * 100) / 100;
+        const marginPercentage = netRevenue > 0 ? (grossProfit / netRevenue) * 100 : 0;
 
         return {
           ...sold,
           unitCost: Math.round(unitCost * 100) / 100,
           totalCost: Math.round(totalCost * 100) / 100,
+          totalDiscount,
+          totalCommission,
+          netRevenue,
           grossProfit: Math.round(grossProfit * 100) / 100,
           marginPercentage: Math.round(marginPercentage * 100) / 100
         };
       });
 
       res.json(results);
+
     } catch (err) {
       sendRouteError(res, err, { req });
     }

@@ -131,22 +131,42 @@ export default function PaymentReconciliationView({ dateFrom, dateTo, registerEx
               <thead>
                 <tr className="bg-gray-50 text-gray-500 border-b border-gray-200">
                   <th className="px-4 py-3.5">
-                    <button onClick={() => handleSort('paymentType')} className="hover:text-gray-900 inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider">
+                    <button
+                      onClick={() => handleSort('paymentType')}
+                      className={`inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider hover:text-gray-900 transition-colors ${
+                        sortField === 'paymentType' ? 'text-brand-teal' : 'text-gray-500'
+                      }`}
+                    >
                       Payment Type {sortField === 'paymentType' ? (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
                     </button>
                   </th>
                   <th className="px-4 py-3.5 text-right">
-                    <button onClick={() => handleSort('orders')} className="hover:text-gray-900 inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider">
+                    <button
+                      onClick={() => handleSort('orders')}
+                      className={`inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider hover:text-gray-900 transition-colors ${
+                        sortField === 'orders' ? 'text-brand-teal' : 'text-gray-500'
+                      }`}
+                    >
                       Orders Count {sortField === 'orders' ? (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
                     </button>
                   </th>
                   <th className="px-4 py-3.5 text-right">
-                    <button onClick={() => handleSort('revenue')} className="hover:text-gray-900 inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider">
+                    <button
+                      onClick={() => handleSort('revenue')}
+                      className={`inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider hover:text-gray-900 transition-colors ${
+                        sortField === 'revenue' ? 'text-brand-teal' : 'text-gray-500'
+                      }`}
+                    >
                       Settled Sales {sortField === 'revenue' ? (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
                     </button>
                   </th>
                   <th className="px-4 py-3.5 text-right">
-                    <button onClick={() => handleSort('avgOrderValue')} className="hover:text-gray-900 inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider">
+                    <button
+                      onClick={() => handleSort('avgOrderValue')}
+                      className={`inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider hover:text-gray-900 transition-colors ${
+                        sortField === 'avgOrderValue' ? 'text-brand-teal' : 'text-gray-500'
+                      }`}
+                    >
                       Average Ticket {sortField === 'avgOrderValue' ? (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
                     </button>
                   </th>
@@ -173,9 +193,9 @@ export default function PaymentReconciliationView({ dateFrom, dateTo, registerEx
                         <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
                         {PAYMENT_LABELS[d.paymentType] || d.paymentType}
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-gray-500">{d.orders}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-800 font-mono">{formatCurrency(d.revenue)}</td>
-                      <td className="px-4 py-3 text-right font-mono text-gray-500">{formatCurrency(d.avgOrderValue)}</td>
+                      <td className="px-4 py-3 text-right text-gray-500">{d.orders}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-gray-800">{formatCurrency(d.revenue)}</td>
+                      <td className="px-4 py-3 text-right text-gray-500">{formatCurrency(d.avgOrderValue)}</td>
                     </tr>
                   ))
                 )}

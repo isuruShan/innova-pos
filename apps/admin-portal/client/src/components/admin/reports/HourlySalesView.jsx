@@ -181,22 +181,22 @@ export default function HourlySalesView({ dateFrom, dateTo, registerExport }) {
               <thead>
                 <tr className="bg-gray-50 text-gray-500 border-b border-gray-200 sticky top-0 z-10">
                   <th className="px-3 py-2.5">
-                    <button onClick={() => handleSort('hour')} className="hover:text-gray-900 inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider">
+                    <button onClick={() => handleSort('hour')} className={`inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider hover:text-gray-900 transition-colors ${sortField === 'hour' ? 'text-brand-teal' : 'text-gray-500'}`}>
                       Hour {sortField === 'hour' ? (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
                     </button>
                   </th>
                   <th className="px-3 py-2.5 text-right">
-                    <button onClick={() => handleSort('orders')} className="hover:text-gray-900 inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider">
+                    <button onClick={() => handleSort('orders')} className={`inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider hover:text-gray-900 transition-colors ${sortField === 'orders' ? 'text-brand-teal' : 'text-gray-500'}`}>
                       Orders {sortField === 'orders' ? (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
                     </button>
                   </th>
                   <th className="px-3 py-2.5 text-right">
-                    <button onClick={() => handleSort('revenue')} className="hover:text-gray-900 inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider">
+                    <button onClick={() => handleSort('revenue')} className={`inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider hover:text-gray-900 transition-colors ${sortField === 'revenue' ? 'text-brand-teal' : 'text-gray-500'}`}>
                       Revenue {sortField === 'revenue' ? (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
                     </button>
                   </th>
                   <th className="px-3 py-2.5 text-right">
-                    <button onClick={() => handleSort('avgOrderValue')} className="hover:text-gray-900 inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider">
+                    <button onClick={() => handleSort('avgOrderValue')} className={`inline-flex items-center gap-0.5 font-semibold uppercase tracking-wider hover:text-gray-900 transition-colors ${sortField === 'avgOrderValue' ? 'text-brand-teal' : 'text-gray-500'}`}>
                       Ticket Avg {sortField === 'avgOrderValue' ? (sortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
                     </button>
                   </th>
@@ -216,9 +216,9 @@ export default function HourlySalesView({ dateFrom, dateTo, registerExport }) {
                   sortedData.map((d) => (
                     <tr key={d.hour} className="hover:bg-gray-50/50">
                       <td className="px-3 py-2 font-medium">{formatHour(d.hour)}</td>
-                      <td className="px-3 py-2 text-right font-mono text-gray-500">{d.orders}</td>
-                      <td className="px-3 py-2 text-right font-semibold font-mono text-gray-800">{formatCurrency(d.revenue)}</td>
-                      <td className="px-3 py-2 text-right font-mono text-gray-500">{formatCurrency(d.avgOrderValue)}</td>
+                      <td className="px-3 py-2 text-right text-gray-500">{d.orders}</td>
+                      <td className="px-3 py-2 text-right font-semibold text-gray-800">{formatCurrency(d.revenue)}</td>
+                      <td className="px-3 py-2 text-right text-gray-500">{formatCurrency(d.avgOrderValue)}</td>
                     </tr>
                   ))
                 )}

@@ -63,7 +63,10 @@ function ChargesTab() {
     if (!settings) return;
     const init = {};
     ORDER_TYPE_ROWS.forEach(({ key }) => {
-      init[key] = { ...DEFAULT_OT, ...(settings.orderTypes?.[key] || {}) };
+      const saved = settings.orderTypes?.[key] || {};
+      // Derive flat taxRate from taxComponents array (sum of all component rates)
+      const derivedTaxRate = (saved.taxComponents || []).reduce((sum, tc) => sum + (tc.rate || 0), 0);
+      init[key] = { ...DEFAULT_OT, ...saved, taxRate: derivedTaxRate };
     });
     setLocal(init);
   }, [settings, selectedStoreId]);

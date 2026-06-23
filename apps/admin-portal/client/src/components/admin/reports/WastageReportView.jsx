@@ -28,7 +28,7 @@ function SortHeader({ label, field, currentSort, currentOrder, onSort }) {
       type="button"
       onClick={() => onSort(field)}
       className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider hover:text-gray-900 transition-colors ${
-        active ? 'text-brand-orange' : 'text-gray-500'
+        active ? 'text-brand-teal' : 'text-gray-500'
       }`}
     >
       <span>{label}</span>
@@ -217,7 +217,7 @@ export default function WastageReportView({ dateFrom, dateTo, registerExport }) 
                   onClick={() => setSelectedReason(selectedReason === reasonKey ? 'all' : reasonKey)}
                   className={`cursor-pointer rounded-xl border p-3 transition flex items-center justify-between ${
                     selectedReason === reasonKey
-                      ? 'bg-gray-100 border-brand-orange'
+                      ? 'bg-gray-100 border-brand-teal'
                       : 'bg-white border-gray-200 hover:border-gray-300'
                   }`}
                 >
@@ -252,7 +252,7 @@ export default function WastageReportView({ dateFrom, dateTo, registerExport }) 
         {selectedReason !== 'all' && (
           <button
             onClick={() => setSelectedReason('all')}
-            className="text-xs text-brand-orange font-semibold hover:underline"
+            className="text-xs text-brand-teal font-semibold hover:underline"
           >
             Clear Reason Filter ({REASON_LABELS[selectedReason]})
           </button>
@@ -362,7 +362,7 @@ export default function WastageReportView({ dateFrom, dateTo, registerExport }) 
               ) : (
                 sortedItems.map((item, idx) => (
                   <tr key={`${item.date}_${item.itemName}_${idx}`} className="hover:bg-gray-50/50">
-                    <td className="px-4 py-3 font-mono text-gray-500">
+                    <td className="px-4 py-3 text-gray-500">
                       {new Date(item.date).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 font-medium text-gray-800">{item.itemName}</td>
@@ -373,7 +373,7 @@ export default function WastageReportView({ dateFrom, dateTo, registerExport }) 
                         {item.itemType}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-gray-500">
+                    <td className="px-4 py-3 text-right text-gray-500">
                       {item.quantity} <span className="text-[10px] text-gray-405">{item.unit || 'pcs'}</span>
                     </td>
                     <td className="px-4 py-3">
@@ -388,8 +388,8 @@ export default function WastageReportView({ dateFrom, dateTo, registerExport }) 
                         {REASON_LABELS[item.reason] || item.reason}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-gray-500">{formatCurrency(item.unitCost)}</td>
-                    <td className="px-4 py-3 text-right font-bold text-red-650 font-mono">
+                    <td className="px-4 py-3 text-right text-gray-500">{formatCurrency(item.unitCost)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-red-650">
                       {formatCurrency(item.totalLoss)}
                     </td>
                     <td className="px-4 py-3 text-gray-500">{item.createdBy}</td>

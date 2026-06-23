@@ -14,7 +14,7 @@ function SortHeader({ label, field, currentSort, currentOrder, onSort }) {
       type="button"
       onClick={() => onSort(field)}
       className={`inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider hover:text-gray-900 transition-colors ${
-        active ? 'text-brand-orange' : 'text-gray-455'
+        active ? 'text-brand-teal' : 'text-gray-455'
       }`}
     >
       <span>{label}</span>
@@ -154,7 +154,7 @@ export default function MenuMixView({ dateFrom, dateTo, registerExport }) {
                   onClick={() => handleToggleCategory(cat)}
                   className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
                     active
-                      ? 'bg-brand-orange border-brand-orange text-white'
+                      ? 'bg-brand-teal border-brand-teal text-white'
                       : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
                   }`}
                 >
@@ -245,8 +245,8 @@ export default function MenuMixView({ dateFrom, dateTo, registerExport }) {
                           {item.category}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-gray-500">{item.qty}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-800 font-mono">
+                      <td className="px-4 py-3 text-right text-gray-500">{item.qty}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-gray-800">
                         {formatCurrency(item.revenue)}
                       </td>
                     </tr>
@@ -260,7 +260,7 @@ export default function MenuMixView({ dateFrom, dateTo, registerExport }) {
             <span>Total Filtered: {filteredData.length} items</span>
             <div className="flex gap-4">
               <span>Qty: <span className="text-gray-800">{totalQty}</span></span>
-              <span>Sales: <span className="text-brand-orange">{formatCurrency(totalRev)}</span></span>
+              <span>Sales: <span className="text-brand-teal">{formatCurrency(totalRev)}</span></span>
             </div>
           </div>
         </div>

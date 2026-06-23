@@ -128,7 +128,7 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
       {/* Overview stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white border border-gray-250 rounded-xl px-4 py-3 flex items-center gap-3">
-          <div className="p-2 bg-brand-orange/10 text-brand-orange rounded-lg">
+          <div className="p-2 bg-brand-teal/10 text-brand-teal rounded-lg">
             <LayoutGrid size={18} />
           </div>
           <div>
@@ -197,12 +197,12 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
                   <tr className="bg-gray-50 text-gray-550 border-b border-gray-200">
                     <th className="px-3 py-2 font-medium">Type</th>
                     <th className="px-3 py-2 text-right">
-                      <button onClick={() => handleSortType('orders')} className="hover:text-gray-900 inline-flex items-center gap-0.5 font-medium">
+                      <button onClick={() => handleSortType('orders')} className={`inline-flex items-center gap-0.5 font-medium hover:text-gray-900 transition-colors ${typeSortField === 'orders' ? 'text-brand-teal' : 'text-gray-500'}`}>
                         Orders {typeSortField === 'orders' ? (typeSortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
                       </button>
                     </th>
                     <th className="px-3 py-2 text-right">
-                      <button onClick={() => handleSortType('revenue')} className="hover:text-gray-900 inline-flex items-center gap-0.5 font-medium">
+                      <button onClick={() => handleSortType('revenue')} className={`inline-flex items-center gap-0.5 font-medium hover:text-gray-900 transition-colors ${typeSortField === 'revenue' ? 'text-brand-teal' : 'text-gray-500'}`}>
                         Revenue {typeSortField === 'revenue' ? (typeSortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
                       </button>
                     </th>
@@ -215,8 +215,8 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
                         <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
                         {ORDER_TYPE_LABELS[t.type] || t.type}
                       </td>
-                      <td className="px-3 py-2 text-right font-mono text-gray-500">{t.orders}</td>
-                      <td className="px-3 py-2 text-right font-semibold text-gray-800 font-mono">{formatCurrency(t.revenue)}</td>
+                      <td className="px-3 py-2 text-right text-gray-500">{t.orders}</td>
+                      <td className="px-3 py-2 text-right font-semibold text-gray-800">{formatCurrency(t.revenue)}</td>
                     </tr>
                   ))}
                   {sortedTypes.length === 0 && !isPending && (
@@ -278,12 +278,12 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
                   <tr className="bg-gray-50 text-gray-550 border-b border-gray-200">
                     <th className="px-3 py-2 font-medium">Source</th>
                     <th className="px-3 py-2 text-right">
-                      <button onClick={() => handleSortSource('orders')} className="hover:text-gray-900 inline-flex items-center gap-0.5 font-medium">
+                      <button onClick={() => handleSortSource('orders')} className={`inline-flex items-center gap-0.5 font-medium hover:text-gray-900 transition-colors ${sourceSortField === 'orders' ? 'text-brand-teal' : 'text-gray-500'}`}>
                         Orders {sourceSortField === 'orders' ? (sourceSortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
                       </button>
                     </th>
                     <th className="px-3 py-2 text-right">
-                      <button onClick={() => handleSortSource('revenue')} className="hover:text-gray-900 inline-flex items-center gap-0.5 font-medium">
+                      <button onClick={() => handleSortSource('revenue')} className={`inline-flex items-center gap-0.5 font-medium hover:text-gray-900 transition-colors ${sourceSortField === 'revenue' ? 'text-brand-teal' : 'text-gray-500'}`}>
                         Revenue {sourceSortField === 'revenue' ? (sourceSortOrder === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-40" />}
                       </button>
                     </th>
@@ -296,8 +296,8 @@ export default function OrderDistributionView({ dateFrom, dateTo, registerExport
                         <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[(idx + 2) % COLORS.length] }} />
                         {SOURCE_LABELS[s.source] || s.source}
                       </td>
-                      <td className="px-3 py-2 text-right font-mono text-gray-500">{s.orders}</td>
-                      <td className="px-3 py-2 text-right font-semibold text-gray-800 font-mono">{formatCurrency(s.revenue)}</td>
+                      <td className="px-3 py-2 text-right text-gray-500">{s.orders}</td>
+                      <td className="px-3 py-2 text-right font-semibold text-gray-800">{formatCurrency(s.revenue)}</td>
                     </tr>
                   ))}
                   {sortedSources.length === 0 && !isPending && (

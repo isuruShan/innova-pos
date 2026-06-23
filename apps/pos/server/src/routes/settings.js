@@ -39,7 +39,20 @@ router.put('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), t
         if (s.orderTypes[key] !== undefined) {
           if (val.enabled !== undefined) s.orderTypes[key].enabled = val.enabled;
           if (val.label !== undefined) s.orderTypes[key].label = val.label;
-          if (val.taxComponents !== undefined) s.orderTypes[key].taxComponents = val.taxComponents;
+
+          // Support both taxComponents array (advanced) and taxRate shorthand (simple UI)
+          if (val.taxComponents !== undefined) {
+            s.orderTypes[key].taxComponents = val.taxComponents;
+          } else if (val.taxRate !== undefined) {
+            // Convert simple flat taxRate → single taxComponents entry
+            const rate = Math.max(0, Math.min(100, +val.taxRate || 0));
+            if (rate === 0) {
+              s.orderTypes[key].taxComponents = [];
+            } else {
+              s.orderTypes[key].taxComponents = [{ name: 'Tax', rate, isCompound: false }];
+            }
+          }
+
           if (val.serviceFeeType !== undefined) s.orderTypes[key].serviceFeeType = val.serviceFeeType;
           if (val.serviceFeeRate !== undefined) s.orderTypes[key].serviceFeeRate = Math.max(0, Math.min(100, +val.serviceFeeRate));
           if (val.serviceFeeFixed !== undefined) s.orderTypes[key].serviceFeeFixed = Math.max(0, +val.serviceFeeFixed);

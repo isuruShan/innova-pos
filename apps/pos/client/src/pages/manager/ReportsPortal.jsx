@@ -70,6 +70,21 @@ export default function ReportsPortal() {
     }
   }, []);
 
+  const activePreset = useMemo(() => {
+    const end = new Date();
+    const endStr = toYMD(end);
+    if (dateTo !== endStr) return null;
+
+    if (dateFrom === endStr) return 'today';
+    if (dateFrom === toYMD(addDays(end, -6))) return '7d';
+    if (dateFrom === toYMD(addDays(end, -29))) return '30d';
+
+    const startOfMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+    if (dateFrom === toYMD(startOfMonth)) return 'month';
+
+    return null;
+  }, [dateFrom, dateTo]);
+
   const rangeInvalid = dateFrom && dateTo && dateFrom > dateTo;
 
   // Map reportType to readable name
@@ -135,15 +150,22 @@ export default function ReportsPortal() {
                 Date Range
               </label>
               <div className="flex gap-1.5">
-                {['today', '7d', '30d', 'month'].map((preset) => (
-                  <button
-                    key={preset}
-                    onClick={() => applyPreset(preset)}
-                    className="text-[9px] uppercase tracking-wider font-semibold text-slate-500 hover:text-slate-250 bg-slate-800/40 hover:bg-slate-800 px-1.5 py-0.5 rounded transition cursor-pointer"
-                  >
-                    {preset === '7d' ? '7 Days' : preset === '30d' ? '30 Days' : preset}
-                  </button>
-                ))}
+                {['today', '7d', '30d', 'month'].map((preset) => {
+                  const isActive = activePreset === preset;
+                  return (
+                    <button
+                      key={preset}
+                      onClick={() => applyPreset(preset)}
+                      className={`text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded transition cursor-pointer ${
+                        isActive
+                          ? 'bg-amber-500 text-slate-50 dark:text-slate-950 hover:bg-amber-400'
+                          : 'text-slate-500 hover:text-slate-250 bg-slate-800/40 hover:bg-slate-800'
+                      }`}
+                    >
+                      {preset === '7d' ? '7 Days' : preset === '30d' ? '30 Days' : preset}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div className="flex items-center gap-2">

@@ -12,8 +12,8 @@ function SortHeader({ label, field, currentSort, currentOrder, onSort }) {
     <button
       type="button"
       onClick={() => onSort(field)}
-      className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider hover:text-gray-200 transition-colors ${
-        active ? 'text-amber-500' : 'text-slate-500'
+      className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider hover:text-[var(--pos-text-primary)] transition-colors ${
+        active ? 'text-amber-600 dark:text-amber-500' : 'text-[var(--pos-text-muted)]'
       }`}
     >
       <span>{label}</span>

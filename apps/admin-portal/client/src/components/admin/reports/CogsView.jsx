@@ -13,7 +13,7 @@ function SortHeader({ label, field, currentSort, currentOrder, onSort }) {
       type="button"
       onClick={() => onSort(field)}
       className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider hover:text-gray-900 transition-colors ${
-        active ? 'text-brand-orange' : 'text-gray-500'
+        active ? 'text-brand-teal' : 'text-gray-500'
       }`}
     >
       <span>{label}</span>
@@ -33,34 +33,30 @@ export default function CogsView({ dateFrom, dateTo, registerExport }) {
   const [sortField, setSortField] = useState('quantitySold');
   const [sortOrder, setSortOrder] = useState('desc');
 
-  // Fetch COGS report data
   const { data: rawData, isPending } = useQuery({
     queryKey: ['report-cogs', selectedStoreId, dateFrom, dateTo],
     queryFn: () =>
       api
         .get('/reports/extended/cogs', {
           params: { since: `${dateFrom}T00:00:00`, until: `${dateTo}T23:59:59` },
-          headers: { 'x-store-id': selectedStoreId }
+          headers: { 'x-store-id': selectedStoreId },
         })
         .then((r) => r.data),
     enabled: Boolean(selectedStoreId && dateFrom && dateTo),
   });
   const data = Array.isArray(rawData) ? rawData : [];
 
-  // Extract unique categories for filter chips
   const categoriesList = useMemo(() => {
     const cats = data.map((d) => d.category).filter(Boolean);
     return [...new Set(cats)].sort();
   }, [data]);
 
-  // Handle category chip toggles
   const handleToggleCategory = (cat) => {
     setSelectedCategories((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
     );
   };
 
-  // Filter & Search
   const filteredData = useMemo(() => {
     return data.filter((item) => {
       const matchesSearch = item.itemName.toLowerCase().includes(search.toLowerCase());
@@ -70,17 +66,14 @@ export default function CogsView({ dateFrom, dateTo, registerExport }) {
     });
   }, [data, search, selectedCategories]);
 
-  // Sort
   const sortedData = useMemo(() => {
     return [...filteredData].sort((a, b) => {
       let valA = a[sortField];
       let valB = b[sortField];
-
       if (typeof valA === 'string') {
         valA = valA.toLowerCase();
         valB = valB.toLowerCase();
       }
-
       if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
       if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
       return 0;
@@ -96,48 +89,45 @@ export default function CogsView({ dateFrom, dateTo, registerExport }) {
     }
   };
 
-  // Expose export function to parent ReportsPortal
+  const hasCommissions = filteredData.some((d) => (d.totalCommission || 0) > 0);
+  const hasDiscounts = filteredData.some((d) => (d.totalDiscount || 0) > 0);
+
   useEffect(() => {
     if (registerExport) {
       registerExport(() => {
         const headers = [
-          'Item Name',
-          'Category',
-          'Quantity Sold',
-          'Total Revenue ($)',
-          'Recipe Unit Cost ($)',
-          'Total Cost (COGS) ($)',
-          'Gross Profit ($)',
-          'Margin (%)'
+          'Item Name', 'Category', 'Qty Sold', 'Gross Revenue',
+          ...(hasDiscounts ? ['Discounts'] : []),
+          ...(hasCommissions ? ['Commission'] : []),
+          'Net Revenue', 'Unit Cost (Recipe)', 'Total COGS', 'Net Profit', 'Margin %',
         ];
         const rows = sortedData.map((d) => [
-          d.itemName,
-          d.category,
-          d.quantitySold,
+          d.itemName, d.category, d.quantitySold,
           d.totalRevenue.toFixed(2),
-          d.unitCost.toFixed(2),
-          d.totalCost.toFixed(2),
-          d.grossProfit.toFixed(2),
-          d.marginPercentage.toFixed(1)
+          ...(hasDiscounts ? [(d.totalDiscount || 0).toFixed(2)] : []),
+          ...(hasCommissions ? [(d.totalCommission || 0).toFixed(2)] : []),
+          (d.netRevenue ?? d.totalRevenue).toFixed(2),
+          d.unitCost.toFixed(2), d.totalCost.toFixed(2),
+          d.grossProfit.toFixed(2), d.marginPercentage.toFixed(1),
         ]);
         exportToCsv('cogs_report', headers, rows);
       });
     }
-  }, [sortedData, registerExport]);
+  }, [sortedData, registerExport, hasCommissions, hasDiscounts]);
 
-  // Summary Totals
   const totals = useMemo(() => {
-    let revenue = 0;
-    let cost = 0;
-    let qty = 0;
+    let revenue = 0, discount = 0, commission = 0, cost = 0, qty = 0;
     filteredData.forEach((item) => {
       revenue += item.totalRevenue;
+      discount += item.totalDiscount || 0;
+      commission += item.totalCommission || 0;
       cost += item.totalCost;
       qty += item.quantitySold;
     });
-    const profit = revenue - cost;
-    const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
-    return { qty, revenue, cost, profit, margin };
+    const netRevenue = revenue - discount - commission;
+    const profit = netRevenue - cost;
+    const margin = netRevenue > 0 ? (profit / netRevenue) * 100 : 0;
+    return { qty, revenue, discount, commission, netRevenue, cost, profit, margin };
   }, [filteredData]);
 
   return (
@@ -154,8 +144,6 @@ export default function CogsView({ dateFrom, dateTo, registerExport }) {
             className="bg-transparent border-0 text-gray-800 text-sm focus:outline-none focus:ring-0 w-full placeholder-gray-400"
           />
         </div>
-
-        {/* Category chips list */}
         <div className="flex flex-wrap gap-1.5 items-center">
           <span className="text-xs text-gray-500 flex items-center gap-1 mr-1">
             <Tag size={12} /> Categories:
@@ -171,7 +159,7 @@ export default function CogsView({ dateFrom, dateTo, registerExport }) {
                   onClick={() => handleToggleCategory(cat)}
                   className={`px-2.5 py-1 rounded-full text-xs font-medium border transition ${
                     active
-                      ? 'bg-brand-orange border-brand-orange text-white'
+                      ? 'bg-brand-teal border-brand-teal text-white'
                       : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
                   }`}
                 >
@@ -191,7 +179,7 @@ export default function CogsView({ dateFrom, dateTo, registerExport }) {
         </div>
       </div>
 
-      {/* KPI Totals Section */}
+      {/* KPI Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold block">Qty Sold</span>
@@ -199,21 +187,30 @@ export default function CogsView({ dateFrom, dateTo, registerExport }) {
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold block">Gross Revenue</span>
-          <div className="text-lg font-black text-brand-orange mt-1 tabular-nums">{formatCurrency(totals.revenue)}</div>
+          <div className="text-lg font-black text-brand-teal mt-1 tabular-nums">{formatCurrency(totals.revenue)}</div>
+          {totals.discount > 0 && (
+            <div className="text-[10px] text-orange-500 mt-0.5">−{formatCurrency(totals.discount)} discounts</div>
+          )}
+          {totals.commission > 0 && (
+            <div className="text-[10px] text-rose-500 mt-0.5">−{formatCurrency(totals.commission)} commission</div>
+          )}
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold block">Total COGS</span>
           <div className="text-lg font-black text-gray-850 mt-1 tabular-nums">{formatCurrency(totals.cost)}</div>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold block">Gross Profit</span>
-          <div className={`text-lg font-black mt-1 tabular-nums ${totals.profit >= 0 ? 'text-emerald-600' : 'text-red-650'}`}>
+          <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold block">Net Profit</span>
+          <div className={`text-lg font-black mt-1 tabular-nums ${totals.profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
             {formatCurrency(totals.profit)}
           </div>
+          {(totals.discount > 0 || totals.commission > 0) && (
+            <div className="text-[10px] text-gray-400 mt-0.5">after discounts &amp; fees</div>
+          )}
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold block">Avg. Margin</span>
-          <div className={`text-lg font-black mt-1 tabular-nums ${totals.margin >= 0 ? 'text-emerald-600' : 'text-red-650'}`}>
+          <div className={`text-lg font-black mt-1 tabular-nums ${totals.margin >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
             {totals.margin.toFixed(1)}%
           </div>
         </div>
@@ -226,76 +223,43 @@ export default function CogsView({ dateFrom, dateTo, registerExport }) {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-medium">
                 <th className="px-4 py-3 sticky top-0 bg-gray-50 z-10">
-                  <SortHeader
-                    label="Item Name"
-                    field="itemName"
-                    currentSort={sortField}
-                    currentOrder={sortOrder}
-                    onSort={handleSort}
-                  />
+                  <SortHeader label="Item Name" field="itemName" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} />
                 </th>
                 <th className="px-4 py-3 sticky top-0 bg-gray-50 z-10">
-                  <SortHeader
-                    label="Category"
-                    field="category"
-                    currentSort={sortField}
-                    currentOrder={sortOrder}
-                    onSort={handleSort}
-                  />
+                  <SortHeader label="Category" field="category" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} />
                 </th>
                 <th className="px-4 py-3 text-right sticky top-0 bg-gray-50 z-10">
-                  <SortHeader
-                    label="Qty Sold"
-                    field="quantitySold"
-                    currentSort={sortField}
-                    currentOrder={sortOrder}
-                    onSort={handleSort}
-                  />
+                  <SortHeader label="Qty Sold" field="quantitySold" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} />
                 </th>
                 <th className="px-4 py-3 text-right sticky top-0 bg-gray-50 z-10">
-                  <SortHeader
-                    label="Revenue"
-                    field="totalRevenue"
-                    currentSort={sortField}
-                    currentOrder={sortOrder}
-                    onSort={handleSort}
-                  />
+                  <SortHeader label="Revenue" field="totalRevenue" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} />
                 </th>
-                <th className="px-4 py-3 text-right sticky top-0 bg-gray-50 z-10 text-gray-450">
-                  <SortHeader
-                    label="Unit Cost"
-                    field="unitCost"
-                    currentSort={sortField}
-                    currentOrder={sortOrder}
-                    onSort={handleSort}
-                  />
+                {hasDiscounts && (
+                  <th className="px-4 py-3 text-right sticky top-0 bg-gray-50 z-10">
+                    <SortHeader label="Discount" field="totalDiscount" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} />
+                  </th>
+                )}
+                {hasCommissions && (
+                  <th className="px-4 py-3 text-right sticky top-0 bg-gray-50 z-10">
+                    <SortHeader label="Commission" field="totalCommission" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} />
+                  </th>
+                )}
+                {(hasDiscounts || hasCommissions) && (
+                  <th className="px-4 py-3 text-right sticky top-0 bg-gray-50 z-10">
+                    <SortHeader label="Net Revenue" field="netRevenue" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} />
+                  </th>
+                )}
+                <th className="px-4 py-3 text-right sticky top-0 bg-gray-50 z-10">
+                  <SortHeader label="Unit Cost" field="unitCost" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} />
                 </th>
                 <th className="px-4 py-3 text-right sticky top-0 bg-gray-50 z-10">
-                  <SortHeader
-                    label="Total COGS"
-                    field="totalCost"
-                    currentSort={sortField}
-                    currentOrder={sortOrder}
-                    onSort={handleSort}
-                  />
+                  <SortHeader label="Total COGS" field="totalCost" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} />
                 </th>
                 <th className="px-4 py-3 text-right sticky top-0 bg-gray-50 z-10">
-                  <SortHeader
-                    label="Gross Profit"
-                    field="grossProfit"
-                    currentSort={sortField}
-                    currentOrder={sortOrder}
-                    onSort={handleSort}
-                  />
+                  <SortHeader label="Net Profit" field="grossProfit" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} />
                 </th>
                 <th className="px-4 py-3 text-right sticky top-0 bg-gray-50 z-10">
-                  <SortHeader
-                    label="Margin %"
-                    field="marginPercentage"
-                    currentSort={sortField}
-                    currentOrder={sortOrder}
-                    onSort={handleSort}
-                  />
+                  <SortHeader label="Margin %" field="marginPercentage" currentSort={sortField} currentOrder={sortOrder} onSort={handleSort} />
                 </th>
               </tr>
             </thead>
@@ -303,19 +267,16 @@ export default function CogsView({ dateFrom, dateTo, registerExport }) {
               {isPending ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td className="px-4 py-3.5"><div className="h-4 bg-gray-100 rounded w-32" /></td>
-                    <td className="px-4 py-3.5"><div className="h-4 bg-gray-100 rounded w-20" /></td>
-                    <td className="px-4 py-3.5 text-right"><div className="h-4 bg-gray-100 rounded w-12 ml-auto" /></td>
-                    <td className="px-4 py-3.5 text-right"><div className="h-4 bg-gray-100 rounded w-16 ml-auto" /></td>
-                    <td className="px-4 py-3.5 text-right"><div className="h-4 bg-gray-100 rounded w-16 ml-auto" /></td>
-                    <td className="px-4 py-3.5 text-right"><div className="h-4 bg-gray-100 rounded w-16 ml-auto" /></td>
-                    <td className="px-4 py-3.5 text-right"><div className="h-4 bg-gray-100 rounded w-16 ml-auto" /></td>
-                    <td className="px-4 py-3.5 text-right"><div className="h-4 bg-gray-100 rounded w-12 ml-auto" /></td>
+                    {Array.from({ length: 8 + (hasDiscounts ? 1 : 0) + (hasCommissions ? 1 : 0) + ((hasDiscounts || hasCommissions) ? 1 : 0) }).map((__, j) => (
+                      <td key={j} className="px-4 py-3.5">
+                        <div className="h-4 bg-gray-100 rounded w-16 ml-auto" />
+                      </td>
+                    ))}
                   </tr>
                 ))
               ) : sortedData.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-gray-400 font-medium">
+                  <td colSpan={10} className="text-center py-12 text-gray-400 font-medium">
                     No items found.
                   </td>
                 </tr>
@@ -330,16 +291,31 @@ export default function CogsView({ dateFrom, dateTo, registerExport }) {
                           {item.category}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-gray-500">{item.quantitySold}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-800 font-mono">
+                      <td className="px-4 py-3 text-right text-gray-500">{item.quantitySold}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-gray-800">
                         {formatCurrency(item.totalRevenue)}
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-450 font-mono">{formatCurrency(item.unitCost)}</td>
-                      <td className="px-4 py-3 text-right text-gray-600 font-semibold font-mono">{formatCurrency(item.totalCost)}</td>
-                      <td className={`px-4 py-3 text-right font-semibold font-mono ${isPositive ? 'text-emerald-600' : 'text-red-650'}`}>
+                      {hasDiscounts && (
+                        <td className="px-4 py-3 text-right text-orange-500">
+                          {(item.totalDiscount || 0) > 0 ? `−${formatCurrency(item.totalDiscount)}` : '—'}
+                        </td>
+                      )}
+                      {hasCommissions && (
+                        <td className="px-4 py-3 text-right text-rose-500">
+                          {(item.totalCommission || 0) > 0 ? `−${formatCurrency(item.totalCommission)}` : '—'}
+                        </td>
+                      )}
+                      {(hasDiscounts || hasCommissions) && (
+                        <td className="px-4 py-3 text-right font-semibold text-brand-teal">
+                          {formatCurrency(item.netRevenue ?? item.totalRevenue)}
+                        </td>
+                      )}
+                      <td className="px-4 py-3 text-right text-gray-400">{formatCurrency(item.unitCost)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-gray-600">{formatCurrency(item.totalCost)}</td>
+                      <td className={`px-4 py-3 text-right font-semibold ${isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
                         {formatCurrency(item.grossProfit)}
                       </td>
-                      <td className={`px-4 py-3 text-right font-bold font-mono ${isPositive ? 'text-emerald-600' : 'text-red-650'}`}>
+                      <td className={`px-4 py-3 text-right font-bold ${isPositive ? 'text-emerald-600' : 'text-red-600'}`}>
                         {item.marginPercentage.toFixed(1)}%
                       </td>
                     </tr>
@@ -351,7 +327,7 @@ export default function CogsView({ dateFrom, dateTo, registerExport }) {
         </div>
         <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex justify-between items-center text-xs font-semibold text-gray-500">
           <span>Row count: {filteredData.length} items</span>
-          <span>Filtered Sales: <span className="text-brand-orange">{formatCurrency(totals.revenue)}</span></span>
+          <span>Net Revenue: <span className="text-brand-teal">{formatCurrency(totals.netRevenue)}</span></span>
         </div>
       </div>
     </div>

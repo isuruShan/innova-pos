@@ -66,6 +66,21 @@ export default function ReportsPortal() {
     }
   }, []);
 
+  const activePreset = useMemo(() => {
+    const end = new Date();
+    const endStr = toYMD(end);
+    if (dateTo !== endStr) return null;
+
+    if (dateFrom === endStr) return 'today';
+    if (dateFrom === toYMD(addDays(end, -6))) return '7d';
+    if (dateFrom === toYMD(addDays(end, -29))) return '30d';
+
+    const startOfMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+    if (dateFrom === toYMD(startOfMonth)) return 'month';
+
+    return null;
+  }, [dateFrom, dateTo]);
+
   const rangeInvalid = dateFrom && dateTo && dateFrom > dateTo;
 
   // Map reportType to readable name
@@ -133,17 +148,24 @@ export default function ReportsPortal() {
             <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
               Date Range
             </label>
-            <div className="flex gap-1.5">
-              {['today', '7d', '30d', 'month'].map((preset) => (
-                <button
-                  key={preset}
-                  onClick={() => applyPreset(preset)}
-                  className="text-[9px] uppercase tracking-wider font-semibold text-gray-500 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded transition cursor-pointer"
-                >
-                  {preset === '7d' ? '7 Days' : preset === '30d' ? '30 Days' : preset}
-                </button>
-              ))}
-            </div>
+             <div className="flex gap-1.5">
+               {['today', '7d', '30d', 'month'].map((preset) => {
+                 const isActive = activePreset === preset;
+                 return (
+                   <button
+                     key={preset}
+                     onClick={() => applyPreset(preset)}
+                     className={`text-[9px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded transition cursor-pointer ${
+                       isActive
+                         ? 'bg-brand-teal text-white hover:bg-teal-700'
+                         : 'text-gray-500 hover:text-gray-900 bg-gray-100 hover:bg-gray-200'
+                     }`}
+                   >
+                     {preset === '7d' ? '7 Days' : preset === '30d' ? '30 Days' : preset}
+                   </button>
+                 );
+               })}
+             </div>
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <div className="w-full sm:flex-1">

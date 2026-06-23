@@ -108,16 +108,21 @@ export default function CogsView({ dateFrom, dateTo, registerExport }) {
   // Summary Totals
   const totals = useMemo(() => {
     let revenue = 0;
+    let discount = 0;
+    let commission = 0;
     let cost = 0;
     let qty = 0;
     filteredData.forEach((item) => {
       revenue += item.totalRevenue;
+      discount += item.totalDiscount || 0;
+      commission += item.totalCommission || 0;
       cost += item.totalCost;
       qty += item.quantitySold;
     });
-    const profit = revenue - cost;
-    const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
-    return { qty, revenue, cost, profit, margin };
+    const netRevenue = revenue - discount - commission;
+    const profit = netRevenue - cost;
+    const margin = netRevenue > 0 ? (profit / netRevenue) * 100 : 0;
+    return { qty, revenue, discount, commission, netRevenue, cost, profit, margin };
   }, [filteredData]);
 
   return (
@@ -226,6 +231,28 @@ export default function CogsView({ dateFrom, dateTo, registerExport }) {
               headerClassName: 'text-right',
               render: (item) => <span className="font-medium text-slate-200 tabular-nums">{formatCurrency(item.totalRevenue)}</span>,
             },
+            ...(filteredData.some(d => (d.totalCommission || 0) > 0) ? [
+              {
+                key: 'totalCommission',
+                header: 'Commission',
+                sortField: 'totalCommission',
+                className: 'text-right',
+                headerClassName: 'text-right',
+                render: (item) => (
+                  <span className="tabular-nums text-rose-400">
+                    {(item.totalCommission || 0) > 0 ? `−${formatCurrency(item.totalCommission)}` : '—'}
+                  </span>
+                ),
+              },
+              {
+                key: 'netRevenue',
+                header: 'Net Revenue',
+                sortField: 'netRevenue',
+                className: 'text-right',
+                headerClassName: 'text-right',
+                render: (item) => <span className="font-medium text-amber-400 tabular-nums">{formatCurrency(item.netRevenue ?? item.totalRevenue)}</span>,
+              },
+            ] : []),
             {
               key: 'unitCost',
               header: 'Unit Cost (Recipe)',
@@ -284,16 +311,25 @@ export default function CogsView({ dateFrom, dateTo, registerExport }) {
           <div className="space-y-1">
             <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Gross Revenue</span>
             <div className="text-xl font-extrabold text-amber-400 tabular-nums">{formatCurrency(totals.revenue)}</div>
+            {totals.discount > 0 && (
+              <div className="text-[10px] text-orange-400">−{formatCurrency(totals.discount)} discounts</div>
+            )}
+            {totals.commission > 0 && (
+              <div className="text-[10px] text-rose-400">−{formatCurrency(totals.commission)} commission</div>
+            )}
           </div>
           <div className="space-y-1">
             <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Total COGS</span>
             <div className="text-xl font-extrabold text-slate-300 tabular-nums">{formatCurrency(totals.cost)}</div>
           </div>
           <div className="space-y-1">
-            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Gross Profit</span>
+            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Net Profit</span>
             <div className={`text-xl font-extrabold tabular-nums ${totals.profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {formatCurrency(totals.profit)}
             </div>
+            {(totals.discount > 0 || totals.commission > 0) && (
+              <div className="text-[10px] text-slate-500">after discounts &amp; fees</div>
+            )}
           </div>
           <div className="space-y-1">
             <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Avg. Margin</span>

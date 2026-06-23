@@ -459,6 +459,96 @@ router.get(
 );
 
 /**
+ * GET /api/reports/extended/cashier-sessions/:id/detail
+ * Fetch cashier session detail including orders and returns.
+ */
+router.get(
+  '/cashier-sessions/:id/detail',
+  protect,
+  authorize(...readRoles),
+  tenantScope,
+  resolveSelectedStore,
+  async (req, res) => {
+    try {
+      const session = await CashierSession.findOne({
+        _id: req.params.id,
+        tenantId: req.tenantId,
+        storeId: req.storeId,
+      }).populate('cashierId', 'name email').lean();
+
+      if (!session) {
+        return res.status(404).json({ message: 'Cashier session not found' });
+      }
+
+      const Order = require('../models/Order');
+      
+      const openedAt = new Date(session.openedAt);
+      const closedAt = session.closedAt ? new Date(session.closedAt) : new Date();
+      const cashierId = session.cashierId?._id || session.cashierId;
+
+      const orderMatch = {
+        tenantId: req.tenantId,
+        storeId: req.storeId,
+        status: { $ne: 'cancelled' },
+        paymentCollected: true,
+        updatedAt: { $gte: openedAt, $lte: closedAt },
+        $or: [
+          { updatedBy: cashierId },
+          { createdBy: cashierId, updatedBy: { $in: [null, undefined] } }
+        ],
+      };
+
+      const orders = await Order.find(orderMatch)
+        .select('orderNumber status paymentType totalAmount discountTotal createdAt')
+        .sort({ createdAt: -1 })
+        .lean();
+
+      const returnsMatch = {
+        tenantId: req.tenantId,
+        storeId: req.storeId,
+        'returns.returnedBy': cashierId,
+        'returns.returnedAt': { $gte: openedAt, $lte: closedAt },
+      };
+
+      const returnedOrders = await Order.find(returnsMatch)
+        .select('orderNumber paymentType returns')
+        .lean();
+
+      const returnsList = [];
+      returnedOrders.forEach(o => {
+        (o.returns || []).forEach(r => {
+          if (
+            String(r.returnedBy) === String(cashierId) &&
+            new Date(r.returnedAt) >= openedAt &&
+            new Date(r.returnedAt) <= closedAt
+          ) {
+            returnsList.push({
+              orderId: o._id,
+              orderNumber: o.orderNumber,
+              paymentType: o.paymentType,
+              refundAmount: r.refundAmount,
+              returnedAt: r.returnedAt,
+              notes: r.notes || '',
+              items: r.items || [],
+            });
+          }
+        });
+      });
+
+      returnsList.sort((a, b) => new Date(b.returnedAt) - new Date(a.returnedAt));
+
+      res.json({
+        session,
+        orders,
+        returns: returnsList,
+      });
+    } catch (err) {
+      sendRouteError(res, err, { req });
+    }
+  }
+);
+
+/**
  * GET /api/reports/extended/cogs
  * COGS & Gross Profit Margin Report
  */
