@@ -8,8 +8,8 @@ import ViewModeToggle from '../ViewModeToggle';
 
 const FORMULA_FIELDS = {
   wac: 'wacCost',
-  fifo: 'lifoCost',
-  lifo: 'fifoCost',
+  fifo: 'fifoCost',
+  lifo: 'lifoCost',
   last_cost: 'lastCost',
 };
 

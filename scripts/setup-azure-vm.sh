@@ -99,6 +99,19 @@ else
     sudo systemctl enable --now mongod
 fi
 
+# ── 8b. Install Redis Server (Required for cluster notification SSE) ─────────
+if ! command -v redis-server &>/dev/null; then
+    info "Installing Redis Server..."
+    sudo apt-get install -y redis-server
+    sudo systemctl enable redis-server
+    sudo systemctl start redis-server
+    ok "Redis Server installed and started locally"
+else
+    ok "Redis Server already present"
+    sudo systemctl enable redis-server
+    sudo systemctl start redis-server
+fi
+
 # ── 9. Install Nginx ──────────────────────────────────────────────────────────
 if ! command -v nginx &>/dev/null; then
     info "Installing Nginx..."
@@ -125,10 +138,11 @@ sudo ufw default deny incoming
 sudo ufw default allow outgoing
 sudo ufw allow OpenSSH
 sudo ufw allow 'Nginx Full'
-# Block MongoDB port 27017 from external access
+# Block MongoDB and Redis ports from external access
 sudo ufw deny 27017 comment "MongoDB - internal only"
+sudo ufw deny 6379 comment "Redis - internal only"
 sudo ufw --force enable
-ok "Firewall rules activated (SSH, HTTP, and HTTPS open. Internal databases secured.)"
+ok "Firewall rules activated (SSH, HTTP, and HTTPS open. Internal databases and caches secured.)"
 
 # ── 12. Create Application Directories ─────────────────────────────────────────
 info "Creating configuration directories..."
@@ -268,6 +282,8 @@ SECRETS_JSON=$(cat <<EOF
   "JWT_SECRET": "${JWT_SECRET}",
   "JWT_EXPIRES_IN": "12h",
   "INTERNAL_SERVICE_KEY": "${INTERNAL_SERVICE_KEY}",
+  "REDIS_URL": "redis://127.0.0.1:6379",
+  "RATE_LIMIT_REDIS_URL": "redis://127.0.0.1:6379",
   "CORS_ORIGIN": "https://${POS_DOMAIN},https://${ADMIN_DOMAIN},https://${PUBLIC_DOMAIN},https://${QR_DOMAIN}",
   "UPLOAD_SERVICE_URL": "http://127.0.0.1:3002",
   "AUDIT_SERVICE_URL": "http://127.0.0.1:3004",
