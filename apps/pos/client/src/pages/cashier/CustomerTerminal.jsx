@@ -402,64 +402,104 @@ export default function CustomerTerminal() {
       {/* Main content grid */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
         {/* Left Side: Order items */}
-        <div className="lg:col-span-7 flex flex-col border-r border-slate-800/80 p-6 overflow-y-auto bg-slate-900/40">
-          <h2 className="text-lg font-bold mb-4 text-white flex items-center gap-2">
-            <Package size={18} className="text-amber-500" />
-            Your Order Details
-          </h2>
+        <div className="lg:col-span-7 flex flex-col border-r border-slate-800/80 p-6 overflow-y-auto bg-slate-950/20">
+          <div className="max-w-xl mx-auto w-full flex-1 flex flex-col bg-[#151F2E] border border-slate-800/85 rounded-3xl shadow-2xl p-6 relative overflow-hidden">
+            {/* Glowing top line */}
+            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-500 to-amber-600"></div>
 
-          {orderState.items.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center py-16 text-slate-400">
-              <Package size={48} className="opacity-45 mb-3 text-slate-400" />
-              <p className="text-base font-bold text-slate-200">Ready to take your order</p>
-              <p className="text-xs text-slate-450 mt-1">Order details will appear here as items are added</p>
+            {/* Receipt Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-850 mb-5 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                  <Sparkles size={16} className="text-amber-400" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-white tracking-wide uppercase">Live Order Details</h2>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                    </span>
+                    <span className="text-[9px] text-slate-300 font-bold uppercase tracking-wider">Sync Active</span>
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-[9px] text-slate-450 font-bold uppercase tracking-wider block">Items</span>
+                <span className="text-xs font-black text-white bg-slate-850 px-2 py-0.5 rounded-md">
+                  {orderState.items.reduce((acc, it) => acc + it.qty, 0)}
+                </span>
+              </div>
             </div>
-          ) : (
-            <div className="flex-1 flex flex-col justify-between">
-              <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
-                {orderState.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center bg-slate-800/45 border border-slate-700/50 p-3 rounded-lg shadow-sm">
-                    <div>
-                      <div className="font-bold text-slate-100">{item.name}</div>
-                      {item.variantName && (
-                        <div className="text-xs text-slate-400 font-medium">{item.variantName}</div>
-                      )}
-                      <div className="text-xs text-slate-300 mt-0.5">
-                        Qty: {item.qty} × {branding.currencySymbol}{Number(item.price).toFixed(2)}
+
+            {orderState.items.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center py-16 text-slate-400">
+                <div className="w-16 h-16 rounded-full bg-slate-850/60 flex items-center justify-center mb-4">
+                  <Package size={32} className="opacity-60 text-slate-350" />
+                </div>
+                <p className="text-base font-bold text-white">Ready for your order</p>
+                <p className="text-xs text-slate-300 mt-1 max-w-[220px] text-center">Items will appear here in real-time as they are added by the cashier.</p>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col justify-between overflow-hidden">
+                {/* Scrollable Items list */}
+                <div className="flex-1 overflow-y-auto pr-1 space-y-2.5">
+                  {orderState.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center bg-slate-800/20 border border-slate-800/40 p-3.5 rounded-2xl shadow-sm hover:border-slate-700/40 transition-colors">
+                      <div className="flex-1 min-w-0 pr-3">
+                        <div className="font-semibold text-sm text-white truncate">{item.name}</div>
+                        {item.variantName && (
+                          <div className="text-[11px] text-slate-300 font-medium mt-0.5">{item.variantName}</div>
+                        )}
+                        <div className="text-xs text-slate-300 mt-1 font-medium">
+                          Qty: <span className="text-amber-400 font-bold">{item.qty}</span> × {branding.currencySymbol}{Number(item.price).toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="font-extrabold text-white text-base shrink-0">
+                        {branding.currencySymbol}{(item.qty * item.price).toFixed(2)}
                       </div>
                     </div>
-                    <div className="font-bold text-white text-base">
-                      {branding.currencySymbol}{(item.qty * item.price).toFixed(2)}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
 
-              {/* Totals panel */}
-              <div className="mt-6 pt-4 border-t border-slate-800 space-y-2.5">
-                <div className="flex justify-between text-sm font-medium">
-                  <span className="text-slate-350">Subtotal</span>
-                  <span className="text-slate-200">{branding.currencySymbol}{Number(orderState.subtotal).toFixed(2)}</span>
+                {/* Scalloped Dotted Divider (Cute Ticket Cutouts) */}
+                <div className="relative flex items-center my-4 shrink-0">
+                  {/* Left Circle cutout */}
+                  <div className="absolute -left-[30px] w-4 h-4 bg-[#0B1220] rounded-full border-r border-slate-800/80"></div>
+                  {/* Dashed line */}
+                  <div className="w-full border-t-2 border-dashed border-slate-800/80"></div>
+                  {/* Right Circle cutout */}
+                  <div className="absolute -right-[30px] w-4 h-4 bg-[#0B1220] rounded-full border-l border-slate-800/80"></div>
                 </div>
-                {orderState.discountTotal > 0 && (
-                  <div className="flex justify-between text-sm text-emerald-400 font-bold">
-                    <span>Discount</span>
-                    <span>-{branding.currencySymbol}{Number(orderState.discountTotal).toFixed(2)}</span>
+
+                {/* Totals panel */}
+                <div className="space-y-2 shrink-0 bg-slate-800/10 p-4 rounded-2xl border border-slate-850">
+                  <div className="flex justify-between text-xs font-semibold">
+                    <span className="text-slate-300">Subtotal</span>
+                    <span className="text-white">{branding.currencySymbol}{Number(orderState.subtotal).toFixed(2)}</span>
                   </div>
-                )}
-                {orderState.taxAmount > 0 && (
-                  <div className="flex justify-between text-sm font-medium">
-                    <span className="text-slate-350">Tax</span>
-                    <span className="text-slate-200">{branding.currencySymbol}{Number(orderState.taxAmount).toFixed(2)}</span>
+                  {orderState.discountTotal > 0 && (
+                    <div className="flex justify-between text-xs text-emerald-400 font-bold">
+                      <span>Discount</span>
+                      <span>-{branding.currencySymbol}{Number(orderState.discountTotal).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {orderState.taxAmount > 0 && (
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span className="text-slate-300">Tax</span>
+                      <span className="text-white">{branding.currencySymbol}{Number(orderState.taxAmount).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-sm font-extrabold text-white pt-2.5 border-t border-slate-850 mt-2">
+                    <span className="text-slate-200">Total Amount</span>
+                    <span className="text-amber-400 font-black text-2xl tracking-tight">
+                      {branding.currencySymbol}{Number(orderState.totalAmount).toFixed(2)}
+                    </span>
                   </div>
-                )}
-                <div className="flex justify-between text-xl font-bold text-white pt-2 border-t border-slate-850">
-                  <span>Total Amount</span>
-                  <span className="text-amber-400 font-extrabold text-2xl">{branding.currencySymbol}{Number(orderState.totalAmount).toFixed(2)}</span>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Right Side: Customer Check-in / QR / Touchpad */}
@@ -503,7 +543,7 @@ export default function CustomerTerminal() {
                   Signed In
                 </span>
 
-                <p className="text-slate-400 text-xs uppercase tracking-widest font-bold mb-1">
+                <p className="text-slate-300 text-xs uppercase tracking-widest font-bold mb-1">
                   Welcome back
                 </p>
 
@@ -537,23 +577,23 @@ export default function CustomerTerminal() {
                 </button>
               </div>
             ) : !orderState.customerSessionId ? (
-              <div className="text-center py-12 text-slate-500 w-full">
-                <Smartphone size={32} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm font-medium text-slate-300">No Active Placement Session</p>
-                <p className="text-xs opacity-70 mt-1 max-w-[200px] mx-auto text-slate-400">Start placing an order to link your account</p>
+              <div className="text-center py-12 text-slate-300 w-full">
+                <Smartphone size={32} className="mx-auto mb-3 opacity-50 text-slate-300" />
+                <p className="text-sm font-semibold text-white">No Active Placement Session</p>
+                <p className="text-xs mt-1 max-w-[200px] mx-auto text-slate-300">Start placing an order to link your account</p>
               </div>
             ) : !showInputScreen ? (
               <div className="flex flex-col items-center justify-center space-y-6 w-full">
                 {/* QR Check-in Box */}
                 <div className="bg-slate-800 border border-slate-800 p-5 rounded-2xl text-center flex flex-col items-center w-full max-w-[320px] shadow-lg">
-                  <h3 className="text-sm font-semibold mb-3 text-slate-300">Scan QR Code to Check-in</h3>
+                  <h3 className="text-sm font-bold mb-3 text-white">Scan QR Code to Check-in</h3>
                   <div className="w-[180px] h-[180px] bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden border border-slate-700/50">
                     {qrCodeImgSrc && <img src={qrCodeImgSrc} alt="Check-in QR" className="w-[160px] h-[160px]" />}
                   </div>
-                  <p className="text-xs text-slate-400 mt-3.5 leading-relaxed">Use your mobile phone browser to earn points & rewards</p>
+                  <p className="text-xs text-slate-300 mt-3.5 leading-relaxed">Use your mobile phone browser to earn points & rewards</p>
                 </div>
 
-                <div className="text-slate-500 text-xs font-bold tracking-wider">OR</div>
+                <div className="text-slate-300 text-xs font-bold tracking-wider">OR</div>
 
                 {/* On-screen Input Button */}
                 <button
@@ -573,7 +613,7 @@ export default function CustomerTerminal() {
                       if (otpRequired) setOtpRequired(false);
                       else setShowInputScreen(false);
                     }}
-                    className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white mb-4 transition cursor-pointer"
+                    className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white mb-4 transition cursor-pointer font-semibold"
                   >
                     <ArrowLeft size={14} />
                     Back
@@ -591,7 +631,7 @@ export default function CustomerTerminal() {
                       <>
                         {/* Mobile input with Country Selector */}
                         <div className="space-y-1">
-                          <label className="block text-xs font-semibold text-slate-400">Mobile Number</label>
+                          <label className="block text-xs font-bold text-slate-300">Mobile Number</label>
                           <div className="flex gap-2">
                             <div className="relative shrink-0">
                               <select
@@ -615,7 +655,7 @@ export default function CustomerTerminal() {
                               onClick={() => setActiveField('mobile')}
                               className={`flex-1 p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition ${activeField === 'mobile' ? 'border-amber-500 bg-slate-800/40' : 'border-slate-800 bg-slate-800/10'}`}
                             >
-                              <Smartphone size={16} className="text-slate-400" />
+                              <Smartphone size={16} className="text-slate-300" />
                               <input
                                 type="text"
                                 placeholder="771234567"
@@ -660,7 +700,7 @@ export default function CustomerTerminal() {
                     ))}
                     <button
                       onClick={() => handleKeyPress('+')}
-                      className="py-3 bg-slate-850 hover:bg-slate-800 rounded-lg text-lg font-bold text-slate-400 transition cursor-pointer"
+                      className="py-3 bg-slate-850 hover:bg-slate-800 rounded-lg text-lg font-bold text-slate-300 transition cursor-pointer"
                     >
                       +
                     </button>
@@ -678,7 +718,7 @@ export default function CustomerTerminal() {
                     </button>
                     <button
                       onClick={() => handleKeyPress('CLEAR')}
-                      className="col-span-3 py-2 bg-slate-850 hover:bg-slate-800 rounded-lg text-xs font-semibold text-slate-400 transition cursor-pointer"
+                      className="col-span-3 py-2 bg-slate-850 hover:bg-slate-800 rounded-lg text-xs font-semibold text-slate-300 transition cursor-pointer"
                     >
                       Clear All
                     </button>

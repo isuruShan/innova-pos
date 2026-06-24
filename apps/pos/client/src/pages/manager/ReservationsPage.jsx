@@ -258,12 +258,7 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
     setStep((prev) => prev - 1);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (step < 3) {
-      nextStep();
-      return;
-    }
+  const handleSubmit = () => {
     const dateTime = new Date(`${form.reservationDate}T${form.reservationTime}`);
     onSubmit({
       guestName: form.guestName,
@@ -334,7 +329,7 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
         </div>
 
         {/* Wizard content */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {step === 1 && (
             <div className="space-y-4">
               <div>
@@ -536,16 +531,17 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
                   Back
                 </button>
                 <button
-                  type="submit"
+                  type="button"
                   disabled={isPending || isLoadingTables}
+                  onClick={handleSubmit}
                   className="px-4 py-2 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600 transition disabled:opacity-50"
                 >
-                  {isPending ? 'Creating...' : 'Create Reservation'}
+                  {isPending ? 'Saving...' : 'Save Reservation'}
                 </button>
               </>
             )}
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
@@ -648,12 +644,7 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, onDelete, isP
     setStep((prev) => prev - 1);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (step < 3) {
-      nextStep();
-      return;
-    }
+  const handleSubmit = () => {
     const dateTime = new Date(`${form.reservationDate}T${form.reservationTime}`);
     onSubmit({
       guestName: form.guestName,
@@ -732,7 +723,7 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, onDelete, isP
         </div>
 
         {/* Wizard content */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {step === 1 && (
             <div className="space-y-4">
               <div>
@@ -934,16 +925,17 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, onDelete, isP
                   Back
                 </button>
                 <button
-                  type="submit"
+                  type="button"
                   disabled={isPending || isLoadingTables}
+                  onClick={handleSubmit}
                   className="px-4 py-2 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600 transition disabled:opacity-50"
                 >
-                  {isPending ? 'Updating...' : 'Update Reservation'}
+                  {isPending ? 'Saving...' : 'Save Reservation'}
                 </button>
               </>
             )}
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
