@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Gift, Plus, Search, Pencil, Trash2, Check } from 'lucide-react';
+import { Gift, Plus, Search, Pencil, Trash2, Check, Coins, Award, Sparkles } from 'lucide-react';
 import api from '../../api/axios';
 import { useStoreContext } from '../../context/StoreContext';
 import RewardScopeCombobox from '../../components/RewardScopeCombobox';
@@ -517,204 +517,347 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
             </div>
           )}
         >
-            <form id="reward-drawer-form" onSubmit={submit} className="space-y-3">
-              <label className="block text-xs text-gray-600">
-                Scope
-                <select
-                  value={form.rewardScope}
-                  onChange={(e) => setForm((f) => ({ ...f, rewardScope: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                >
-                  <option value="tenant">All stores (tenant-wide)</option>
-                  <option value="store">Single store</option>
-                </select>
-              </label>
-              {form.rewardScope === 'store' ? (
-                <label className="block text-xs text-gray-600">
-                  Store
-                  <select
+            <form id="reward-drawer-form" onSubmit={submit} className="space-y-5 pb-8 text-sm">
+              {/* Section 1: Basic Info & Scope */}
+              <div className="bg-gray-50/50 border border-gray-200 rounded-2xl p-4 space-y-4">
+                <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+                  <Sparkles size={16} className="text-brand-teal" />
+                  <h3 className="font-semibold text-gray-805 text-xs uppercase tracking-wider">Basic info &amp; scope</h3>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-gray-500">Scope</label>
+                    <select
+                      value={form.rewardScope}
+                      onChange={(e) => setForm((f) => ({ ...f, rewardScope: e.target.value }))}
+                      className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal focus:outline-none transition"
+                    >
+                      <option value="tenant">All stores (tenant-wide)</option>
+                      <option value="store">Single store</option>
+                    </select>
+                  </div>
+
+                  {form.rewardScope === 'store' ? (
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-gray-500">Store *</label>
+                      <select
+                        required
+                        value={form.storeId}
+                        onChange={(e) => setForm((f) => ({ ...f, storeId: e.target.value }))}
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal focus:outline-none transition"
+                      >
+                        <option value="">Select store…</option>
+                        {stores.map((s) => (
+                          <option key={s._id} value={s._id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="flex items-end justify-center pb-2">
+                      <span className="text-xs text-gray-450 italic">Applies across all retail outlets.</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-500">Name *</label>
+                  <input
                     required
-                    value={form.storeId}
-                    onChange={(e) => setForm((f) => ({ ...f, storeId: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  >
-                    <option value="">Select store…</option>
-                    {stores.map((s) => (
-                      <option key={s._id} value={s._id}>
-                        {s.name}
-                      </option>
+                    value={form.name}
+                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g. Free Coffee, $10 Off..."
+                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal focus:outline-none transition"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-500">Description</label>
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                    rows={2}
+                    placeholder="Describe how customers qualify or what they get..."
+                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal focus:outline-none resize-none transition"
+                  />
+                </div>
+              </div>
+
+              {/* Section 2: Redemption Model */}
+              <div className="bg-gray-50/50 border border-gray-200 rounded-2xl p-4 space-y-4">
+                <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+                  <Coins size={16} className="text-brand-teal" />
+                  <h3 className="font-semibold text-gray-805 text-xs uppercase tracking-wider">Redemption model</h3>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-gray-550">Redemption type</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((f) => ({
+                          ...f,
+                          redemptionType: 'points',
+                          pointsCost: f.pointsCost === '0' ? '100' : f.pointsCost || '100',
+                        }))
+                      }
+                      className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition cursor-pointer ${
+                        form.redemptionType === 'points'
+                          ? 'border-brand-teal bg-teal-50/30 text-gray-900 shadow-sm'
+                          : 'border-gray-200 bg-white text-gray-500 hover:border-gray-305'
+                      }`}
+                    >
+                      <Coins size={20} className={form.redemptionType === 'points' ? 'text-teal-600 mb-1' : 'text-gray-400 mb-1'} />
+                      <span className="text-xs font-bold">Spend Points</span>
+                      <span className="text-[10px] opacity-70 mt-0.5">Deducts points at checkout</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((f) => ({
+                          ...f,
+                          redemptionType: 'automatic',
+                          pointsCost: '0',
+                        }))
+                      }
+                      className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition cursor-pointer ${
+                        form.redemptionType === 'automatic'
+                          ? 'border-brand-teal bg-teal-50/30 text-gray-900 shadow-sm'
+                          : 'border-gray-200 bg-white text-gray-500 hover:border-gray-305'
+                      }`}
+                    >
+                      <Award size={20} className={form.redemptionType === 'automatic' ? 'text-teal-600 mb-1' : 'text-gray-400 mb-1'} />
+                      <span className="text-xs font-bold">Member Perk</span>
+                      <span className="text-[10px] opacity-70 mt-0.5">Free / auto-applies</span>
+                    </button>
+                  </div>
+                </div>
+
+                {form.redemptionType !== 'automatic' ? (
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-gray-500">Points cost *</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={1}
+                        required
+                        value={form.pointsCost}
+                        onChange={(e) => setForm((f) => ({ ...f, pointsCost: e.target.value }))}
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal focus:outline-none transition"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">PTS</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500 leading-relaxed bg-teal-50/10 border border-teal-100 rounded-xl p-3">
+                    ⭐ This is a member perk. It will apply automatically for eligible members when attached to an order (tier rules still apply).
+                  </p>
+                )}
+              </div>
+
+              {/* Section 3: Reward Action */}
+              <div className="bg-gray-50/50 border border-gray-200 rounded-2xl p-4 space-y-4">
+                <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+                  <Gift size={16} className="text-brand-teal" />
+                  <h3 className="font-semibold text-gray-850 text-xs uppercase tracking-wider">Reward action</h3>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-gray-550">Reward type</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {[
+                      {
+                        value: 'order_discount_amount',
+                        label: 'Fixed discount',
+                        desc: 'Specific amount off order/items',
+                      },
+                      {
+                        value: 'order_discount_percent',
+                        label: 'Percentage discount',
+                        desc: 'Percent off the scoped items',
+                      },
+                      {
+                        value: 'free_item',
+                        label: 'Free item',
+                        desc: 'Get a complimentary menu item',
+                      },
+                      {
+                        value: 'points_earning',
+                        label: 'Points Earning',
+                        desc: 'Grant custom points reward',
+                      },
+                    ].map((item) => (
+                      <button
+                        key={item.value}
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, rewardType: item.value }))}
+                        className={`flex items-center gap-3 p-3 rounded-xl border text-left transition cursor-pointer ${
+                          form.rewardType === item.value
+                            ? 'border-brand-teal bg-teal-50/30 text-gray-900 shadow-sm'
+                            : 'border-gray-200 bg-white text-gray-500 hover:border-gray-305'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 ${
+                          form.rewardType === item.value ? 'bg-teal-100/50 text-teal-700' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {item.value === 'order_discount_amount' ? '$' : item.value === 'order_discount_percent' ? '%' : item.value === 'points_earning' ? 'P' : <Gift size={15} />}
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold">{item.label}</div>
+                          <div className="text-[9px] opacity-70 leading-tight">{item.desc}</div>
+                        </div>
+                      </button>
                     ))}
-                  </select>
-                </label>
-              ) : null}
-              <label className="block text-xs text-gray-600">
-                Name *
-                <input
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                />
-              </label>
-              <label className="block text-xs text-gray-600">
-                Description
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  rows={2}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                />
-              </label>
-              <label className="block text-xs text-gray-600">
-                Redemption
-                <select
-                  value={form.redemptionType}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      redemptionType: e.target.value,
-                      pointsCost: e.target.value === 'automatic' ? '0' : f.pointsCost || '100',
-                    }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                >
-                  <option value="points">Spend loyalty points at checkout</option>
-                  <option value="automatic">Member perk (no points spent)</option>
-                </select>
-              </label>
-              {form.redemptionType !== 'automatic' ? (
-                <label className="block text-xs text-gray-600">
-                  Points cost *
+                  </div>
+                </div>
+
+                {form.rewardType === 'order_discount_amount' && (
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-gray-500">Discount amount ($) *</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">$</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        required
+                        value={form.discountAmount}
+                        onChange={(e) => setForm((f) => ({ ...f, discountAmount: e.target.value }))}
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal focus:outline-none transition pl-7"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {form.rewardType === 'order_discount_percent' && (
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-gray-500">Percent off (%) *</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        required
+                        value={form.discountPercent}
+                        onChange={(e) => setForm((f) => ({ ...f, discountPercent: e.target.value }))}
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal focus:outline-none transition pr-8"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">%</span>
+                    </div>
+                  </div>
+                )}
+
+                {form.rewardType === 'points_earning' && (
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-gray-500">Points earned *</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        required
+                        value={form.pointsEarning}
+                        onChange={(e) => setForm((f) => ({ ...f, pointsEarning: e.target.value }))}
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal focus:outline-none transition pr-10"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">PTS</span>
+                    </div>
+                  </div>
+                )}
+
+                {(form.rewardType === 'order_discount_amount' || form.rewardType === 'order_discount_percent') && (
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-gray-500">Max discount per order (optional)</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">$</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={form.maxDiscountAmount}
+                        onChange={(e) => setForm((f) => ({ ...f, maxDiscountAmount: e.target.value }))}
+                        placeholder="No limit"
+                        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal focus:outline-none transition pl-7"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Section 4: Eligibility & Exclusions */}
+              <div className="bg-gray-50/50 border border-gray-200 rounded-2xl p-4 space-y-4">
+                <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
+                  <Award size={16} className="text-brand-teal" />
+                  <h3 className="font-semibold text-gray-850 text-xs uppercase tracking-wider">Eligibility &amp; exclusions</h3>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-550">Minimum tier level</label>
                   <input
                     type="number"
                     min={1}
-                    required
-                    value={form.pointsCost}
-                    onChange={(e) => setForm((f) => ({ ...f, pointsCost: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    value={form.minTierLevel}
+                    onChange={(e) => setForm((f) => ({ ...f, minTierLevel: e.target.value }))}
+                    className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal focus:outline-none transition"
                   />
-                </label>
-              ) : (
-                <p className="text-xs text-gray-500">
-                  Eligible members receive this discount automatically (tier rules still apply).
-                </p>
-              )}
-              <label className="block text-xs text-gray-600">
-                Reward type
-                <select
-                  value={form.rewardType}
-                  onChange={(e) => setForm((f) => ({ ...f, rewardType: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                >
-                  <option value="order_discount_amount">Fixed amount off order</option>
-                  <option value="order_discount_percent">Percent off order</option>
-                  <option value="free_item">Free item</option>
-                  <option value="points_earning">Points Earning (Loyalty Perk)</option>
-                </select>
-              </label>
-              {form.rewardType === 'order_discount_amount' ? (
-                <label className="block text-xs text-gray-600">
-                  Discount amount
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={form.discountAmount}
-                    onChange={(e) => setForm((f) => ({ ...f, discountAmount: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  <p className="text-[10px] text-gray-400">Restricts usage to members at or above this loyalty tier level.</p>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-550">Apply restriction (optional)</label>
+                  <RewardScopeCombobox
+                    menuItems={menuItems}
+                    isStoreReady={isStoreReady}
+                    categoryNames={form.applicableCategories || []}
+                    itemIds={form.applicableItems || []}
+                    itemNames={form.applicableItemNames || []}
+                    onPatch={(patch) => setForm((f) => ({ ...f, ...patch }))}
                   />
-                </label>
-              ) : null}
-              {form.rewardType === 'order_discount_percent' ? (
-                <label className="block text-xs text-gray-600">
-                  Percent off
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={form.discountPercent}
-                    onChange={(e) => setForm((f) => ({ ...f, discountPercent: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </label>
-              ) : null}
-              {form.rewardType === 'points_earning' ? (
-                <label className="block text-xs text-gray-600">
-                  Points earned
-                  <input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={form.pointsEarning}
-                    onChange={(e) => setForm((f) => ({ ...f, pointsEarning: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </label>
-              ) : null}
-              <label className="block text-xs text-gray-600">
-                Min tier level
-                <input
-                  type="number"
-                  min={1}
-                  value={form.minTierLevel}
-                  onChange={(e) => setForm((f) => ({ ...f, minTierLevel: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                />
-              </label>
-              {(form.rewardType === 'order_discount_amount' || form.rewardType === 'order_discount_percent') && (
-                <label className="block text-xs text-gray-600">
-                  Max discount per order (optional)
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={form.maxDiscountAmount}
-                    onChange={(e) => setForm((f) => ({ ...f, maxDiscountAmount: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    placeholder="Cap $ off from this reward"
-                  />
-                </label>
-              )}
-              <div>
-                <p className="text-xs text-gray-600 mb-1">Apply to (optional — empty = whole order)</p>
-                <RewardScopeCombobox
-                  menuItems={menuItems}
-                  isStoreReady={isStoreReady}
-                  categoryNames={form.applicableCategories || []}
-                  itemIds={form.applicableItems || []}
-                  itemNames={form.applicableItemNames || []}
-                  onPatch={(patch) => setForm((f) => ({ ...f, ...patch }))}
-                />
+                  <p className="text-[10px] text-gray-400">Leave empty to apply to the entire order.</p>
+                </div>
+
+                {activePartners.length > 0 && (
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-gray-555">Foodmarket Partner (Optional)</label>
+                    <select
+                      value={form.foodmarketPartnerId || ''}
+                      onChange={(e) => setForm((f) => ({ ...f, foodmarketPartnerId: e.target.value }))}
+                      className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-brand-teal focus:ring-1 focus:ring-brand-teal focus:outline-none transition"
+                    >
+                      <option value="">All Channels / In-Store</option>
+                      {activePartners.map((p) => (
+                        <option key={p._id} value={p._id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-gray-400">Optionally tie this perk/reward to a specific channel partner.</p>
+                  </div>
+                )}
+
+                <div className="pt-2 border-t border-gray-150">
+                  <label className="inline-flex items-center gap-2 cursor-pointer select-none text-sm text-gray-855 font-medium">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(form.active)}
+                      onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))}
+                      className="rounded border-gray-300 text-brand-teal focus:ring-brand-teal transition h-4 w-4"
+                    />
+                    Active reward status
+                  </label>
+                  <p className="text-[10px] text-gray-400 ml-6">If active, members will immediately be able to redeem this reward.</p>
+                </div>
               </div>
 
-              {activePartners.length > 0 && (
-                <label className="block text-xs text-gray-600">
-                  Foodmarket Partner (Optional)
-                  <select
-                    value={form.foodmarketPartnerId || ''}
-                    onChange={(e) => setForm((f) => ({ ...f, foodmarketPartnerId: e.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  >
-                    <option value="">All Channels / In-Store</option>
-                    {activePartners.map((p) => (
-                      <option key={p._id} value={p._id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-
-              <label className="flex items-center gap-2 text-sm text-gray-800">
-                <input
-                  type="checkbox"
-                  checked={Boolean(form.active)}
-                  onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))}
-                />
-                Active (when approved)
-              </label>
               {formError ? (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{formError}</div>
+                <div className="text-xs text-red-655 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 flex items-start gap-2">
+                  <span className="font-bold">⚠️ Error:</span>
+                  <span>{formError}</span>
+                </div>
               ) : null}
             </form>
         </SideDrawer>

@@ -475,4 +475,14 @@ router.post('/rewards/:id/reject', authorize('merchant_admin'), async (req, res)
   }
 });
 
+router.delete('/rewards/:id', authorize('merchant_admin', 'manager'), async (req, res) => {
+  try {
+    const doc = await LoyaltyReward.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId });
+    if (!doc) return res.status(404).json({ message: 'Reward not found' });
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
 module.exports = router;
