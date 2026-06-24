@@ -87,12 +87,16 @@ async function getEligibleTables(tenantId, storeId, reservationTime, partySize, 
     // Condition B: Not currently occupied with overlapping timing
     const activeSession = activeSessions.find((s) => String(s.tableId) === tableIdStr);
     if (activeSession) {
+      const now = new Date();
       const expectedReleaseTime = new Date(
         new Date(activeSession.seatedAt).getTime() + avgTurnTime * 60000
       );
-      const earliestReservableTime = new Date(expectedReleaseTime.getTime() + buffer * 60000);
+      const earliestReservableTime = new Date(Math.max(
+        now.getTime() + 60 * 60000, // 1 hour buffer from now
+        expectedReleaseTime.getTime() + buffer * 60000 // expected completion time + buffer
+      ));
       
-      // If requested reservation time starts before the expected release + buffer, it's not eligible
+      // If requested reservation time starts before the expected release / buffer, it's not eligible
       if (slotStart < earliestReservableTime) {
         continue;
       }
@@ -410,10 +414,14 @@ router.post(
           status: 'active',
         }).lean();
         if (activeSession) {
+          const now = new Date();
           const expectedReleaseTime = new Date(
             new Date(activeSession.seatedAt).getTime() + avgTurnTime * 60000
           );
-          const earliestReservableTime = new Date(expectedReleaseTime.getTime() + buffer * 60000);
+          const earliestReservableTime = new Date(Math.max(
+            now.getTime() + 60 * 60000, // 1 hour buffer from now
+            expectedReleaseTime.getTime() + buffer * 60000
+          ));
           if (slotStart < earliestReservableTime) {
             return res.status(409).json({
               message: 'Selected table is currently occupied by a customer and is not expected to be free in time.',
@@ -649,10 +657,14 @@ router.put(
           status: 'active',
         }).lean();
         if (activeSession) {
+          const now = new Date();
           const expectedReleaseTime = new Date(
             new Date(activeSession.seatedAt).getTime() + avgTurnTime * 60000
           );
-          const earliestReservableTime = new Date(expectedReleaseTime.getTime() + buffer * 60000);
+          const earliestReservableTime = new Date(Math.max(
+            now.getTime() + 60 * 60000, // 1 hour buffer from now
+            expectedReleaseTime.getTime() + buffer * 60000
+          ));
           if (slotStart < earliestReservableTime) {
             return res.status(409).json({
               message: 'Selected table is currently occupied by a customer and is not expected to be free in time.',
@@ -768,6 +780,29 @@ const updateStatus = async (req, res) => {
     if (status === 'arrived' && !reservation.arrivedAt) {
       reservation.arrivedAt = now;
     } else if (status === 'seated' && !reservation.seatedAt) {
+      if (reservation.status !== 'seated' && reservation.tableId) {
+        const activeSession = await TableSession.findOne({
+          tenantId: req.tenantId,
+          storeId: reservation.storeId,
+          tableId: reservation.tableId,
+          status: 'active',
+        }).lean();
+        if (activeSession) {
+          return res.status(400).json({
+            message: 'Selected table is currently occupied by another customer. Please clear the table before seating this reservation.',
+          });
+        }
+
+        await TableSession.create({
+          tenantId: reservation.tenantId,
+          storeId: reservation.storeId,
+          tableId: reservation.tableId,
+          partySize: reservation.partySize,
+          seatedAt: now,
+          reservationId: reservation._id,
+          status: 'active',
+        });
+      }
       reservation.seatedAt = now;
       if (!reservation.arrivedAt) reservation.arrivedAt = now;
     } else if (status === 'completed' && !reservation.completedAt) {
