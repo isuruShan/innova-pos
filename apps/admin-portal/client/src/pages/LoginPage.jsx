@@ -60,7 +60,14 @@ export default function LoginPage() {
       navigate('/profile?changePassword=1', { replace: true });
       return;
     }
-    navigate(user.role === 'superadmin' ? '/merchants' : '/dashboard', { replace: true });
+    const r = String(user.role || '').trim().toLowerCase();
+    if (r === 'superadmin') {
+      navigate('/merchants', { replace: true });
+    } else if (r === 'manager') {
+      navigate('/accounting', { replace: true });
+    } else {
+      navigate('/dashboard', { replace: true });
+    }
   };
 
   const switchAccount = () => {

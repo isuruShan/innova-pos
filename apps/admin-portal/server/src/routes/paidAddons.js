@@ -30,7 +30,7 @@ const screenshotUpload = multer({
 const ADDON_CODES = ['loyalty', 'qr_ordering', 'table_management', 'uber_eats', 'accounting', 'dual_screen', 'whatsapp_integration', 'modifier_groups'];
 
 /** Merchant: get list of currently active add-on codes (for conditional UI rendering). */
-router.get('/status', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
+router.get('/status', authenticateJWT, authorize('merchant_admin', 'manager'), async (req, res) => {
   try {
     let tenant = await Tenant.findById(req.tenantId).select('paidAddons').lean();
     if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
@@ -89,7 +89,7 @@ async function buildCatalogRow(tenant, addon, plan, billingLabel) {
 }
 
 /** Merchant: purchasable add-ons with prices for the current billing period. */
-router.get('/merchant-catalog', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
+router.get('/merchant-catalog', authenticateJWT, authorize('merchant_admin', 'manager'), async (req, res) => {
   try {
     // Check global paid addons visibility setting
     const PlatformPaymentSettings = require('../models/PlatformPaymentSettings');
@@ -124,7 +124,7 @@ router.get('/merchant-catalog', authenticateJWT, authorize('merchant_admin'), as
 });
 
 /** Schedule unsubscribe — service remains until end of current paid period. */
-router.post('/:code/unsubscribe', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
+router.post('/:code/unsubscribe', authenticateJWT, authorize('merchant_admin', 'manager'), async (req, res) => {
   try {
     const code = String(req.params.code || '').trim().toLowerCase();
     let tenant = await Tenant.findById(req.tenantId);
@@ -183,7 +183,7 @@ router.post('/:code/unsubscribe', authenticateJWT, authorize('merchant_admin'), 
 });
 
 /** Start 7-day trial for an add-on */
-router.post('/:code/start-trial', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
+router.post('/:code/start-trial', authenticateJWT, authorize('merchant_admin', 'manager'), async (req, res) => {
   try {
     const code = String(req.params.code || '').trim().toLowerCase();
     let tenant = await Tenant.findById(req.tenantId);
@@ -247,7 +247,7 @@ router.post('/:code/start-trial', authenticateJWT, authorize('merchant_admin'), 
 });
 
 /** Activate add-on for free during the tenant's trial period */
-router.post('/:code/activate-free-trial', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
+router.post('/:code/activate-free-trial', authenticateJWT, authorize('merchant_admin', 'manager'), async (req, res) => {
   try {
     const code = String(req.params.code || '').trim().toLowerCase();
     let tenant = await Tenant.findById(req.tenantId);
@@ -411,7 +411,7 @@ router.put('/:code', authenticateJWT, authorize('superadmin'), async (req, res) 
 });
 
 /** Merchant: quote for an add-on based on their assigned plan billing cycle. */
-router.get('/quote/:code', authenticateJWT, authorize('merchant_admin'), async (req, res) => {
+router.get('/quote/:code', authenticateJWT, authorize('merchant_admin', 'manager'), async (req, res) => {
   try {
     await ensureDefaultPaidAddons();
     const code = String(req.params.code || '').trim().toLowerCase();

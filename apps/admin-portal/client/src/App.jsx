@@ -233,7 +233,7 @@ export default function App() {
             </PrivateRoute>
           } />
           <Route path="/reports/:reportType" element={
-            <PrivateRoute roles={['merchant_admin']}>
+            <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><ReportsPortal /></Layout>
             </PrivateRoute>
           } />
@@ -254,7 +254,7 @@ export default function App() {
             </PrivateRoute>
           } />
           <Route path="/addons" element={
-            <PrivateRoute roles={['merchant_admin']}>
+            <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><MerchantAddonsPage /></Layout>
             </PrivateRoute>
           } />
@@ -274,7 +274,7 @@ export default function App() {
             </PrivateRoute>
           } />
           <Route path="/loyalty/*" element={
-            <PrivateRoute roles={['merchant_admin']}>
+            <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><LoyaltyProgramPage /></Layout>
             </PrivateRoute>
           } />
@@ -289,57 +289,57 @@ export default function App() {
             </PrivateRoute>
           } />
           <Route path="/menu/*" element={
-            <PrivateRoute roles={['merchant_admin']}>
+            <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><MenuManagement /></Layout>
             </PrivateRoute>
           } />
           <Route path="/inventory/*" element={
-            <PrivateRoute roles={['merchant_admin']}>
+            <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><InventoryManagement /></Layout>
             </PrivateRoute>
           } />
           <Route path="/suppliers" element={
-            <PrivateRoute roles={['merchant_admin']}>
+            <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><SupplierManagement /></Layout>
             </PrivateRoute>
           } />
           <Route path="/purchase-orders" element={
-            <PrivateRoute roles={['merchant_admin']}>
+            <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><PurchaseOrders /></Layout>
             </PrivateRoute>
           } />
           <Route path="/goods-receipts/*" element={
-            <PrivateRoute roles={['merchant_admin']}>
+            <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><GoodsReceipts /></Layout>
             </PrivateRoute>
           } />
           <Route path="/wastage" element={
-            <PrivateRoute roles={['merchant_admin']}>
+            <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><WastageManagement /></Layout>
             </PrivateRoute>
           } />
           <Route path="/reservations" element={
-            <PrivateRoute roles={['merchant_admin']}>
+            <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><ReservationsPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/floor-plan/editor" element={
-            <PrivateRoute roles={['merchant_admin']}>
+            <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><FloorPlanEditorPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/floor-plan" element={
-            <PrivateRoute roles={['merchant_admin']}>
+            <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><FloorPlanViewPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/table-analytics" element={
-            <PrivateRoute roles={['merchant_admin']}>
+            <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><TableAnalyticsPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/promotions" element={
-            <PrivateRoute roles={['merchant_admin']}>
+            <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><PromotionsAdminPage /></Layout>
             </PrivateRoute>
           } />
@@ -354,12 +354,12 @@ export default function App() {
             </PrivateRoute>
           } />
           <Route path="/notifications" element={
-            <PrivateRoute roles={['merchant_admin', 'superadmin']}>
+            <PrivateRoute roles={['merchant_admin', 'superadmin', 'manager']}>
               <Layout><NotificationsPage /></Layout>
             </PrivateRoute>
           } />
           <Route path="/inventory-sessions" element={
-            <PrivateRoute roles={['merchant_admin']}>
+            <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><SessionReviewPage /></Layout>
             </PrivateRoute>
           } />
@@ -369,7 +369,7 @@ export default function App() {
             </PrivateRoute>
           } />
           <Route path="/profile" element={
-            <PrivateRoute roles={['merchant_admin', 'superadmin']}>
+            <PrivateRoute roles={['merchant_admin', 'superadmin', 'manager']}>
               <Layout><ProfilePage /></Layout>
             </PrivateRoute>
           } />

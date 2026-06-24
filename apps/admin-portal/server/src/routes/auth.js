@@ -59,8 +59,8 @@ router.post('/login', async (req, res) => {
     if (!user.isActive)
       return res.status(403).json({ message: 'Account is deactivated' });
 
-    if (!['merchant_admin', 'superadmin'].includes(user.role)) {
-      return res.status(403).json({ message: 'Access denied. This portal is for admins only.' });
+    if (!['merchant_admin', 'superadmin', 'manager'].includes(user.role)) {
+      return res.status(403).json({ message: 'Access denied. This portal is for authorized users only.' });
     }
 
     const subscriptionActive = await isSubscriptionActive(user.tenantId);
@@ -262,7 +262,7 @@ router.post('/refresh', async (req, res) => {
       return res.status(401).json({ message: 'User not found or deactivated' });
     }
 
-    if (!['merchant_admin', 'superadmin'].includes(user.role)) {
+    if (!['merchant_admin', 'superadmin', 'manager'].includes(user.role)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 

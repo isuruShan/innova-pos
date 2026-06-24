@@ -40,7 +40,7 @@ export const useSubscriptionGuard = () => {
         location.pathname.startsWith('/subscription/');
 
       // Merchant admins can access subscription page to renew
-      if (user.role === 'merchantadmin' && isSubscriptionPage) {
+      if (user.role === 'merchant_admin' && isSubscriptionPage) {
         return; // Allow access
       }
 
@@ -50,7 +50,7 @@ export const useSubscriptionGuard = () => {
         state: {
           from: location.pathname,
           subscriptionStatus,
-          canRenew: user.role === 'merchantadmin'
+          canRenew: user.role === 'merchant_admin'
         }
       });
     }
