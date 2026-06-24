@@ -95,6 +95,7 @@ export default function CustomerTerminal() {
     channel.onmessage = (event) => {
       const { type, payload } = event.data;
       if (type === 'ORDER_UPDATE') {
+        const prevSelectedCustomer = orderState.selectedCustomer;
         setOrderState(payload);
         if (payload.customerSessionId !== orderState.customerSessionId) {
           // New session started, reset terminal local customer state
@@ -103,7 +104,10 @@ export default function CustomerTerminal() {
         } else if (payload.selectedCustomer) {
           setCustomerName(payload.selectedCustomer.name);
         } else {
-          setCustomerName('');
+          // Only clear customerName if the cashier explicitly deselected/removed the customer
+          if (prevSelectedCustomer && !payload.selectedCustomer) {
+            setCustomerName('');
+          }
         }
       } else if (type === 'CUSTOMER_CONNECTED') {
         const name = payload.name || 'Stranger';
@@ -486,7 +490,7 @@ export default function CustomerTerminal() {
 
             {customerName || orderState.selectedCustomer ? (
               // Vivid, Glassmorphic Customer Greeting Card
-              <div className="w-full max-w-[380px] bg-slate-900 border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center relative overflow-hidden animate-fade-in">
+              <div className="w-full max-w-[380px] bg-[#0f172a]/95 backdrop-blur-xl border border-white/20 p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center relative overflow-hidden animate-fade-in">
                 {/* Subtle glowing elements */}
                 <div className="absolute -top-12 -left-12 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
                 <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>

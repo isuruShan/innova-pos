@@ -216,6 +216,26 @@ export default function CustomerCheckin() {
     }
   };
 
+  const buttonBg = branding.buttonColor || branding.accentColor || '#E94560';
+  const isDarkBg = buttonBg.toLowerCase() === '#0b1220' || buttonBg.toLowerCase() === (branding.bodyColor || '#0b1220').toLowerCase();
+  const finalButtonBg = isDarkBg
+    ? (branding.accentColor && branding.accentColor.toLowerCase() !== '#0b1220' ? branding.accentColor : '#F59E0B')
+    : buttonBg;
+
+  const getTextColorForBg = (bg) => {
+    if (branding.buttonTextColor) return branding.buttonTextColor;
+    if (bg.startsWith('#') && bg.length === 7) {
+      const r = parseInt(bg.slice(1, 3), 16);
+      const g = parseInt(bg.slice(3, 5), 16);
+      const b = parseInt(bg.slice(5, 7), 16);
+      const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+      return yiq >= 128 ? '#0B1220' : '#F8FAFC';
+    }
+    return '#F8FAFC';
+  };
+
+  const finalButtonTextColor = getTextColorForBg(finalButtonBg);
+
   if (loadingBrand) {
     return (
       <div className="min-h-screen bg-[#0B1220] flex items-center justify-center text-slate-300">
@@ -275,14 +295,16 @@ export default function CustomerCheckin() {
               <button
                 type="button"
                 onClick={() => { setIsRegisterMode(false); setErrorMessage(''); }}
-                className={`py-2 text-xs font-semibold rounded-md transition cursor-pointer ${!isRegisterMode ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                style={!isRegisterMode ? { backgroundColor: finalButtonBg, color: finalButtonTextColor } : {}}
+                className={`py-2 text-xs font-semibold rounded-md transition cursor-pointer ${!isRegisterMode ? 'shadow' : 'text-slate-400 hover:text-slate-200'}`}
               >
                 Sign In
               </button>
               <button
                 type="button"
                 onClick={() => { setIsRegisterMode(true); setErrorMessage(''); }}
-                className={`py-2 text-xs font-semibold rounded-md transition cursor-pointer ${isRegisterMode ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                style={isRegisterMode ? { backgroundColor: finalButtonBg, color: finalButtonTextColor } : {}}
+                className={`py-2 text-xs font-semibold rounded-md transition cursor-pointer ${isRegisterMode ? 'shadow' : 'text-slate-400 hover:text-slate-200'}`}
               >
                 New Register
               </button>
@@ -397,8 +419,8 @@ export default function CustomerCheckin() {
             <button
               type="submit"
               disabled={loading || !mobileNumber}
-              style={{ backgroundColor: branding.buttonColor, color: branding.buttonTextColor }}
-              className="w-full py-3.5 hover:opacity-90 disabled:opacity-60 font-bold rounded-xl transition text-sm flex items-center justify-center gap-2 cursor-pointer"
+              style={{ backgroundColor: finalButtonBg, color: finalButtonTextColor }}
+              className="w-full py-3.5 hover:opacity-90 disabled:opacity-60 font-bold rounded-xl transition text-sm flex items-center justify-center gap-2 cursor-pointer shadow-lg border border-white/10"
             >
               {loading ? <Loader2 size={16} className="animate-spin" /> : isRegisterMode ? 'Register & Check In' : 'Sign In & Check In'}
             </button>
