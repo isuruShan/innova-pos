@@ -8,6 +8,43 @@ function roundMoney2(n) {
   return Math.round(x * 100) / 100;
 }
 
+function enrichItemModifiers(doc, variantId, rawModifiers, modifierGroupMap) {
+  if (!rawModifiers || !rawModifiers.length) return [];
+  return rawModifiers.map((rm) => {
+    const groupId = rm.modifierGroupId?.toString();
+    const optId = rm.modifierId?.toString();
+    const group = groupId ? modifierGroupMap[groupId] : null;
+    const modifierOpt = group?.modifiers?.find((m) => m._id.toString() === optId);
+    
+    const defaultPrice = modifierOpt ? modifierOpt.price : (rm.price || 0);
+    
+    let price = defaultPrice;
+    if (doc) {
+      const link = doc.modifierGroups?.find((g) => g.modifierGroupId?.toString() === groupId);
+      const override = link?.overrides?.find((o) =>
+        o.modifierId?.toString() === optId &&
+        o.variantId?.toString() === (variantId?.toString() || '')
+      );
+      if (override) price = override.price;
+    }
+    
+    return {
+      modifierGroupId: rm.modifierGroupId,
+      modifierId: rm.modifierId,
+      name: modifierOpt?.name || rm.name,
+      price: roundMoney2(price),
+      qty: Math.max(1, Number(rm.qty) || 1),
+    };
+  });
+}
+
+function areModifiersEqual(mod1 = [], mod2 = []) {
+  if (mod1.length !== mod2.length) return false;
+  const ids1 = mod1.map(m => String(m.modifierId)).sort();
+  const ids2 = mod2.map(m => String(m.modifierId)).sort();
+  return ids1.every((id, idx) => id === ids2[idx]);
+}
+
 function getCommissionPrice(basePrice, partner) {
   const base = Number(basePrice) || 0;
   if (!partner || base <= 0) return base;
@@ -28,6 +65,18 @@ async function enrichItems(items, tenantId, storeId, foodmarketPartnerId = null)
   const menuIds = items.map((i) => i.menuItem);
   const menuDocs = await MenuItem.find({ _id: { $in: menuIds }, tenantId, storeId }).lean();
   const menuMap = Object.fromEntries(menuDocs.map((m) => [m._id.toString(), m]));
+
+  const modifierGroupIds = [];
+  menuDocs.forEach((doc) => {
+    if (doc.modifierGroups) {
+      doc.modifierGroups.forEach((lg) => {
+        modifierGroupIds.push(lg.modifierGroupId);
+      });
+    }
+  });
+  const ModifierGroup = require('../models/ModifierGroup');
+  const modifierGroups = await ModifierGroup.find({ _id: { $in: modifierGroupIds }, tenantId }).lean();
+  const modifierGroupMap = Object.fromEntries(modifierGroups.map((g) => [g._id.toString(), g]));
 
   let partner = null;
   if (foodmarketPartnerId) {
@@ -79,6 +128,7 @@ async function enrichItems(items, tenantId, storeId, foodmarketPartnerId = null)
       variantId,
       variantName,
       variantAttributes,
+      modifiers: enrichItemModifiers(doc, variantId, i.modifiers, modifierGroupMap),
       isCombo: false,
       comboItems: [],
       deliveredToTable: false,
@@ -101,6 +151,18 @@ async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId, order
   const menuDocs = await MenuItem.find({ _id: { $in: menuIds }, tenantId, storeId }).lean();
   const menuMap = Object.fromEntries(menuDocs.map((m) => [m._id.toString(), m]));
   const trackKitchenQtyBump = ['preparing', 'ready'].includes(orderStatus || '');
+
+  const modifierGroupIds = [];
+  menuDocs.forEach((doc) => {
+    if (doc.modifierGroups) {
+      doc.modifierGroups.forEach((lg) => {
+        modifierGroupIds.push(lg.modifierGroupId);
+      });
+    }
+  });
+  const ModifierGroup = require('../models/ModifierGroup');
+  const modifierGroups = await ModifierGroup.find({ _id: { $in: modifierGroupIds }, tenantId }).lean();
+  const modifierGroupMap = Object.fromEntries(modifierGroups.map((g) => [g._id.toString(), g]));
 
   let partner = null;
   if (foodmarketPartnerId) {
@@ -179,6 +241,7 @@ async function mergeItemsForUpdate(prevItems, incoming, tenantId, storeId, order
       variantId,
       variantName,
       variantAttributes,
+      modifiers: enrichItemModifiers(doc, variantId, raw.modifiers, modifierGroupMap),
       isCombo: false,
       comboItems: [],
       deliveredToTable: prev
@@ -204,7 +267,10 @@ async function recalculateOrderMoney(order) {
   const serviceFeeRate = ts?.serviceFeeRate ?? 0;
   const serviceFeeFixed = ts?.serviceFeeFixed ?? 0;
 
-  const subtotal = order.items.reduce((s, i) => s + i.price * i.qty, 0);
+  const subtotal = order.items.reduce((s, i) => {
+    const modifiersSum = (i.modifiers || []).reduce((sum, m) => sum + m.price * (m.qty || 1), 0);
+    return s + (i.price + modifiersSum) * i.qty;
+  }, 0);
   order.subtotal = Math.round(subtotal * 100) / 100;
   const discountTotal = order.discountTotal || 0;
   const discountedSubtotal = Math.max(0, order.subtotal - discountTotal);
@@ -267,7 +333,9 @@ async function appendItemsToOrder(order, rawItems, tenantId, storeId) {
     const mid = String(nl.menuItem);
     const vid = nl.variantId ? String(nl.variantId) : '';
     const existing = order.items.find(
-      (i) => String(i.menuItem) === mid && String(i.variantId || '') === vid
+      (i) => String(i.menuItem) === mid && 
+             String(i.variantId || '') === vid &&
+             areModifiersEqual(i.modifiers, nl.modifiers)
     );
     if (existing) {
       existing.qty += nl.qty;

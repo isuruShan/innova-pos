@@ -76,11 +76,13 @@ const STATUS_LABEL = {
   cancelled: 'Cancelled',
 };
 
-function VariantSelectorModal({ item, currencySymbol, onClose, onAdd }) {
+function VariantSelectorModal({ item, currencySymbol, modifierGroups, modifierGroupsActive, onClose, onAdd }) {
   const [selections, setSelections] = useState({});
+  const [selectedMods, setSelectedMods] = useState([]);
 
   useEffect(() => {
     setSelections({});
+    setSelectedMods([]);
   }, [item?._id]);
 
   if (!item) return null;
@@ -97,7 +99,77 @@ function VariantSelectorModal({ item, currencySymbol, onClose, onAdd }) {
     return options.every((opt) => selections[opt.name] === v.attributes?.find((a) => a.name === opt.name)?.value);
   });
 
-  const canConfirm = options.every((opt) => selections[opt.name] !== undefined);
+  const canConfirmVariant = !item.hasVariants || options.every((opt) => selections[opt.name] !== undefined);
+
+  const linkedGroups = (() => {
+    if (!modifierGroupsActive || !modifierGroups?.length || !item?.modifierGroups?.length) return [];
+    return modifierGroups.filter((g) =>
+      item.modifierGroups.some((lg) => String(lg.modifierGroupId) === String(g._id))
+    );
+  })();
+
+  const getModifierPrice = (groupId, optionId, defaultPrice) => {
+    const link = item.modifierGroups?.find((g) => String(g.modifierGroupId) === String(groupId));
+    const override = link?.overrides?.find((o) =>
+      String(o.modifierId) === String(optionId) &&
+      String(o.variantId || '') === String(selectedVariant?._id || '')
+    );
+    return override ? override.price : defaultPrice;
+  };
+
+  const handleToggleModifier = (group, opt, price) => {
+    setSelectedMods((prev) => {
+      const existingIdx = prev.findIndex((x) => String(x.modifierId) === String(opt._id));
+      if (existingIdx !== -1) {
+        return prev.filter((_, i) => i !== existingIdx);
+      }
+
+      const groupSelectedCount = prev.filter((x) => String(x.modifierGroupId) === String(group._id)).length;
+      if (group.maxSelections && groupSelectedCount >= group.maxSelections) {
+        if (group.maxSelections === 1) {
+          return [
+            ...prev.filter((x) => String(x.modifierGroupId) !== String(group._id)),
+            { modifierGroupId: group._id, modifierId: opt._id, name: opt.name, price, qty: 1 },
+          ];
+        }
+        return prev;
+      }
+
+      return [...prev, { modifierGroupId: group._id, modifierId: opt._id, name: opt.name, price, qty: 1 }];
+    });
+  };
+
+  const finalSelectedModifiers = (() => {
+    return selectedMods.map((m) => {
+      const group = linkedGroups.find((g) => String(g._id) === String(m.modifierGroupId));
+      const opt = group?.modifiers?.find((o) => String(o._id) === String(m.modifierId));
+      const defaultPrice = opt?.price || 0;
+      const price = getModifierPrice(m.modifierGroupId, m.modifierId, defaultPrice);
+      return { ...m, price };
+    });
+  })();
+
+  const validationErrors = (() => {
+    const errs = {};
+    linkedGroups.forEach((g) => {
+      const count = selectedMods.filter((x) => String(x.modifierGroupId) === String(g._id)).length;
+      if (g.minSelections > 0 && count < g.minSelections) {
+        errs[g._id] = `Choose at least ${g.minSelections}`;
+      } else if (g.maxSelections && count > g.maxSelections) {
+        errs[g._id] = `Choose at most ${g.maxSelections}`;
+      }
+    });
+    return errs;
+  })();
+
+  const canConfirmModifiers = Object.keys(validationErrors).length === 0;
+
+  const baseItemPrice = selectedVariant
+    ? Number(selectedVariant.price || 0)
+    : Number(item.price || 0);
+
+  const modifiersTotalPrice = finalSelectedModifiers.reduce((sum, m) => sum + m.price * (m.qty || 1), 0);
+  const totalDisplayPrice = baseItemPrice + modifiersTotalPrice;
 
   return (
     <div
@@ -107,10 +179,10 @@ function VariantSelectorModal({ item, currencySymbol, onClose, onAdd }) {
       onClick={onClose}
     >
       <div
-        className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-[var(--qr-border)] shadow-2xl flex flex-col min-h-0 bg-[var(--qr-panel)] text-[var(--qr-body)]"
+        className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-[var(--qr-border)] shadow-2xl flex flex-col min-h-0 bg-[var(--qr-panel)] text-[var(--qr-body)] max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--qr-border)]">
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--qr-border)] shrink-0">
           <div>
             <h3 className="text-base font-bold text-slate-800">{item.name}</h3>
             <p className="text-xs text-[var(--qr-muted)]">Select options to add to order</p>
@@ -118,7 +190,7 @@ function VariantSelectorModal({ item, currencySymbol, onClose, onAdd }) {
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-slate-105 text-[var(--qr-muted)] hover:text-slate-800"
+            className="p-2 rounded-full hover:bg-slate-100 text-[var(--qr-muted)] hover:text-slate-800"
           >
             <X size={20} />
           </button>
@@ -151,15 +223,72 @@ function VariantSelectorModal({ item, currencySymbol, onClose, onAdd }) {
             </div>
           ))}
 
+          {/* Modifier Groups */}
+          {modifierGroupsActive && linkedGroups.map((group) => {
+            const error = validationErrors[group._id];
+            const rulesLabel =
+              group.minSelections > 0
+                ? group.maxSelections === group.minSelections
+                  ? `Choose exactly ${group.minSelections}`
+                  : `Choose ${group.minSelections} - ${group.maxSelections || 'unlimited'}`
+                : `Optional (up to ${group.maxSelections || 'unlimited'})`;
+
+            return (
+              <div key={group._id} className="space-y-2 border-t border-[var(--qr-border)] pt-4">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    {group.name}
+                  </span>
+                  <span className={`text-[10px] ${error ? 'text-amber-600 font-bold' : 'text-[var(--qr-muted)]'}`}>
+                    {rulesLabel} {error && `(${error})`}
+                  </span>
+                </div>
+                {group.description && (
+                  <p className="text-[11px] text-[var(--qr-muted)] leading-normal">{group.description}</p>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  {group.modifiers?.map((opt) => {
+                    const price = getModifierPrice(group._id, opt._id, opt.price);
+                    const selected = selectedMods.some((x) => String(x.modifierId) === String(opt._id));
+                    return (
+                      <button
+                        key={opt._id}
+                        type="button"
+                        onClick={() => handleToggleModifier(group, opt, price)}
+                        disabled={opt.available === false}
+                        className={`px-3 py-2.5 rounded-xl border text-xs font-semibold text-left transition flex items-center justify-between gap-2 active:scale-95 ${
+                          selected
+                            ? 'bg-amber-500/10 border-amber-500 text-amber-600 shadow-sm'
+                            : opt.available === false
+                            ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-50'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-slate-800">{opt.name}</p>
+                          {price > 0 && (
+                            <p className="text-[10px] text-slate-505 mt-0.5 font-normal">+{currencySymbol}{Number(price).toFixed(2)}</p>
+                          )}
+                        </div>
+                        {selected && <span className="text-amber-500 shrink-0">✓</span>}
+                        {opt.available === false && <span className="text-[8px] uppercase tracking-wider bg-red-100 text-red-650 border border-red-200 px-1 py-0.5 rounded shrink-0">Sold Out</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
           {selectedVariant ? (
-            <div className="bg-slate-50 rounded-xl p-3 border border-[var(--qr-border)] flex items-center gap-3">
+            <div className="bg-slate-50 rounded-xl p-3 border border-[var(--qr-border)] flex items-center gap-3 animate-fadeIn">
               <div className="w-12 h-12 bg-slate-100 rounded-lg overflow-hidden border border-slate-200 shrink-0">
                 {selectedVariant.image ? (
                   <img src={resolveAssetUrl(selectedVariant.image)} alt="" className="w-full h-full object-cover" />
                 ) : itemPhotoUrls(item)[0] ? (
                   <img src={itemPhotoUrls(item)[0]} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xl bg-slate-205">🍔</div>
+                  <div className="w-full h-full flex items-center justify-center text-xl bg-slate-200">🍔</div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
@@ -167,11 +296,11 @@ function VariantSelectorModal({ item, currencySymbol, onClose, onAdd }) {
                 <p className="text-xs text-[var(--qr-muted)] truncate">{selectedVariant.description || 'Selected Option'}</p>
               </div>
               <span className="text-sm font-extrabold tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
-                {currencySymbol}{Number(selectedVariant.price || 0).toFixed(2)}
+                {currencySymbol}{Number(totalDisplayPrice).toFixed(2)}
               </span>
             </div>
           ) : (
-            canConfirm && (
+            canConfirmVariant && (
               <div className="p-3 bg-red-50/10 border border-red-500/20 text-red-650 text-xs font-medium rounded-xl">
                 This combination is currently unavailable
               </div>
@@ -179,21 +308,21 @@ function VariantSelectorModal({ item, currencySymbol, onClose, onAdd }) {
           )}
         </div>
 
-        <div className="p-4 border-t border-[var(--qr-border)] flex gap-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="p-4 border-t border-[var(--qr-border)] flex gap-3 pb-[max(1rem,env(safe-area-inset-bottom))] shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-3 rounded-xl font-bold bg-slate-50 hover:bg-slate-100 text-slate-700 text-sm border border-slate-205 transition"
+            className="flex-1 py-3 rounded-xl font-bold bg-slate-55 hover:bg-slate-100 text-slate-700 text-sm border border-slate-200 transition"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={() => {
-              onAdd(item, selectedVariant);
+              onAdd(item, selectedVariant, finalSelectedModifiers);
               onClose();
             }}
-            disabled={!selectedVariant}
+            disabled={!selectedVariant || !canConfirmModifiers}
             className="flex-1 py-3 rounded-xl font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed shadow-lg transition"
             style={{
               backgroundColor: 'var(--qr-accent, #f59e0b)',
@@ -206,16 +335,16 @@ function VariantSelectorModal({ item, currencySymbol, onClose, onAdd }) {
       </div>
     </div>
   );
-}
-
-function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
+}function ItemDetailModal({ item, currencySymbol, modifierGroups, modifierGroupsActive, onClose, onAdd }) {
   const urls = item ? itemPhotoUrls(item) : [];
   const [idx, setIdx] = useState(0);
   const [selections, setSelections] = useState({});
+  const [selectedMods, setSelectedMods] = useState([]);
 
   useEffect(() => {
     setIdx(0);
     setSelections({});
+    setSelectedMods([]);
   }, [item?._id]);
 
   if (!item) return null;
@@ -237,12 +366,81 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
       })
     : null;
 
-  const canConfirm = hasVariants ? options.every((opt) => selections[opt.name] !== undefined) : true;
-  const displayPrice = selectedVariant
+  const canConfirmVariant = hasVariants ? options.every((opt) => selections[opt.name] !== undefined) : true;
+
+  const linkedGroups = (() => {
+    if (!modifierGroupsActive || !modifierGroups?.length || !item?.modifierGroups?.length) return [];
+    return modifierGroups.filter((g) =>
+      item.modifierGroups.some((lg) => String(lg.modifierGroupId) === String(g._id))
+    );
+  })();
+
+  const getModifierPrice = (groupId, optionId, defaultPrice) => {
+    const link = item.modifierGroups?.find((g) => String(g.modifierGroupId) === String(groupId));
+    const override = link?.overrides?.find((o) =>
+      String(o.modifierId) === String(optionId) &&
+      String(o.variantId || '') === String(selectedVariant?._id || '')
+    );
+    return override ? override.price : defaultPrice;
+  };
+
+  const handleToggleModifier = (group, opt, price) => {
+    setSelectedMods((prev) => {
+      const existingIdx = prev.findIndex((x) => String(x.modifierId) === String(opt._id));
+      if (existingIdx !== -1) {
+        return prev.filter((_, i) => i !== existingIdx);
+      }
+
+      const groupSelectedCount = prev.filter((x) => String(x.modifierGroupId) === String(group._id)).length;
+      if (group.maxSelections && groupSelectedCount >= group.maxSelections) {
+        if (group.maxSelections === 1) {
+          return [
+            ...prev.filter((x) => String(x.modifierGroupId) !== String(group._id)),
+            { modifierGroupId: group._id, modifierId: opt._id, name: opt.name, price, qty: 1 },
+          ];
+        }
+        return prev;
+      }
+
+      return [...prev, { modifierGroupId: group._id, modifierId: opt._id, name: opt.name, price, qty: 1 }];
+    });
+  };
+
+  const finalSelectedModifiers = (() => {
+    return selectedMods.map((m) => {
+      const group = linkedGroups.find((g) => String(g._id) === String(m.modifierGroupId));
+      const opt = group?.modifiers?.find((o) => String(o._id) === String(m.modifierId));
+      const defaultPrice = opt?.price || 0;
+      const price = getModifierPrice(m.modifierGroupId, m.modifierId, defaultPrice);
+      return { ...m, price };
+    });
+  })();
+
+  const validationErrors = (() => {
+    const errs = {};
+    linkedGroups.forEach((g) => {
+      const count = selectedMods.filter((x) => String(x.modifierGroupId) === String(g._id)).length;
+      if (g.minSelections > 0 && count < g.minSelections) {
+        errs[g._id] = `Choose at least ${g.minSelections}`;
+      } else if (g.maxSelections && count > g.maxSelections) {
+        errs[g._id] = `Choose at most ${g.maxSelections}`;
+      }
+    });
+    return errs;
+  })();
+
+  const canConfirmModifiers = Object.keys(validationErrors).length === 0;
+
+  const baseItemPrice = selectedVariant
     ? Number(selectedVariant.price || 0)
-    : hasVariants
-    ? Math.min(...variants.map((v) => Number(v.price || 0)))
     : Number(item.price || 0);
+
+  const modifiersTotalPrice = finalSelectedModifiers.reduce((sum, m) => sum + m.price * (m.qty || 1), 0);
+  const totalDisplayPrice = baseItemPrice + modifiersTotalPrice;
+
+  const displayPrice = hasVariants && !selectedVariant
+    ? Math.min(...variants.map((v) => Number(v.price || 0)))
+    : totalDisplayPrice;
 
   return (
     <div
@@ -309,7 +507,7 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
               )}
             </div>
           ) : (
-            <div className="aspect-[4/3] bg-slate-50 flex items-center justify-center text-5xl">🍽️</div>
+            <div className="aspect-[4/3] bg-slate-50 flex items-center justify-center text-5xl shrink-0">🍽️</div>
           )}
 
           <div className="px-4 py-4 space-y-4">
@@ -317,13 +515,13 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
             <div className="flex items-center gap-3">
               <p className="text-2xl font-extrabold tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
                 {hasVariants && !selectedVariant ? 'From ' : ''}
-                {currencySymbol}{displayPrice.toFixed(2)}
+                {currencySymbol}{Number(displayPrice || 0).toFixed(2)}
               </p>
               {item.category && <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-full">{item.category}</p>}
             </div>
 
             {desc ? (
-              <p className="text-sm text-slate-500 whitespace-pre-wrap leading-relaxed">{desc}</p>
+              <p className="text-sm text-slate-550 whitespace-pre-wrap leading-relaxed">{desc}</p>
             ) : null}
 
             {/* Variant Options */}
@@ -370,7 +568,7 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
                     </div>
                   </div>
                 ) : (
-                  canConfirm && (
+                  canConfirmVariant && (
                     <div className="p-2.5 bg-red-500/10 border border-red-500/20 text-red-650 text-xs rounded-xl">
                       This combination is unavailable
                     </div>
@@ -388,7 +586,7 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
                           v.available === false ? 'opacity-40 border-slate-200 bg-transparent' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
                         }`}
                       >
-                        <span className="font-medium text-slate-200 truncate">{v.name}</span>
+                        <span className="font-medium text-slate-700 truncate">{v.name}</span>
                         <span className="font-bold tabular-nums shrink-0" style={{ color: 'var(--qr-accent, #f59e0b)' }}>
                           {currencySymbol}{Number(v.price || 0).toFixed(2)}
                         </span>
@@ -398,15 +596,72 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
                 </div>
               </div>
             )}
+
+            {/* Modifier Groups */}
+            {modifierGroupsActive && linkedGroups.map((group) => {
+              const error = validationErrors[group._id];
+              const rulesLabel =
+                group.minSelections > 0
+                  ? group.maxSelections === group.minSelections
+                    ? `Choose exactly ${group.minSelections}`
+                    : `Choose ${group.minSelections} - ${group.maxSelections || 'unlimited'}`
+                  : `Optional (up to ${group.maxSelections || 'unlimited'})`;
+
+              return (
+                <div key={group._id} className="space-y-2 border-t border-[var(--qr-border)] pt-4">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      {group.name}
+                    </span>
+                    <span className={`text-[10px] ${error ? 'text-amber-600 font-bold' : 'text-[var(--qr-muted)]'}`}>
+                      {rulesLabel} {error && `(${error})`}
+                    </span>
+                  </div>
+                  {group.description && (
+                    <p className="text-[11px] text-[var(--qr-muted)] leading-normal">{group.description}</p>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    {group.modifiers?.map((opt) => {
+                      const price = getModifierPrice(group._id, opt._id, opt.price);
+                      const selected = selectedMods.some((x) => String(x.modifierId) === String(opt._id));
+                      return (
+                        <button
+                          key={opt._id}
+                          type="button"
+                          onClick={() => handleToggleModifier(group, opt, price)}
+                          disabled={opt.available === false}
+                          className={`px-3 py-2.5 rounded-xl border text-xs font-semibold text-left transition flex items-center justify-between gap-2 active:scale-95 ${
+                            selected
+                              ? 'bg-amber-500/10 border-amber-500 text-amber-600 shadow-sm'
+                              : opt.available === false
+                              ? 'bg-slate-105 border-slate-200 text-slate-400 cursor-not-allowed opacity-50'
+                              : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-slate-800">{opt.name}</p>
+                            {price > 0 && (
+                              <p className="text-[10px] text-slate-505 mt-0.5 font-normal">+{currencySymbol}{Number(price).toFixed(2)}</p>
+                            )}
+                          </div>
+                          {selected && <span className="text-amber-500 shrink-0">✓</span>}
+                          {opt.available === false && <span className="text-[8px] uppercase tracking-wider bg-red-100 text-red-650 border border-red-200 px-1 py-0.5 rounded shrink-0">Sold Out</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
         <div className="p-4 border-t border-[var(--qr-border)]/60 shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
-            disabled={!canAdd || (hasVariants && !selectedVariant)}
+            disabled={!canAdd || (hasVariants && !selectedVariant) || !canConfirmModifiers}
             onClick={() => {
-              onAdd(item, selectedVariant || null);
+              onAdd(item, selectedVariant || null, finalSelectedModifiers);
               onClose();
             }}
             className="w-full py-3.5 rounded-xl font-bold text-base disabled:opacity-40 disabled:cursor-not-allowed shadow-lg transition"
@@ -415,7 +670,7 @@ function ItemDetailModal({ item, currencySymbol, onClose, onAdd }) {
               color: 'var(--qr-on-accent, #ffffff)',
             }}
           >
-            {!canAdd ? 'Currently unavailable' : hasVariants && !selectedVariant ? 'Select options above' : 'Add to order'}
+            {!canAdd ? 'Currently unavailable' : hasVariants && !selectedVariant ? 'Select options above' : !canConfirmModifiers ? 'Select required options' : 'Add to order'}
           </button>
         </div>
       </div>
@@ -588,24 +843,28 @@ export default function TableOrderApp() {
     return () => clearTimeout(t);
   };
 
-  const addOne = (item, variant = null) => {
+  const addOne = (item, variant = null, selectedModifiers = []) => {
     setCart((prev) => {
       const id = String(item._id);
       const varId = variant ? String(variant._id) : null;
-      const cartKey = varId ? `${id}::${varId}` : id;
+      const modPart = (selectedModifiers || []).map(m => m.modifierId).sort().join('-');
+      const cartKey = `${id}::${varId || 'base'}::${modPart}`;
       const found = prev.find((x) => x.cartKey === cartKey);
-      const price = variant ? Number(variant.price || 0) : Number(item.price || 0);
+      const modifiersSum = (selectedModifiers || []).reduce((sum, m) => sum + m.price * (m.qty || 1), 0);
+      const price = (variant ? Number(variant.price || 0) : Number(item.price || 0)) + modifiersSum;
       const displayName = variant ? `${item.name} – ${variant.name}` : item.name;
       if (found) {
         return prev.map((x) => (x.cartKey === cartKey ? { ...x, qty: x.qty + 1 } : x));
       }
-      return [...prev, { cartKey, menuItem: id, variantId: varId || undefined, name: displayName, price, qty: 1 }];
+      return [...prev, { cartKey, menuItem: id, variantId: varId || undefined, name: displayName, price, qty: 1, modifiers: selectedModifiers }];
     });
     showToast(`Added ${variant ? variant.name : item.name} to cart`);
   };
 
   const addWithVariant = (item) => {
-    if (item.hasVariants && item.variants?.length > 0) {
+    const modifierGroupsActive = payload?.modifierGroupsActive === true;
+    const hasModifiers = item.modifierGroups && item.modifierGroups.length > 0;
+    if ((item.hasVariants && item.variants?.length > 0) || (modifierGroupsActive && hasModifiers)) {
       setVariantSelectionItem(item);
     } else {
       addOne(item);
@@ -663,7 +922,8 @@ export default function TableOrderApp() {
         items: cart.map((c) => ({
           menuItem: c.menuItem,
           qty: c.qty,
-          ...(c.variantId ? { variantId: c.variantId } : {}),
+          variantId: c.variantId || null,
+          modifiers: c.modifiers || [],
         })),
       });
       setCart([]);
@@ -1044,6 +1304,15 @@ export default function TableOrderApp() {
                     >
                       <div className="min-w-0 flex-1">
                         <span className="text-slate-855 font-bold truncate block">{c.name}</span>
+                        {c.modifiers && c.modifiers.length > 0 && (
+                          <div className="mt-0.5 space-y-0.5">
+                            {c.modifiers.map((m, idx) => (
+                              <span key={idx} className="block text-[11px] text-slate-400">
+                                ↳ + {m.name} (+{fmtMoney(m.price)})
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <span className="text-xs font-bold tabular-nums" style={{ color: 'var(--qr-accent, #f59e0b)' }}>{fmtMoney(c.price)}</span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -1180,6 +1449,8 @@ export default function TableOrderApp() {
         <ItemDetailModal
           item={detailItem}
           currencySymbol={currencySymbol}
+          modifierGroups={payload?.modifierGroups || []}
+          modifierGroupsActive={payload?.modifierGroupsActive === true}
           onClose={() => setDetailItem(null)}
           onAdd={addOne}
         />
@@ -1189,6 +1460,8 @@ export default function TableOrderApp() {
         <VariantSelectorModal
           item={variantSelectionItem}
           currencySymbol={currencySymbol}
+          modifierGroups={payload?.modifierGroups || []}
+          modifierGroupsActive={payload?.modifierGroupsActive === true}
           onClose={() => setVariantSelectionItem(null)}
           onAdd={addOne}
         />

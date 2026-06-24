@@ -105,6 +105,7 @@ app.use('/api/platform-payments', require('./routes/platform-payments'));
 app.use('/api/platform-uber',     require('./routes/platform-uber'));
 app.use('/api/platform-contact',  require('./routes/platformContact'));
 app.use('/api/tenant-settings', require('./routes/tenantSettings'));
+app.use('/api/tenant',          require('./routes/tenantAddons'));
 app.use('/api/merchant-uber',   require('./routes/merchant-uber'));
 app.use('/api/google-business', require('./routes/googleBusiness'));
 app.use('/api/users',           require('./routes/users'));

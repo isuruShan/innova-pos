@@ -12,6 +12,7 @@ import { COMBO_CATEGORY_NAME } from '../../constants/categories';
 import { MENU_ITEM_LIMITS, VARIANT_CRITERIA } from '../../constants/menuItems';
 import { useTenantCurrency } from '../../context/TenantCurrencyContext';
 import { useStoreContext } from '../../context/StoreContext';
+import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 import { formatCurrency, getItemDisplayPrice } from '../../utils/format';
 import {
   rebuildVariants,
@@ -909,11 +910,79 @@ export default function MenuItemFormModal({
   const priceLabel = `Price (${currencySymbol})`;
   const [activeTab, setActiveTab] = useState('general');
 
+  // Paid addon check
+  const { data: paidAddons } = useTenantPaidAddons({ enabled: open });
+  const isAddonActive = paidAddons?.modifierGroups === true;
+
+  // Fetch all modifier groups for this store
+  const { data: allModifierGroups = [] } = useQuery({
+    queryKey: ['modifier-groups', selectedStoreId],
+    queryFn: () => api.get('/menu/modifier-groups').then((r) => r.data),
+    enabled: open && isAddonActive,
+  });
+
+  // Toggle modifier group linked state
+  const handleToggleModifierGroup = (groupId) => {
+    const exists = (form.modifierGroups || []).some(g => String(g.modifierGroupId) === String(groupId));
+    let nextGroups;
+    if (exists) {
+      nextGroups = form.modifierGroups.filter(g => String(g.modifierGroupId) !== String(groupId));
+    } else {
+      nextGroups = [...(form.modifierGroups || []), { modifierGroupId: groupId, overrides: [] }];
+    }
+    setForm(f => ({ ...f, modifierGroups: nextGroups }));
+  };
+
+  // Change override price
+  const handleOverrideChange = (groupId, modifierId, variantId, val) => {
+    const price = val === '' ? '' : Math.max(0, parseFloat(val) || 0);
+    
+    const nextGroups = (form.modifierGroups || []).map(g => {
+      if (String(g.modifierGroupId) !== String(groupId)) return g;
+      
+      let nextOverrides = [...(g.overrides || [])];
+      const matchIdx = nextOverrides.findIndex(o => 
+        String(o.modifierId) === String(modifierId) && 
+        (variantId === null ? o.variantId === null : String(o.variantId) === String(variantId))
+      );
+      
+      if (price === '') {
+        if (matchIdx >= 0) {
+          nextOverrides.splice(matchIdx, 1);
+        }
+      } else {
+        const newOverride = { modifierId, variantId: variantId || null, price };
+        if (matchIdx >= 0) {
+          nextOverrides[matchIdx] = newOverride;
+        } else {
+          nextOverrides.push(newOverride);
+        }
+      }
+      return { ...g, overrides: nextOverrides };
+    });
+    
+    setForm(f => ({ ...f, modifierGroups: nextGroups }));
+  };
+
+  // Dynamic tab list
+  const tabs = useMemo(() => {
+    const list = [
+      { id: 'general', label: 'General info' },
+      { id: 'pricing', label: 'Pricing & Options' }
+    ];
+    if (isAddonActive && !form.isCombo) {
+      list.push({ id: 'modifiers', label: 'Modifiers' });
+    }
+    list.push({ id: 'ingredients', label: 'Ingredients & Recipe' });
+    return list;
+  }, [isAddonActive, form.isCombo]);
+
   // Ingredients add fields
   const [selectedInventoryId, setSelectedInventoryId] = useState('');
   const [ingQuantity, setIngQuantity] = useState('');
   const [ingWastagePercentage, setIngWastagePercentage] = useState('');
   const [ingVariantId, setIngVariantId] = useState('');
+  const [ingModifierId, setIngModifierId] = useState('');
   const [ingError, setIngError] = useState('');
 
   const { data: partners = [] } = useQuery({
@@ -930,6 +999,25 @@ export default function MenuItemFormModal({
     enabled: open && activeTab === 'ingredients',
   });
 
+  // Linked modifier options memo for dropdown picker
+  const linkedModifierOptions = useMemo(() => {
+    const options = [];
+    (form.modifierGroups || []).forEach(link => {
+      const groupDef = allModifierGroups.find(g => String(g._id) === String(link.modifierGroupId));
+      if (groupDef && groupDef.modifiers) {
+        groupDef.modifiers.forEach(opt => {
+          options.push({
+            id: opt._id,
+            name: `${groupDef.name} ➔ ${opt.name}`,
+            groupName: groupDef.name,
+            optionName: opt.name
+          });
+        });
+      }
+    });
+    return options;
+  }, [form.modifierGroups, allModifierGroups]);
+
   // Fetch / Sync existing ingredient links on edit open
   useEffect(() => {
     if (!open) {
@@ -945,6 +1033,7 @@ export default function MenuItemFormModal({
             wastagePercentage: link.wastagePercentage || 0,
             unit: link.unit || link.inventoryItemId?.unit || '',
             variantId: link.variantId || null,
+            modifierId: link.modifierId || null,
             itemName: link.inventoryItemId?.itemName || 'Unknown Item'
           }));
           setForm(f => ({ ...f, ingredients: loaded }));
@@ -971,7 +1060,9 @@ export default function MenuItemFormModal({
 
     // Check duplicate combination
     const dup = form.ingredients?.some(
-      i => i.inventoryItemId === selectedInventoryId && i.variantId === (ingVariantId || null)
+      i => i.inventoryItemId === selectedInventoryId && 
+           i.variantId === (ingVariantId || null) && 
+           i.modifierId === (ingModifierId || null)
     );
     if (dup) {
       setIngError('This ingredient is already added for this selection');
@@ -984,6 +1075,7 @@ export default function MenuItemFormModal({
       wastagePercentage: parseFloat(ingWastagePercentage) || 0,
       unit: inv.unit || '',
       variantId: ingVariantId || null,
+      modifierId: ingModifierId || null,
       itemName: inv.itemName || 'Unknown Item'
     };
 
@@ -995,37 +1087,38 @@ export default function MenuItemFormModal({
     setIngQuantity('');
     setIngWastagePercentage('');
     setIngVariantId('');
+    setIngModifierId('');
   };
 
-  const handleRemoveIngredient = (inventoryItemId, variantId) => {
+  const handleRemoveIngredient = (inventoryItemId, variantId, modifierId) => {
     setForm(f => ({
       ...f,
       ingredients: (f.ingredients || []).filter(
-        i => !(i.inventoryItemId === inventoryItemId && i.variantId === (variantId || null))
+        i => !(i.inventoryItemId === inventoryItemId && i.variantId === (variantId || null) && i.modifierId === (modifierId || null))
       )
     }));
   };
 
-  const handleUpdateIngredientQty = (inventoryItemId, variantId, qtyStr) => {
+  const handleUpdateIngredientQty = (inventoryItemId, variantId, modifierId, qtyStr) => {
     const val = parseFloat(qtyStr);
     if (isNaN(val) || val <= 0) return;
     setForm(f => ({
       ...f,
       ingredients: (f.ingredients || []).map(i =>
-        (i.inventoryItemId === inventoryItemId && i.variantId === (variantId || null))
+        (i.inventoryItemId === inventoryItemId && i.variantId === (variantId || null) && i.modifierId === (modifierId || null))
           ? { ...i, quantity: val }
           : i
       )
     }));
   };
 
-  const handleUpdateIngredientWastage = (inventoryItemId, variantId, wastageStr) => {
+  const handleUpdateIngredientWastage = (inventoryItemId, variantId, modifierId, wastageStr) => {
     const val = parseFloat(wastageStr);
     if (isNaN(val) || val < 0) return;
     setForm(f => ({
       ...f,
       ingredients: (f.ingredients || []).map(i =>
-        (i.inventoryItemId === inventoryItemId && i.variantId === (variantId || null))
+        (i.inventoryItemId === inventoryItemId && i.variantId === (variantId || null) && i.modifierId === (modifierId || null))
           ? { ...i, wastagePercentage: val }
           : i
       )
@@ -1085,11 +1178,7 @@ export default function MenuItemFormModal({
       footer={footer}
     >
       <div className="flex gap-1.5 border-b border-gray-250 pb-3 mb-4">
-        {[
-          { id: 'general', label: 'General info' },
-          { id: 'pricing', label: 'Pricing & Options' },
-          { id: 'ingredients', label: 'Ingredients & Recipe' }
-        ].map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
@@ -1320,8 +1409,8 @@ export default function MenuItemFormModal({
 
                 {inventoryItems.length > 0 ? (
                   <div className="bg-white border border-gray-200 rounded-xl p-3 space-y-3 shadow-sm">
-                    <p className="text-xs font-bold text-gray-600">Link Ingredient Link</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <p className="text-xs font-bold text-gray-600">Link Ingredient</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                       <div>
                         <label className="block text-[10px] text-gray-550 font-semibold mb-1">Inventory Item</label>
                         <select
@@ -1383,6 +1472,26 @@ export default function MenuItemFormModal({
                       ) : (
                         <div />
                       )}
+
+                      {isAddonActive && linkedModifierOptions.length > 0 ? (
+                        <div>
+                          <label className="block text-[10px] text-gray-555 font-semibold mb-1">Apply to Option</label>
+                          <select
+                            value={ingModifierId}
+                            onChange={(e) => setIngModifierId(e.target.value)}
+                            className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-sm"
+                          >
+                            <option value="">Default (Base item)</option>
+                            {linkedModifierOptions.map((opt) => (
+                              <option key={opt.id} value={opt.id}>
+                                {opt.groupName}: {opt.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <div />
+                      )}
                     </div>
 
                     {ingError && (
@@ -1405,12 +1514,16 @@ export default function MenuItemFormModal({
                 )}
 
                 <div className="space-y-2">
-                  <p className="text-xs font-bold text-gray-650">Current Ingredients Checklist</p>
+                  <p className="text-xs font-bold text-gray-655">Current Ingredients Checklist</p>
                   {(form.ingredients || []).length > 0 ? (
                     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-200 max-h-60 overflow-y-auto shadow-sm">
                       {form.ingredients.map((link, idx) => {
                         const variant = form.hasVariants && link.variantId
                           ? form.variants?.find(v => v._id === link.variantId)
+                          : null;
+
+                        const modifierOption = isAddonActive && link.modifierId
+                          ? linkedModifierOptions.find(o => String(o.id) === String(link.modifierId))
                           : null;
 
                         return (
@@ -1423,6 +1536,11 @@ export default function MenuItemFormModal({
                                   {variant ? `↳ Variant: ${variant.name}` : '↳ Default'}
                                 </span>
                               )}
+                              {isAddonActive && link.modifierId && (
+                                <span className="text-[10px] text-purple-650 block truncate font-semibold">
+                                  {modifierOption ? `↳ Option: ${modifierOption.groupName} - ${modifierOption.name}` : '↳ Option: Unknown'}
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center gap-4">
                               <div className="flex items-center gap-1">
@@ -1432,7 +1550,7 @@ export default function MenuItemFormModal({
                                   step="0.01"
                                   min="0.01"
                                   value={link.quantity}
-                                  onChange={(e) => handleUpdateIngredientQty(link.inventoryItemId, link.variantId, e.target.value)}
+                                  onChange={(e) => handleUpdateIngredientQty(link.inventoryItemId, link.variantId, link.modifierId, e.target.value)}
                                   className="w-16 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2 py-0.5 text-xs text-right focus:outline-none shadow-sm"
                                 />
                               </div>
@@ -1444,14 +1562,14 @@ export default function MenuItemFormModal({
                                   min="0"
                                   max="100"
                                   value={link.wastagePercentage || 0}
-                                  onChange={(e) => handleUpdateIngredientWastage(link.inventoryItemId, link.variantId, e.target.value)}
+                                  onChange={(e) => handleUpdateIngredientWastage(link.inventoryItemId, link.variantId, link.modifierId, e.target.value)}
                                   className="w-12 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2 py-0.5 text-xs text-right focus:outline-none shadow-sm"
                                 />
                                 <span className="text-[10px] text-gray-555">%</span>
                               </div>
                               <button
                                 type="button"
-                                onClick={() => handleRemoveIngredient(link.inventoryItemId, link.variantId)}
+                                onClick={() => handleRemoveIngredient(link.inventoryItemId, link.variantId, link.modifierId)}
                                 className="p-1 text-gray-455 hover:text-red-650 transition"
                                 title="Remove ingredient"
                               >
@@ -1468,6 +1586,103 @@ export default function MenuItemFormModal({
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'modifiers' && (
+          <div className="space-y-4">
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-250 space-y-4 shadow-sm">
+              <p className="text-sm font-bold text-gray-700">Link Modifier Groups</p>
+              <p className="text-xs text-gray-500">Select which modifier groups apply to this menu item. Cashiers and customers will be prompted to customize these options.</p>
+              
+              {allModifierGroups.length === 0 ? (
+                <div className="text-center py-6 text-gray-505 bg-white border border-dashed border-gray-300 rounded-xl text-xs">
+                  No modifier groups configured. Go to the "Modifier Groups" tab under Menu Items to create one.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {allModifierGroups.map(group => {
+                    const isChecked = (form.modifierGroups || []).some(g => String(g.modifierGroupId) === String(group._id));
+                    return (
+                      <label key={group._id} className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition ${
+                        isChecked 
+                          ? 'bg-amber-50 border-amber-300 text-amber-900 font-semibold' 
+                          : 'bg-white border-gray-200 text-gray-700 hover:border-gray-350'
+                      }`}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleToggleModifierGroup(group._id)}
+                          className="w-4 h-4 rounded text-amber-500 border-gray-300 focus:ring-amber-500 cursor-pointer"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs truncate">{group.name}</p>
+                          <p className="text-[9px] text-gray-400 font-normal mt-0.5">{group.modifiers?.length || 0} choices available</p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Render overrides for each checked group */}
+            {(form.modifierGroups || []).length > 0 && allModifierGroups.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Variant Price Overrides</p>
+                
+                {(form.modifierGroups || []).map(link => {
+                  const groupDef = allModifierGroups.find(g => String(g._id) === String(link.modifierGroupId));
+                  if (!groupDef) return null;
+                  
+                  return (
+                    <div key={link.modifierGroupId} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-3">
+                      <div className="border-b border-gray-100 pb-2">
+                        <span className="text-xs font-bold text-gray-805">{groupDef.name}</span>
+                        <span className="text-[10px] text-gray-400 ml-2 font-normal">Override price per size/variant</span>
+                      </div>
+                      
+                      {form.hasVariants && form.variants?.length > 0 ? (
+                        <div className="space-y-3 divide-y divide-gray-100">
+                          {groupDef.modifiers?.map(opt => (
+                            <div key={opt._id} className="pt-2 first:pt-0">
+                              <p className="text-xs font-semibold text-gray-700 mb-2">
+                                {opt.name} <span className="text-[10px] text-gray-400 font-normal">(Default +{currencySymbol} {formatCurrency(opt.price)})</span>
+                              </p>
+                              
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {form.variants.map(v => {
+                                  const override = (link.overrides || []).find(o => 
+                                    String(o.modifierId) === String(opt._id) && 
+                                    String(o.variantId) === String(v._id)
+                                  );
+                                  return (
+                                    <div key={v._id}>
+                                      <label className="block text-[9px] text-gray-400 font-semibold mb-0.5 truncate" title={v.name}>{v.name}</label>
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={override ? override.price : ''}
+                                        onChange={(e) => handleOverrideChange(link.modifierGroupId, opt._id, v._id, e.target.value)}
+                                        placeholder={formatCurrency(opt.price)}
+                                        className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-sm text-right"
+                                      />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500 italic">This menu item does not have variants. Modifier options will charge their default prices.</p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

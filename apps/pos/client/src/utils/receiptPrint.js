@@ -123,8 +123,14 @@ export function printReceipt(order, { branding, store, paymentType, cashTender }
     if (i.variantName) {
       nameHtml += `<span style="display: block; font-size: 9px; color: #555; padding-top: 1px;">↳ ${escapeHtml(i.variantName)}</span>`;
     }
+    if (i.modifiers && i.modifiers.length > 0) {
+      i.modifiers.forEach((m) => {
+        nameHtml += `<span style="display: block; font-size: 9px; color: #666; padding-left: 6px; padding-top: 1px;">↳ + ${escapeHtml(m.name)} (+${escapeHtml(receiptMoney(branding, m.price))})</span>`;
+      });
+    }
     const qty = escapeHtml(String(i.qty));
-    const lineAmt = Number(i.price) * Number(i.qty);
+    const modifiersSum = (i.modifiers || []).reduce((sum, m) => sum + m.price * (m.qty || 1), 0);
+    const lineAmt = (Number(i.price) + modifiersSum) * Number(i.qty);
     return `
     <tr>
       <td class="col-code">${escapeHtml(code)}</td>
@@ -362,6 +368,9 @@ export function printKitchenTicket(order, { branding, store }) {
       const variantHtml = item.variantName 
         ? `<div class="item-variant">${escapeHtml(item.variantName)}</div>` 
         : '';
+      const modifiersHtml = item.modifiers && item.modifiers.length > 0
+        ? item.modifiers.map(m => `<div class="item-variant" style="color: #444; font-weight: 500;">+ ${escapeHtml(m.name)}</div>`).join('')
+        : '';
       const comboHtml = item.isCombo && item.comboItems?.length 
         ? `<div class="item-variant">Combo: ${item.comboItems.map(c => `${escapeHtml(c.name)} x${c.qty}`).join(', ')}</div>`
         : '';
@@ -372,6 +381,7 @@ export function printKitchenTicket(order, { branding, store }) {
         <div class="item-qty">×${escapeHtml(String(item.qty))}</div>
       </div>
       ${variantHtml}
+      ${modifiersHtml}
       ${comboHtml}
     </div>`;
     }).join('')}
@@ -420,7 +430,8 @@ export function printSplitReceipt(order, splitPayment, { branding, store }) {
     splitPayment.itemsPaid.forEach(ip => {
       const match = order.items.find(i => (i.menuItem || i._id) === ip.itemId);
       if (match) {
-        const lineSub = match.price * ip.qty;
+        const modifiersSum = (match.modifiers || []).reduce((sum, m) => sum + m.price * (m.qty || 1), 0);
+        const lineSub = (match.price + modifiersSum) * ip.qty;
         subtotal += lineSub;
         filteredItems.push({
           ...match,
@@ -451,8 +462,14 @@ export function printSplitReceipt(order, splitPayment, { branding, store }) {
     if (i.variantName) {
       nameHtml += `<span style="display: block; font-size: 9px; color: #555; padding-top: 1px;">↳ ${escapeHtml(i.variantName)}</span>`;
     }
+    if (i.modifiers && i.modifiers.length > 0) {
+      i.modifiers.forEach((m) => {
+        nameHtml += `<span style="display: block; font-size: 9px; color: #666; padding-left: 6px; padding-top: 1px;">↳ + ${escapeHtml(m.name)} (+${escapeHtml(receiptMoney(branding, m.price))})</span>`;
+      });
+    }
     const qty = Number(i.qty).toFixed(isItemSplit ? 0 : 2).replace(/\.00$/, '');
-    const lineAmt = Number(i.price) * Number(i.qty);
+    const modifiersSum = (i.modifiers || []).reduce((sum, m) => sum + m.price * (m.qty || 1), 0);
+    const lineAmt = (Number(i.price) + modifiersSum) * Number(i.qty);
     return `
     <tr>
       <td class="col-code">${escapeHtml(code)}</td>

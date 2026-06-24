@@ -63,7 +63,12 @@ function inScope(item, promo) {
 }
 
 function calcPromotionDiscounts(cart, promotions) {
-  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const getLineUnitPrice = (item) => {
+    const modifiersSum = (item.modifiers || []).reduce((sum, m) => sum + m.price * (m.qty || 1), 0);
+    return item.price + modifiersSum;
+  };
+
+  const subtotal = cart.reduce((s, i) => s + getLineUnitPrice(i) * i.qty, 0);
   const applied = [];
   for (const promo of promotions) {
     let disc = 0;
@@ -88,7 +93,7 @@ function calcPromotionDiscounts(cart, promotions) {
             const variantMatch = !bi.variantId || sid(i.variantId) === sid(bi.variantId);
             return itemMatch && variantMatch;
           });
-          return s + (ci ? ci.price * bi.qty : 0);
+          return s + (ci ? getLineUnitPrice(ci) * bi.qty : 0);
         }, 0);
         disc = Math.max(0, (normal - promo.bundlePrice) * times);
         break;
@@ -106,7 +111,7 @@ function calcPromotionDiscounts(cart, promotions) {
           return itemMatch && variantMatch;
         });
         if (!buy || buy.qty < promo.buyQty || !free) break;
-        disc = free.price * promo.getFreeQty * Math.floor(buy.qty / promo.buyQty);
+        disc = getLineUnitPrice(free) * promo.getFreeQty * Math.floor(buy.qty / promo.buyQty);
         break;
       }
       case 'flatPrice': {
@@ -114,7 +119,7 @@ function calcPromotionDiscounts(cart, promotions) {
         const cats = promo.applicableCategories || [];
         if (!ids.length && !cats.length) break;
         cart.filter(i => inScope(i, promo)).forEach(i => {
-          const d = (i.price - promo.flatPrice) * i.qty;
+          const d = (getLineUnitPrice(i) - promo.flatPrice) * i.qty;
           if (d > 0) disc += d;
         });
         break;
@@ -124,7 +129,7 @@ function calcPromotionDiscounts(cart, promotions) {
         const ids  = promo.applicableItems      || [];
         const cats = promo.applicableCategories || [];
         const base = (ids.length || cats.length)
-          ? cart.filter(i => inScope(i, promo)).reduce((s, i) => s + i.price * i.qty, 0)
+          ? cart.filter(i => inScope(i, promo)).reduce((s, i) => s + getLineUnitPrice(i) * i.qty, 0)
           : subtotal;
         disc = Math.min(promo.discountAmount, base);
         if (promo.maxDiscountAmount != null && Number(promo.maxDiscountAmount) > 0) {
@@ -137,7 +142,7 @@ function calcPromotionDiscounts(cart, promotions) {
         const ids  = promo.applicableItems      || [];
         const cats = promo.applicableCategories || [];
         const base = (ids.length || cats.length)
-          ? cart.filter(i => inScope(i, promo)).reduce((s, i) => s + i.price * i.qty, 0)
+          ? cart.filter(i => inScope(i, promo)).reduce((s, i) => s + getLineUnitPrice(i) * i.qty, 0)
           : subtotal;
         disc = base * (promo.discountPercent / 100);
         if (promo.maxDiscountAmount != null && Number(promo.maxDiscountAmount) > 0) {
@@ -379,9 +384,13 @@ function MenuCard({ item, onAdd, compact = false, orderType, partners, getItemPr
   );
 }
 
+import VariantSelectorModal from '../../components/VariantSelectorModal';
+
 function CartItem({ item, onChangeQty, showImage = false, isWarning = false }) {
   const [expanded, setExpanded] = useState(false);
   const imageUrl = item.images?.[0]?.url || item.image;
+  const modifiersSum = (item.modifiers || []).reduce((sum, m) => sum + m.price * (m.qty || 1), 0);
+  const lineUnitPrice = item.price + modifiersSum;
   return (
     <div className="bg-[var(--pos-surface-inset)] rounded-xl p-3">
       <div className="flex items-center gap-3">
@@ -416,24 +425,33 @@ function CartItem({ item, onChangeQty, showImage = false, isWarning = false }) {
           {item.variantName && (
             <p className="text-xs text-amber-400/95 font-medium mt-0.5 truncate">↳ {item.variantName}</p>
           )}
-          <p className="text-xs text-slate-400 mt-0.5">{formatPrice(item.price)} each</p>
+          {item.modifiers && item.modifiers.length > 0 && (
+            <div className="mt-1 ml-2 pl-2 border-l border-slate-700/50 space-y-0.5">
+              {item.modifiers.map((mod, idx) => (
+                <p key={idx} className="text-xs text-slate-500 font-medium">
+                  ↳ + {mod.name} (+{formatPrice(mod.price)})
+                </p>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-slate-400 mt-0.5">{formatPrice(lineUnitPrice)} each</p>
         </div>
         <div className="flex items-center gap-1.5">
           <button
-            onClick={() => onChangeQty(item.menuItem, item.variantId, -1)}
+            onClick={() => onChangeQty(item.menuItem, item.variantId, -1, item.modifiers)}
             className="w-6 h-6 rounded-full bg-slate-700 hover:bg-red-500/30 text-slate-300 hover:text-red-400 flex items-center justify-center transition"
           >
             <Minus size={11} />
           </button>
           <span className="w-6 text-center text-sm font-semibold text-[var(--pos-text-primary)]">{item.qty}</span>
           <button
-            onClick={() => onChangeQty(item.menuItem, item.variantId, 1)}
+            onClick={() => onChangeQty(item.menuItem, item.variantId, 1, item.modifiers)}
             className="w-6 h-6 rounded-full bg-slate-700 hover:bg-amber-500/30 text-slate-300 hover:text-amber-400 flex items-center justify-center transition"
           >
             <Plus size={11} />
           </button>
         </div>
-        <span className="text-sm font-semibold text-[var(--pos-text-primary)] w-14 text-right">{formatPrice(item.price * item.qty)}</span>
+        <span className="text-sm font-semibold text-[var(--pos-text-primary)] w-14 text-right">{formatPrice(lineUnitPrice * item.qty)}</span>
       </div>
       {/* Combo sub-items expansion */}
       {item.isCombo && expanded && item.comboItems?.length > 0 && (
@@ -445,121 +463,6 @@ function CartItem({ item, onChangeQty, showImage = false, isWarning = false }) {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function VariantSelectorModal({ item, onClose, onConfirm, orderType, partners, getItemPrice }) {
-  const [selections, setSelections] = useState({});
-
-  useEffect(() => {
-    setSelections({});
-  }, [item?._id]);
-
-  if (!item) return null;
-
-  const options = item.variantOptions || [];
-  const variants = item.variants || [];
-
-  const handleSelect = (optionName, val) => {
-    setSelections((p) => ({ ...p, [optionName]: val }));
-  };
-
-  const selectedVariant = variants.find((v) => {
-    if (v.available === false) return false;
-    return options.every((opt) => selections[opt.name] === v.attributes?.find((a) => a.name === opt.name)?.value);
-  });
-
-  const canConfirm = options.every((opt) => selections[opt.name] !== undefined);
-
-  return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
-      <div
-        className="bg-[var(--pos-panel)] border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div>
-            <h3 className="text-base font-bold text-[var(--pos-text-primary)]">{item.name}</h3>
-            <p className="text-xs text-slate-500">Please choose options</p>
-          </div>
-          <button onClick={onClose} className="p-1 rounded bg-slate-800 text-slate-400 hover:text-white">
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          {options.map((opt) => (
-            <div key={opt.name} className="space-y-1.5">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{opt.name}</span>
-              <div className="flex flex-wrap gap-2">
-                {opt.values?.map((val) => {
-                  const active = selections[opt.name] === val;
-                  return (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => handleSelect(opt.name, val)}
-                      className={`px-3 py-2 rounded-xl text-xs font-medium border transition ${
-                        active
-                          ? 'bg-amber-500 border-amber-500 text-[var(--pos-selection-text)] shadow-lg'
-                          : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600'
-                      }`}
-                    >
-                      {val}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {selectedVariant ? (
-          <div className="bg-[var(--pos-surface-inset)] rounded-xl p-3 border border-slate-800 flex items-center gap-3">
-            <div className="w-12 h-12 bg-slate-800 rounded-lg overflow-hidden border border-slate-700 shrink-0">
-              {selectedVariant.image ? (
-                <img src={selectedVariant.image} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80'; }} />
-              ) : item.images?.[0]?.url || item.image ? (
-                <img src={item.images?.[0]?.url || item.image} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&q=80'; }} />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-xl">🍔</div>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-200 truncate">{selectedVariant.name}</p>
-              <p className="text-xs text-slate-500 truncate">{selectedVariant.description || item.description || 'No description'}</p>
-            </div>
-            <span className="text-sm font-bold text-amber-400 shrink-0">
-              {formatPrice(getItemPrice ? getItemPrice(item, selectedVariant, orderType, partners) : selectedVariant.price)}
-            </span>
-          </div>
-        ) : (
-          canConfirm && (
-            <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl">
-              Selected combination is currently unavailable
-            </div>
-          )
-        )}
-
-        <div className="flex gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-semibold py-2.5 rounded-xl transition text-sm"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => onConfirm(item, selectedVariant)}
-            disabled={!selectedVariant}
-            className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-white font-semibold py-2.5 rounded-xl transition text-sm flex justify-center items-center"
-          >
-            Add to Cart
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1067,11 +970,21 @@ export default function NewOrder() {
     };
   }, [filtered.length]);
 
-  const addToCart = (item, selectedVariant = null) => {
-    if (item.hasVariants && !selectedVariant) {
-       setVariantSelectionItem(item);
-       return;
-     }
+  const areModifiersEqual = (mod1 = [], mod2 = []) => {
+    if (mod1.length !== mod2.length) return false;
+    const ids1 = mod1.map(m => String(m.modifierId)).sort();
+    const ids2 = mod2.map(m => String(m.modifierId)).sort();
+    return ids1.every((id, idx) => id === ids2[idx]);
+  };
+
+  const addToCart = (item, selectedVariant = null, selectedModifiers = null) => {
+    const modifierGroupsActive = paidAddons?.modifierGroups === true;
+    const hasModifiers = item.modifierGroups && item.modifierGroups.length > 0;
+
+    if ((item.hasVariants && !selectedVariant) || (modifierGroupsActive && hasModifiers && !selectedModifiers)) {
+      setVariantSelectionItem(item);
+      return;
+    }
 
     const price = getItemPrice(item, selectedVariant, orderType, partners);
     const variantId = selectedVariant ? selectedVariant._id : null;
@@ -1079,11 +992,22 @@ export default function NewOrder() {
     const variantAttributes = selectedVariant ? selectedVariant.attributes || [] : [];
     const images = selectedVariant?.images?.length ? selectedVariant.images : item.images || [];
     const image = selectedVariant?.image || item.image || '';
+    const modifiers = selectedModifiers || [];
 
     setCart(prev => {
-      const existing = prev.find(c => String(c.menuItem) === String(item._id) && String(c.variantId || '') === String(variantId || ''));
+      const existing = prev.find(c =>
+        String(c.menuItem) === String(item._id) &&
+        String(c.variantId || '') === String(variantId || '') &&
+        areModifiersEqual(c.modifiers, modifiers)
+      );
       if (existing) {
-        return prev.map(c => (String(c.menuItem) === String(item._id) && String(c.variantId || '') === String(variantId || '')) ? { ...c, qty: c.qty + 1 } : c);
+        return prev.map(c =>
+          (String(c.menuItem) === String(item._id) &&
+           String(c.variantId || '') === String(variantId || '') &&
+           areModifiersEqual(c.modifiers, modifiers))
+            ? { ...c, qty: c.qty + 1 }
+            : c
+        );
       }
       return [...prev, {
         menuItem: item._id,
@@ -1098,14 +1022,19 @@ export default function NewOrder() {
         comboItems: item.comboItems || [],
         images,
         image,
+        modifiers,
       }];
     });
     setVariantSelectionItem(null);
   };
 
-  const changeQty = (id, variantId, delta) => {
+  const changeQty = (id, variantId, delta, modifiers = []) => {
     setCart(prev => prev
-      .map(c => (String(c.menuItem) === String(id) && String(c.variantId || '') === String(variantId || '')) ? { ...c, qty: c.qty + delta } : c)
+      .map(c => (
+        String(c.menuItem) === String(id) &&
+        String(c.variantId || '') === String(variantId || '') &&
+        areModifiersEqual(c.modifiers, modifiers)
+      ) ? { ...c, qty: c.qty + delta } : c)
       .filter(c => c.qty > 0)
     );
   };
@@ -1137,7 +1066,10 @@ export default function NewOrder() {
     });
   }, [orderType, partners, menuItems]); // Don't include cart to avoid infinite loop
 
-  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const subtotal = cart.reduce((s, i) => {
+    const modifiersSum = (i.modifiers || []).reduce((sum, m) => sum + m.price * (m.qty || 1), 0);
+    return s + (i.price + modifiersSum) * i.qty;
+  }, 0);
 
   // Which promo IDs are "active" based on mode (all IDs are sid()-normalised strings)
   const effectivePromoIds = useMemo(() => {
@@ -1818,9 +1750,13 @@ export default function NewOrder() {
                     const mItem = menuItems.find(m => String(m._id) === String(item.menuItem));
                     const variant = item.variantId && mItem ? mItem.variants?.find(v => String(v._id) === String(item.variantId)) : null;
                     const isWarning = mItem ? isMissingPartnerPrice(mItem, variant, orderType, partners) : false;
-                    return (
-                      <CartItem key={`${item.menuItem}-${item.variantId || 'base'}`} item={item} onChangeQty={changeQty} showImage={isCompact} isWarning={isWarning} />
-                    );
+                      const getCartItemKey = (item) => {
+                        const modPart = (item.modifiers || []).map(m => m.modifierId).sort().join('-');
+                        return `${item.menuItem}-${item.variantId || 'base'}-${modPart}`;
+                      };
+                      return (
+                        <CartItem key={getCartItemKey(item)} item={item} onChangeQty={changeQty} showImage={isCompact} isWarning={isWarning} />
+                      );
                   })
                 )}
               </div>
@@ -2069,8 +2005,8 @@ export default function NewOrder() {
       <VariantSelectorModal
         item={variantSelectionItem}
         onClose={() => setVariantSelectionItem(null)}
-        onConfirm={(item, variant) => {
-          addToCart(item, variant);
+        onConfirm={(item, variant, selectedModifiers) => {
+          addToCart(item, variant, selectedModifiers);
           setVariantSelectionItem(null);
         }}
         orderType={orderType}

@@ -14,6 +14,7 @@ import MenuItemFormModal from '../../components/menu/MenuItemFormModal';
 import MenuItemTable from '../../components/menu/MenuItemTable';
 import ImportModal from '../../components/ImportModal';
 import ProfitabilityAnalytics from '../../components/menu/ProfitabilityAnalytics';
+import ModifierGroupsManager from '../../components/menu/ModifierGroupsManager';
 import { COMBO_CATEGORY_NAME, isSelectableMenuCategory } from '../../constants/categories';
 import { useDragReorder, reorderByDrag } from '../../hooks/useDragReorder';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
@@ -33,7 +34,7 @@ const EMPTY_FORM = {
   name: '', category: '', price: '', description: '', images: [],
   available: true, isCombo: false, comboItems: [],
   hasVariants: false, variantOptions: [], variants: [], defaultVariantId: null,
-  channelPrices: {}, ingredients: [],
+  channelPrices: {}, ingredients: [], modifierGroups: [],
 };
 
 function menuQueryKey(storeId) {
@@ -83,7 +84,11 @@ export default function MenuManagement() {
   const { data: paidAddons } = useTenantPaidAddons();
   const whatsappAddonActive = paidAddons?.whatsapp === true;
 
-  const activeMenuTab = location.pathname.endsWith('/profitability') ? 'profitability' : 'items';
+  const activeMenuTab = location.pathname.endsWith('/profitability')
+    ? 'profitability'
+    : location.pathname.endsWith('/modifier-groups')
+      ? 'modifier-groups'
+      : 'items';
   const setActiveMenuTab = (tab) => navigate(`/menu/${tab}`);
 
   useEffect(() => {
@@ -351,6 +356,7 @@ export default function MenuManagement() {
       variants: item.variants || [],
       defaultVariantId: item.defaultVariantId || null,
       channelPrices: item.channelPrices || {},
+      modifierGroups: item.modifierGroups || [],
     });
     setFormError('');
     setFormOpen(true);
@@ -403,6 +409,7 @@ export default function MenuManagement() {
       defaultVariantId: form.hasVariants ? form.defaultVariantId : null,
       channelPrices: form.channelPrices || {},
       ingredients: form.ingredients || [],
+      modifierGroups: form.modifierGroups || [],
     };
     if (editing) updateMutation.mutate({ id: editing._id, data: payload });
     else createMutation.mutate(payload);
@@ -682,6 +689,7 @@ export default function MenuManagement() {
         <div className="flex gap-1 mb-6 border-b border-gray-200 overflow-x-auto no-scrollbar">
           {[
             { key: 'items', label: 'Menu Items' },
+            { key: 'modifier-groups', label: 'Modifier Groups' },
             { key: 'profitability', label: 'Recipe Profitability' },
           ].map(tab => (
             <button
@@ -891,6 +899,8 @@ export default function MenuManagement() {
               </div>
             )}
           </>
+        ) : activeMenuTab === 'modifier-groups' ? (
+          <ModifierGroupsManager />
         ) : (
           <ProfitabilityAnalytics />
         )}

@@ -57,14 +57,20 @@ async function loadTableSession(tenantId, storeId, tableId) {
   );
 
   let qrAddonActive = false;
+  let modifierGroupsActive = false;
   if (tenantRow) {
     if (tenantRow.assignedPlanId) {
       const planRow = await mongoose.connection.collection('subscriptionplans').findOne(
         { _id: tenantRow.assignedPlanId },
         { projection: { includedAddons: 1 } }
       );
-      if (planRow && Array.isArray(planRow.includedAddons) && planRow.includedAddons.includes('qr_ordering')) {
-        qrAddonActive = true;
+      if (planRow && Array.isArray(planRow.includedAddons)) {
+        if (planRow.includedAddons.includes('qr_ordering')) {
+          qrAddonActive = true;
+        }
+        if (planRow.includedAddons.includes('modifier_groups')) {
+          modifierGroupsActive = true;
+        }
       }
     }
     if (!qrAddonActive) {
@@ -72,6 +78,12 @@ async function loadTableSession(tenantId, storeId, tableId) {
       qrAddonActive =
         Boolean(qr?.active) &&
         (!qr?.periodEndsAt || new Date() < new Date(qr.periodEndsAt));
+    }
+    if (!modifierGroupsActive) {
+      const mg = tenantRow.paidAddons?.modifierGroups;
+      modifierGroupsActive =
+        Boolean(mg?.active) &&
+        (!mg?.periodEndsAt || new Date() < new Date(mg.periodEndsAt));
     }
   }
 
@@ -85,7 +97,7 @@ async function loadTableSession(tenantId, storeId, tableId) {
     };
   }
 
-  return { ids, tbl, store };
+  return { ids, tbl, store, modifierGroupsActive };
 }
 
 /** GET — menu + open order for this merchant/store/table (public). */
@@ -179,6 +191,14 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
       if (next.getTime() > Date.now()) nextWaiterCallAt = next.toISOString();
     }
 
+    const ModifierGroup = require(paths.models.ModifierGroup);
+    const modifierGroups = ctx.modifierGroupsActive
+      ? await ModifierGroup.find({
+          tenantId: ctx.ids.tenantId,
+          storeId: { $in: [ctx.ids.storeId, null] },
+        }).lean()
+      : [];
+
     res.json({
       tenantId: String(ctx.ids.tenantId),
       storeId: String(ctx.ids.storeId),
@@ -198,6 +218,20 @@ router.get('/:tenantId/:storeId/:tableId', async (req, res) => {
       menuSkip,
       menuLimit,
       order: openOrder,
+      modifierGroupsActive: ctx.modifierGroupsActive,
+      modifierGroups: modifierGroups.map(g => ({
+        _id: String(g._id),
+        name: g.name,
+        description: g.description || '',
+        minSelections: g.minSelections || 0,
+        maxSelections: g.maxSelections || null,
+        modifiers: (g.modifiers || []).map(m => ({
+          _id: String(m._id),
+          name: m.name,
+          price: m.price || 0,
+          available: m.available !== false,
+        })),
+      })),
     });
   } catch (err) {
     sendRouteError(res, err, { req });

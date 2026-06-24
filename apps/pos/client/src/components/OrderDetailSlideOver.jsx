@@ -35,6 +35,9 @@ function ItemRow({
   const { theme } = useTheme();
   const isLight = theme === 'light';
 
+  const modifiersSum = (item.modifiers || []).reduce((sum, m) => sum + m.price * (m.qty || 1), 0);
+  const lineUnitPrice = item.price + modifiersSum;
+
   return (
     <div className="flex items-center gap-3 py-2 border-b border-slate-700/40 last:border-0">
       <div className="flex-1 min-w-0">
@@ -42,7 +45,7 @@ function ItemRow({
           {item.isCombo && <Link2 size={11} className={`${isLight ? 'text-amber-600' : 'text-amber-400'} flex-shrink-0`} />}
           <span className={`text-sm truncate ${
             item.isCombo
-              ? isLight ? 'text-amber-850 font-semibold' : 'text-amber-300 font-medium'
+              ? isLight ? 'text-amber-855 font-semibold' : 'text-amber-300 font-medium'
               : 'text-[var(--pos-text-primary)]'
           }`}>
             {item.name}
@@ -50,6 +53,15 @@ function ItemRow({
         </div>
         {item.variantName && (
           <p className={`text-xs mt-0.5 truncate ${isLight ? 'text-amber-700 font-semibold' : 'text-amber-400/90 font-medium'}`}>↳ {item.variantName}</p>
+        )}
+        {item.modifiers && item.modifiers.length > 0 && (
+          <div className="mt-1 ml-2 pl-2 border-l border-slate-700/50 space-y-0.5">
+            {item.modifiers.map((mod, idx) => (
+              <p key={idx} className="text-xs text-slate-500 font-medium">
+                ↳ + {mod.name} (+{formatPrice(mod.price)})
+              </p>
+            ))}
+          </div>
         )}
         {item.isCombo && item.comboItems?.length > 0 && (
           <div className="ml-3 mt-0.5">
@@ -59,7 +71,7 @@ function ItemRow({
           </div>
         )}
         {!hidePricing && (
-          <p className="text-xs text-[var(--pos-text-muted)] mt-0.5">{formatPrice(item.price)} each</p>
+          <p className="text-xs text-[var(--pos-text-muted)] mt-0.5">{formatPrice(lineUnitPrice)} each</p>
         )}
       </div>
       {editable ? (
@@ -106,7 +118,7 @@ function ItemRow({
       )}
       {!hidePricing && (
         <span className="text-sm font-semibold text-[var(--pos-text-primary)] w-14 text-right">
-          {formatPrice(item.price * item.qty)}
+          {formatPrice(lineUnitPrice * item.qty)}
         </span>
       )}
     </div>
@@ -409,8 +421,18 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
     }
   };
 
-  const addItem = (menuItem, selectedVariant = null) => {
-    if (menuItem.hasVariants && !selectedVariant) {
+  const areModifiersEqual = (mod1 = [], mod2 = []) => {
+    if (mod1.length !== mod2.length) return false;
+    const ids1 = mod1.map(m => String(m.modifierId)).sort();
+    const ids2 = mod2.map(m => String(m.modifierId)).sort();
+    return ids1.every((id, idx) => id === ids2[idx]);
+  };
+
+  const addItem = (menuItem, selectedVariant = null, selectedModifiers = null) => {
+    const modifierGroupsActive = paidAddons?.modifierGroups === true;
+    const hasModifiers = menuItem.modifierGroups && menuItem.modifierGroups.length > 0;
+
+    if ((menuItem.hasVariants && !selectedVariant) || (modifierGroupsActive && hasModifiers && !selectedModifiers)) {
       setVariantSelectionItem(menuItem);
       return;
     }
@@ -419,10 +441,13 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
     const variantId = selectedVariant ? selectedVariant._id : null;
     const variantName = selectedVariant ? selectedVariant.name : '';
     const variantAttributes = selectedVariant ? selectedVariant.attributes || [] : [];
+    const modifiers = selectedModifiers || [];
 
     setItems(prev => {
       const existingIndex = prev.findIndex(
-        (i) => String(i.menuItem) === String(menuItem._id) && String(i.variantId || '') === String(variantId || '')
+        (i) => String(i.menuItem) === String(menuItem._id) &&
+               String(i.variantId || '') === String(variantId || '') &&
+               areModifiersEqual(i.modifiers, modifiers)
       );
       if (existingIndex !== -1) {
         return prev.map((item, idx) =>
@@ -439,6 +464,7 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
         variantId,
         variantName,
         variantAttributes,
+        modifiers,
       }];
     });
     setDirty(true);
@@ -462,13 +488,17 @@ export default function OrderDetailSlideOver({ order, onClose, canCancel = true,
         variantId: i.variantId || null,
         variantName: i.variantName || '',
         variantAttributes: i.variantAttributes || [],
+        modifiers: i.modifiers || [],
         ...(i._id ? { _id: i._id } : {}),
         ...(typeof i.deliveredToTable === 'boolean' ? { deliveredToTable: i.deliveredToTable } : {}),
       })),
     });
   };
 
-  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const subtotal = items.reduce((s, i) => {
+    const modifiersSum = (i.modifiers || []).reduce((sum, m) => sum + m.price * (m.qty || 1), 0);
+    return s + (i.price + modifiersSum) * i.qty;
+  }, 0);
   const existingIds = new Set(items.map(i => String(i.menuItem)));
   const dynamicTypes = buildOrderTypes(partners);
   const activeType = dynamicTypes.find(t => t.id === orderType) || 

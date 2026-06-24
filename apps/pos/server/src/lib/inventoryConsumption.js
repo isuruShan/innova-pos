@@ -22,25 +22,72 @@ async function consumeInventoryForOrder(orderId, userId) {
       const menuItemId = item.menuItem;
       const variantId = item.variantId || null;
 
-      // Find links (match variant specifically first, otherwise fall back to null)
-      let links = await IngredientLink.find({
+      // 1. Gather all recipe links for this line item (base recipe + modifier recipes)
+      const allResolvedLinks = [];
+
+      // A. Base item links (must have modifierId = null)
+      let baseLinks = await IngredientLink.find({
         tenantId,
         menuItemId,
-        variantId
+        variantId,
+        modifierId: null
       }).lean();
 
-      if (links.length === 0 && variantId) {
-        links = await IngredientLink.find({
+      if (baseLinks.length === 0 && variantId) {
+        baseLinks = await IngredientLink.find({
           tenantId,
           menuItemId,
-          variantId: null
+          variantId: null,
+          modifierId: null
         }).lean();
       }
 
-      for (const link of links) {
+      // Add base links to resolved links list (multiplier is 1 for base item)
+      for (const link of baseLinks) {
+        allResolvedLinks.push({ link, multiplier: 1 });
+      }
+
+      // B. Modifier specific links
+      if (item.modifiers && item.modifiers.length > 0) {
+        for (const mod of item.modifiers) {
+          const modifierId = mod.modifierId;
+          
+          let modLinks = await IngredientLink.find({
+            tenantId,
+            menuItemId,
+            variantId,
+            modifierId
+          }).lean();
+
+          if (modLinks.length === 0 && variantId) {
+            modLinks = await IngredientLink.find({
+              tenantId,
+              menuItemId,
+              variantId: null,
+              modifierId
+            }).lean();
+          }
+
+          if (modLinks.length === 0) {
+            modLinks = await IngredientLink.find({
+              tenantId,
+              menuItemId: null,
+              variantId: null,
+              modifierId
+            }).lean();
+          }
+
+          for (const link of modLinks) {
+            allResolvedLinks.push({ link, multiplier: mod.qty || 1 });
+          }
+        }
+      }
+
+      // 2. Deduct inventory for all gathered links
+      for (const { link, multiplier } of allResolvedLinks) {
         const inventoryItemId = link.inventoryItemId;
 
-        const baseQty = link.quantity * item.qty;
+        const baseQty = link.quantity * multiplier * item.qty;
         const wasteQty = baseQty * ((link.wastagePercentage || 0) / 100);
         const totalQty = baseQty + wasteQty;
 
