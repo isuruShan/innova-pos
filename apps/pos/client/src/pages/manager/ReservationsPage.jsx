@@ -74,7 +74,7 @@ function StatusBadge({ status }) {
 }
 
 function ReservationCard({ reservation, onAction, onEdit, tables }) {
-  const tableLabel = tables.find((t) => String(t._id) === String(reservation.tableId))?.label;
+  const tableLabel = reservation.tableLabel || tables.find((t) => String(t._id) === String(reservation.tableId))?.label;
   const time = new Date(reservation.reservationTime);
 
   return (
@@ -260,6 +260,10 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (step < 3) {
+      nextStep();
+      return;
+    }
     const dateTime = new Date(`${form.reservationDate}T${form.reservationTime}`);
     onSubmit({
       guestName: form.guestName,
@@ -646,6 +650,10 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, onDelete, isP
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (step < 3) {
+      nextStep();
+      return;
+    }
     const dateTime = new Date(`${form.reservationDate}T${form.reservationTime}`);
     onSubmit({
       guestName: form.guestName,
