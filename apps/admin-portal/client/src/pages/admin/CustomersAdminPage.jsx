@@ -43,6 +43,13 @@ export default function CustomersAdminPage() {
   });
   const [activeTab, setActiveTab] = useState('profile');
 
+  const { data: addonCatalog = [] } = useQuery({
+    queryKey: ['merchant-addon-catalog'],
+    queryFn: () => api.get('/paid-addons/merchant-catalog').then((r) => r.data),
+    staleTime: 60_000,
+  });
+  const loyaltyAddonActive = addonCatalog.find((a) => a.code === 'loyalty')?.alreadyActive === true;
+
   const { data: customerDetails } = useQuery({
     queryKey: ['admin-customer-details', editor?._id],
     queryFn: () => api.get(`/customers/${editor?._id}?loyalty=1`).then((r) => r.data),
@@ -82,12 +89,7 @@ export default function CustomersAdminPage() {
     return rows;
   }, [rows, pointsFilter]);
 
-  const { data: addonCatalog = [] } = useQuery({
-    queryKey: ['merchant-addon-catalog'],
-    queryFn: () => api.get('/paid-addons/merchant-catalog').then((r) => r.data),
-    staleTime: 60_000,
-  });
-  const loyaltyAddonActive = addonCatalog.find((a) => a.code === 'loyalty')?.alreadyActive === true;
+
 
   const saveCustomer = useMutation({
     mutationFn: async () => {
