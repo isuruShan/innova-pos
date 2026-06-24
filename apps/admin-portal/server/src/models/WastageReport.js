@@ -65,6 +65,14 @@ const wastageReportSchema = new mongoose.Schema(
           enum: ['expiry', 'damage', 'spillage', 'other'],
           required: true,
         },
+        modifiers: {
+          type: [{
+            modifierId: { type: mongoose.Schema.Types.ObjectId, required: true },
+            name: { type: String, required: true },
+            quantity: { type: Number, required: true, min: 0 }
+          }],
+          default: []
+        }
       },
     ],
     createdBy: {

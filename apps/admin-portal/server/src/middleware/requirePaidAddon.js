@@ -12,6 +12,8 @@ const ADDON_MESSAGES = {
     'The Advanced Accounting Module is not active for your account. Subscribe under Add-ons in this portal.',
   whatsapp_integration:
     'WhatsApp Business Integration is not active for your account. Subscribe under Add-ons in this portal.',
+  modifier_groups:
+    'The Modifier Groups add-on is not active for your account. Subscribe under Add-ons in this portal.',
 };
 
 function requirePaidAddon(addonCode) {

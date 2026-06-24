@@ -5,7 +5,7 @@ const Tenant = require('../models/Tenant');
 // Require model files to register them with mongoose to prevent SchemaNotFound error during populate
 require('../models/SubscriptionPlan');
 const PaidAddonDefinition = require('../models/PaidAddonDefinition');
-const { isLoyaltyEffective, isQrOrderingEffective, isTableManagementEffective, isUberEatsEffective, isDualScreenEffective, isWhatsappEffective } = require('@innovapos/paid-addons');
+const { isLoyaltyEffective, isQrOrderingEffective, isTableManagementEffective, isUberEatsEffective, isDualScreenEffective, isWhatsappEffective, isModifierGroupsEffective } = require('@innovapos/paid-addons');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 
 const router = express.Router();
@@ -33,6 +33,7 @@ router.get(
         uberEats: isUberEatsEffective(tenant),
         dualScreen: isDualScreenEffective(tenant),
         whatsapp: whatsappActiveGlobal ? isWhatsappEffective(tenant) : false,
+        modifierGroups: isModifierGroupsEffective(tenant),
       });
     } catch (err) {
       sendRouteError(res, err, { req });

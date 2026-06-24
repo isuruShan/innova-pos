@@ -5,6 +5,7 @@ import {
   Percent, Hash, Users, Plus, Edit2, Trash2,
   ChefHat, ShoppingCart, Eye, EyeOff, LayoutGrid,
   Monitor, Smartphone, Upload, Loader,
+  Shield, UserCheck, ConciergeBell,
 } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -256,10 +257,19 @@ function PaymentMethodsTab() {
 // ─── Staff-users tab ──────────────────────────────────────────────────────────
 
 const ROLE_CONFIG = {
+  merchant_admin: { label: 'Admin', icon: Shield, bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/25' },
+  manager: { label: 'Manager', icon: UserCheck, bg: 'bg-purple-500/15', text: 'text-purple-400', border: 'border-purple-500/25' },
   cashier: { label: 'Cashier', icon: ShoppingCart, bg: 'bg-amber-500/15', text: 'text-amber-400', border: 'border-amber-500/25' },
   kitchen: { label: 'Kitchen', icon: ChefHat,      bg: 'bg-green-500/15',  text: 'text-green-400',  border: 'border-green-500/25' },
+  steward: { label: 'Steward', icon: ConciergeBell, bg: 'bg-blue-500/15',  text: 'text-blue-400',   border: 'border-blue-500/25' },
 };
-const AVATAR_COLORS = { cashier: 'bg-amber-500', kitchen: 'bg-green-500' };
+const AVATAR_COLORS = {
+  merchant_admin: 'bg-red-500',
+  manager: 'bg-purple-500',
+  cashier: 'bg-amber-500',
+  kitchen: 'bg-green-500',
+  steward: 'bg-blue-500',
+};
 function getInitials(name = '') {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
@@ -284,26 +294,70 @@ function UsersTab() {
     enabled: isStoreReady,
   });
 
+  const counts = useMemo(() => {
+    return {
+      all: users.length,
+      merchant_admin: users.filter(u => u.role === 'merchant_admin').length,
+      manager: users.filter(u => u.role === 'manager').length,
+      cashier: users.filter(u => u.role === 'cashier').length,
+      kitchen: users.filter(u => u.role === 'kitchen').length,
+      steward: users.filter(u => u.role === 'steward').length,
+    };
+  }, [users]);
+
+  const filterOptions = useMemo(() => {
+    const opts = [{ key: 'all', label: 'All' }];
+    if (counts.merchant_admin > 0) opts.push({ key: 'merchant_admin', label: 'Admins' });
+    if (counts.manager > 0) opts.push({ key: 'manager', label: 'Managers' });
+    if (counts.cashier > 0) opts.push({ key: 'cashier', label: 'Cashiers' });
+    if (counts.kitchen > 0) opts.push({ key: 'kitchen', label: 'Kitchen' });
+    if (counts.steward > 0) opts.push({ key: 'steward', label: 'Stewards' });
+    return opts;
+  }, [counts]);
+
+  useEffect(() => {
+    if (filterRole !== 'all' && !filterOptions.some(opt => opt.key === filterRole)) {
+      setFilterRole('all');
+    }
+  }, [filterOptions, filterRole]);
+
   const filtered = filterRole === 'all' ? users : users.filter(u => u.role === filterRole);
-  const cashierCount = users.filter(u => u.role === 'cashier').length;
-  const kitchenCount = users.filter(u => u.role === 'kitchen').length;
 
   return (
     <>
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">
-            {cashierCount} cashier{cashierCount !== 1 ? 's' : ''}
-          </span>
-          <span className="text-xs text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full">
-            {kitchenCount} kitchen
-          </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {counts.merchant_admin > 0 && (
+            <span className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-full">
+              {counts.merchant_admin} admin{counts.merchant_admin !== 1 ? 's' : ''}
+            </span>
+          )}
+          {counts.manager > 0 && (
+            <span className="text-xs text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-full">
+              {counts.manager} manager{counts.manager !== 1 ? 's' : ''}
+            </span>
+          )}
+          {counts.cashier > 0 && (
+            <span className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">
+              {counts.cashier} cashier{counts.cashier !== 1 ? 's' : ''}
+            </span>
+          )}
+          {counts.kitchen > 0 && (
+            <span className="text-xs text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full">
+              {counts.kitchen} kitchen
+            </span>
+          )}
+          {counts.steward > 0 && (
+            <span className="text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-full">
+              {counts.steward} steward{counts.steward !== 1 ? 's' : ''}
+            </span>
+          )}
         </div>
       </div>
 
       {/* Filter */}
       <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar pb-1">
-        {[{ key: 'all', label: 'All' }, { key: 'cashier', label: 'Cashiers' }, { key: 'kitchen', label: 'Kitchen' }].map(f => (
+        {filterOptions.map(f => (
           <button key={f.key} onClick={() => setFilterRole(f.key)}
             className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition ${
               filterRole === f.key ? 'bg-amber-500 text-[var(--pos-selection-text)]' : 'text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700'
@@ -330,8 +384,8 @@ function UsersTab() {
                   <p className="text-[var(--pos-text-primary)] font-semibold text-sm truncate">{user.name}</p>
                   <p className="text-slate-500 text-xs truncate">{user.email}</p>
                 </div>
-                <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${cfg?.bg} ${cfg?.text} ${cfg?.border}`}>
-                  <Icon size={10} />{cfg?.label}
+                <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${cfg?.bg || 'bg-slate-500/15'} ${cfg?.text || 'text-slate-400'} ${cfg?.border || 'border-slate-500/25'}`}>
+                  <Icon size={10} />{cfg?.label || user.role}
                 </span>
               </div>
             );
@@ -861,7 +915,7 @@ export default function SettingsPage() {
   }, [location.pathname, navigate]);
 
   const { user } = useAuth();
-  const visibleTabs = TABS.filter((t) => t.id !== 'users' || user?.role === 'merchant_admin');
+  const visibleTabs = TABS.filter((t) => t.id !== 'users' || ['merchant_admin', 'manager'].includes(user?.role));
 
   return (
     <div className="min-h-screen bg-[var(--pos-page-bg)]">
@@ -891,7 +945,7 @@ export default function SettingsPage() {
           })}
         </div>
 
-        {tab === 'charges' ? <ChargesTab /> : tab === 'posview' ? <PosViewTab /> : tab === 'guestqr' ? <GuestQrTab /> : tab === 'checkin' ? <CustomerScreenTab /> : tab === 'users' && user?.role === 'merchant_admin' ? <UsersTab /> : tab === 'payments' ? <PaymentMethodsTab /> : <ChargesTab />}
+        {tab === 'charges' ? <ChargesTab /> : tab === 'posview' ? <PosViewTab /> : tab === 'guestqr' ? <GuestQrTab /> : tab === 'checkin' ? <CustomerScreenTab /> : tab === 'users' && ['merchant_admin', 'manager'].includes(user?.role) ? <UsersTab /> : tab === 'payments' ? <PaymentMethodsTab /> : <ChargesTab />}
       </div>
     </div>
   );

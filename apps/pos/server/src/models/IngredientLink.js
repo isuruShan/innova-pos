@@ -21,13 +21,19 @@ const ingredientLinkSchema = new mongoose.Schema(
     menuItemId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'MenuItem',
-      required: true,
+      required: false,
       index: true,
     },
     /** Optional: links to a specific variant. If null, applies to base item or all variants. */
     variantId: {
       type: mongoose.Schema.Types.ObjectId,
       default: null,
+    },
+    /** Optional: links to a specific modifier option. */
+    modifierId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
+      index: true,
     },
     inventoryItemId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -59,9 +65,9 @@ const ingredientLinkSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Ensure unique link per menu item + variant + inventory item combination
+// Ensure unique link per menu item + variant + modifier + inventory item combination
 ingredientLinkSchema.index(
-  { tenantId: 1, menuItemId: 1, variantId: 1, inventoryItemId: 1 },
+  { tenantId: 1, menuItemId: 1, variantId: 1, modifierId: 1, inventoryItemId: 1 },
   { unique: true }
 );
 

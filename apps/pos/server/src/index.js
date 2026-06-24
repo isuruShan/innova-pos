@@ -85,6 +85,7 @@ app.use('/api/scheduled-banners', require('./routes/scheduledBanners'));
 app.use('/api/users',      require('./routes/users'));
 app.use('/api/users',      require('./routes/pushTokens'));
 app.use('/api/menu',       require('./routes/menu'));
+app.use('/api/menu/modifier-groups', require('./routes/modifierGroups'));
 app.use('/api/orders',     require('./routes/orders'));
 app.use('/api/tables',     require('./routes/tables'));
 app.use('/api/inventory',  require('./routes/inventory'));

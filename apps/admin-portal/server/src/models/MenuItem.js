@@ -68,6 +68,24 @@ const menuItemSchema = new mongoose.Schema(
       lastSyncedAt: { type: Date, default: null },
       whatsappProductId: { type: String, default: '' }
     },
+    modifierGroups: {
+      type: [{
+        modifierGroupId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'ModifierGroup',
+          required: true
+        },
+        overrides: {
+          type: [{
+            modifierId: { type: mongoose.Schema.Types.ObjectId, required: true },
+            variantId: { type: String, default: null },
+            price: { type: Number, required: true, min: 0 }
+          }],
+          default: []
+        }
+      }],
+      default: []
+    },
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

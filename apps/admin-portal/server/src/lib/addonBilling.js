@@ -149,6 +149,14 @@ const DEFAULT_ADDONS = [
     isActive: true,
     sortOrder: 6,
   },
+  {
+    code: 'modifier_groups',
+    name: 'Modifier Groups',
+    shortDescription: 'Configure customizable options, toppings, and choices for your menu items.',
+    longDescription: 'Create modifier groups (such as "Toppings", "Side Dishes", or "Ice Levels") and attach them to your menu items. Supports selection limits, direct pricing, ingredient recipe mapping, and detailed wastage reporting.',
+    isActive: true,
+    sortOrder: 7,
+  },
 ];
 
 async function ensureDefaultPaidAddons() {
@@ -265,7 +273,7 @@ async function computeSubscriptionRenewalExpected(tenant, planOverride = null, o
 
   const addons = [];
   let addonTotal = 0;
-  const { isQrOrderingEffective, isLoyaltyEffective, isTableManagementEffective, isUberEatsEffective, isAccountingEffective, isDualScreenEffective, isWhatsappEffective } = require('./addonPeriod');
+  const { isQrOrderingEffective, isLoyaltyEffective, isTableManagementEffective, isUberEatsEffective, isAccountingEffective, isDualScreenEffective, isWhatsappEffective, isModifierGroupsEffective } = require('./addonPeriod');
   const renewalRows = [
     { code: 'qr_ordering', label: 'QR Ordering', key: 'qrOrdering', check: isQrOrderingEffective },
     { code: 'loyalty', label: 'Loyalty program', key: 'loyalty', check: isLoyaltyEffective },
@@ -274,6 +282,7 @@ async function computeSubscriptionRenewalExpected(tenant, planOverride = null, o
     { code: 'accounting', label: 'Advanced Accounting Module', key: 'accounting', check: isAccountingEffective },
     { code: 'dual_screen', label: 'Dual Screen Customer Terminal', key: 'dualScreen', check: isDualScreenEffective },
     { code: 'whatsapp_integration', label: 'WhatsApp Business Integration', key: 'whatsapp', check: isWhatsappEffective },
+    { code: 'modifier_groups', label: 'Modifier Groups', key: 'modifierGroups', check: isModifierGroupsEffective },
   ];
   for (const row of renewalRows) {
     if (excludeSet.has(row.code)) {

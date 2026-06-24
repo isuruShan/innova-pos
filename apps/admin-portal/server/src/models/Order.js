@@ -25,6 +25,16 @@ const orderItemSchema = new mongoose.Schema({
   deliveredToTable: { type: Boolean, default: false },
   kitchenNew: { type: Boolean, default: false },
   kitchenPendingQty: { type: Number, default: null },
+  modifiers: {
+    type: [{
+      modifierGroupId: { type: mongoose.Schema.Types.ObjectId, ref: 'ModifierGroup', required: true },
+      modifierId: { type: mongoose.Schema.Types.ObjectId, required: true },
+      name: { type: String, required: true },
+      price: { type: Number, required: true },
+      qty: { type: Number, default: 1 }
+    }],
+    default: []
+  }
 });
 
 const orderSchema = new mongoose.Schema(

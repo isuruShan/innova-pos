@@ -119,6 +119,7 @@ app.use('/api/loyalty', require('./routes/loyalty'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/promotions', require('./routes/promotions'));
 app.use('/api/menu', require('./routes/menu'));
+app.use('/api/menu/modifier-groups', require('./routes/modifierGroups'));
 app.use('/api/inventory', require('./routes/inventory'));
 app.use('/api/inventory-categories', require('./routes/inventoryCategories'));
 app.use('/api/inventory', require('./routes/audit'));
