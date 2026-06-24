@@ -395,6 +395,45 @@ export default function SupplierManagement() {
     items: expandedItems[s._id],
   }));
 
+  if (!isStoreReady) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md max-w-sm w-full text-center space-y-4">
+          <Truck size={40} className="mx-auto text-brand-orange animate-pulse" />
+          <h2 className="text-lg font-bold text-gray-900">Select a Store</h2>
+          <p className="text-sm text-gray-500">Please select a store to view and manage suppliers.</p>
+          <select
+            value={selectedStoreId || ''}
+            onChange={(e) => selectStore(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+          >
+            <option value="" disabled>Select Store...</option>
+            {stores.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    );
+  }
+
+  const storeSelector = stores.length > 0 ? (
+    <select
+      value={selectedStoreId || ''}
+      onChange={(e) => selectStore(e.target.value)}
+      className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer w-full sm:w-56"
+    >
+      <option value="" disabled>Select Store...</option>
+      {stores.map((s) => (
+        <option key={s._id} value={s._id}>
+          {s.name}
+        </option>
+      ))}
+    </select>
+  ) : null;
+
   return (
     <div className="min-h-screen bg-gray-50">
       
@@ -405,6 +444,7 @@ export default function SupplierManagement() {
             ? `${filteredSuppliers.length} found (${suppliers.length} total)`
             : `${suppliers.length} supplier${suppliers.length !== 1 ? 's' : ''} registered`
           }
+          storeSelector={storeSelector}
           actions={[
             { label: 'Export', icon: Download, onClick: handleExportSuppliers },
             { label: 'Import', icon: Upload, onClick: () => setImportModalOpen(true) },
@@ -414,22 +454,6 @@ export default function SupplierManagement() {
 
         {/* Search + Sort row */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-white p-3 rounded-xl border border-gray-200/50 items-center justify-between">
-          {stores.length > 0 && (
-            <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto">
-              <span className="text-xs text-gray-500 font-semibold">Store:</span>
-              <select
-                value={selectedStoreId || ''}
-                onChange={(e) => selectStore(e.target.value)}
-                className="bg-gray-50 border border-gray-300 text-gray-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer w-full sm:w-auto"
-              >
-                {stores.map((s) => (
-                  <option key={s._id} value={s._id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
           <div className="flex-1 w-full flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
             <Search size={15} className="text-gray-400 flex-shrink-0" />
             <input

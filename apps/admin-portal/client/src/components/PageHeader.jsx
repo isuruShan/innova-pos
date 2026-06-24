@@ -17,7 +17,7 @@ import { MoreVertical } from 'lucide-react';
  *   actions     - Array<{ label, icon: LucideComponent, onClick, primary?, className? }>
  *                 Mark the most important action with `primary: true` — it always shows on mobile.
  */
-export default function PageHeader({ title, subtitle, actions = [] }) {
+export default function PageHeader({ title, subtitle, actions = [], storeSelector = null }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -35,14 +35,21 @@ export default function PageHeader({ title, subtitle, actions = [] }) {
   const secondaryActions = actions.filter((a) => a !== primaryAction);
 
   return (
-    <div className="flex items-center justify-between gap-3 mb-6">
-      {/* Left: title + subtitle */}
-      <div className="min-w-0">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
-          {title}
-        </h1>
-        {subtitle && (
-          <p className="text-gray-500 text-xs sm:text-sm mt-0.5 truncate">{subtitle}</p>
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      {/* Left: title + subtitle + storeSelector */}
+      <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-start sm:items-center gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="text-gray-500 text-xs sm:text-sm mt-0.5 truncate">{subtitle}</p>
+          )}
+        </div>
+        {storeSelector && (
+          <div className="shrink-0 w-full sm:w-auto">
+            {storeSelector}
+          </div>
         )}
       </div>
 

@@ -16,6 +16,7 @@ import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import { formatCurrency } from '../../utils/format';
 import PosDateField from '../../components/PosDateField';
 import Badge from '../../components/Badge';
+import PageHeader from '../../components/PageHeader';
 import ResponsiveTable from '../../components/ResponsiveTable';
 import ViewModeToggle from '../../components/ViewModeToggle';
 
@@ -296,27 +297,62 @@ export default function GoodsReceipts() {
     });
   }, [purchaseOrders, receipts]);
 
+  if (!isStoreReady) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md max-w-sm w-full text-center space-y-4">
+          <FileCheck size={40} className="mx-auto text-brand-orange animate-pulse" />
+          <h2 className="text-lg font-bold text-gray-900">Select a Store</h2>
+          <p className="text-sm text-gray-500">Please select a store to view and manage goods receipts & returns.</p>
+          <select
+            value={selectedStoreId || ''}
+            onChange={(e) => selectStore(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+          >
+            <option value="" disabled>Select Store...</option>
+            {stores.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    );
+  }
+
+  const storeSelector = stores.length > 0 ? (
+    <select
+      value={selectedStoreId || ''}
+      onChange={(e) => selectStore(e.target.value)}
+      className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer w-full sm:w-56"
+    >
+      <option value="" disabled>Select Store...</option>
+      {stores.map((s) => (
+        <option key={s._id} value={s._id}>
+          {s.name}
+        </option>
+      ))}
+    </select>
+  ) : null;
+
   return (
     <div className="min-h-screen bg-gray-50">
       
       <div className="max-w-7xl mx-auto p-4 sm:p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Goods Receipts & Returns</h1>
-            <p className="text-gray-400 text-sm mt-1">
-              {stats.receipts.total} receipt{stats.receipts.total !== 1 ? 's' : ''} · {stats.returns.total} return{stats.returns.total !== 1 ? 's' : ''}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={openAdd}
-            className="flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold px-4 py-2.5 rounded-xl transition shadow-lg shadow-amber-500/20 text-sm"
-          >
-            <Plus size={16} />
-            {activeTab === 'receipts' ? 'New GRN' : 'Add Return'}
-          </button>
-        </div>
+        <PageHeader
+          title="Goods Receipts & Returns"
+          subtitle={`${stats.receipts.total} receipt${stats.receipts.total !== 1 ? 's' : ''} · ${stats.returns.total} return${stats.returns.total !== 1 ? 's' : ''}`}
+          storeSelector={storeSelector}
+          actions={[
+            {
+              label: activeTab === 'receipts' ? 'New GRN' : 'Add Return',
+              icon: Plus,
+              onClick: openAdd,
+              primary: true,
+            },
+          ]}
+        />
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-gray-200/50 overflow-x-auto no-scrollbar">
@@ -337,24 +373,9 @@ export default function GoodsReceipts() {
             </button>
           ))}
         </div>
+
         {/* Search + Filter button + Sort */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-white p-3 rounded-xl border border-gray-200/50 items-stretch sm:items-center justify-between">
-          {stores.length > 0 && (
-            <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto">
-              <span className="text-xs text-gray-500 font-semibold">Store:</span>
-              <select
-                value={selectedStoreId || ''}
-                onChange={(e) => selectStore(e.target.value)}
-                className="bg-gray-50 border border-gray-300 text-gray-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer w-full sm:w-auto"
-              >
-                {stores.map((s) => (
-                  <option key={s._id} value={s._id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
           <div className="flex-1 w-full flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
             <Search size={15} className="text-gray-400 flex-shrink-0" />
             <input

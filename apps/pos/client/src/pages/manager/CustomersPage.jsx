@@ -343,9 +343,6 @@ export default function CustomersPage() {
                     <span className="bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide">
                       {customerDetails.loyalty.effectiveTier.name}
                     </span>
-                    <span className="text-xs text-slate-400">
-                      ({customerDetails.loyalty.effectiveTier.discountPercentage}% discount)
-                    </span>
                   </div>
                 ) : (
                   <div className="text-sm font-semibold text-slate-400 mt-1">

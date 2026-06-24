@@ -1167,6 +1167,27 @@ export default function FloorPlanEditorPage() {
         <div className="flex-1 flex flex-col gap-4 overflow-hidden min-h-0">
           {/* Toolbar */}
           <div className="bg-white border border-gray-200 rounded-xl p-3 flex flex-wrap items-center gap-3 shrink-0">
+            {stores.length > 0 && (
+              <div className="w-48 shrink-0">
+                <select
+                  value={selectedStoreId || ''}
+                  onChange={(e) => {
+                    if (isDirty && !window.confirm('You have unsaved changes. Switch store anyway?')) {
+                      return;
+                    }
+                    selectStore(e.target.value);
+                  }}
+                  className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer font-semibold"
+                >
+                  {stores.map((s) => (
+                    <option key={s._id} value={s._id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="h-6 w-px bg-gray-200 shrink-0" />
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setSelectedShape(null)}

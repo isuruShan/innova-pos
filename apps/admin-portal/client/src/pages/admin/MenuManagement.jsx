@@ -624,6 +624,45 @@ export default function MenuManagement() {
     return list;
   }, [navigate, handleExportMenuItems, openAdd, whatsappAddonActive]);
 
+  if (!isStoreReady) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md max-w-sm w-full text-center space-y-4">
+          <Tag size={40} className="mx-auto text-brand-orange animate-pulse" />
+          <h2 className="text-lg font-bold text-gray-900">Select a Store</h2>
+          <p className="text-sm text-gray-500">Please select a store to view and manage menu items.</p>
+          <select
+            value={selectedStoreId || ''}
+            onChange={(e) => selectStore(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+          >
+            <option value="" disabled>Select Store...</option>
+            {stores.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    );
+  }
+
+  const storeSelector = stores.length > 0 ? (
+    <select
+      value={selectedStoreId || ''}
+      onChange={(e) => selectStore(e.target.value)}
+      className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer w-full sm:w-56"
+    >
+      <option value="" disabled>Select Store...</option>
+      {stores.map((s) => (
+        <option key={s._id} value={s._id}>
+          {s.name}
+        </option>
+      ))}
+    </select>
+  ) : null;
+
   return (
     <div className="min-h-screen bg-gray-50">
       
@@ -635,6 +674,7 @@ export default function MenuManagement() {
               ? `${items.length} items · ${items.filter((i) => i.isCombo).length} combos`
               : 'Recipe costs and profitability analysis'
           }
+          storeSelector={storeSelector}
           actions={activeMenuTab === 'items' ? headerActions : []}
         />
 
@@ -663,24 +703,8 @@ export default function MenuManagement() {
           <>
             {/* Search + View Toggle */}
             <div className="flex flex-col gap-3 mb-4 bg-white p-3 rounded-xl border border-gray-200">
-              {/* Row 1: Store picker + Search — full width */}
+              {/* Row 1: Search — full width */}
               <div className="flex items-center gap-2">
-                {stores.length > 0 && (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-xs text-gray-500 font-semibold hidden sm:block">Store:</span>
-                    <select
-                      value={selectedStoreId || ''}
-                      onChange={(e) => selectStore(e.target.value)}
-                      className="bg-gray-50 border border-gray-300 text-gray-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
-                    >
-                      {stores.map((s) => (
-                        <option key={s._id} value={s._id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                   <input

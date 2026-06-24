@@ -136,7 +136,25 @@ export default function CafeTablesPage() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       
       <div className="flex-1 p-4 sm:p-6 max-w-5xl mx-auto w-full space-y-6">
-        {heading}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          {heading}
+          {isStoreReady && stores.length > 0 && (
+            <div className="w-56 shrink-0">
+              <select
+                value={selectedStoreId || ''}
+                onChange={(e) => selectStore(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer font-semibold"
+              >
+                <option value="" disabled>Select Store...</option>
+                {stores.map((s) => (
+                  <option key={s._id} value={s._id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
 
         {!isStoreReady ? (
           <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md max-w-sm mx-auto text-center space-y-4">
@@ -159,22 +177,6 @@ export default function CafeTablesPage() {
         ) : (
           <>
             <form onSubmit={onCreate} className="rounded-xl border border-gray-200 bg-white p-4 flex flex-wrap gap-3 items-end">
-              {stores.length > 0 && (
-                <div className="w-48">
-                  <label className="block text-xs text-gray-500 mb-1">Select Store</label>
-                  <select
-                    value={selectedStoreId || ''}
-                    onChange={(e) => selectStore(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-55 text-gray-900"
-                  >
-                    {stores.map((s) => (
-                      <option key={s._id} value={s._id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
               <div className="flex-1 min-w-[140px]">
                 <label className="block text-xs text-gray-500 mb-1">Table label</label>
                 <input

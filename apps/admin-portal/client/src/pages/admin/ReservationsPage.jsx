@@ -1087,7 +1087,7 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, isPending, er
 
 export default function ReservationsPage() {
   const qc = useQueryClient();
-  const { selectedStoreId, isStoreReady } = useStoreContext();
+  const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState('');
@@ -1213,19 +1213,49 @@ export default function ReservationsPage() {
 
   if (!isStoreReady) {
     return (
-      <div className="p-6">
-        <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          Select a store in the header first.
-        </p>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md max-w-sm w-full text-center space-y-4">
+          <CalendarDays size={40} className="mx-auto text-brand-orange animate-pulse" />
+          <h2 className="text-lg font-bold text-gray-900">Select a Store</h2>
+          <p className="text-sm text-gray-500">Please select a store to view and manage reservations.</p>
+          <select
+            value={selectedStoreId || ''}
+            onChange={(e) => selectStore(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+          >
+            <option value="" disabled>Select Store...</option>
+            {stores.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
     );
   }
+
+  const storeSelector = stores.length > 0 ? (
+    <select
+      value={selectedStoreId || ''}
+      onChange={(e) => selectStore(e.target.value)}
+      className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer w-full sm:w-56"
+    >
+      <option value="" disabled>Select Store...</option>
+      {stores.map((s) => (
+        <option key={s._id} value={s._id}>
+          {s.name}
+        </option>
+      ))}
+    </select>
+  ) : null;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Reservations"
         subtitle="Manage tables booking schedules and guest check-ins"
+        storeSelector={storeSelector}
         actions={[
           {
             label: 'New Reservation',

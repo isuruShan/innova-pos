@@ -593,6 +593,45 @@ export default function InventoryManagement() {
 
   const lowCount = items.filter(i => getStockStatus(i.quantity, i.minThreshold).variant !== 'ok').length;
   const isPending = createMutation.isPending || updateMutation.isPending;
+  if (!isStoreReady) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md max-w-sm w-full text-center space-y-4">
+          <Package size={40} className="mx-auto text-brand-orange animate-pulse" />
+          <h2 className="text-lg font-bold text-gray-900">Select a Store</h2>
+          <p className="text-sm text-gray-500">Please select a store to view and manage inventory.</p>
+          <select
+            value={selectedStoreId || ''}
+            onChange={(e) => selectStore(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+          >
+            <option value="" disabled>Select Store...</option>
+            {stores.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    );
+  }
+
+  const storeSelector = stores.length > 0 ? (
+    <select
+      value={selectedStoreId || ''}
+      onChange={(e) => selectStore(e.target.value)}
+      className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer w-full sm:w-56"
+    >
+      <option value="" disabled>Select Store...</option>
+      {stores.map((s) => (
+        <option key={s._id} value={s._id}>
+          {s.name}
+        </option>
+      ))}
+    </select>
+  ) : null;
+
   return (
     <div className="min-h-screen bg-gray-50">
       
@@ -614,6 +653,7 @@ export default function InventoryManagement() {
             activeTab === 'analytics' ? 'Stock health, category breakdown & consumption' :
             'View history of stock adjustments'
           }
+          storeSelector={storeSelector}
           actions={activeTab === 'stock' ? [
             { label: 'Export', icon: Download, onClick: handleExportInventory },
             { label: 'Import', icon: Upload, onClick: () => setImportModalOpen(true) },
@@ -639,29 +679,13 @@ export default function InventoryManagement() {
                 className={`px-3 sm:px-4 py-2.5 text-sm font-medium transition border-b-2 whitespace-nowrap shrink-0 ${
                   activeTab === tab.key
                     ? 'border-amber-500 text-brand-orange'
-                    : 'border-transparent text-gray-500 hover:text-slate-350'
+                    : 'border-transparent text-gray-500 hover:text-slate-355'
                 }`}
               >
                 {tab.label}
               </button>
             ))}
           </div>
-          {stores.length > 0 && (
-            <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto pb-2 sm:pb-0">
-              <span className="text-xs text-gray-500 font-semibold font-sans">Store:</span>
-              <select
-                value={selectedStoreId || ''}
-                onChange={(e) => selectStore(e.target.value)}
-                className="bg-white border border-gray-300 text-gray-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
-              >
-                {stores.map((s) => (
-                  <option key={s._id} value={s._id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
 
         {/* Tab Content */}

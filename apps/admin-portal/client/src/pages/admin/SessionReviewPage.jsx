@@ -2,15 +2,17 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Package, Calendar, User, Clock, CheckCircle, AlertCircle,
-  TrendingUp, TrendingDown, FileText, Eye,
+  TrendingUp, TrendingDown, FileText, Eye, List, LayoutGrid
 } from 'lucide-react';
 import api from '../../api/axios';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
+import { useStoreContext } from '../../context/StoreContext';
+import PageHeader from '../../components/PageHeader';
 
 export default function SessionReviewPage() {
+  const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const [selectedSession, setSelectedSession] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
-  const [storeFilter, setStoreFilter] = useState('all');
   const [viewMode, setViewMode] = useState(() => {
     const saved = localStorage.getItem('view_mode_admin_sessions');
     if (saved) return saved;
@@ -24,16 +26,9 @@ export default function SessionReviewPage() {
   const qc = useQueryClient();
 
   const { data: sessions = [], isPending: sessionsPending } = useQuery({
-    queryKey: ['inventory-sessions'],
-    queryFn: () => api.get('/inventory-sessions').then((r) => r.data),
-  });
-
-  const { data: stores = [] } = useQuery({
-    queryKey: ['stores'],
-    queryFn: () => api.get('/stores').then((r) => {
-      const data = r.data;
-      return Array.isArray(data) ? data : (data?.items || []);
-    }),
+    queryKey: ['inventory-sessions', selectedStoreId],
+    queryFn: () => api.get(`/inventory-sessions?storeId=${selectedStoreId}`).then((r) => r.data),
+    enabled: isStoreReady,
   });
 
   const { data: sessionDetail, isPending: detailPending } = useQuery({
@@ -61,12 +56,8 @@ export default function SessionReviewPage() {
       result = result.filter((s) => !s.reviewedBy);
     }
 
-    if (storeFilter !== 'all') {
-      result = result.filter((s) => String(s.storeId?._id) === storeFilter);
-    }
-
     return result;
-  }, [sessions, statusFilter, storeFilter]);
+  }, [sessions, statusFilter]);
 
   const stats = useMemo(() => {
     if (!Array.isArray(sessions)) {
@@ -320,18 +311,59 @@ export default function SessionReviewPage() {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Inventory Adjustment Sessions</h1>
-          <p className="text-gray-600">Review stock adjustments made by store managers</p>
-        </div>
-        <div className="flex items-center shrink-0">
-          <ViewModeToggle mode={viewMode} setMode={(m) => { setViewMode(m); localStorage.setItem('view_mode_admin_sessions', m); }} />
+  if (!isStoreReady) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md max-w-sm w-full text-center space-y-4">
+          <Package size={40} className="mx-auto text-brand-orange animate-pulse" />
+          <h2 className="text-lg font-bold text-gray-900">Select a Store</h2>
+          <p className="text-sm text-gray-500">Please select a store to view and review adjustment sessions.</p>
+          <select
+            value={selectedStoreId || ''}
+            onChange={(e) => selectStore(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+          >
+            <option value="" disabled>Select Store...</option>
+            {stores.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
+    );
+  }
+
+  const storeSelector = stores.length > 0 ? (
+    <select
+      value={selectedStoreId || ''}
+      onChange={(e) => selectStore(e.target.value)}
+      className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer w-full sm:w-56"
+    >
+      <option value="" disabled>Select Store...</option>
+      {stores.map((s) => (
+        <option key={s._id} value={s._id}>
+          {s.name}
+        </option>
+      ))}
+    </select>
+  ) : null;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Inventory Adjustment Sessions"
+        subtitle="Review stock adjustments made by store managers"
+        storeSelector={storeSelector}
+        actions={[
+          {
+            label: viewMode === 'grid' ? 'Table View' : 'Grid View',
+            icon: viewMode === 'grid' ? List : LayoutGrid,
+            onClick: () => setViewMode(viewMode === 'grid' ? 'table' : 'grid'),
+          }
+        ]}
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -379,32 +411,16 @@ export default function SessionReviewPage() {
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4">
         <div className="flex flex-wrap gap-4">
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+          <div className="w-full sm:w-64">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Status</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
             >
               <option value="all">All Sessions</option>
               <option value="pending">Pending Review</option>
               <option value="reviewed">Reviewed</option>
-            </select>
-          </div>
-
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Store</label>
-            <select
-              value={storeFilter}
-              onChange={(e) => setStoreFilter(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-            >
-              <option value="all">All Stores</option>
-              {stores.map((store) => (
-                <option key={store._id} value={store._id}>
-                  {store.name}
-                </option>
-              ))}
             </select>
           </div>
         </div>
