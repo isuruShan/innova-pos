@@ -67,11 +67,18 @@ function isPaidAddonEffective(tenantOrPaidAddons, entitlementKey) {
 
   const row = paidAddons?.[entitlementKey];
   if (!row?.active) return false;
-  
-  // If in trial period, addon is effective
-  if (isInTrialPeriod(row)) return true;
-  
-  // Check paid subscription validity
+
+  // If a trial was activated
+  if (row.trialActivatedAt) {
+    const inTrial = isInTrialPeriod(row);
+    if (inTrial) return true;
+
+    // If trial is over, they must have a valid paid subscription period
+    if (!row.periodEndsAt) return false;
+    return new Date() < new Date(row.periodEndsAt);
+  }
+
+  // If direct subscription (no trial)
   if (!row.periodEndsAt) return true;
   return new Date() < new Date(row.periodEndsAt);
 }

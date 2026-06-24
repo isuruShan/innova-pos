@@ -201,6 +201,7 @@ export default function MerchantAddonsPage() {
     mutationFn: (orderId) =>
       api.post('/subscriptions/checkout/paypal/capture', { orderId }).then((r) => r.data),
     onSuccess: (capData) => {
+      queryClient.invalidateQueries({ queryKey: ['tenant-paid-addons'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
       queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
@@ -219,6 +220,7 @@ export default function MerchantAddonsPage() {
   const addonUploadMutation = useMutation({
     mutationFn: (fd) => api.post('/subscriptions/receipts', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenant-paid-addons'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
       queryClient.invalidateQueries({ queryKey: ['merchant-receipts'] });
@@ -235,6 +237,7 @@ export default function MerchantAddonsPage() {
   const unsubscribeMutation = useMutation({
     mutationFn: (code) => api.post(`/paid-addons/${encodeURIComponent(code)}/unsubscribe`).then((r) => r.data),
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['tenant-paid-addons'] });
       queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
@@ -253,6 +256,7 @@ export default function MerchantAddonsPage() {
   const startTrialMutation = useMutation({
     mutationFn: (code) => api.post(`/paid-addons/${encodeURIComponent(code)}/start-trial`).then((r) => r.data),
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['tenant-paid-addons'] });
       queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
@@ -269,6 +273,7 @@ export default function MerchantAddonsPage() {
   const activateFreeTrialMutation = useMutation({
     mutationFn: (code) => api.post(`/paid-addons/${encodeURIComponent(code)}/activate-free-trial`).then((r) => r.data),
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['tenant-paid-addons'] });
       queryClient.invalidateQueries({ queryKey: ['paid-addons-merchant-catalog'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
       queryClient.invalidateQueries({ queryKey: ['my-subscription-breakdown'] });
