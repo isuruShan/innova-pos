@@ -89,7 +89,25 @@ router.get(
           name: { $first: '$items.name' },
           category: { $first: { $ifNull: ['$items.category', 'Uncategorized'] } },
           qty: { $sum: '$items.qty' },
-          revenue: { $sum: { $multiply: ['$items.price', '$items.qty'] } },
+          revenue: {
+            $sum: {
+              $multiply: [
+                {
+                  $add: [
+                    '$items.price',
+                    {
+                      $reduce: {
+                        input: { $ifNull: ['$items.modifiers', []] },
+                        initialValue: 0,
+                        in: { $add: ['$$value', { $multiply: ['$$this.price', { $ifNull: ['$$this.qty', 1] }] }] }
+                      }
+                    }
+                  ]
+                },
+                '$items.qty'
+              ]
+            }
+          },
         },
       });
 
@@ -577,7 +595,15 @@ router.get(
       // 2. Aggregate quantity sold and revenue per menu item + variant
       const soldMap = {};
       orders.forEach(order => {
-        (order.items || []).forEach(item => {
+        const orderItems = order.items || [];
+        const orderSubtotal = orderItems.reduce((sum, i) => {
+          const modifiersSum = (i.modifiers || []).reduce((s, m) => s + m.price * (m.qty || 1), 0);
+          return sum + (i.price + modifiersSum) * i.qty;
+        }, 0);
+        const orderDiscount = order.discountTotal || 0;
+        const orderCommission = order.commissionAmount || 0;
+
+        orderItems.forEach(item => {
           if (!item.menuItem) return;
           const key = `${item.menuItem}_${item.variantId || 'base'}`;
           if (!soldMap[key]) {
@@ -587,11 +613,27 @@ router.get(
               itemName: item.name + (item.variantName ? ` (${item.variantName})` : ''),
               category: item.category || 'Other',
               quantitySold: 0,
-              totalRevenue: 0
+              totalRevenue: 0,
+              totalDiscount: 0,
+              totalCommission: 0,
             };
           }
+          const modifiersSum = (item.modifiers || []).reduce((s, m) => s + m.price * (m.qty || 1), 0);
+          const lineUnitPrice = item.price + modifiersSum;
+          const itemRevenue = lineUnitPrice * item.qty;
           soldMap[key].quantitySold += item.qty;
-          soldMap[key].totalRevenue += item.price * item.qty;
+          soldMap[key].totalRevenue += itemRevenue;
+
+          // Distribute order-level discount + commission proportionally by item's revenue share
+          if (orderSubtotal > 0) {
+            const share = itemRevenue / orderSubtotal;
+            if (orderDiscount > 0) {
+              soldMap[key].totalDiscount += orderDiscount * share;
+            }
+            if (orderCommission > 0) {
+              soldMap[key].totalCommission += orderCommission * share;
+            }
+          }
         });
       });
 

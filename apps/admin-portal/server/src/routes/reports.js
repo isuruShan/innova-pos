@@ -190,8 +190,10 @@ router.get('/sales', protect, authorize('manager', 'merchant_admin', 'superadmin
     orders.forEach((o) => {
       o.items.forEach((i) => {
         if (!itemSales[i.name]) itemSales[i.name] = { name: i.name, qty: 0, revenue: 0 };
+        const modifiersSum = (i.modifiers || []).reduce((sum, m) => sum + m.price * (m.qty || 1), 0);
+        const lineUnitPrice = i.price + modifiersSum;
         itemSales[i.name].qty += i.qty;
-        itemSales[i.name].revenue += i.price * i.qty;
+        itemSales[i.name].revenue += lineUnitPrice * i.qty;
       });
     });
 

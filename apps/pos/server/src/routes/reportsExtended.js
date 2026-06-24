@@ -89,7 +89,25 @@ router.get(
           name: { $first: '$items.name' },
           category: { $first: { $ifNull: ['$items.category', 'Uncategorized'] } },
           qty: { $sum: '$items.qty' },
-          revenue: { $sum: { $multiply: ['$items.price', '$items.qty'] } },
+          revenue: {
+            $sum: {
+              $multiply: [
+                {
+                  $add: [
+                    '$items.price',
+                    {
+                      $reduce: {
+                        input: { $ifNull: ['$items.modifiers', []] },
+                        initialValue: 0,
+                        in: { $add: ['$$value', { $multiply: ['$$this.price', { $ifNull: ['$$this.qty', 1] }] }] }
+                      }
+                    }
+                  ]
+                },
+                '$items.qty'
+              ]
+            }
+          },
         },
       });
 
@@ -578,7 +596,10 @@ router.get(
       const soldMap = {};
       orders.forEach(order => {
         const orderItems = order.items || [];
-        const orderSubtotal = orderItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
+        const orderSubtotal = orderItems.reduce((sum, i) => {
+          const modifiersSum = (i.modifiers || []).reduce((s, m) => s + m.price * (m.qty || 1), 0);
+          return sum + (i.price + modifiersSum) * i.qty;
+        }, 0);
         const orderDiscount = order.discountTotal || 0;
         const orderCommission = order.commissionAmount || 0;
 
@@ -597,7 +618,9 @@ router.get(
               totalCommission: 0,
             };
           }
-          const itemRevenue = item.price * item.qty;
+          const modifiersSum = (item.modifiers || []).reduce((s, m) => s + m.price * (m.qty || 1), 0);
+          const lineUnitPrice = item.price + modifiersSum;
+          const itemRevenue = lineUnitPrice * item.qty;
           soldMap[key].quantitySold += item.qty;
           soldMap[key].totalRevenue += itemRevenue;
 

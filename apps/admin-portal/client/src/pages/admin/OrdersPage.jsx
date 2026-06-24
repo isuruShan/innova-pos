@@ -165,6 +165,7 @@ export default function OrdersPage() {
         'Status',
         'Item Name',
         'Variant Name',
+        'Selected Modifiers',
         'Quantity',
         'Unit Price',
         'Gross Revenue',
@@ -177,14 +178,19 @@ export default function OrdersPage() {
       const rows = [];
       orders.forEach(o => {
         const orderItems = o.items || [];
-        const orderSubtotal = orderItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
+        const orderSubtotal = orderItems.reduce((sum, i) => {
+          const modifiersSum = (i.modifiers || []).reduce((s, m) => s + m.price * (m.qty || 1), 0);
+          return sum + (i.price + modifiersSum) * i.qty;
+        }, 0);
         const orderDiscount = o.discountTotal || 0;
         const orderTax = o.taxAmount || 0;
         const orderServiceFee = o.serviceFeeAmount || 0;
         const orderCommission = o.commissionAmount || 0;
 
         orderItems.forEach(i => {
-          const itemRevenue = i.price * i.qty;
+          const modifiersSum = (i.modifiers || []).reduce((s, m) => s + m.price * (m.qty || 1), 0);
+          const lineUnitPrice = i.price + modifiersSum;
+          const itemRevenue = lineUnitPrice * i.qty;
           const share = orderSubtotal > 0 ? (itemRevenue / orderSubtotal) : 0;
 
           const itemDiscount = orderDiscount * share;
@@ -193,6 +199,7 @@ export default function OrdersPage() {
           const itemCommission = orderCommission * share;
 
           const itemNetTotal = itemRevenue - itemDiscount - itemCommission + itemTax + itemServiceFee;
+          const modifiersText = (i.modifiers || []).map(m => `${m.name} (+Rs.${Number(m.price).toFixed(2)})`).join(', ') || '—';
 
           rows.push([
             `#${o.orderNumber}`,
@@ -203,8 +210,9 @@ export default function OrdersPage() {
             o.status,
             i.name,
             i.variantName || '—',
+            modifiersText,
             i.qty,
-            Number(i.price || 0).toFixed(2),
+            Number(lineUnitPrice || 0).toFixed(2),
             Number(itemRevenue).toFixed(2),
             Number(itemDiscount).toFixed(2),
             Number(itemTax).toFixed(2),
@@ -622,22 +630,35 @@ export default function OrdersPage() {
               <div className="space-y-2">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Items summary</p>
                 <div className="border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden bg-gray-50/30">
-                  {(selectedOrder.items || []).map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-start p-3 text-xs">
-                      <div>
-                        <p className="font-semibold text-gray-900">{item.name}</p>
-                        {item.variantName && (
-                          <p className="text-[10px] text-amber-600 font-medium mt-0.5">↳ {item.variantName}</p>
-                        )}
-                        <p className="text-gray-500 text-[10px] mt-0.5">
-                          Rs. {Number(item.price).toFixed(2)} each · qty {item.qty}
-                        </p>
+                  {(selectedOrder.items || []).map((item, idx) => {
+                    const modifiersSum = (item.modifiers || []).reduce((sum, m) => sum + m.price * (m.qty || 1), 0);
+                    const lineUnitPrice = item.price + modifiersSum;
+                    return (
+                      <div key={idx} className="flex justify-between items-start p-3 text-xs">
+                        <div>
+                          <p className="font-semibold text-gray-900">{item.name}</p>
+                          {item.variantName && (
+                            <p className="text-[10px] text-amber-600 font-medium mt-0.5">↳ {item.variantName}</p>
+                          )}
+                          {item.modifiers && item.modifiers.length > 0 && (
+                            <div className="mt-0.5 ml-2 pl-2 border-l border-gray-200 space-y-0.5">
+                              {item.modifiers.map((mod, mIdx) => (
+                                <p key={mIdx} className="text-[10px] text-gray-400 font-medium">
+                                  ↳ + {mod.name} (+Rs.{Number(mod.price).toFixed(2)})
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                          <p className="text-gray-500 text-[10px] mt-0.5">
+                            Rs. {Number(lineUnitPrice).toFixed(2)} each · qty {item.qty}
+                          </p>
+                        </div>
+                        <span className="font-bold text-gray-800">
+                          Rs. {(lineUnitPrice * item.qty).toFixed(2)}
+                        </span>
                       </div>
-                      <span className="font-bold text-gray-800">
-                        Rs. {(item.price * item.qty).toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
