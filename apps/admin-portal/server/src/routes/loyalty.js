@@ -157,28 +157,34 @@ router.post('/retention/:customerId/resolve', authorize('merchant_admin'), async
     const tiers = await LoyaltyTier.find({ tenantId: req.tenantId }).sort({ level: 1 }).lean();
     const low = lowestTier(tiers);
 
-    const set = {
-      retentionStatus: 'ok',
-      lastLoyaltyActivityAt: new Date(),
-    };
+    const customer = await Customer.findOne({ _id: req.params.customerId, tenantId: req.tenantId, retentionStatus: 'pending_review' });
+    if (!customer) return res.status(404).json({ message: 'Customer not pending review or not found' });
 
+    const oldPts = customer.lifetimePoints ?? 0;
     if (pointsAction === 'reset') {
-      set.lifetimePoints = 0;
-      set.loyaltyTierOverrideLevel = null;
+      customer.lifetimePoints = 0;
+      customer.loyaltyTierOverrideLevel = null;
+      customer.pointsHistory.push({
+        type: 'adjustment',
+        points: -oldPts,
+        beforePoints: oldPts,
+        afterPoints: 0,
+        note: 'Loyalty points reset due to inactivity (retention policy)',
+        changedBy: req.user.id,
+        changedByName: req.user.name || req.user.email || 'System/Admin',
+        createdAt: new Date()
+      });
     } else if (tierAction === 'force_bottom' && low) {
-      set.loyaltyTierOverrideLevel = low.level;
+      customer.loyaltyTierOverrideLevel = low.level;
     } else {
-      set.loyaltyTierOverrideLevel = null;
+      customer.loyaltyTierOverrideLevel = null;
     }
 
-    const doc = await Customer.findOneAndUpdate(
-      { _id: req.params.customerId, tenantId: req.tenantId, retentionStatus: 'pending_review' },
-      { $set: set },
-      { new: true, runValidators: true },
-    );
-    if (!doc) return res.status(404).json({ message: 'Customer not pending review or not found' });
+    customer.retentionStatus = 'ok';
+    customer.lastLoyaltyActivityAt = new Date();
+    await customer.save();
 
-    res.json(doc);
+    res.json(customer);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }

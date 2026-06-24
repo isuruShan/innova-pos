@@ -192,7 +192,7 @@ function DayPartChart({ data }) {
 }
 
 export default function TableAnalyticsPage() {
-  const { selectedStoreId, isStoreReady } = useStoreContext();
+  const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
 
   const today = new Date();
   const [dateRange, setDateRange] = useState({
@@ -206,7 +206,9 @@ export default function TableAnalyticsPage() {
     queryKey: ['table-analytics-summary', selectedStoreId, dateRange],
     queryFn: () =>
       api
-        .get(`/table-analytics/summary?startDate=${dateRange.start}&endDate=${dateRange.end}`)
+        .get(`/table-analytics/summary?startDate=${dateRange.start}&endDate=${dateRange.end}`, {
+          headers: { 'x-store-id': selectedStoreId },
+        })
         .then((r) => r.data),
     enabled: isStoreReady,
   });
@@ -216,7 +218,9 @@ export default function TableAnalyticsPage() {
     queryKey: ['table-analytics-by-table', selectedStoreId, dateRange],
     queryFn: () =>
       api
-        .get(`/table-analytics/by-table?startDate=${dateRange.start}&endDate=${dateRange.end}`)
+        .get(`/table-analytics/by-table?startDate=${dateRange.start}&endDate=${dateRange.end}`, {
+          headers: { 'x-store-id': selectedStoreId },
+        })
         .then((r) => r.data),
     enabled: isStoreReady,
   });
@@ -227,7 +231,9 @@ export default function TableAnalyticsPage() {
     queryKey: ['table-analytics-hourly', selectedStoreId, dateRange],
     queryFn: () =>
       api
-        .get(`/table-analytics/by-hour?startDate=${dateRange.start}&endDate=${dateRange.end}`)
+        .get(`/table-analytics/by-hour?startDate=${dateRange.start}&endDate=${dateRange.end}`, {
+          headers: { 'x-store-id': selectedStoreId },
+        })
         .then((r) => r.data),
     enabled: isStoreReady,
   });
@@ -238,7 +244,9 @@ export default function TableAnalyticsPage() {
     queryKey: ['table-analytics-day-parts', selectedStoreId, dateRange],
     queryFn: () =>
       api
-        .get(`/table-analytics/by-day-part?startDate=${dateRange.start}&endDate=${dateRange.end}`)
+        .get(`/table-analytics/by-day-part?startDate=${dateRange.start}&endDate=${dateRange.end}`, {
+          headers: { 'x-store-id': selectedStoreId },
+        })
         .then((r) => r.data),
     enabled: isStoreReady,
   });
@@ -278,9 +286,23 @@ export default function TableAnalyticsPage() {
 
   if (!isStoreReady) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50">
-                <div className="flex-1 flex items-center justify-center">
-          <p className="text-amber-300">Select a store in the header first.</p>
+      <div className="min-h-screen flex flex-col bg-gray-50 items-center justify-center p-4">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md max-w-sm w-full text-center space-y-4">
+          <BarChart3 size={40} className="mx-auto text-brand-orange animate-pulse" />
+          <h2 className="text-lg font-bold text-gray-900">Select a Store</h2>
+          <p className="text-sm text-gray-500">Please select a store to view table analytics.</p>
+          <select
+            value={selectedStoreId || ''}
+            onChange={(e) => selectStore(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+          >
+            <option value="" disabled>Select Store...</option>
+            {stores.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     );
@@ -291,9 +313,26 @@ export default function TableAnalyticsPage() {
       
       <div className="flex-1 flex flex-col p-4 gap-4 overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center gap-3">
-          <BarChart3 size={24} className="text-brand-orange" />
-          <h1 className="text-xl font-bold text-gray-900">Table Analytics</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <BarChart3 size={24} className="text-brand-orange" />
+            <h1 className="text-xl font-bold text-gray-900">Table Analytics</h1>
+          </div>
+          {stores.length > 0 && (
+            <div className="w-56">
+              <select
+                value={selectedStoreId || ''}
+                onChange={(e) => selectStore(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+              >
+                {stores.map((s) => (
+                  <option key={s._id} value={s._id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Date Range Filter */}

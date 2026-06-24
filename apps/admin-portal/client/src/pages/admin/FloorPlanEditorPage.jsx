@@ -470,21 +470,21 @@ export default function FloorPlanEditorPage() {
   // Fetch floor plan
   const { data: floorPlan, isLoading } = useQuery({
     queryKey: ['floor-plan', selectedStoreId],
-    queryFn: () => api.get('/floor-plan').then((r) => r.data),
+    queryFn: () => api.get('/floor-plan', { headers: { 'x-store-id': selectedStoreId } }).then((r) => r.data),
     enabled: isStoreReady,
   });
 
   // Fetch tables for list
   const { data: tables = [] } = useQuery({
     queryKey: ['pos-tables', selectedStoreId],
-    queryFn: () => api.get('/tables').then((r) => r.data),
+    queryFn: () => api.get('/tables', { headers: { 'x-store-id': selectedStoreId } }).then((r) => r.data),
     enabled: isStoreReady,
   });
 
   // Fetch real-time status
   const { data: tableStatus = {} } = useQuery({
     queryKey: ['floor-plan-status', selectedStoreId],
-    queryFn: () => api.get('/floor-plan/status').then((r) => r.data),
+    queryFn: () => api.get('/floor-plan/status', { headers: { 'x-store-id': selectedStoreId } }).then((r) => r.data),
     enabled: isStoreReady,
     refetchInterval: 10000,
   });
@@ -609,7 +609,7 @@ export default function FloorPlanEditorPage() {
 
   // Save mutation
   const saveMutation = useMutation({
-    mutationFn: (payload) => api.put('/floor-plan', payload),
+    mutationFn: (payload) => api.put('/floor-plan', payload, { headers: { 'x-store-id': selectedStoreId } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['floor-plan'] });
       setIsDirty(false);
@@ -625,7 +625,7 @@ export default function FloorPlanEditorPage() {
 
   // Create new table mutation
   const createTableMutation = useMutation({
-    mutationFn: (tableData) => api.post('/tables', tableData),
+    mutationFn: (tableData) => api.post('/tables', tableData, { headers: { 'x-store-id': selectedStoreId } }),
     onSuccess: (response, variables) => {
       const newTable = response.data;
       qc.invalidateQueries({ queryKey: ['pos-tables'] });
@@ -666,7 +666,7 @@ export default function FloorPlanEditorPage() {
 
   // Delete table permanently mutation
   const deleteTableMutation = useMutation({
-    mutationFn: (tableId) => api.delete(`/tables/${tableId}`),
+    mutationFn: (tableId) => api.delete(`/tables/${tableId}`, { headers: { 'x-store-id': selectedStoreId } }),
     onSuccess: (response, tableId) => {
       qc.invalidateQueries({ queryKey: ['pos-tables'] });
       
@@ -693,7 +693,7 @@ export default function FloorPlanEditorPage() {
   // Bulk delete tables mutation
   const bulkDeleteMutation = useMutation({
     mutationFn: async (tableIds) => {
-      await Promise.all(tableIds.map(id => api.delete(`/tables/${id}`)));
+      await Promise.all(tableIds.map(id => api.delete(`/tables/${id}`, { headers: { 'x-store-id': selectedStoreId } })));
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['pos-tables'] });
@@ -1137,9 +1137,23 @@ export default function FloorPlanEditorPage() {
 
   if (!isStoreReady) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50">
-                <div className="flex-1 flex items-center justify-center">
-          <p className="text-amber-300">Select a store in the header first.</p>
+      <div className="min-h-screen flex flex-col bg-gray-50 items-center justify-center p-4">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md max-w-sm w-full text-center space-y-4">
+          <Grid3X3 size={40} className="mx-auto text-brand-orange animate-pulse" />
+          <h2 className="text-lg font-bold text-gray-900">Select a Store</h2>
+          <p className="text-sm text-gray-500">Please select a store to edit the floor plan.</p>
+          <select
+            value={selectedStoreId || ''}
+            onChange={(e) => selectStore(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+          >
+            <option value="" disabled>Select Store...</option>
+            {stores.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     );
@@ -1569,18 +1583,16 @@ export default function FloorPlanEditorPage() {
 
         {/* Sidebar */}
         <div className="w-full lg:w-72 flex flex-col gap-4 overflow-y-auto shrink-0 min-h-0">
-          {/* Multi-Select Actions */}
-          {selectedTables.length > 0 && (
-            <div className="bg-white border border-amber-500/60 rounded-xl p-4 space-y-3">
-              <h3 className="font-semibold text-gray-900 text-sm">
-                {selectedTables.length} Table{selectedTables.length > 1 ? 's' : ''} Selected
-              </h3>
-              <div className="flex gap-2">
-            {stores.length > 0 && (
+          {/* Store Switcher */}
+          {stores.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500">
+                Store
+              </label>
               <select
                 value={selectedStoreId || ''}
                 onChange={(e) => selectStore(e.target.value)}
-                className="bg-white border border-gray-300 text-gray-700 rounded-lg px-2.5 py-1 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
               >
                 {stores.map((s) => (
                   <option key={s._id} value={s._id}>
@@ -1588,10 +1600,18 @@ export default function FloorPlanEditorPage() {
                   </option>
                 ))}
               </select>
-            )}
+            </div>
+          )}
+          {/* Multi-Select Actions */}
+          {selectedTables.length > 0 && (
+            <div className="bg-white border border-amber-500/60 rounded-xl p-4 space-y-3">
+              <h3 className="font-semibold text-gray-900 text-sm">
+                {selectedTables.length} Table{selectedTables.length > 1 ? 's' : ''} Selected
+              </h3>
+              <div className="flex gap-2">
                 <button
                   onClick={() => setSelectedTables([])}
-                  className="flex-1 px-3 py-2 rounded-lg bg-slate-700 text-slate-350 hover:bg-slate-600 text-xs"
+                  className="flex-1 px-3 py-2 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 text-xs"
                 >
                   Deselect All
                 </button>
@@ -2195,7 +2215,7 @@ export default function FloorPlanEditorPage() {
         tenantId={user?.tenantId}
         storeId={selectedStoreId}
         onSave={async (data) => {
-          await api.put(`/tables/${editingTableId}`, data);
+          await api.put(`/tables/${editingTableId}`, data, { headers: { 'x-store-id': selectedStoreId } });
           qc.invalidateQueries({ queryKey: ['pos-tables'] });
           qc.invalidateQueries({ queryKey: ['floor-plan'] });
           if (localPlan && localPlan.tables) {

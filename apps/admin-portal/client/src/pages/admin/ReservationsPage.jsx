@@ -180,6 +180,43 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
   const [isLoadingTables, setIsLoadingTables] = useState(false);
   const [tablesError, setTablesError] = useState(null);
 
+  const [custSearch, setCustSearch] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+
+  useEffect(() => {
+    if (custSearch.trim().length > 1) {
+      const delay = setTimeout(async () => {
+        try {
+          const res = await api.get('/customers', {
+            params: { search: custSearch.trim(), limit: 5 }
+          });
+          const items = Array.isArray(res.data) 
+            ? res.data 
+            : (res.data?.items || res.data?.docs || []);
+          setSearchResults(items);
+        } catch (err) {
+          console.error(err);
+        }
+      }, 300);
+      return () => clearTimeout(delay);
+    } else {
+      setSearchResults([]);
+    }
+  }, [custSearch]);
+
+  const handleSelectCustomer = (c) => {
+    const parsed = parsePhone(c.mobile);
+    setCountryCode(parsed.code);
+    setPhoneNo(formatPhoneNumber(parsed.number, parsed.code));
+    setForm((f) => ({
+      ...f,
+      guestName: c.name || '',
+      guestEmail: c.email || '',
+    }));
+    setCustSearch('');
+    setSearchResults([]);
+  };
+
   useEffect(() => {
     if (isOpen) {
       setForm({
@@ -329,6 +366,44 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {step === 1 && (
             <div className="space-y-4">
+              <div className="relative">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Search Existing Customer</label>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={custSearch}
+                    onChange={(e) => setCustSearch(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg pl-9 pr-8 py-2 bg-white text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                    placeholder="Search by name, email, or phone..."
+                  />
+                  {custSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setCustSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-655"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                {searchResults.length > 0 && (
+                  <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-[60] max-h-48 overflow-y-auto divide-y divide-gray-100">
+                    {searchResults.map((c) => (
+                      <button
+                        key={c._id}
+                        type="button"
+                        onClick={() => handleSelectCustomer(c)}
+                        className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex flex-col gap-0.5 text-xs text-gray-700"
+                      >
+                        <span className="font-semibold text-gray-900 text-sm">{c.name}</span>
+                        <span className="text-[10px] text-gray-450">{c.mobile || 'No Phone'} • {c.email || 'No Email'}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Guest Name *</label>
                 <input
@@ -441,7 +516,7 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
                 {isLoadingTables ? (
                   <div className="text-gray-550 text-sm py-2">Loading eligible tables...</div>
                 ) : tablesError ? (
-                  <div className="text-red-655 text-sm py-2">Error: {tablesError}</div>
+                  <div className="text-red-600 text-sm py-2">Error: {tablesError}</div>
                 ) : (
                   <select
                     value={form.tableId}
@@ -562,6 +637,43 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, isPending, er
   const [eligibleTables, setEligibleTables] = useState([]);
   const [isLoadingTables, setIsLoadingTables] = useState(false);
   const [tablesError, setTablesError] = useState(null);
+
+  const [custSearch, setCustSearch] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+
+  useEffect(() => {
+    if (custSearch.trim().length > 1) {
+      const delay = setTimeout(async () => {
+        try {
+          const res = await api.get('/customers', {
+            params: { search: custSearch.trim(), limit: 5 }
+          });
+          const items = Array.isArray(res.data) 
+            ? res.data 
+            : (res.data?.items || res.data?.docs || []);
+          setSearchResults(items);
+        } catch (err) {
+          console.error(err);
+        }
+      }, 300);
+      return () => clearTimeout(delay);
+    } else {
+      setSearchResults([]);
+    }
+  }, [custSearch]);
+
+  const handleSelectCustomer = (c) => {
+    const parsed = parsePhone(c.mobile);
+    setCountryCode(parsed.code);
+    setPhoneNo(formatPhoneNumber(parsed.number, parsed.code));
+    setForm((f) => ({
+      ...f,
+      guestName: c.name || '',
+      guestEmail: c.email || '',
+    }));
+    setCustSearch('');
+    setSearchResults([]);
+  };
 
   useEffect(() => {
     if (isOpen && reservation) {
@@ -720,6 +832,44 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, isPending, er
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {step === 1 && (
             <div className="space-y-4">
+              <div className="relative">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Search Existing Customer</label>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={custSearch}
+                    onChange={(e) => setCustSearch(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg pl-9 pr-8 py-2 bg-white text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                    placeholder="Search by name, email, or phone..."
+                  />
+                  {custSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setCustSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-655"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                {searchResults.length > 0 && (
+                  <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-[60] max-h-48 overflow-y-auto divide-y divide-gray-100">
+                    {searchResults.map((c) => (
+                      <button
+                        key={c._id}
+                        type="button"
+                        onClick={() => handleSelectCustomer(c)}
+                        className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex flex-col gap-0.5 text-xs text-gray-700"
+                      >
+                        <span className="font-semibold text-gray-900 text-sm">{c.name}</span>
+                        <span className="text-[10px] text-gray-450">{c.mobile || 'No Phone'} • {c.email || 'No Email'}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Guest Name *</label>
                 <input
@@ -832,7 +982,7 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, isPending, er
                 {isLoadingTables ? (
                   <div className="text-gray-550 text-sm py-2">Loading eligible tables...</div>
                 ) : tablesError ? (
-                  <div className="text-red-655 text-sm py-2">Error: {tablesError}</div>
+                  <div className="text-red-600 text-sm py-2">Error: {tablesError}</div>
                 ) : (
                   <select
                     value={form.tableId}

@@ -239,21 +239,21 @@ export default function FloorPlanViewPage() {
   // Fetch floor plan
   const { data: floorPlan, isLoading } = useQuery({
     queryKey: ['floor-plan', selectedStoreId],
-    queryFn: () => api.get('/floor-plan').then((r) => r.data),
+    queryFn: () => api.get('/floor-plan', { headers: { 'x-store-id': selectedStoreId } }).then((r) => r.data),
     enabled: isStoreReady,
   });
 
   // Fetch table list for labels
   const { data: tables = [] } = useQuery({
     queryKey: ['pos-tables', selectedStoreId],
-    queryFn: () => api.get('/tables').then((r) => r.data),
+    queryFn: () => api.get('/tables', { headers: { 'x-store-id': selectedStoreId } }).then((r) => r.data),
     enabled: isStoreReady,
   });
 
   // Fetch real-time status (polls every 10s)
   const { data: tableStatus = {} } = useQuery({
     queryKey: ['floor-plan-status', selectedStoreId],
-    queryFn: () => api.get('/floor-plan/status').then((r) => r.data),
+    queryFn: () => api.get('/floor-plan/status', { headers: { 'x-store-id': selectedStoreId } }).then((r) => r.data),
     enabled: isStoreReady,
     refetchInterval: 10000,
   });
@@ -287,9 +287,23 @@ export default function FloorPlanViewPage() {
 
   if (!isStoreReady) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50">
-                <div className="flex-1 flex items-center justify-center">
-          <p className="text-amber-300">Select a store in the header first.</p>
+      <div className="min-h-screen flex flex-col bg-gray-50 items-center justify-center p-4">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md max-w-sm w-full text-center space-y-4">
+          <Utensils size={40} className="mx-auto text-brand-orange animate-pulse" />
+          <h2 className="text-lg font-bold text-gray-900">Select a Store</h2>
+          <p className="text-sm text-gray-500">Please select a store to view the floor plan.</p>
+          <select
+            value={selectedStoreId || ''}
+            onChange={(e) => selectStore(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+          >
+            <option value="" disabled>Select Store...</option>
+            {stores.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     );
@@ -301,10 +315,25 @@ export default function FloorPlanViewPage() {
       <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden min-h-0">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Utensils size={24} className="text-brand-orange" />
-            Floor Plan
-          </h1>
+            <h1 className="text-xl font-bold text-gray-900">Floor Plan</h1>
+            {stores.length > 0 && (
+              <div className="w-56 ml-4">
+                <select
+                  value={selectedStoreId || ''}
+                  onChange={(e) => selectStore(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+                >
+                  {stores.map((s) => (
+                    <option key={s._id} value={s._id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowTableList(!showTableList)}
@@ -500,7 +529,7 @@ export default function FloorPlanViewPage() {
         tenantId={user?.tenantId}
         storeId={selectedStoreId}
         onSave={async (data) => {
-          await api.put(`/tables/${editingTableId}`, data);
+          await api.put(`/tables/${editingTableId}`, data, { headers: { 'x-store-id': selectedStoreId } });
           qc.invalidateQueries({ queryKey: ['pos-tables'] });
           qc.invalidateQueries({ queryKey: ['floor-plan'] });
           setEditingTableId(null);

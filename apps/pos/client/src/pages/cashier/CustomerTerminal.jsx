@@ -407,8 +407,8 @@ export default function CustomerTerminal() {
       {/* Main content grid */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
         {/* Left Side: Order items */}
-        <div className="lg:col-span-7 flex flex-col border-r border-[var(--pos-grid-line)] p-6 overflow-y-auto bg-[var(--pos-surface-inset)]/30">
-          <div className="max-w-xl mx-auto w-full flex-1 flex flex-col bg-[var(--pos-panel)] border border-[var(--pos-grid-line)] rounded-3xl shadow-2xl p-6 relative overflow-hidden">
+        <div className="lg:col-span-7 flex flex-col border-r border-[var(--pos-grid-line)] p-6 overflow-y-auto lg:overflow-hidden lg:h-full bg-[var(--pos-surface-inset)]/30">
+          <div className="max-w-xl mx-auto w-full flex-1 flex flex-col bg-[var(--pos-panel)] border border-[var(--pos-grid-line)] rounded-3xl shadow-2xl p-6 relative overflow-hidden max-h-full">
             {/* Glowing top line */}
             <div 
               className="absolute top-0 inset-x-0 h-1.5"

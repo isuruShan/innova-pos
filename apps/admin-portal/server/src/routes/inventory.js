@@ -21,7 +21,7 @@ router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), t
     }
 
     // Category filtering
-    if (categoryId) {
+    if (categoryId && categoryId !== 'null' && categoryId !== 'undefined') {
       if (categoryId === 'uncategorized') {
         filter.category = null;
       } else {

@@ -182,6 +182,43 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
   const [isLoadingTables, setIsLoadingTables] = useState(false);
   const [tablesError, setTablesError] = useState(null);
 
+  const [custSearch, setCustSearch] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+
+  useEffect(() => {
+    if (custSearch.trim().length > 1) {
+      const delay = setTimeout(async () => {
+        try {
+          const res = await api.get('/customers', {
+            params: { search: custSearch.trim(), limit: 5 }
+          });
+          const items = Array.isArray(res.data) 
+            ? res.data 
+            : (res.data?.items || res.data?.docs || []);
+          setSearchResults(items);
+        } catch (err) {
+          console.error(err);
+        }
+      }, 300);
+      return () => clearTimeout(delay);
+    } else {
+      setSearchResults([]);
+    }
+  }, [custSearch]);
+
+  const handleSelectCustomer = (c) => {
+    const parsed = parsePhone(c.mobile);
+    setCountryCode(parsed.code);
+    setPhoneNo(formatPhoneNumber(parsed.number, parsed.code));
+    setForm((f) => ({
+      ...f,
+      guestName: c.name || '',
+      guestEmail: c.email || '',
+    }));
+    setCustSearch('');
+    setSearchResults([]);
+  };
+
   // Reset form when modal is opened
   useEffect(() => {
     if (isOpen) {
@@ -332,6 +369,44 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {step === 1 && (
             <div className="space-y-4">
+              <div className="relative">
+                <label className="text-sm text-slate-400 block mb-1">Search Existing Customer</label>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-505" />
+                  <input
+                    type="text"
+                    value={custSearch}
+                    onChange={(e) => setCustSearch(e.target.value)}
+                    className="w-full border border-slate-600 rounded-lg pl-9 pr-8 py-2 bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] text-sm focus:border-amber-500 focus:outline-none"
+                    placeholder="Search by name, email, or phone..."
+                  />
+                  {custSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setCustSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-505 hover:text-slate-300"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                {searchResults.length > 0 && (
+                  <div className="absolute left-0 right-0 mt-1 bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-xl z-[60] max-h-48 overflow-y-auto divide-y divide-slate-800">
+                    {searchResults.map((c) => (
+                      <button
+                        key={c._id}
+                        type="button"
+                        onClick={() => handleSelectCustomer(c)}
+                        className="w-full text-left px-4 py-2.5 hover:bg-slate-800/30 flex flex-col gap-0.5 text-xs text-slate-300"
+                      >
+                        <span className="font-semibold text-[var(--pos-text-primary)] text-sm">{c.name}</span>
+                        <span className="text-[10px] text-slate-500">{c.mobile || 'No Phone'} • {c.email || 'No Email'}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="text-sm text-slate-400 block mb-1">Guest Name *</label>
                 <input
@@ -566,6 +641,43 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, onDelete, isP
   const [isLoadingTables, setIsLoadingTables] = useState(false);
   const [tablesError, setTablesError] = useState(null);
 
+  const [custSearch, setCustSearch] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+
+  useEffect(() => {
+    if (custSearch.trim().length > 1) {
+      const delay = setTimeout(async () => {
+        try {
+          const res = await api.get('/customers', {
+            params: { search: custSearch.trim(), limit: 5 }
+          });
+          const items = Array.isArray(res.data) 
+            ? res.data 
+            : (res.data?.items || res.data?.docs || []);
+          setSearchResults(items);
+        } catch (err) {
+          console.error(err);
+        }
+      }, 300);
+      return () => clearTimeout(delay);
+    } else {
+      setSearchResults([]);
+    }
+  }, [custSearch]);
+
+  const handleSelectCustomer = (c) => {
+    const parsed = parsePhone(c.mobile);
+    setCountryCode(parsed.code);
+    setPhoneNo(formatPhoneNumber(parsed.number, parsed.code));
+    setForm((f) => ({
+      ...f,
+      guestName: c.name || '',
+      guestEmail: c.email || '',
+    }));
+    setCustSearch('');
+    setSearchResults([]);
+  };
+
   // Initialize form with reservation data when opened
   useEffect(() => {
     if (isOpen && reservation) {
@@ -726,6 +838,44 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, onDelete, isP
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {step === 1 && (
             <div className="space-y-4">
+              <div className="relative">
+                <label className="text-sm text-slate-400 block mb-1">Search Existing Customer</label>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-505" />
+                  <input
+                    type="text"
+                    value={custSearch}
+                    onChange={(e) => setCustSearch(e.target.value)}
+                    className="w-full border border-slate-600 rounded-lg pl-9 pr-8 py-2 bg-[var(--pos-surface-inset)] text-[var(--pos-text-primary)] text-sm focus:border-amber-500 focus:outline-none"
+                    placeholder="Search by name, email, or phone..."
+                  />
+                  {custSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setCustSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-550 hover:text-slate-350"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                {searchResults.length > 0 && (
+                  <div className="absolute left-0 right-0 mt-1 bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-xl z-[60] max-h-48 overflow-y-auto divide-y divide-slate-800">
+                    {searchResults.map((c) => (
+                      <button
+                        key={c._id}
+                        type="button"
+                        onClick={() => handleSelectCustomer(c)}
+                        className="w-full text-left px-4 py-2.5 hover:bg-slate-800/30 flex flex-col gap-0.5 text-xs text-slate-300"
+                      >
+                        <span className="font-semibold text-[var(--pos-text-primary)] text-sm">{c.name}</span>
+                        <span className="text-[10px] text-slate-500">{c.mobile || 'No Phone'} • {c.email || 'No Email'}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="text-sm text-slate-400 block mb-1">Guest Name *</label>
                 <input

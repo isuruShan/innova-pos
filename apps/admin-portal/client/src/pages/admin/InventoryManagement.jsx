@@ -264,7 +264,7 @@ export default function InventoryManagement() {
         sort,
         order,
         search: searchQuery,
-        categoryId: selectedCategoryId,
+        categoryId: selectedCategoryId || undefined,
         stockStatus: filter
       }
     }).then(r => r.data),
@@ -410,7 +410,7 @@ export default function InventoryManagement() {
           sort,
           order,
           search: searchQuery,
-          categoryId: selectedCategoryId,
+          categoryId: selectedCategoryId || undefined,
           stockStatus: filter
         }
       });

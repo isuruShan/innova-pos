@@ -71,6 +71,18 @@ router.post('/:id/points', protect, authorize('merchant_admin'), tenantScope, re
         updatedBy: req.user.id,
         lastLoyaltyActivityAt: new Date(),
         retentionStatus: 'ok',
+        $push: {
+          pointsHistory: {
+            type: 'adjustment',
+            points: nextPts - oldPts,
+            beforePoints: oldPts,
+            afterPoints: nextPts,
+            note: noteStr || 'Manual adjustment',
+            changedBy: req.user.id,
+            changedByName: req.user.name || req.user.email || 'Admin',
+            createdAt: new Date()
+          }
+        }
       },
       { new: true, runValidators: true },
     );
@@ -101,6 +113,66 @@ router.post('/:id/points', protect, authorize('merchant_admin'), tenantScope, re
     res.json(doc);
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+});
+
+router.get('/:id/points/history', protect, authorize('merchant_admin'), tenantScope, async (req, res) => {
+  try {
+    const customer = await Customer.findOne({ _id: req.params.id, tenantId: req.tenantId }).lean();
+    if (!customer) return res.status(404).json({ message: 'Customer not found' });
+
+    const Order = require('../models/Order');
+    const orders = await Order.find({ customerId: customer._id, tenantId: req.tenantId }).lean();
+
+    const historyMap = new Map();
+
+    for (const order of orders) {
+      if (order.loyaltyPointsEarned && order.loyaltyPointsEarned > 0) {
+        const key = `earn-${order._id}`;
+        historyMap.set(key, {
+          type: 'earn',
+          points: order.loyaltyPointsEarned,
+          note: `Earned from Order #${order.orderNumber || order._id}`,
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          createdAt: order.createdAt
+        });
+      }
+      if (order.loyaltyRedemption && order.loyaltyRedemption.pointsCost > 0) {
+        const key = `redeem-${order._id}`;
+        historyMap.set(key, {
+          type: 'redeem',
+          points: -order.loyaltyRedemption.pointsCost,
+          note: `Redeemed reward: ${order.loyaltyRedemption.name || 'Reward'} on Order #${order.orderNumber || order._id}`,
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          createdAt: order.createdAt
+        });
+      }
+    }
+
+    if (customer.pointsHistory && Array.isArray(customer.pointsHistory)) {
+      for (const h of customer.pointsHistory) {
+        const key = h.orderId ? `${h.type}-${h.orderId}` : `adj-${h._id || h.createdAt}`;
+        historyMap.set(key, {
+          type: h.type,
+          points: h.points,
+          beforePoints: h.beforePoints,
+          afterPoints: h.afterPoints,
+          note: h.note,
+          orderId: h.orderId,
+          orderNumber: h.orderNumber,
+          changedBy: h.changedBy,
+          changedByName: h.changedByName,
+          createdAt: h.createdAt
+        });
+      }
+    }
+
+    const list = Array.from(historyMap.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    res.json(list);
+  } catch (err) {
+    sendRouteError(res, err, { req });
   }
 });
 

@@ -522,7 +522,7 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
               <div className="bg-gray-50/50 border border-gray-200 rounded-2xl p-4 space-y-4">
                 <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
                   <Sparkles size={16} className="text-brand-teal" />
-                  <h3 className="font-semibold text-gray-805 text-xs uppercase tracking-wider">Basic info &amp; scope</h3>
+                  <h3 className="font-semibold text-gray-800 text-xs uppercase tracking-wider">Basic info &amp; scope</h3>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -557,7 +557,7 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
                     </div>
                   ) : (
                     <div className="flex items-end justify-center pb-2">
-                      <span className="text-xs text-gray-450 italic">Applies across all retail outlets.</span>
+                      <span className="text-xs text-gray-500 italic">Applies across all retail outlets.</span>
                     </div>
                   )}
                 </div>
@@ -589,11 +589,11 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
               <div className="bg-gray-50/50 border border-gray-200 rounded-2xl p-4 space-y-4">
                 <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
                   <Coins size={16} className="text-brand-teal" />
-                  <h3 className="font-semibold text-gray-805 text-xs uppercase tracking-wider">Redemption model</h3>
+                  <h3 className="font-semibold text-gray-800 text-xs uppercase tracking-wider">Redemption model</h3>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-gray-550">Redemption type</label>
+                  <label className="block text-xs font-semibold text-gray-600">Redemption type</label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
@@ -607,7 +607,7 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
                       className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition cursor-pointer ${
                         form.redemptionType === 'points'
                           ? 'border-brand-teal bg-teal-50/30 text-gray-900 shadow-sm'
-                          : 'border-gray-200 bg-white text-gray-500 hover:border-gray-305'
+                          : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
                       }`}
                     >
                       <Coins size={20} className={form.redemptionType === 'points' ? 'text-teal-600 mb-1' : 'text-gray-400 mb-1'} />
@@ -627,7 +627,7 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
                       className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition cursor-pointer ${
                         form.redemptionType === 'automatic'
                           ? 'border-brand-teal bg-teal-50/30 text-gray-900 shadow-sm'
-                          : 'border-gray-200 bg-white text-gray-500 hover:border-gray-305'
+                          : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
                       }`}
                     >
                       <Award size={20} className={form.redemptionType === 'automatic' ? 'text-teal-600 mb-1' : 'text-gray-400 mb-1'} />
@@ -663,11 +663,11 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
               <div className="bg-gray-50/50 border border-gray-200 rounded-2xl p-4 space-y-4">
                 <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
                   <Gift size={16} className="text-brand-teal" />
-                  <h3 className="font-semibold text-gray-850 text-xs uppercase tracking-wider">Reward action</h3>
+                  <h3 className="font-semibold text-gray-800 text-xs uppercase tracking-wider">Reward action</h3>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-gray-550">Reward type</label>
+                  <label className="block text-xs font-semibold text-gray-600">Reward type</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {[
                       {
@@ -698,7 +698,7 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
                         className={`flex items-center gap-3 p-3 rounded-xl border text-left transition cursor-pointer ${
                           form.rewardType === item.value
                             ? 'border-brand-teal bg-teal-50/30 text-gray-900 shadow-sm'
-                            : 'border-gray-200 bg-white text-gray-500 hover:border-gray-305'
+                            : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
                         }`}
                       >
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 ${
@@ -792,11 +792,11 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
               <div className="bg-gray-50/50 border border-gray-200 rounded-2xl p-4 space-y-4">
                 <div className="flex items-center gap-2 border-b border-gray-100 pb-2">
                   <Award size={16} className="text-brand-teal" />
-                  <h3 className="font-semibold text-gray-850 text-xs uppercase tracking-wider">Eligibility &amp; exclusions</h3>
+                  <h3 className="font-semibold text-gray-800 text-xs uppercase tracking-wider">Eligibility &amp; exclusions</h3>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-gray-550">Minimum tier level</label>
+                  <label className="block text-xs font-semibold text-gray-600">Minimum tier level</label>
                   <input
                     type="number"
                     min={1}
@@ -808,7 +808,7 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-gray-550">Apply restriction (optional)</label>
+                  <label className="block text-xs font-semibold text-gray-600">Apply restriction (optional)</label>
                   <RewardScopeCombobox
                     menuItems={menuItems}
                     isStoreReady={isStoreReady}
@@ -822,7 +822,7 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
 
                 {activePartners.length > 0 && (
                   <div className="space-y-1">
-                    <label className="block text-xs font-semibold text-gray-555">Foodmarket Partner (Optional)</label>
+                    <label className="block text-xs font-semibold text-gray-600">Foodmarket Partner (Optional)</label>
                     <select
                       value={form.foodmarketPartnerId || ''}
                       onChange={(e) => setForm((f) => ({ ...f, foodmarketPartnerId: e.target.value }))}
@@ -839,8 +839,8 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
                   </div>
                 )}
 
-                <div className="pt-2 border-t border-gray-150">
-                  <label className="inline-flex items-center gap-2 cursor-pointer select-none text-sm text-gray-855 font-medium">
+                <div className="pt-2 border-t border-gray-200">
+                  <label className="inline-flex items-center gap-2 cursor-pointer select-none text-sm text-gray-800 font-medium">
                     <input
                       type="checkbox"
                       checked={Boolean(form.active)}
@@ -854,7 +854,7 @@ export default function LoyaltyRewardsAdminTab({ initialRewardId = null } = {}) 
               </div>
 
               {formError ? (
-                <div className="text-xs text-red-655 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 flex items-start gap-2">
+                <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 flex items-start gap-2">
                   <span className="font-bold">⚠️ Error:</span>
                   <span>{formError}</span>
                 </div>

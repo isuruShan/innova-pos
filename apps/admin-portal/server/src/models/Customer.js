@@ -15,6 +15,23 @@ const customerSchema = new mongoose.Schema(
     mobileDigits: { type: String, default: '', index: true, trim: true },
     email: { type: String, default: '', trim: true, lowercase: true },
     lifetimePoints: { type: Number, default: 0, min: 0 },
+    pointsHistory: {
+      type: [
+        {
+          type: { type: String, enum: ['earn', 'redeem', 'adjustment'], required: true },
+          points: { type: Number, required: true },
+          beforePoints: { type: Number },
+          afterPoints: { type: Number },
+          note: { type: String, default: '' },
+          orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
+          orderNumber: { type: String },
+          changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+          changedByName: { type: String },
+          createdAt: { type: Date, default: Date.now }
+        }
+      ],
+      default: []
+    },
     lastLoyaltyActivityAt: { type: Date, default: null },
     loyaltyTierOverrideLevel: { type: Number, default: null, min: 1 },
     retentionStatus: {

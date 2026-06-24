@@ -527,6 +527,18 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin', 'ste
                 lastLoyaltyActivityAt: new Date(),
                 retentionStatus: 'ok',
               },
+              $push: {
+                pointsHistory: {
+                  type: 'earn',
+                  points: earned,
+                  beforePoints: customerLeanForOrder ? (customerLeanForOrder.lifetimePoints || 0) : 0,
+                  afterPoints: (customerLeanForOrder ? (customerLeanForOrder.lifetimePoints || 0) : 0) + earned,
+                  note: `Earned from Order #${order.orderNumber || order._id}`,
+                  orderId: order._id,
+                  orderNumber: order.orderNumber,
+                  createdAt: new Date()
+                }
+              }
             },
           );
           order.loyaltyPointsEarned = (order.loyaltyPointsEarned || 0) + earned;
@@ -542,6 +554,7 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin', 'ste
 
     if (loyaltyRedemptionPayload && order.customerId && (loyaltyRedemptionPayload.pointsCost || 0) > 0) {
       const ptsCost = loyaltyRedemptionPayload.pointsCost;
+      const before = customerLeanForOrder ? (customerLeanForOrder.lifetimePoints || 0) : 0;
       const upd = await Customer.updateOne(
         {
           _id: order.customerId,
@@ -554,6 +567,18 @@ router.post('/', protect, authorize('cashier', 'manager', 'merchant_admin', 'ste
             lastLoyaltyActivityAt: new Date(),
             retentionStatus: 'ok',
           },
+          $push: {
+            pointsHistory: {
+              type: 'redeem',
+              points: -ptsCost,
+              beforePoints: before,
+              afterPoints: before - ptsCost,
+              note: `Redeemed reward: ${loyaltyRedemptionPayload.name || 'Reward'} on Order #${order.orderNumber || order._id}`,
+              orderId: order._id,
+              orderNumber: order.orderNumber,
+              createdAt: new Date()
+            }
+          }
         },
       );
       if (upd.modifiedCount === 0) {
@@ -900,6 +925,8 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
         }
       }
       if (earned > 0) {
+        const currentCustomer = await Customer.findOne({ _id: order.customerId, tenantId: req.tenantId }).lean();
+        const before = currentCustomer ? (currentCustomer.lifetimePoints || 0) : 0;
         await Customer.updateOne(
           { _id: order.customerId, tenantId: req.tenantId },
           {
@@ -908,6 +935,18 @@ router.put('/:id/status', protect, authorize('cashier', 'kitchen', 'manager', 'm
               lastLoyaltyActivityAt: new Date(),
               retentionStatus: 'ok',
             },
+            $push: {
+              pointsHistory: {
+                type: 'earn',
+                points: earned,
+                beforePoints: before,
+                afterPoints: before + earned,
+                note: `Earned from Order #${order.orderNumber || order._id}`,
+                orderId: order._id,
+                orderNumber: order.orderNumber,
+                createdAt: new Date()
+              }
+            }
           },
         );
         order.loyaltyPointsEarned = (order.loyaltyPointsEarned || 0) + earned;

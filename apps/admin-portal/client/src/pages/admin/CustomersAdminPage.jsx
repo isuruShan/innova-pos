@@ -40,6 +40,19 @@ export default function CustomersAdminPage() {
     if (saved) return saved;
     return window.innerWidth < 768 ? 'grid' : 'table';
   });
+  const [activeTab, setActiveTab] = useState('profile');
+
+  const { data: customerDetails } = useQuery({
+    queryKey: ['admin-customer-details', editor?._id],
+    queryFn: () => api.get(`/customers/${editor._id}?loyalty=1`).then((r) => r.data),
+    enabled: Boolean(editor?._id && loyaltyAddonActive),
+  });
+
+  const { data: history = [], isLoading: historyLoading } = useQuery({
+    queryKey: ['customer-history', editor?._id],
+    queryFn: () => api.get(`/customers/${editor._id}/points/history`).then((r) => r.data),
+    enabled: Boolean(editor?._id && loyaltyAddonActive),
+  });
 
   useEffect(() => {
     setPage(1);
@@ -97,7 +110,7 @@ export default function CustomersAdminPage() {
       if (editor._id) {
         await api.put(`/customers/${editor._id}`, payload);
         const n = Number(form.lifetimePoints);
-        if (loyaltyAddonActive && !Number.isNaN(n) && n >= 0) {
+        if (loyaltyAddonActive && !Number.isNaN(n) && n >= 0 && n !== Number(editor.lifetimePoints)) {
           await api.post(`/customers/${editor._id}/points`, {
             lifetimePoints: n,
             note: form.pointsNote?.trim() || '',
@@ -111,10 +124,13 @@ export default function CustomersAdminPage() {
       qc.invalidateQueries({ queryKey: ['admin-customers'] });
       qc.invalidateQueries({ queryKey: ['loyalty-retention-pending'] });
       qc.invalidateQueries({ queryKey: ['notifications-unread-count'] });
+      qc.invalidateQueries({ queryKey: ['customer-history'] });
+      qc.invalidateQueries({ queryKey: ['admin-customer-details'] });
       setEditor(null);
       setForm(emptyForm);
       setPhoneField(emptyPhone(defaultIso));
       setFormErrors({});
+      setActiveTab('profile');
     },
     onError: (err) => {
       if (err.message !== 'validation') {
@@ -133,6 +149,7 @@ export default function CustomersAdminPage() {
     setForm(emptyForm);
     setPhoneField(emptyPhone(defaultIso));
     setFormErrors({});
+    setActiveTab('profile');
   };
 
   const openEdit = (c) => {
@@ -148,6 +165,7 @@ export default function CustomersAdminPage() {
       lifetimePoints: String(c.lifetimePoints ?? 0),
       pointsNote: '',
     });
+    setActiveTab('profile');
   };
 
   const submitProfile = (e) => {
@@ -319,89 +337,186 @@ export default function CustomersAdminPage() {
           role="presentation"
         >
           <div
-            className="bg-white rounded-xl max-w-md w-full p-5 shadow-xl border border-gray-200 max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-xl max-w-lg w-full p-5 shadow-xl border border-gray-200 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
           >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
               {editor._id ? 'Edit customer' : 'New customer'}
             </h3>
-            <form onSubmit={submitProfile} className="space-y-3">
-              <label className="block text-xs text-gray-600">
-                Name
-                <input
-                  value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                />
-              </label>
-              <MobilePhoneField
-                countryIso={phoneField.countryIso}
-                nationalDigits={phoneField.nationalDigits}
-                onCountryIsoChange={(iso) => setPhoneField((p) => ({ ...p, countryIso: iso }))}
-                onNationalDigitsChange={(d) => { setPhoneField((p) => ({ ...p, nationalDigits: d })); setFormErrors((e) => ({ ...e, mobile: '' })); }}
-                error={formErrors.mobile}
-                label="Mobile"
-              />
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => { setForm((f) => ({ ...f, email: e.target.value })); setFormErrors((e) => ({ ...e, email: '' })); }}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm ${formErrors.email ? 'border-red-400' : 'border-gray-300'}`}
-                />
-                {formErrors.email && <p className="text-xs text-red-500 mt-0.5">{formErrors.email}</p>}
-              </div>
-              <label className="block text-xs text-gray-600">
-                Birthday
-                <AdminDateField
-                  value={form.birthday}
-                  onChange={(v) => setForm((f) => ({ ...f, birthday: v }))}
-                />
-              </label>
-              <label className="block text-xs text-gray-600">
-                Notes
-                <textarea
-                  value={form.notes}
-                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  rows={3}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none"
-                />
-              </label>
 
-              {editor._id && loyaltyAddonActive && (
-                <>
-                  <div className="pt-2 border-t border-gray-100">
-                    <p className="text-xs font-medium text-gray-700 mb-2">Loyalty points</p>
-                    <label className="block text-xs text-gray-600">
-                      Lifetime points
-                      <input
-                        type="number"
-                        min={0}
-                        required
-                        value={form.lifetimePoints}
-                        onChange={(e) => setForm((f) => ({ ...f, lifetimePoints: e.target.value }))}
-                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                      />
-                    </label>
-                    <label className="block text-xs text-gray-600 mt-2">
-                      Note for this adjustment (optional)
-                      <textarea
-                        value={form.pointsNote}
-                        onChange={(e) => setForm((f) => ({ ...f, pointsNote: e.target.value }))}
-                        rows={2}
-                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none"
-                        placeholder="Reason for adjustment"
-                      />
-                    </label>
-                    <p className="text-[11px] text-gray-500 mt-1">
-                      Saving updates profile first, then applies this points total. Other merchant admins may receive a
-                      notification.
-                    </p>
+            {editor._id && loyaltyAddonActive && (
+              <div className="flex border-b border-gray-200 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('profile')}
+                  className={`flex-1 py-2 text-center text-sm font-semibold border-b-2 transition-colors ${
+                    activeTab === 'profile'
+                      ? 'border-brand-teal text-brand-teal'
+                      : 'border-transparent text-gray-500 hover:text-gray-900'
+                  }`}
+                >
+                  Profile Details
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('loyalty')}
+                  className={`flex-1 py-2 text-center text-sm font-semibold border-b-2 transition-colors ${
+                    activeTab === 'loyalty'
+                      ? 'border-brand-teal text-brand-teal'
+                      : 'border-transparent text-gray-500 hover:text-gray-900'
+                  }`}
+                >
+                  Loyalty & History
+                </button>
+              </div>
+            )}
+            <form onSubmit={submitProfile} className="space-y-3">
+              {(activeTab === 'profile' || !editor._id || !loyaltyAddonActive) && (
+                <div className="space-y-3">
+                  <label className="block text-xs text-gray-650 font-medium">
+                    Name
+                    <input
+                      value={form.name}
+                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand-teal"
+                    />
+                  </label>
+                  <MobilePhoneField
+                    countryIso={phoneField.countryIso}
+                    nationalDigits={phoneField.nationalDigits}
+                    onCountryIsoChange={(iso) => setPhoneField((p) => ({ ...p, countryIso: iso }))}
+                    onNationalDigitsChange={(d) => { setPhoneField((p) => ({ ...p, nationalDigits: d })); setFormErrors((e) => ({ ...e, mobile: '' })); }}
+                    error={formErrors.mobile}
+                    label="Mobile"
+                  />
+                  <div>
+                    <label className="block text-xs text-gray-650 font-medium mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => { setForm((f) => ({ ...f, email: e.target.value })); setFormErrors((e) => ({ ...e, email: '' })); }}
+                      className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand-teal ${formErrors.email ? 'border-red-400' : 'border-gray-300'}`}
+                    />
+                    {formErrors.email && <p className="text-xs text-red-500 mt-0.5">{formErrors.email}</p>}
                   </div>
-                </>
+                  <label className="block text-xs text-gray-650 font-medium">
+                    Birthday
+                    <AdminDateField
+                      value={form.birthday}
+                      onChange={(v) => setForm((f) => ({ ...f, birthday: v }))}
+                    />
+                  </label>
+                  <label className="block text-xs text-gray-650 font-medium">
+                    Notes
+                    <textarea
+                      value={form.notes}
+                      onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                      rows={3}
+                      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-brand-teal"
+                    />
+                  </label>
+                </div>
+              )}
+
+              {activeTab === 'loyalty' && editor._id && loyaltyAddonActive && (
+                <div className="space-y-4">
+                  {/* Tier & Points Info */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] uppercase font-bold tracking-wider text-gray-500">Current Loyalty Tier</p>
+                      {customerDetails?.loyalty?.effectiveTier ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="bg-brand-teal text-white px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                            {customerDetails.loyalty.effectiveTier.name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            ({customerDetails.loyalty.effectiveTier.discountPercentage}% discount)
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="text-sm font-semibold text-gray-500 mt-1">
+                          No Active Tier
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] uppercase font-bold tracking-wider text-gray-500">Available Points</p>
+                      <p className="text-2xl font-black text-brand-teal mt-0.5 tabular-nums">
+                        {customerDetails?.lifetimePoints ?? 0}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Manual Points Adjustment Form */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Adjust Loyalty Points</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="block text-xs text-gray-655 font-medium">
+                        New Points Total
+                        <input
+                          type="number"
+                          min={0}
+                          value={form.lifetimePoints}
+                          onChange={(e) => setForm((f) => ({ ...f, lifetimePoints: e.target.value }))}
+                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand-teal"
+                        />
+                      </label>
+                      <label className="block text-xs text-gray-655 font-medium">
+                        Reason for adjustment
+                        <input
+                          type="text"
+                          value={form.pointsNote}
+                          onChange={(e) => setForm((f) => ({ ...f, pointsNote: e.target.value }))}
+                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand-teal"
+                          placeholder="e.g. Correction"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Points Transaction History Table */}
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-550">Points Ledger / History</h4>
+                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-white max-h-48 overflow-y-auto">
+                      {historyLoading ? (
+                        <div className="p-4 text-center text-xs text-gray-400">Loading history...</div>
+                      ) : history.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-gray-400 italic">No points transactions recorded.</div>
+                      ) : (
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead className="bg-gray-55 border-b border-gray-200 sticky top-0 z-10">
+                            <tr className="text-gray-500 font-medium">
+                              <th className="px-3 py-2 bg-gray-55">Date</th>
+                              <th className="px-3 py-2 bg-gray-55">Activity</th>
+                              <th className="px-3 py-2 text-right bg-gray-55">Points</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 text-gray-700">
+                            {history.map((h, idx) => {
+                              const isPositive = h.points >= 0;
+                              return (
+                                <tr key={idx} className="hover:bg-gray-50/50">
+                                  <td className="px-3 py-2 text-gray-500 whitespace-nowrap">
+                                    {new Date(h.createdAt).toLocaleDateString()}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <div className="font-semibold text-gray-800 capitalize">{h.type}</div>
+                                    {h.note && <div className="text-[10px] text-gray-450 mt-0.5">{h.note}</div>}
+                                  </td>
+                                  <td className={`px-3 py-2 text-right font-bold whitespace-nowrap ${isPositive ? 'text-emerald-605' : 'text-rose-605'}`}>
+                                    {isPositive ? `+${h.points}` : h.points}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
 
               <div className="flex justify-end gap-2 pt-2">

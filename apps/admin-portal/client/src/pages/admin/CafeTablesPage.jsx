@@ -57,7 +57,7 @@ export default function CafeTablesPage() {
 
   const { data: tables = [], isPending } = useQuery({
     queryKey: ['pos-tables', selectedStoreId],
-    queryFn: () => api.get('/tables').then((r) => r.data),
+    queryFn: () => api.get('/tables', { headers: { 'x-store-id': selectedStoreId } }).then((r) => r.data),
     enabled: isStoreReady,
   });
 
@@ -68,7 +68,7 @@ export default function CafeTablesPage() {
 
 
   const createMut = useMutation({
-    mutationFn: (payload) => api.post('/tables', payload),
+    mutationFn: (payload) => api.post('/tables', payload, { headers: { 'x-store-id': selectedStoreId } }),
     onSuccess: () => {
       setLabel('');
       setSortOrder('0');
@@ -79,7 +79,7 @@ export default function CafeTablesPage() {
   });
 
   const updateMut = useMutation({
-    mutationFn: ({ id, payload }) => api.put(`/tables/${id}`, payload),
+    mutationFn: ({ id, payload }) => api.put(`/tables/${id}`, payload, { headers: { 'x-store-id': selectedStoreId } }),
     onSuccess: () => {
       setEditing(null);
       invalidate();
@@ -89,13 +89,13 @@ export default function CafeTablesPage() {
   });
 
   const deleteMut = useMutation({
-    mutationFn: (id) => api.delete(`/tables/${id}`),
+    mutationFn: (id) => api.delete(`/tables/${id}`, { headers: { 'x-store-id': selectedStoreId } }),
     onSuccess: invalidate,
     onError: (e) => setError(e.response?.data?.message || 'Cannot delete'),
   });
 
   const regenerateQrMut = useMutation({
-    mutationFn: (id) => api.post(`/tables/${id}/regenerate-qr`),
+    mutationFn: (id) => api.post(`/tables/${id}/regenerate-qr`, {}, { headers: { 'x-store-id': selectedStoreId } }),
     onSuccess: invalidate,
     onError: (e) => setError(e.response?.data?.message || 'Could not regenerate QR'),
   });
@@ -139,9 +139,23 @@ export default function CafeTablesPage() {
         {heading}
 
         {!isStoreReady ? (
-          <p className="text-sm text-amber-300 bg-brand-orange/10 border border-amber-500/25 rounded-xl px-4 py-3">
-            Select a store in the header first.
-          </p>
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-md max-w-sm mx-auto text-center space-y-4">
+            <Table size={40} className="mx-auto text-brand-orange animate-pulse" />
+            <h2 className="text-lg font-bold text-gray-900">Select a Store</h2>
+            <p className="text-sm text-gray-500">Please select a store to view and manage tables.</p>
+            <select
+              value={selectedStoreId || ''}
+              onChange={(e) => selectStore(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+            >
+              <option value="" disabled>Select Store...</option>
+              {stores.map((s) => (
+                <option key={s._id} value={s._id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
         ) : (
           <>
             <form onSubmit={onCreate} className="rounded-xl border border-gray-200 bg-white p-4 flex flex-wrap gap-3 items-end">
