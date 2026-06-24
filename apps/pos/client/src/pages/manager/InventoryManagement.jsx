@@ -641,7 +641,7 @@ export default function InventoryManagement() {
                     <div className="flex items-center justify-between mt-4 border-t border-slate-700/40 pt-3">
                       <span className="text-xs text-slate-500 font-medium">Stock Items</span>
                       <span className="bg-slate-755/50 text-slate-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-slate-700">
-                        {inventoryData.summary?.categoryCounts?.uncategorized || 0}
+                        {items.filter(item => !item.category).length}
                       </span>
                     </div>
                   </div>
@@ -653,7 +653,10 @@ export default function InventoryManagement() {
                     </div>
                   ) : (
                     categories.map(cat => {
-                      const count = inventoryData.summary?.categoryCounts?.[cat._id] || 0;
+                      const count = items.filter(item => {
+                        const catId = item.category?._id || item.category;
+                        return String(catId) === String(cat._id);
+                      }).length;
                       return (
                         <div
                           key={cat._id}

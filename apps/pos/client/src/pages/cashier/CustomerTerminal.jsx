@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { getPublicWebUrl } from '@innovapos/app-urls';
 import { useBranding } from '../../context/BrandingContext';
 import { useStoreContext } from '../../context/StoreContext';
-import { Package, Smartphone, Touchpad, CheckCircle2, User, Calendar, Mail, ArrowLeft, Monitor, Sparkles } from 'lucide-react';
+import { Package, Smartphone, Touchpad, CheckCircle2, ArrowLeft, Monitor, Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 import axios from 'axios';
@@ -132,7 +132,7 @@ export default function CustomerTerminal() {
     return () => {
       channel.close();
     };
-  }, [orderState.customerSessionId]);
+  }, [orderState.customerSessionId, orderState.selectedCustomer]);
 
   // Keyboard/Numpad inputs handler
   const handleKeyPress = (key) => {
@@ -284,17 +284,17 @@ export default function CustomerTerminal() {
   const resolvedStoreId = orderState.storeId || selectedStoreId || '';
   const qrTargetUrl = `${getPublicWebUrl() || 'https://cafinity.io'}/customer-checkin?tenantId=${resolvedTenantId}&storeId=${resolvedStoreId}&sessionId=${orderState.customerSessionId || ''}`;
   const qrCodeImgSrc = orderState.customerSessionId
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrTargetUrl)}&color=ffffff&bgcolor=151f2e`
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrTargetUrl)}&color=000000&bgcolor=ffffff`
     : '';
 
   if (isAddonsPending) {
     return (
       <div 
-        className="min-h-screen flex flex-col items-center justify-center font-sans bg-[#0B1220] text-slate-200"
+        className="min-h-screen flex flex-col items-center justify-center font-sans bg-[var(--pos-page-bg)] text-[var(--pos-text-primary)]"
       >
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm font-medium tracking-wide text-slate-400">Loading Customer Terminal...</p>
+          <div className="w-12 h-12 border-4 border-[var(--color-accent)] border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm font-medium tracking-wide text-[var(--pos-text-secondary)]">Loading Customer Terminal...</p>
         </div>
       </div>
     );
@@ -303,69 +303,74 @@ export default function CustomerTerminal() {
   if (paidAddons?.dualScreen !== true) {
     return (
       <div 
-        className="min-h-screen flex flex-col font-sans bg-[#0B1220] text-slate-200"
+        className="min-h-screen flex flex-col font-sans bg-[var(--pos-page-bg)] text-[var(--pos-text-primary)]"
       >
         {/* Header bar */}
         <header 
-          className="px-6 py-4 flex items-center justify-between border-b border-slate-800/80 bg-[#151F2E]"
+          className="px-6 py-4 flex items-center justify-between border-b border-[var(--pos-grid-line)] bg-[var(--pos-panel)]"
         >
           <div className="flex items-center gap-4">
             {branding.logoUrl ? (
               <img src={branding.logoUrl} alt="logo" className="h-10 object-contain" />
             ) : (
-              <span className="text-xl font-bold tracking-wide text-white">{branding.businessName}</span>
+              <span className="text-xl font-bold tracking-wide text-[var(--pos-text-primary)]">{branding.businessName}</span>
             )}
           </div>
         </header>
 
         {/* Info/Subscribe Screen */}
-        <div className="flex-1 flex items-center justify-center p-6 bg-slate-950/20">
-          <div className="max-w-2xl w-full bg-slate-900 border border-slate-800/60 p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center relative overflow-hidden">
-            {/* Elegant glowing background elements */}
-            <div className="absolute -top-24 -left-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="flex-1 flex items-center justify-center p-6 bg-[var(--pos-surface-inset)]/30">
+          <div className="max-w-2xl w-full bg-[var(--pos-panel)] border border-[var(--pos-grid-line)] p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center relative overflow-hidden">
+            {/* Glowing background */}
+            <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: `${branding.buttonColor || '#E94560'}20` }}></div>
+            <div className="absolute -bottom-24 -right-24 w-48 h-48 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: `${branding.buttonColor || '#E94560'}20` }}></div>
 
             {/* Glowing Icon */}
-            <div className="w-20 h-20 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(245,158,11,0.08)]">
-              <Monitor className="w-10 h-10 text-amber-400" />
+            <div 
+              className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6 shadow-md border border-[var(--pos-grid-line)] bg-[var(--pos-surface-inset)]"
+            >
+              <Monitor className="w-10 h-10" style={{ color: branding.buttonColor || '#E94560' }} />
             </div>
 
             {/* Premium Addon Tag */}
-            <span className="bg-amber-500/10 border border-amber-500/35 px-3 py-1 rounded-full text-xs font-semibold text-amber-400 uppercase tracking-widest mb-4">
+            <span 
+              className="px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-widest mb-4 border border-[var(--pos-grid-line)] bg-[var(--pos-surface-inset)]"
+              style={{ color: branding.buttonColor || '#E94560' }}
+            >
               Premium Addon
             </span>
 
             {/* Title */}
-            <h1 className="text-3xl font-extrabold text-white tracking-tight mb-4">
+            <h1 className="text-3xl font-extrabold text-[var(--pos-text-primary)] tracking-tight mb-4">
               Dual Screen Customer Terminal
             </h1>
 
             {/* Description */}
-            <p className="text-slate-400 leading-relaxed max-w-md text-sm mb-8">
+            <p className="text-[var(--pos-text-secondary)] leading-relaxed max-w-md text-sm mb-8">
               Enable a beautiful secondary customer-facing display to show order breakdowns, display custom branding background images, run promotions, and let guests check in or sign up via QR code or phone number.
             </p>
 
             {/* Steps or details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left w-full max-w-lg mb-8">
-              <div className="p-4 bg-slate-800/40 border border-slate-700/40 rounded-2xl flex gap-3">
+              <div className="p-4 bg-[var(--pos-surface-inset)] border border-[var(--pos-grid-line)] rounded-2xl flex gap-3">
                 <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-200">Interactive Check-In</h3>
-                  <p className="text-xs text-slate-400 mt-1">Let customers sign up or scan to connect their loyalty account instantly.</p>
+                  <h3 className="text-sm font-semibold text-[var(--pos-text-primary)]">Interactive Check-In</h3>
+                  <p className="text-xs text-[var(--pos-text-secondary)] mt-1">Let customers sign up or scan to connect their loyalty account instantly.</p>
                 </div>
               </div>
-              <div className="p-4 bg-slate-800/40 border border-slate-700/40 rounded-2xl flex gap-3">
+              <div className="p-4 bg-[var(--pos-surface-inset)] border border-[var(--pos-grid-line)] rounded-2xl flex gap-3">
                 <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-200">Custom Branding</h3>
-                  <p className="text-xs text-slate-400 mt-1">Upload dynamic background images matching your store's style and vibe.</p>
+                  <h3 className="text-sm font-semibold text-[var(--pos-text-primary)]">Custom Branding</h3>
+                  <p className="text-xs text-[var(--pos-text-secondary)] mt-1">Upload dynamic background images matching your store's style and vibe.</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl px-5 py-3 text-xs text-slate-400 max-w-md">
+            <div className="bg-[var(--pos-surface-inset)] border border-[var(--pos-grid-line)] rounded-xl px-5 py-3 text-xs text-[var(--pos-text-secondary)] max-w-md">
               <p>
-                Go to the <span className="font-semibold text-white">Billing & Add-ons</span> tab in the Admin Portal to subscribe and unlock this feature instantly.
+                Go to the <span className="font-semibold text-[var(--pos-text-primary)]">Billing &amp; Add-ons</span> tab in the Admin Portal to subscribe and unlock this feature instantly.
               </p>
             </div>
           </div>
@@ -376,25 +381,25 @@ export default function CustomerTerminal() {
 
   return (
     <div 
-      className="min-h-screen flex flex-col font-sans bg-[#0B1220] text-slate-200"
+      className="min-h-screen flex flex-col font-sans bg-[var(--pos-page-bg)] text-[var(--pos-text-primary)]"
     >
       {/* Header bar */}
       <header 
-        className="px-6 py-4 flex items-center justify-between border-b border-slate-800/80 bg-[#151F2E]"
+        className="px-6 py-4 flex items-center justify-between border-b border-[var(--pos-grid-line)] bg-[var(--pos-panel)]"
       >
         <div className="flex items-center gap-4">
           {branding.logoUrl ? (
             <img src={branding.logoUrl} alt="logo" className="h-10 object-contain" />
           ) : (
-            <span className="text-xl font-bold tracking-wide text-white">{branding.businessName}</span>
+            <span className="text-xl font-bold tracking-wide text-[var(--pos-text-primary)]">{branding.businessName}</span>
           )}
           {customerName && (
             <div className="bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-semibold text-emerald-400 animate-pulse">
-              Greeting: Hello, {customerName === 'Stranger' ? 'Stranger' : customerName}!
+              Hello, {customerName === 'Stranger' ? 'Stranger' : customerName}!
             </div>
           )}
         </div>
-        <div className="text-sm font-medium text-slate-400">
+        <div className="text-sm font-medium text-[var(--pos-text-secondary)]">
           Customer Terminal
         </div>
       </header>
@@ -402,60 +407,90 @@ export default function CustomerTerminal() {
       {/* Main content grid */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
         {/* Left Side: Order items */}
-        <div className="lg:col-span-7 flex flex-col border-r border-slate-800/80 p-6 overflow-y-auto bg-slate-950/20">
-          <div className="max-w-xl mx-auto w-full flex-1 flex flex-col bg-[#151F2E] border border-slate-800/85 rounded-3xl shadow-2xl p-6 relative overflow-hidden">
+        <div className="lg:col-span-7 flex flex-col border-r border-[var(--pos-grid-line)] p-6 overflow-y-auto bg-[var(--pos-surface-inset)]/30">
+          <div className="max-w-xl mx-auto w-full flex-1 flex flex-col bg-[var(--pos-panel)] border border-[var(--pos-grid-line)] rounded-3xl shadow-2xl p-6 relative overflow-hidden">
             {/* Glowing top line */}
-            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-500 to-amber-600"></div>
+            <div 
+              className="absolute top-0 inset-x-0 h-1.5"
+              style={{ backgroundColor: branding.buttonColor || '#E94560' }}
+            ></div>
 
             {/* Receipt Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-850 mb-5 shrink-0">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--pos-grid-line)] mb-5 shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                  <Sparkles size={16} className="text-amber-400" />
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[var(--pos-surface-inset)] border border-[var(--pos-grid-line)]">
+                  <Sparkles size={16} style={{ color: branding.buttonColor || '#E94560' }} />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-white tracking-wide uppercase">Live Order Details</h2>
+                  <h2 className="text-sm font-bold text-[var(--pos-text-primary)] tracking-wide uppercase">Your Selection</h2>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="relative flex h-1.5 w-1.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                     </span>
-                    <span className="text-[9px] text-slate-300 font-bold uppercase tracking-wider">Sync Active</span>
+                    <span className="text-[9px] text-[var(--pos-text-muted)] font-bold uppercase tracking-wider">Live Sync Active</span>
                   </div>
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-[9px] text-slate-450 font-bold uppercase tracking-wider block">Items</span>
-                <span className="text-xs font-black text-white bg-slate-850 px-2 py-0.5 rounded-md">
+                <span className="text-[9px] text-[var(--pos-text-muted)] font-bold uppercase tracking-wider block">Items</span>
+                <span className="text-xs font-black text-[var(--pos-text-primary)] bg-[var(--pos-surface-inset)] px-2.5 py-0.5 rounded-md border border-[var(--pos-grid-line)]">
                   {orderState.items.reduce((acc, it) => acc + it.qty, 0)}
                 </span>
               </div>
             </div>
 
             {orderState.items.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center py-16 text-slate-400">
-                <div className="w-16 h-16 rounded-full bg-slate-850/60 flex items-center justify-center mb-4">
-                  <Package size={32} className="opacity-60 text-slate-350" />
+              <div className="flex-1 flex flex-col items-center justify-center py-12 text-[var(--pos-text-secondary)]">
+                {/* Cute visual welcome card for empty state */}
+                <div className="w-16 h-16 rounded-2xl bg-[var(--pos-surface-inset)] border border-[var(--pos-grid-line)] flex items-center justify-center mb-6 shadow-sm">
+                  <Package size={28} className="opacity-80 text-[var(--pos-text-muted)]" />
                 </div>
-                <p className="text-base font-bold text-white">Ready for your order</p>
-                <p className="text-xs text-slate-300 mt-1 max-w-[220px] text-center">Items will appear here in real-time as they are added by the cashier.</p>
+                
+                <h3 className="text-xl font-extrabold text-[var(--pos-text-primary)] tracking-tight">
+                  Welcome to {branding.businessName}
+                </h3>
+                <p className="text-xs text-[var(--pos-text-muted)] mt-1.5 max-w-[280px] text-center leading-relaxed font-medium">
+                  Start ordering with our cashier. Your live cart details and totals will appear here in real-time.
+                </p>
+
+                {/* Cute features banner */}
+                <div className="mt-8 grid grid-cols-1 gap-3 w-full max-w-sm">
+                  <div className="p-3.5 bg-[var(--pos-surface-inset)]/50 border border-[var(--pos-grid-line)] rounded-2xl flex gap-3">
+                    <span className="text-lg">⭐</span>
+                    <div>
+                      <h4 className="text-xs font-bold text-[var(--pos-text-primary)]">Loyalty Rewards</h4>
+                      <p className="text-[10px] text-[var(--pos-text-muted)] mt-0.5">Collect points on every purchase and redeem them for free food/drinks.</p>
+                    </div>
+                  </div>
+                  <div className="p-3.5 bg-[var(--pos-surface-inset)]/50 border border-[var(--pos-grid-line)] rounded-2xl flex gap-3">
+                    <span className="text-lg">📱</span>
+                    <div>
+                      <h4 className="text-xs font-bold text-[var(--pos-text-primary)]">Instant Check-In</h4>
+                      <p className="text-[10px] text-[var(--pos-text-muted)] mt-0.5">Scan the QR code on the right with your phone to instantly link your account.</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="flex-1 flex flex-col justify-between overflow-hidden">
                 {/* Scrollable Items list */}
                 <div className="flex-1 overflow-y-auto pr-1 space-y-2.5">
                   {orderState.items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-slate-800/20 border border-slate-800/40 p-3.5 rounded-2xl shadow-sm hover:border-slate-700/40 transition-colors">
+                    <div 
+                      key={idx} 
+                      className="flex justify-between items-center bg-[var(--pos-surface-inset)]/30 border border-[var(--pos-grid-line)] p-3.5 rounded-2xl shadow-sm hover:border-[var(--pos-text-muted)]/20 transition-all"
+                    >
                       <div className="flex-1 min-w-0 pr-3">
-                        <div className="font-semibold text-sm text-white truncate">{item.name}</div>
+                        <div className="font-semibold text-sm text-[var(--pos-text-primary)] truncate">{item.name}</div>
                         {item.variantName && (
-                          <div className="text-[11px] text-slate-300 font-medium mt-0.5">{item.variantName}</div>
+                          <div className="text-[11px] text-[var(--pos-text-muted)] font-medium mt-0.5">{item.variantName}</div>
                         )}
-                        <div className="text-xs text-slate-300 mt-1 font-medium">
-                          Qty: <span className="text-amber-400 font-bold">{item.qty}</span> × {branding.currencySymbol}{Number(item.price).toFixed(2)}
+                        <div className="text-xs text-[var(--pos-text-secondary)] mt-1 font-medium">
+                          Qty: <span className="font-bold" style={{ color: branding.buttonColor || '#E94560' }}>{item.qty}</span> × {branding.currencySymbol}{Number(item.price).toFixed(2)}
                         </div>
                       </div>
-                      <div className="font-extrabold text-white text-base shrink-0">
+                      <div className="font-extrabold text-[var(--pos-text-primary)] text-base shrink-0">
                         {branding.currencySymbol}{(item.qty * item.price).toFixed(2)}
                       </div>
                     </div>
@@ -465,34 +500,37 @@ export default function CustomerTerminal() {
                 {/* Scalloped Dotted Divider (Cute Ticket Cutouts) */}
                 <div className="relative flex items-center my-4 shrink-0">
                   {/* Left Circle cutout */}
-                  <div className="absolute -left-[30px] w-4 h-4 bg-[#0B1220] rounded-full border-r border-slate-800/80"></div>
+                  <div className="absolute -left-[30px] w-4 h-4 bg-[var(--pos-page-bg)] rounded-full border-r border-[var(--pos-grid-line)]"></div>
                   {/* Dashed line */}
-                  <div className="w-full border-t-2 border-dashed border-slate-800/80"></div>
+                  <div className="w-full border-t-2 border-dashed border-[var(--pos-grid-line)]"></div>
                   {/* Right Circle cutout */}
-                  <div className="absolute -right-[30px] w-4 h-4 bg-[#0B1220] rounded-full border-l border-slate-800/80"></div>
+                  <div className="absolute -right-[30px] w-4 h-4 bg-[var(--pos-page-bg)] rounded-full border-l border-[var(--pos-grid-line)]"></div>
                 </div>
 
                 {/* Totals panel */}
-                <div className="space-y-2 shrink-0 bg-slate-800/10 p-4 rounded-2xl border border-slate-850">
+                <div className="space-y-2 shrink-0 bg-[var(--pos-surface-inset)]/45 p-4 rounded-2xl border border-[var(--pos-grid-line)]">
                   <div className="flex justify-between text-xs font-semibold">
-                    <span className="text-slate-300">Subtotal</span>
-                    <span className="text-white">{branding.currencySymbol}{Number(orderState.subtotal).toFixed(2)}</span>
+                    <span className="text-[var(--pos-text-secondary)]">Subtotal</span>
+                    <span className="text-[var(--pos-text-primary)]">{branding.currencySymbol}{Number(orderState.subtotal).toFixed(2)}</span>
                   </div>
                   {orderState.discountTotal > 0 && (
-                    <div className="flex justify-between text-xs text-emerald-400 font-bold">
+                    <div className="flex justify-between text-xs text-emerald-500 font-bold">
                       <span>Discount</span>
                       <span>-{branding.currencySymbol}{Number(orderState.discountTotal).toFixed(2)}</span>
                     </div>
                   )}
                   {orderState.taxAmount > 0 && (
                     <div className="flex justify-between text-xs font-semibold">
-                      <span className="text-slate-300">Tax</span>
-                      <span className="text-white">{branding.currencySymbol}{Number(orderState.taxAmount).toFixed(2)}</span>
+                      <span className="text-[var(--pos-text-secondary)]">Tax</span>
+                      <span className="text-[var(--pos-text-primary)]">{branding.currencySymbol}{Number(orderState.taxAmount).toFixed(2)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between items-center text-sm font-extrabold text-white pt-2.5 border-t border-slate-850 mt-2">
-                    <span className="text-slate-200">Total Amount</span>
-                    <span className="text-amber-400 font-black text-2xl tracking-tight">
+                  <div className="flex justify-between items-center text-sm font-extrabold text-[var(--pos-text-primary)] pt-2.5 border-t border-[var(--pos-grid-line)] mt-2">
+                    <span className="text-[var(--pos-text-secondary)]">Total Amount</span>
+                    <span 
+                      className="font-black text-2xl tracking-tight"
+                      style={{ color: branding.buttonColor || '#E94560' }}
+                    >
                       {branding.currencySymbol}{Number(orderState.totalAmount).toFixed(2)}
                     </span>
                   </div>
@@ -508,11 +546,11 @@ export default function CustomerTerminal() {
           style={{
             backgroundImage: branding.customerTerminalBgUrl 
               ? `url(${branding.customerTerminalBgUrl})` 
-              : 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+              : 'linear-gradient(135deg, var(--pos-page-bg) 0%, var(--pos-panel) 100%)',
           }}
         >
           {/* Semi-transparent dark overlay for readability */}
-          <div className="absolute inset-0 bg-slate-950/70 z-0"></div>
+          <div className="absolute inset-0 bg-black/60 z-0"></div>
 
           <div className="relative z-10 flex flex-col justify-center h-full items-center w-full">
             {successMessage && (
@@ -530,7 +568,7 @@ export default function CustomerTerminal() {
 
             {customerName || orderState.selectedCustomer ? (
               // Vivid, Glassmorphic Customer Greeting Card
-              <div className="w-full max-w-[380px] bg-[#0f172a]/95 backdrop-blur-xl border border-white/20 p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center relative overflow-hidden animate-fade-in">
+              <div className="w-full max-w-[380px] bg-[var(--pos-panel)]/95 backdrop-blur-xl border border-[var(--pos-grid-line)] p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center relative overflow-hidden animate-fade-in">
                 {/* Subtle glowing elements */}
                 <div className="absolute -top-12 -left-12 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
                 <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
@@ -543,21 +581,21 @@ export default function CustomerTerminal() {
                   Signed In
                 </span>
 
-                <p className="text-slate-300 text-xs uppercase tracking-widest font-bold mb-1">
+                <p className="text-[var(--pos-text-secondary)] text-xs uppercase tracking-widest font-bold mb-1">
                   Welcome back
                 </p>
 
-                <h1 className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight mb-4 drop-shadow-[0_2px_10px_rgba(255,255,255,0.15)] truncate w-full px-2">
+                <h1 className="text-4xl sm:text-5xl font-extrabold text-[var(--pos-text-primary)] tracking-tight mb-4 drop-shadow-[0_2px_10px_rgba(0,0,0,0.3)] truncate w-full px-2">
                   {customerName || orderState.selectedCustomer?.name || 'Stranger'}
                 </h1>
 
                 {customerName === 'Stranger' ? (
-                  <p className="text-slate-300 text-sm leading-relaxed max-w-[260px] mb-6">
+                  <p className="text-[var(--pos-text-secondary)] text-sm leading-relaxed max-w-[260px] mb-6 font-medium">
                     Hi there! Wanna sign up? Just ask your cashier.
                   </p>
                 ) : (
                   paidAddons?.loyalty === true && (
-                    <p className="text-slate-300 text-sm leading-relaxed max-w-[260px] mb-6">
+                    <p className="text-[var(--pos-text-secondary)] text-sm leading-relaxed max-w-[260px] mb-6 font-medium">
                       You are earning loyalty points and active rewards on this order automatically!
                     </p>
                   )
@@ -571,34 +609,37 @@ export default function CustomerTerminal() {
                     setCustomerName('');
                     resetForm();
                   }}
-                  className="px-5 py-2.5 bg-slate-800/80 hover:bg-slate-700/80 text-xs font-semibold text-slate-300 rounded-xl transition border border-white/5 hover:border-white/10 cursor-pointer"
+                  className="px-5 py-2.5 bg-[var(--pos-surface-inset)] hover:bg-[var(--pos-page-bg)] text-xs font-semibold text-[var(--pos-text-secondary)] rounded-xl transition border border-[var(--pos-grid-line)] cursor-pointer"
                 >
                   Not you? Disconnect
                 </button>
               </div>
             ) : !orderState.customerSessionId ? (
-              <div className="text-center py-12 text-slate-300 w-full">
-                <Smartphone size={32} className="mx-auto mb-3 opacity-50 text-slate-300" />
-                <p className="text-sm font-semibold text-white">No Active Placement Session</p>
-                <p className="text-xs mt-1 max-w-[200px] mx-auto text-slate-300">Start placing an order to link your account</p>
+              <div className="text-center py-12 text-[var(--pos-text-secondary)] w-full">
+                <Smartphone size={32} className="mx-auto mb-3 opacity-60 text-[var(--pos-text-secondary)]" />
+                <p className="text-sm font-semibold text-[var(--pos-text-primary)]">No Active Placement Session</p>
+                <p className="text-xs mt-1 max-w-[200px] mx-auto text-[var(--pos-text-muted)]">Start placing an order to link your account</p>
               </div>
             ) : !showInputScreen ? (
-              <div className="flex flex-col items-center justify-center space-y-6 w-full">
+              <div className="flex flex-col items-center justify-center space-y-6 w-full animate-fade-in">
                 {/* QR Check-in Box */}
-                <div className="bg-slate-800 border border-slate-800 p-5 rounded-2xl text-center flex flex-col items-center w-full max-w-[320px] shadow-lg">
-                  <h3 className="text-sm font-bold mb-3 text-white">Scan QR Code to Check-in</h3>
-                  <div className="w-[180px] h-[180px] bg-slate-800 rounded-xl flex items-center justify-center overflow-hidden border border-slate-700/50">
-                    {qrCodeImgSrc && <img src={qrCodeImgSrc} alt="Check-in QR" className="w-[160px] h-[160px]" />}
+                <div className="bg-[var(--pos-panel)] border border-[var(--pos-grid-line)] p-5 rounded-3xl text-center flex flex-col items-center w-full max-w-[320px] shadow-lg">
+                  <h3 className="text-sm font-bold mb-4 text-[var(--pos-text-primary)]">Scan to Check-in</h3>
+                  <div className="w-[180px] h-[180px] bg-white rounded-2xl flex items-center justify-center overflow-hidden shadow-inner border border-gray-100">
+                    {qrCodeImgSrc && <img src={qrCodeImgSrc} alt="Check-in QR" className="w-[155px] h-[155px]" />}
                   </div>
-                  <p className="text-xs text-slate-300 mt-3.5 leading-relaxed">Use your mobile phone browser to earn points & rewards</p>
+                  <p className="text-xs text-[var(--pos-text-secondary)] mt-4 leading-relaxed font-medium">
+                    Use your phone browser to earn points &amp; redeem active rewards
+                  </p>
                 </div>
 
-                <div className="text-slate-300 text-xs font-bold tracking-wider">OR</div>
+                <div className="text-[var(--pos-text-muted)] text-xs font-bold tracking-wider">OR</div>
 
                 {/* On-screen Input Button */}
                 <button
                   onClick={() => setShowInputScreen(true)}
-                  className="w-full max-w-[320px] py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm cursor-pointer"
+                  className="w-full max-w-[320px] py-3.5 text-sm font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+                  style={{ backgroundColor: branding.buttonColor || '#E94560', color: branding.buttonTextColor || '#F8FAFC' }}
                 >
                   <Touchpad size={18} />
                   Enter Mobile on Screen
@@ -606,20 +647,20 @@ export default function CustomerTerminal() {
               </div>
             ) : (
               // On screen Form & Keypad Input Screen
-              <div className="flex flex-col space-y-5 w-full max-w-[320px] justify-between">
+              <div className="flex flex-col space-y-5 w-full max-w-[320px] justify-between animate-fade-in">
                 <div>
                   <button
                     onClick={() => {
                       if (otpRequired) setOtpRequired(false);
                       else setShowInputScreen(false);
                     }}
-                    className="flex items-center gap-1.5 text-xs text-slate-300 hover:text-white mb-4 transition cursor-pointer font-semibold"
+                    className="flex items-center gap-1.5 text-xs text-[var(--pos-text-secondary)] hover:text-[var(--pos-text-primary)] mb-4 transition cursor-pointer font-bold"
                   >
                     <ArrowLeft size={14} />
                     Back
                   </button>
 
-                  <h3 className="text-base font-semibold text-white mb-3">
+                  <h3 className="text-base font-bold text-[var(--pos-text-primary)] mb-3">
                     {otpRequired 
                       ? 'Enter Verification Code' 
                       : 'Customer Check In'}
@@ -628,58 +669,64 @@ export default function CustomerTerminal() {
                   {/* Form Input Blocks */}
                   <div className="space-y-3">
                     {!otpRequired && (
-                      <>
-                        {/* Mobile input with Country Selector */}
-                        <div className="space-y-1">
-                          <label className="block text-xs font-bold text-slate-300">Mobile Number</label>
-                          <div className="flex gap-2">
-                            <div className="relative shrink-0">
-                              <select
-                                value={selectedCountry.code}
-                                onChange={(e) => {
-                                  const country = COUNTRY_CODES.find(c => c.code === e.target.value);
-                                  setSelectedCountry(country);
-                                  const cleanDigits = mobile.replace(/\D/g, '');
-                                  setMobile(formatPhoneNumber(cleanDigits, country.code));
-                                }}
-                                className="bg-slate-850 border border-slate-700/60 text-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
-                              >
-                                {COUNTRY_CODES.map((c) => (
-                                  <option key={c.code} value={c.code}>
-                                    {c.flag} {c.code}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div 
-                              onClick={() => setActiveField('mobile')}
-                              className={`flex-1 p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition ${activeField === 'mobile' ? 'border-amber-500 bg-slate-800/40' : 'border-slate-800 bg-slate-800/10'}`}
+                      <div className="space-y-1">
+                        <label className="block text-xs font-bold text-[var(--pos-text-secondary)]">Mobile Number</label>
+                        <div className="flex gap-2">
+                          <div className="relative shrink-0">
+                            <select
+                              value={selectedCountry.code}
+                              onChange={(e) => {
+                                const country = COUNTRY_CODES.find(c => c.code === e.target.value);
+                                setSelectedCountry(country);
+                                const cleanDigits = mobile.replace(/\D/g, '');
+                                setMobile(formatPhoneNumber(cleanDigits, country.code));
+                              }}
+                              className="bg-[var(--pos-surface-inset)] border border-[var(--pos-grid-line)] text-[var(--pos-text-primary)] rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-[var(--color-accent)] cursor-pointer"
                             >
-                              <Smartphone size={16} className="text-slate-300" />
-                              <input
-                                type="text"
-                                placeholder="771234567"
-                                value={mobile}
-                                readOnly
-                                className="bg-transparent border-none outline-none text-sm w-full text-slate-200 pointer-events-none"
-                              />
-                            </div>
+                              {COUNTRY_CODES.map((c) => (
+                                <option key={c.code} value={c.code}>
+                                  {c.flag} {c.code}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div 
+                            onClick={() => setActiveField('mobile')}
+                            className={`flex-1 p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition ${
+                              activeField === 'mobile' 
+                                ? 'border-[var(--color-accent)] bg-[var(--pos-surface-inset)]' 
+                                : 'border-[var(--pos-grid-line)] bg-[var(--pos-surface-inset)]/40'
+                            }`}
+                          >
+                            <Smartphone size={16} className="text-[var(--pos-text-muted)]" />
+                            <input
+                              type="text"
+                              placeholder="771234567"
+                              value={mobile}
+                              readOnly
+                              className="bg-transparent border-none outline-none text-sm w-full text-[var(--pos-text-primary)] pointer-events-none"
+                            />
                           </div>
                         </div>
-                      </>
+                      </div>
                     )}
 
                     {otpRequired && (
                       <div 
                         onClick={() => setActiveField('otp')}
-                        className={`p-3 rounded-lg border text-center cursor-pointer transition ${activeField === 'otp' ? 'border-amber-500 bg-slate-800/40' : 'border-slate-800 bg-slate-800/10'}`}
+                        className={`p-3 rounded-xl border text-center cursor-pointer transition ${
+                          activeField === 'otp' 
+                            ? 'border-[var(--color-accent)] bg-[var(--pos-surface-inset)]' 
+                            : 'border-[var(--pos-grid-line)] bg-[var(--pos-surface-inset)]/40'
+                        }`}
                       >
                         <input
                           type="text"
                           placeholder="Enter 6-digit OTP"
                           value={otp}
                           readOnly
-                          className="bg-transparent border-none outline-none text-lg tracking-widest text-center w-full font-bold text-amber-400"
+                          style={{ color: branding.buttonColor || '#E94560' }}
+                          className="bg-transparent border-none outline-none text-lg tracking-widest text-center w-full font-black"
                         />
                       </div>
                     )}
@@ -687,38 +734,38 @@ export default function CustomerTerminal() {
                 </div>
 
                 {/* Numpad for Mobile / OTP */}
-                <div className="bg-slate-800/35 border border-slate-800/80 p-3 rounded-xl">
+                <div className="bg-[var(--pos-panel)]/40 border border-[var(--pos-grid-line)] p-3 rounded-2xl shadow-inner">
                   <div className="grid grid-cols-3 gap-2 max-w-[280px] mx-auto">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                       <button
                         key={num}
                         onClick={() => handleKeyPress(num.toString())}
-                        className="py-3 bg-slate-800 hover:bg-slate-700 active:bg-amber-500 rounded-lg text-lg font-bold text-white transition cursor-pointer"
+                        className="py-3.5 bg-[var(--pos-panel)] hover:bg-[var(--pos-surface-inset)] active:bg-[var(--color-accent)] border border-[var(--pos-grid-line)] rounded-xl text-lg font-bold text-[var(--pos-text-primary)] transition cursor-pointer"
                       >
                         {num}
                       </button>
                     ))}
                     <button
                       onClick={() => handleKeyPress('+')}
-                      className="py-3 bg-slate-850 hover:bg-slate-800 rounded-lg text-lg font-bold text-slate-300 transition cursor-pointer"
+                      className="py-3.5 bg-[var(--pos-panel)] hover:bg-[var(--pos-surface-inset)] border border-[var(--pos-grid-line)] rounded-xl text-lg font-bold text-[var(--pos-text-secondary)] transition cursor-pointer"
                     >
                       +
                     </button>
                     <button
                       onClick={() => handleKeyPress('0')}
-                      className="py-3 bg-slate-800 hover:bg-slate-700 active:bg-amber-500 rounded-lg text-lg font-bold text-white transition cursor-pointer"
+                      className="py-3.5 bg-[var(--pos-panel)] hover:bg-[var(--pos-surface-inset)] active:bg-[var(--color-accent)] border border-[var(--pos-grid-line)] rounded-xl text-lg font-bold text-[var(--pos-text-primary)] transition cursor-pointer"
                     >
                       0
                     </button>
                     <button
                       onClick={() => handleKeyPress('BACK')}
-                      className="py-3 bg-red-950/50 hover:bg-red-900/50 rounded-lg text-xs font-semibold text-red-400 transition cursor-pointer"
+                      className="py-3.5 bg-red-950/15 hover:bg-red-900/25 border border-red-500/10 rounded-xl text-xs font-semibold text-red-400 transition cursor-pointer"
                     >
                       Delete
                     </button>
                     <button
                       onClick={() => handleKeyPress('CLEAR')}
-                      className="col-span-3 py-2 bg-slate-850 hover:bg-slate-800 rounded-lg text-xs font-semibold text-slate-300 transition cursor-pointer"
+                      className="col-span-3 py-2 bg-[var(--pos-panel)] hover:bg-[var(--pos-surface-inset)] border border-[var(--pos-grid-line)] rounded-xl text-xs font-semibold text-[var(--pos-text-secondary)] transition cursor-pointer"
                     >
                       Clear All
                     </button>
@@ -728,7 +775,8 @@ export default function CustomerTerminal() {
                 <button
                   onClick={handleTextSubmit}
                   disabled={loading}
-                  className="w-full py-3.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-slate-900 font-bold rounded-xl shadow-lg transition text-sm cursor-pointer"
+                  className="w-full py-3.5 disabled:opacity-60 text-sm font-bold rounded-xl shadow-lg transition cursor-pointer"
+                  style={{ backgroundColor: branding.buttonColor || '#E94560', color: branding.buttonTextColor || '#F8FAFC' }}
                 >
                   {loading ? 'Processing...' : otpRequired ? 'Verify OTP' : 'Check In'}
                 </button>
