@@ -15,6 +15,7 @@ import MenuItemFormModal from '../../components/menu/MenuItemFormModal';
 import MenuItemTable from '../../components/menu/MenuItemTable';
 import ImportModal from '../../components/ImportModal';
 import ProfitabilityAnalytics from '../../components/menu/ProfitabilityAnalytics';
+import ModifierGroupsManager from '../../components/menu/ModifierGroupsManager';
 import { COMBO_CATEGORY_NAME, isSelectableMenuCategory } from '../../constants/categories';
 import { useDragReorder, reorderByDrag } from '../../hooks/useDragReorder';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
@@ -85,7 +86,11 @@ export default function MenuManagement() {
   const whatsappAddonActive = paidAddons?.whatsapp === true;
 
   const location = useLocation();
-  const activeMenuTab = location.pathname.endsWith('/profitability') ? 'profitability' : 'items';
+  const activeMenuTab = location.pathname.endsWith('/profitability')
+    ? 'profitability'
+    : location.pathname.endsWith('/modifier-groups')
+      ? 'modifier-groups'
+      : 'items';
   const setActiveMenuTab = (tab) => navigate(`/manager/menu/${tab}`);
 
   useEffect(() => {
@@ -607,6 +612,7 @@ export default function MenuManagement() {
         <div className="flex gap-1 mb-6 border-b border-slate-700 overflow-x-auto no-scrollbar">
           {[
             { key: 'items', label: 'Menu Items' },
+            { key: 'modifier-groups', label: 'Modifier Groups' },
             { key: 'profitability', label: 'Recipe Profitability' },
           ].map(tab => (
             <button
@@ -624,7 +630,9 @@ export default function MenuManagement() {
           ))}
         </div>
 
-        {activeMenuTab === 'items' ? (
+        {activeMenuTab === 'modifier-groups' ? (
+          <ModifierGroupsManager />
+        ) : activeMenuTab === 'items' ? (
           <>
             {/* Search + View Toggle */}
             <div className="flex flex-col sm:flex-row items-center gap-3 mb-4 bg-[var(--pos-panel)] p-3 rounded-xl border border-slate-700">
