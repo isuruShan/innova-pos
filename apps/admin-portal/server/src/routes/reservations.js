@@ -6,6 +6,7 @@ const Reservation = require('../models/Reservation');
 const ReservationSettings = require('../models/ReservationSettings');
 const CafeTable = require('../models/CafeTable');
 const Customer = require('../models/Customer');
+const TableSession = require('../models/TableSession');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, resolveWriteStoreId } = require('../middleware/storeScope');
 const { requirePaidAddon } = require('../middleware/requirePaidAddon');
@@ -15,6 +16,96 @@ const router = express.Router();
 const requireTableMgmt = requirePaidAddon('table_management');
 
 router.use(protect, tenantScope, requireTableMgmt);
+
+async function getEligibleTables(tenantId, storeId, reservationTime, partySize, duration, excludeReservationId = null) {
+  const CafeTable = require('../models/CafeTable');
+  const Reservation = require('../models/Reservation');
+  const ReservationSettings = require('../models/ReservationSettings');
+  const TableSession = require('../models/TableSession');
+
+  // 1. Get settings
+  const settings = await ReservationSettings.findOne({ tenantId, storeId }).lean();
+  const defDuration = settings?.defaultDurationMinutes || 90;
+  const buffer = settings?.bufferMinutes || 15;
+  const avgTurnTime = settings?.avgTurnTimeMinutes || 60;
+
+  const resTime = new Date(reservationTime);
+  const resDuration = duration || defDuration;
+  const slotStart = resTime;
+  const slotEnd = new Date(resTime.getTime() + resDuration * 60000);
+
+  // 2. Fetch all active tables with capacity >= partySize
+  const tables = await CafeTable.find({
+    tenantId,
+    storeId,
+    active: true,
+    capacity: { $gte: Number(partySize) },
+  }).lean();
+
+  if (tables.length === 0) return [];
+
+  // 3. Fetch overlapping reservations
+  const query = {
+    tenantId,
+    storeId,
+    status: { $nin: ['cancelled', 'no_show', 'completed'] },
+    $or: [
+      {
+        reservationTime: { $lt: slotEnd },
+        $expr: {
+          $gt: [
+            { $add: ['$reservationTime', { $multiply: [{ $ifNull: ['$duration', defDuration] }, 60000] }] },
+            slotStart,
+          ],
+        },
+      },
+    ],
+  };
+  if (excludeReservationId) {
+    query._id = { $ne: excludeReservationId };
+  }
+  const overlappingReservations = await Reservation.find(query).lean();
+
+  // 4. Fetch active table sessions
+  const activeSessions = await TableSession.find({
+    tenantId,
+    storeId,
+    status: 'active',
+  }).lean();
+
+  // 5. Filter tables
+  const eligibleTables = [];
+  for (const table of tables) {
+    const tableIdStr = String(table._id);
+
+    // Condition A: No overlapping reservations
+    const hasReservationConflict = overlappingReservations.some(
+      (r) => String(r.tableId) === tableIdStr
+    );
+    if (hasReservationConflict) continue;
+
+    // Condition B: Not currently occupied with overlapping timing
+    const activeSession = activeSessions.find((s) => String(s.tableId) === tableIdStr);
+    if (activeSession) {
+      const expectedReleaseTime = new Date(
+        new Date(activeSession.seatedAt).getTime() + avgTurnTime * 60000
+      );
+      const earliestReservableTime = new Date(expectedReleaseTime.getTime() + buffer * 60000);
+      
+      // If requested reservation time starts before the expected release + buffer, it's not eligible
+      if (slotStart < earliestReservableTime) {
+        continue;
+      }
+    }
+
+    eligibleTables.push(table);
+  }
+
+  // Sort tables: capacity closest to partySize first, then capacity ascending
+  eligibleTables.sort((a, b) => a.capacity - b.capacity || a.label.localeCompare(b.label));
+
+  return eligibleTables;
+}
 
 /**
  * GET /reservations - List reservations for date range
@@ -265,9 +356,9 @@ router.post(
       let assignedTableId = tableId;
       let assignedTableLabel = '';
 
-      if (tableId) {
+      if (assignedTableId) {
         const table = await CafeTable.findOne({
-          _id: tableId,
+          _id: assignedTableId,
           tenantId: req.tenantId,
           storeId,
           active: true,
@@ -275,12 +366,14 @@ router.post(
         if (!table) {
           return res.status(400).json({ message: 'Invalid table' });
         }
+        if (table.capacity < partySize) {
+          return res.status(400).json({ message: `Selected table capacity (${table.capacity}) is too small for party size (${partySize})` });
+        }
         assignedTableLabel = table.label;
-      }
 
-      // Check for conflicts if table is assigned
-      if (assignedTableId) {
+        // Check for conflicts if table is explicitly assigned
         const buffer = settings?.bufferMinutes || 15;
+        const avgTurnTime = settings?.avgTurnTimeMinutes || 60;
         const slotStart = resTime;
         const slotEnd = new Date(resTime.getTime() + resDuration * 60000);
 
@@ -307,6 +400,40 @@ router.post(
             message: 'Table is already reserved for this time slot',
             conflictingReservation: conflict._id,
           });
+        }
+
+        // Check active session conflicts
+        const activeSession = await TableSession.findOne({
+          tenantId: req.tenantId,
+          storeId,
+          tableId: assignedTableId,
+          status: 'active',
+        }).lean();
+        if (activeSession) {
+          const expectedReleaseTime = new Date(
+            new Date(activeSession.seatedAt).getTime() + avgTurnTime * 60000
+          );
+          const earliestReservableTime = new Date(expectedReleaseTime.getTime() + buffer * 60000);
+          if (slotStart < earliestReservableTime) {
+            return res.status(409).json({
+              message: 'Selected table is currently occupied by a customer and is not expected to be free in time.',
+            });
+          }
+        }
+      } else {
+        // Auto-assign table
+        const eligible = await getEligibleTables(
+          req.tenantId,
+          storeId,
+          resTime,
+          Number(partySize),
+          resDuration
+        );
+        if (eligible.length > 0) {
+          assignedTableId = eligible[0]._id;
+          assignedTableLabel = eligible[0].label;
+        } else {
+          return res.status(400).json({ message: 'No eligible tables are available for the requested party size and time slot.' });
         }
       }
 
@@ -378,6 +505,37 @@ router.post(
 );
 
 /**
+ * GET /reservations/eligible-tables - Get list of eligible tables for a time slot
+ */
+router.get('/eligible-tables', resolveSelectedStore, async (req, res) => {
+  try {
+    const storeId = req.storeId;
+    if (!storeId) return res.status(400).json({ message: 'Store required' });
+
+    const { reservationTime, partySize, duration, excludeReservationId } = req.query;
+    if (!reservationTime) {
+      return res.status(400).json({ message: 'reservationTime is required' });
+    }
+    if (!partySize) {
+      return res.status(400).json({ message: 'partySize is required' });
+    }
+
+    const eligibleTables = await getEligibleTables(
+      req.tenantId,
+      storeId,
+      reservationTime,
+      Number(partySize),
+      duration ? Number(duration) : undefined,
+      excludeReservationId
+    );
+
+    res.json(eligibleTables);
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
+/**
  * GET /reservations/:id - Get single reservation
  */
 router.get('/:id', resolveSelectedStore, async (req, res) => {
@@ -426,17 +584,110 @@ router.put(
         return res.status(404).json({ message: 'Reservation not found' });
       }
 
-      const allowedFields = [
-        'guestName', 'guestPhone', 'guestEmail', 'reservationTime',
-        'partySize', 'duration', 'tableId', 'zonePreference',
-        'specialRequests', 'internalNotes',
-      ];
+      const resTime = req.body.reservationTime ? new Date(req.body.reservationTime) : reservation.reservationTime;
+      const partySize = req.body.partySize ? Number(req.body.partySize) : reservation.partySize;
+      const resDuration = req.body.duration ? Number(req.body.duration) : reservation.duration;
+      let assignedTableId = req.body.tableId !== undefined ? req.body.tableId : reservation.tableId;
+      let assignedTableLabel = reservation.tableLabel;
 
-      for (const field of allowedFields) {
-        if (req.body[field] !== undefined) {
-          reservation[field] = req.body[field];
+      if (assignedTableId) {
+        const table = await CafeTable.findOne({
+          _id: assignedTableId,
+          tenantId: req.tenantId,
+          storeId: reservation.storeId,
+          active: true,
+        }).lean();
+        if (!table) {
+          return res.status(400).json({ message: 'Invalid table' });
+        }
+        if (table.capacity < partySize) {
+          return res.status(400).json({ message: `Selected table capacity (${table.capacity}) is too small for party size (${partySize})` });
+        }
+        assignedTableLabel = table.label;
+
+        // Check for conflicts
+        const settings = await ReservationSettings.findOne({
+          tenantId: req.tenantId,
+          storeId: reservation.storeId,
+        }).lean();
+        const buffer = settings?.bufferMinutes || 15;
+        const avgTurnTime = settings?.avgTurnTimeMinutes || 60;
+        const slotStart = resTime;
+        const slotEnd = new Date(resTime.getTime() + resDuration * 60000);
+
+        const conflict = await Reservation.findOne({
+          _id: { $ne: reservation._id },
+          tenantId: req.tenantId,
+          storeId: reservation.storeId,
+          tableId: assignedTableId,
+          status: { $nin: ['cancelled', 'no_show', 'completed'] },
+          $or: [
+            {
+              reservationTime: { $lt: slotEnd },
+              $expr: {
+                $gt: [
+                  { $add: ['$reservationTime', { $multiply: [{ $ifNull: ['$duration', resDuration] }, 60000] }] },
+                  slotStart,
+                ],
+              },
+            },
+          ],
+        });
+
+        if (conflict) {
+          return res.status(409).json({
+            message: 'Selected table is already reserved for this time slot',
+            conflictingReservation: conflict._id,
+          });
+        }
+
+        // Check active session conflict
+        const activeSession = await TableSession.findOne({
+          tenantId: req.tenantId,
+          storeId: reservation.storeId,
+          tableId: assignedTableId,
+          status: 'active',
+        }).lean();
+        if (activeSession) {
+          const expectedReleaseTime = new Date(
+            new Date(activeSession.seatedAt).getTime() + avgTurnTime * 60000
+          );
+          const earliestReservableTime = new Date(expectedReleaseTime.getTime() + buffer * 60000);
+          if (slotStart < earliestReservableTime) {
+            return res.status(409).json({
+              message: 'Selected table is currently occupied by a customer and is not expected to be free in time.',
+            });
+          }
+        }
+      } else {
+        // Auto-assign table
+        const eligible = await getEligibleTables(
+          req.tenantId,
+          reservation.storeId,
+          resTime,
+          partySize,
+          resDuration,
+          reservation._id
+        );
+        if (eligible.length > 0) {
+          assignedTableId = eligible[0]._id;
+          assignedTableLabel = eligible[0].label;
+        } else {
+          return res.status(400).json({ message: 'No eligible tables are available for the requested party size and time slot.' });
         }
       }
+
+      reservation.guestName = req.body.guestName !== undefined ? req.body.guestName.trim() : reservation.guestName;
+      reservation.guestPhone = req.body.guestPhone !== undefined ? req.body.guestPhone.trim() : reservation.guestPhone;
+      reservation.guestEmail = req.body.guestEmail !== undefined ? req.body.guestEmail.trim() : reservation.guestEmail;
+      reservation.reservationTime = resTime;
+      reservation.partySize = partySize;
+      reservation.duration = resDuration;
+      reservation.tableId = assignedTableId || null;
+      reservation.tableLabel = assignedTableLabel;
+      reservation.zonePreference = req.body.zonePreference !== undefined ? req.body.zonePreference : reservation.zonePreference;
+      reservation.specialRequests = req.body.specialRequests !== undefined ? req.body.specialRequests : reservation.specialRequests;
+      reservation.internalNotes = req.body.internalNotes !== undefined ? req.body.internalNotes : reservation.internalNotes;
 
       // Sync customer details or create new if changed
       let linkedCustomerId = reservation.customerId;
@@ -477,12 +728,6 @@ router.put(
         linkedCustomerId = customer._id;
       }
       reservation.customerId = linkedCustomerId;
-
-      // Update table label if table changed
-      if (req.body.tableId) {
-        const table = await CafeTable.findById(req.body.tableId).lean();
-        reservation.tableLabel = table?.label || '';
-      }
 
       reservation.updatedBy = req.user.id;
       await reservation.save();

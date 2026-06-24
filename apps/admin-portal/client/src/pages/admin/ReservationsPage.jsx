@@ -26,6 +26,34 @@ const parsePhone = (phoneStr) => {
   return { code: '+94', number: phoneStr };
 };
 
+const formatPhoneNumber = (value, countryCode) => {
+  const clean = value.replace(/\D/g, '');
+  if (!clean) return '';
+  
+  if (countryCode === '+1') {
+    if (clean.length <= 3) return clean;
+    if (clean.length <= 6) return `(${clean.slice(0, 3)}) ${clean.slice(3)}`;
+    return `(${clean.slice(0, 3)}) ${clean.slice(3, 6)}-${clean.slice(6, 10)}`;
+  } else if (countryCode === '+94') {
+    if (clean.length <= 2) return clean;
+    if (clean.length <= 5) return `${clean.slice(0, 2)} ${clean.slice(2)}`;
+    return `${clean.slice(0, 2)} ${clean.slice(2, 5)} ${clean.slice(5, 9)}`;
+  } else if (countryCode === '+61') {
+    if (clean.length <= 3) return clean;
+    if (clean.length <= 6) return `${clean.slice(0, 3)} ${clean.slice(3)}`;
+    return `${clean.slice(0, 3)} ${clean.slice(3, 6)} ${clean.slice(6, 9)}`;
+  } else if (countryCode === '+44') {
+    if (clean.length <= 4) return clean;
+    return `${clean.slice(0, 4)} ${clean.slice(4, 10)}`;
+  }
+  
+  const parts = [];
+  for (let i = 0; i < clean.length; i += 4) {
+    parts.push(clean.slice(i, i + 4));
+  }
+  return parts.join(' ');
+};
+
 const STATUS_STYLES = {
   pending: { bg: 'bg-amber-50 text-amber-700 border-amber-200/60', label: 'Pending' },
   confirmed: { bg: 'bg-blue-50 text-blue-700 border-blue-200/60', label: 'Confirmed' },
@@ -133,6 +161,7 @@ function ReservationCard({ reservation, onAction, onEdit, tables }) {
 }
 
 function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, error }) {
+  const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     guestName: '',
     guestPhone: '',
@@ -147,6 +176,9 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
   });
   const [countryCode, setCountryCode] = useState('+94');
   const [phoneNo, setPhoneNo] = useState('');
+  const [eligibleTables, setEligibleTables] = useState([]);
+  const [isLoadingTables, setIsLoadingTables] = useState(false);
+  const [tablesError, setTablesError] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -164,8 +196,64 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
       });
       setCountryCode('+94');
       setPhoneNo('');
+      setStep(1);
+      setEligibleTables([]);
+      setTablesError(null);
     }
   }, [isOpen]);
+
+  const fetchEligibleTables = async () => {
+    setIsLoadingTables(true);
+    setTablesError(null);
+    try {
+      const dateTime = new Date(`${form.reservationDate}T${form.reservationTime}`);
+      const res = await api.get('/reservations/eligible-tables', {
+        params: {
+          reservationTime: dateTime.toISOString(),
+          partySize: form.partySize,
+          duration: form.duration,
+        }
+      });
+      setEligibleTables(res.data || []);
+    } catch (err) {
+      setTablesError(err.response?.data?.message || 'Failed to load eligible tables');
+    } finally {
+      setIsLoadingTables(false);
+    }
+  };
+
+  useEffect(() => {
+    if (step === 3 && form.reservationDate && form.reservationTime && form.partySize) {
+      fetchEligibleTables();
+    }
+  }, [step, form.reservationDate, form.reservationTime, form.partySize, form.duration]);
+
+  const handlePhoneChange = (val) => {
+    const clean = val.replace(/\D/g, '');
+    setPhoneNo(formatPhoneNumber(clean, countryCode));
+  };
+
+  const handleCountryCodeChange = (e) => {
+    const code = e.target.value;
+    setCountryCode(code);
+    const clean = phoneNo.replace(/\D/g, '');
+    setPhoneNo(formatPhoneNumber(clean, code));
+  };
+
+  const nextStep = () => {
+    if (step === 1) {
+      if (!form.guestName.trim()) return;
+      if (!form.partySize || form.partySize < 1) return;
+    }
+    if (step === 2) {
+      if (!form.reservationDate || !form.reservationTime) return;
+    }
+    setStep((prev) => prev + 1);
+  };
+
+  const prevStep = () => {
+    setStep((prev) => prev - 1);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -185,160 +273,270 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
 
   if (!isOpen) return null;
 
+  const isStep1Valid = form.guestName.trim() !== '' && form.partySize >= 1;
+  const isStep2Valid = form.reservationDate !== '' && form.reservationTime !== '';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl">
-        <div className="p-5 border-b border-gray-150 flex items-center justify-between">
+      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden border border-gray-200 shadow-2xl">
+        {/* Header */}
+        <div className="p-5 border-b border-gray-150 flex items-center justify-between shrink-0">
           <h3 className="font-bold text-lg text-gray-900">New Reservation</h3>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition">
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-105 text-gray-400 hover:text-gray-655 transition shrink-0 animate-fade-in">
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Guest Name *</label>
-            <input
-              type="text"
-              required
-              value={form.guestName}
-              onChange={(e) => setForm({ ...form, guestName: e.target.value })}
-              className="w-full border border-gray-305 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Phone</label>
-              <div className="flex gap-2">
-                <select
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-2 py-2 bg-gray-50 text-gray-905 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+        {/* Step progress bar */}
+        <div className="flex items-center justify-between px-6 py-3.5 bg-gray-50 border-b border-gray-150 text-xs shrink-0">
+          {[
+            { num: 1, label: 'Guest Info' },
+            { num: 2, label: 'Schedule' },
+            { num: 3, label: 'Table & Details' },
+          ].map((s, idx, arr) => (
+            <div key={s.num} className="flex items-center flex-1 last:flex-none">
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center font-bold border transition ${
+                    step === s.num
+                      ? 'bg-brand-orange border-brand-orange text-white shadow-sm shadow-brand-orange/25'
+                      : step > s.num
+                      ? 'bg-green-55 border-green-300 text-green-700'
+                      : 'bg-white border-gray-300 text-gray-400'
+                  }`}
                 >
-                  {COUNTRY_CODES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.flag} {c.code}
-                    </option>
-                  ))}
-                </select>
+                  {step > s.num ? <Check size={12} className="stroke-[3]" /> : s.num}
+                </div>
+                <span
+                  className={`font-semibold ${
+                    step === s.num ? 'text-gray-900 font-bold' : 'text-gray-450'
+                  }`}
+                >
+                  {s.label}
+                </span>
+              </div>
+              {idx < arr.length - 1 && (
+                <div
+                  className={`flex-1 h-0.5 mx-4 transition-colors duration-300 ${
+                    step > s.num ? 'bg-green-300' : 'bg-gray-200'
+                  }`}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Wizard content */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
+          {step === 1 && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Guest Name *</label>
                 <input
-                  type="tel"
-                  placeholder="e.g. 771234567"
-                  value={phoneNo}
-                  onChange={(e) => setPhoneNo(e.target.value)}
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  type="text"
+                  required
+                  value={form.guestName}
+                  onChange={(e) => setForm({ ...form, guestName: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  placeholder="e.g. John Doe"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Phone</label>
+                <div className="flex gap-2">
+                  <select
+                    value={countryCode}
+                    onChange={handleCountryCodeChange}
+                    className="border border-gray-300 rounded-lg px-2 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  >
+                    {COUNTRY_CODES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.flag} {c.code}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="tel"
+                    placeholder="e.g. 77 123 4567"
+                    value={phoneNo}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange font-mono tracking-wide"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Email</label>
+                <input
+                  type="email"
+                  value={form.guestEmail}
+                  onChange={(e) => setForm({ ...form, guestEmail: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-905 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  placeholder="e.g. john@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Party Size *</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  required
+                  value={form.partySize}
+                  onChange={(e) => setForm({ ...form, partySize: Number(e.target.value) })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
                 />
               </div>
             </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Email</label>
-              <input
-                type="email"
-                value={form.guestEmail}
-                onChange={(e) => setForm({ ...form, guestEmail: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
-            </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Party Size *</label>
-              <input
-                type="number"
-                min={1}
-                max={20}
-                required
-                value={form.partySize}
-                onChange={(e) => setForm({ ...form, partySize: Number(e.target.value) })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Date *</label>
-              <input
-                type="date"
-                required
-                value={form.reservationDate}
-                onChange={(e) => setForm({ ...form, reservationDate: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Time *</label>
-              <input
-                type="time"
-                required
-                value={form.reservationTime}
-                onChange={(e) => setForm({ ...form, reservationTime: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
-            </div>
-          </div>
+          {step === 2 && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Date *</label>
+                <input
+                  type="date"
+                  required
+                  value={form.reservationDate}
+                  onChange={(e) => setForm({ ...form, reservationDate: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                />
+              </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Table (optional)</label>
-              <select
-                value={form.tableId}
-                onChange={(e) => setForm({ ...form, tableId: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-              >
-                <option value="">Auto-assign</option>
-                {tables.map((t) => (
-                  <option key={t._id} value={t._id}>
-                    {t.label} (Cap: {t.capacity || 4})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Duration (mins)</label>
-              <select
-                value={form.duration}
-                onChange={(e) => setForm({ ...form, duration: Number(e.target.value) })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-              >
-                <option value={60}>60 mins</option>
-                <option value={90}>90 mins</option>
-                <option value={120}>120 mins</option>
-              </select>
-            </div>
-          </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Time *</label>
+                <input
+                  type="time"
+                  required
+                  value={form.reservationTime}
+                  onChange={(e) => setForm({ ...form, reservationTime: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                />
+              </div>
 
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Special Requests</label>
-            <textarea
-              rows={2}
-              value={form.specialRequests}
-              onChange={(e) => setForm({ ...form, specialRequests: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none"
-              placeholder="Allergies, seating preferences, occasion..."
-            />
-          </div>
-
-          {error && (
-            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
-              {error}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Duration</label>
+                <select
+                  value={form.duration}
+                  onChange={(e) => setForm({ ...form, duration: Number(e.target.value) })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                >
+                  <option value={30}>30 mins</option>
+                  <option value={45}>45 mins</option>
+                  <option value={60}>60 mins</option>
+                  <option value={90}>90 mins</option>
+                  <option value={120}>120 mins</option>
+                  <option value={150}>150 mins</option>
+                  <option value={180}>180 mins</option>
+                </select>
+              </div>
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold transition text-sm"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold transition text-sm disabled:opacity-50"
-            >
-              {isPending ? 'Creating...' : 'Create Reservation'}
-            </button>
+          {step === 3 && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Assigned Table</label>
+                {isLoadingTables ? (
+                  <div className="text-gray-550 text-sm py-2">Loading eligible tables...</div>
+                ) : tablesError ? (
+                  <div className="text-red-655 text-sm py-2">Error: {tablesError}</div>
+                ) : (
+                  <select
+                    value={form.tableId}
+                    onChange={(e) => setForm({ ...form, tableId: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  >
+                    <option value="">Auto-assign (closest fit)</option>
+                    {eligibleTables.map((t) => (
+                      <option key={t._id} value={t._id}>
+                        {t.label} (Cap: {t.capacity})
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Only tables with enough capacity that have no active session or booking conflict are listed.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Special Requests / Notes</label>
+                <textarea
+                  rows={3}
+                  value={form.specialRequests}
+                  onChange={(e) => setForm({ ...form, specialRequests: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  placeholder="Allergies, seating preferences, occasion..."
+                />
+              </div>
+
+              {error && (
+                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-750 text-sm">
+                  {error}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Footer buttons */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-150 shrink-0">
+            {step === 1 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-lg bg-gray-105 hover:bg-gray-200 text-gray-705 font-semibold transition text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!isStep1Valid}
+                  onClick={nextStep}
+                  className="px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold transition text-sm disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </>
+            ) : step === 2 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="px-4 py-2 rounded-lg bg-gray-105 hover:bg-gray-200 text-gray-750 font-semibold transition text-sm"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  disabled={!isStep2Valid}
+                  onClick={nextStep}
+                  className="px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold transition text-sm disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="px-4 py-2 rounded-lg bg-gray-105 hover:bg-gray-200 text-gray-750 font-semibold transition text-sm"
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending || isLoadingTables}
+                  className="px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold transition text-sm disabled:opacity-50"
+                >
+                  {isPending ? 'Creating...' : 'Create Reservation'}
+                </button>
+              </>
+            )}
           </div>
         </form>
       </div>
@@ -347,6 +545,7 @@ function NewReservationModal({ isOpen, onClose, tables, onSubmit, isPending, err
 }
 
 function EditReservationModal({ isOpen, onClose, tables, onSubmit, isPending, error, reservation }) {
+  const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     guestName: '',
     guestPhone: '',
@@ -360,13 +559,16 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, isPending, er
   });
   const [countryCode, setCountryCode] = useState('+94');
   const [phoneNo, setPhoneNo] = useState('');
+  const [eligibleTables, setEligibleTables] = useState([]);
+  const [isLoadingTables, setIsLoadingTables] = useState(false);
+  const [tablesError, setTablesError] = useState(null);
 
   useEffect(() => {
     if (isOpen && reservation) {
       const time = new Date(reservation.reservationTime);
       const parsed = parsePhone(reservation.guestPhone);
       setCountryCode(parsed.code);
-      setPhoneNo(parsed.number);
+      setPhoneNo(formatPhoneNumber(parsed.number, parsed.code));
       setForm({
         guestName: reservation.guestName || '',
         guestEmail: reservation.guestEmail || '',
@@ -377,8 +579,73 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, isPending, er
         duration: reservation.duration || 90,
         specialRequests: reservation.specialRequests || '',
       });
+      setStep(1);
+      setEligibleTables([]);
+      setTablesError(null);
     }
   }, [isOpen, reservation]);
+
+  const fetchEligibleTables = async () => {
+    setIsLoadingTables(true);
+    setTablesError(null);
+    try {
+      const dateTime = new Date(`${form.reservationDate}T${form.reservationTime}`);
+      const res = await api.get('/reservations/eligible-tables', {
+        params: {
+          reservationTime: dateTime.toISOString(),
+          partySize: form.partySize,
+          duration: form.duration,
+          excludeReservationId: reservation._id,
+        }
+      });
+      let fetched = res.data || [];
+      // If the reservation already has a table assigned, and it's not in the fetched eligible tables, append it
+      if (reservation.tableId && !fetched.some(t => String(t._id) === String(reservation.tableId))) {
+        const currentTableObj = tables.find(t => String(t._id) === String(reservation.tableId));
+        if (currentTableObj) {
+          fetched = [currentTableObj, ...fetched];
+        }
+      }
+      setEligibleTables(fetched);
+    } catch (err) {
+      setTablesError(err.response?.data?.message || 'Failed to load eligible tables');
+    } finally {
+      setIsLoadingTables(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && step === 3 && form.reservationDate && form.reservationTime && form.partySize) {
+      fetchEligibleTables();
+    }
+  }, [isOpen, step, form.reservationDate, form.reservationTime, form.partySize, form.duration]);
+
+  const handlePhoneChange = (val) => {
+    const clean = val.replace(/\D/g, '');
+    setPhoneNo(formatPhoneNumber(clean, countryCode));
+  };
+
+  const handleCountryCodeChange = (e) => {
+    const code = e.target.value;
+    setCountryCode(code);
+    const clean = phoneNo.replace(/\D/g, '');
+    setPhoneNo(formatPhoneNumber(clean, code));
+  };
+
+  const nextStep = () => {
+    if (step === 1) {
+      if (!form.guestName.trim()) return;
+      if (!form.partySize || form.partySize < 1) return;
+    }
+    if (step === 2) {
+      if (!form.reservationDate || !form.reservationTime) return;
+    }
+    setStep((prev) => prev + 1);
+  };
+
+  const prevStep = () => {
+    setStep((prev) => prev - 1);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -397,160 +664,270 @@ function EditReservationModal({ isOpen, onClose, tables, onSubmit, isPending, er
 
   if (!isOpen || !reservation) return null;
 
+  const isStep1Valid = form.guestName.trim() !== '' && form.partySize >= 1;
+  const isStep2Valid = form.reservationDate !== '' && form.reservationTime !== '';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl">
-        <div className="p-5 border-b border-gray-150 flex items-center justify-between">
+      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden border border-gray-200 shadow-2xl">
+        {/* Header */}
+        <div className="p-5 border-b border-gray-150 flex items-center justify-between shrink-0">
           <h3 className="font-bold text-lg text-gray-900">Edit Reservation</h3>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition">
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-105 text-gray-400 hover:text-gray-655 transition shrink-0">
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Guest Name *</label>
-            <input
-              type="text"
-              required
-              value={form.guestName}
-              onChange={(e) => setForm({ ...form, guestName: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Phone</label>
-              <div className="flex gap-2">
-                <select
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-2 py-2 bg-gray-50 text-gray-95 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+        {/* Step progress bar */}
+        <div className="flex items-center justify-between px-6 py-3.5 bg-gray-50 border-b border-gray-150 text-xs shrink-0">
+          {[
+            { num: 1, label: 'Guest Info' },
+            { num: 2, label: 'Schedule' },
+            { num: 3, label: 'Table & Details' },
+          ].map((s, idx, arr) => (
+            <div key={s.num} className="flex items-center flex-1 last:flex-none">
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center font-bold border transition ${
+                    step === s.num
+                      ? 'bg-brand-orange border-brand-orange text-white shadow-sm shadow-brand-orange/25'
+                      : step > s.num
+                      ? 'bg-green-55 border-green-300 text-green-700'
+                      : 'bg-white border-gray-300 text-gray-400'
+                  }`}
                 >
-                  {COUNTRY_CODES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.flag} {c.code}
-                    </option>
-                  ))}
-                </select>
+                  {step > s.num ? <Check size={12} className="stroke-[3]" /> : s.num}
+                </div>
+                <span
+                  className={`font-semibold ${
+                    step === s.num ? 'text-gray-900 font-bold' : 'text-gray-450'
+                  }`}
+                >
+                  {s.label}
+                </span>
+              </div>
+              {idx < arr.length - 1 && (
+                <div
+                  className={`flex-1 h-0.5 mx-4 transition-colors duration-300 ${
+                    step > s.num ? 'bg-green-300' : 'bg-gray-200'
+                  }`}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Wizard content */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
+          {step === 1 && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Guest Name *</label>
                 <input
-                  type="tel"
-                  placeholder="e.g. 771234567"
-                  value={phoneNo}
-                  onChange={(e) => setPhoneNo(e.target.value)}
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  type="text"
+                  required
+                  value={form.guestName}
+                  onChange={(e) => setForm({ ...form, guestName: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  placeholder="e.g. John Doe"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Phone</label>
+                <div className="flex gap-2">
+                  <select
+                    value={countryCode}
+                    onChange={handleCountryCodeChange}
+                    className="border border-gray-300 rounded-lg px-2 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  >
+                    {COUNTRY_CODES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.flag} {c.code}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="tel"
+                    placeholder="e.g. 77 123 4567"
+                    value={phoneNo}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange font-mono tracking-wide"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Email</label>
+                <input
+                  type="email"
+                  value={form.guestEmail}
+                  onChange={(e) => setForm({ ...form, guestEmail: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-95 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  placeholder="e.g. john@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Party Size *</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  required
+                  value={form.partySize}
+                  onChange={(e) => setForm({ ...form, partySize: Number(e.target.value) })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
                 />
               </div>
             </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Email</label>
-              <input
-                type="email"
-                value={form.guestEmail}
-                onChange={(e) => setForm({ ...form, guestEmail: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
-            </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Party Size *</label>
-              <input
-                type="number"
-                min={1}
-                max={20}
-                required
-                value={form.partySize}
-                onChange={(e) => setForm({ ...form, partySize: Number(e.target.value) })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Date *</label>
-              <input
-                type="date"
-                required
-                value={form.reservationDate}
-                onChange={(e) => setForm({ ...form, reservationDate: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Time *</label>
-              <input
-                type="time"
-                required
-                value={form.reservationTime}
-                onChange={(e) => setForm({ ...form, reservationTime: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-              />
-            </div>
-          </div>
+          {step === 2 && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Date *</label>
+                <input
+                  type="date"
+                  required
+                  value={form.reservationDate}
+                  onChange={(e) => setForm({ ...form, reservationDate: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                />
+              </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Table (optional)</label>
-              <select
-                value={form.tableId}
-                onChange={(e) => setForm({ ...form, tableId: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-              >
-                <option value="">Auto-assign</option>
-                {tables.map((t) => (
-                  <option key={t._id} value={t._id}>
-                    {t.label} (Cap: {t.capacity || 4})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Duration (mins)</label>
-              <select
-                value={form.duration}
-                onChange={(e) => setForm({ ...form, duration: Number(e.target.value) })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-              >
-                <option value={60}>60 mins</option>
-                <option value={90}>90 mins</option>
-                <option value={120}>120 mins</option>
-              </select>
-            </div>
-          </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Time *</label>
+                <input
+                  type="time"
+                  required
+                  value={form.reservationTime}
+                  onChange={(e) => setForm({ ...form, reservationTime: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                />
+              </div>
 
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Special Requests</label>
-            <textarea
-              rows={2}
-              value={form.specialRequests}
-              onChange={(e) => setForm({ ...form, specialRequests: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none"
-              placeholder="Allergies, seating preferences, occasion..."
-            />
-          </div>
-
-          {error && (
-            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
-              {error}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Duration</label>
+                <select
+                  value={form.duration}
+                  onChange={(e) => setForm({ ...form, duration: Number(e.target.value) })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                >
+                  <option value={30}>30 mins</option>
+                  <option value={45}>45 mins</option>
+                  <option value={60}>60 mins</option>
+                  <option value={90}>90 mins</option>
+                  <option value={120}>120 mins</option>
+                  <option value={150}>150 mins</option>
+                  <option value={180}>180 mins</option>
+                </select>
+              </div>
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold transition text-sm"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold transition text-sm disabled:opacity-50"
-            >
-              {isPending ? 'Updating...' : 'Update Reservation'}
-            </button>
+          {step === 3 && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Assigned Table</label>
+                {isLoadingTables ? (
+                  <div className="text-gray-550 text-sm py-2">Loading eligible tables...</div>
+                ) : tablesError ? (
+                  <div className="text-red-655 text-sm py-2">Error: {tablesError}</div>
+                ) : (
+                  <select
+                    value={form.tableId}
+                    onChange={(e) => setForm({ ...form, tableId: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  >
+                    <option value="">Auto-assign (closest fit)</option>
+                    {eligibleTables.map((t) => (
+                      <option key={t._id} value={t._id}>
+                        {t.label} (Cap: {t.capacity})
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Only tables with enough capacity that have no active session or booking conflict are listed.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Special Requests / Notes</label>
+                <textarea
+                  rows={3}
+                  value={form.specialRequests}
+                  onChange={(e) => setForm({ ...form, specialRequests: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-900 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-brand-orange"
+                  placeholder="Allergies, seating preferences, occasion..."
+                />
+              </div>
+
+              {error && (
+                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-750 text-sm">
+                  {error}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Footer buttons */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-150 shrink-0">
+            {step === 1 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-lg bg-gray-105 hover:bg-gray-200 text-gray-705 font-semibold transition text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!isStep1Valid}
+                  onClick={nextStep}
+                  className="px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold transition text-sm disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </>
+            ) : step === 2 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="px-4 py-2 rounded-lg bg-gray-105 hover:bg-gray-200 text-gray-750 font-semibold transition text-sm"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  disabled={!isStep2Valid}
+                  onClick={nextStep}
+                  className="px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold transition text-sm disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  className="px-4 py-2 rounded-lg bg-gray-105 hover:bg-gray-200 text-gray-750 font-semibold transition text-sm"
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending || isLoadingTables}
+                  className="px-4 py-2 rounded-lg bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold transition text-sm disabled:opacity-50"
+                >
+                  {isPending ? 'Updating...' : 'Update Reservation'}
+                </button>
+              </>
+            )}
           </div>
         </form>
       </div>
