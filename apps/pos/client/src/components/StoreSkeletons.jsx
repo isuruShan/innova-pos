@@ -68,21 +68,38 @@ export function OrdersTableSkeleton({ rows = 8 }) {
 
 export function KanbanSkeleton({ columns = 5 }) {
   return (
-    <div className="flex-1 grid grid-cols-2 lg:grid-cols-5 gap-3 min-h-0 overflow-hidden">
-      {Array.from({ length: columns }).map((_, c) => (
-        <div key={c} className="flex flex-col min-h-0 space-y-2">
-          <SkBlock className="h-8 w-full" />
-          <div className="space-y-2 flex-1 overflow-hidden">
-            {[1, 2, 3].map((r) => (
-              <div key={r} className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-3 space-y-2">
-                <SkBlock className="h-4 w-[85%]" />
-                <SkBlock className="h-3 w-full" />
-                <SkBlock className="h-3 w-[65%]" />
-              </div>
-            ))}
-          </div>
+    <div className="flex-1 min-h-0 overflow-hidden h-full">
+      {/* Mobile view skeleton: 1 column */}
+      <div className="lg:hidden flex flex-col min-h-0 space-y-2 h-full">
+        <SkBlock className="h-8 w-2/5" />
+        <div className="space-y-2.5 flex-1 overflow-hidden">
+          {[1, 2, 3].map((r) => (
+            <div key={r} className="bg-[var(--pos-panel)] border border-slate-700/30 rounded-xl p-3 space-y-2">
+              <SkBlock className="h-4 w-[85%]" />
+              <SkBlock className="h-3 w-full" />
+              <SkBlock className="h-3 w-[65%]" />
+            </div>
+          ))}
         </div>
-      ))}
+      </div>
+
+      {/* Desktop view skeleton: multi-column grid */}
+      <div className="hidden lg:grid gap-3 h-full" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+        {Array.from({ length: columns }).map((_, c) => (
+          <div key={c} className="flex flex-col min-h-0 space-y-2">
+            <SkBlock className="h-8 w-full" />
+            <div className="space-y-2 flex-1 overflow-hidden">
+              {[1, 2, 3].map((r) => (
+                <div key={r} className="bg-[var(--pos-panel)] border border-slate-700/50 rounded-xl p-3 space-y-2">
+                  <SkBlock className="h-4 w-[85%]" />
+                  <SkBlock className="h-3 w-full" />
+                  <SkBlock className="h-3 w-[65%]" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

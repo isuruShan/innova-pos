@@ -282,3 +282,41 @@ input[type="number"] {
     display: none;
   }
 }
+
+/* ─── Size-Aware Order Card Design ───────────────────────────────────────── */
+.order-card-container {
+  container-type: inline-size;
+  width: 100%;
+}
+
+.order-card-body {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.order-card-left {
+  flex-grow: 1;
+}
+
+.order-card-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  transition: all 0.2s ease-in-out;
+}
+
+@container (min-width: 420px) {
+  .order-card-body {
+    display: grid;
+    grid-template-columns: 1fr 210px;
+  }
+
+  .order-card-right {
+    border-top: none !important;
+    border-left: 1px solid var(--pos-grid-line);
+    background-color: transparent !important;
+    justify-content: space-between;
+  }
+}
+

@@ -193,157 +193,170 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
   };
 
   return (
-    <div className={`bg-[var(--pos-panel)] rounded-xl border ${meta.border} overflow-hidden flex flex-col`}>
-      {/* Header */}
-      <div className={`px-3 py-2.5 flex items-center justify-between gap-1 ${meta.bg}`}>
-        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          {order._offlinePending && (
-            <span
-              className="text-[9px] font-bold uppercase tracking-tight text-amber-200/90 bg-amber-500/20 border border-amber-500/35 rounded px-1 py-0.5 flex-shrink-0"
-              title="Saved on this device — will sync when online"
-            >
-              Pending sync
-            </span>
-          )}
-          <span className={`font-mono font-bold text-sm flex-shrink-0 ${isLight ? 'text-amber-700' : 'text-amber-400'}`}>
-            {order._offlinePending ? (
-              <span title="Temporary reference until synced">#···</span>
-            ) : (
-              <>#{String(order.orderNumber).padStart(3, '0')}</>
+    <div className="order-card-container transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-slate-500/35">
+      <div className={`bg-[var(--pos-panel)] rounded-xl border ${meta.border} overflow-hidden flex flex-col h-full`}>
+        {/* Header */}
+        <div className={`px-3 py-2.5 flex items-center justify-between gap-1 border-b ${meta.border} ${meta.bg}`}>
+          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+            {order._offlinePending && (
+              <span
+                className="text-[9px] font-bold uppercase tracking-tight text-amber-200/90 bg-amber-500/20 border border-amber-500/35 rounded px-1 py-0.5 flex-shrink-0"
+                title="Saved on this device — will sync when online"
+              >
+                Pending sync
+              </span>
             )}
-          </span>
-          <OrderTypeBadge
-            orderType={order.orderType}
-            tableNumber={order.tableNumber}
-            reference={order.reference}
-            logoUrl={order.orderTypeBranding?.logoUrl}
-            icon={order.orderTypeBranding?.icon}
-            color={order.orderTypeBranding?.color}
-            size="xs"
-          />
-          {hasPendingAdds && (
-            <span
-              className={`text-[9px] font-bold uppercase tracking-tight rounded px-1.5 py-0.5 flex-shrink-0 animate-pulse ${isLight ? 'text-orange-850 bg-orange-50 border border-orange-200' : 'text-orange-200 bg-orange-500/20 border border-orange-500/35'}`}
-              title="New items added need kitchen preparation"
-            >
-              Adds Pending
+            <span className={`font-mono font-bold text-sm flex-shrink-0 ${isLight ? 'text-amber-700' : 'text-amber-400'}`}>
+              {order._offlinePending ? (
+                <span title="Temporary reference until synced">#···</span>
+              ) : (
+                <>#{String(order.orderNumber).padStart(3, '0')}</>
+              )}
             </span>
-          )}
+            <OrderTypeBadge
+              orderType={order.orderType}
+              tableNumber={order.tableNumber}
+              reference={order.reference}
+              logoUrl={order.orderTypeBranding?.logoUrl}
+              icon={order.orderTypeBranding?.icon}
+              color={order.orderTypeBranding?.color}
+              size="xs"
+            />
+            {hasPendingAdds && (
+              <span
+                className={`text-[9px] font-bold uppercase tracking-tight rounded px-1.5 py-0.5 flex-shrink-0 animate-pulse ${isLight ? 'text-orange-850 bg-orange-50 border border-orange-200' : 'text-orange-200 bg-orange-500/20 border border-orange-500/35'}`}
+                title="New items added need kitchen preparation"
+              >
+                Adds Pending
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <ElapsedBadge createdAt={order.createdAt} status={order.status} />
+            <span className="text-xs text-[var(--pos-text-muted)]">{formatTime(order.createdAt)}</span>
+            <button
+              onClick={() => onViewEdit(order)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-[var(--pos-text-primary)] border border-slate-700/60 transition text-[11px] font-semibold"
+              title="View / Edit"
+            >
+              <Eye size={12} />
+              View
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <ElapsedBadge createdAt={order.createdAt} status={order.status} />
-          <span className="text-xs text-[var(--pos-text-muted)]">{formatTime(order.createdAt)}</span>
-          <button
-            onClick={() => onViewEdit(order)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-[var(--pos-text-primary)] border border-slate-700/60 transition text-xs font-semibold"
-            title="View / Edit"
-          >
-            <Eye size={13} />
-            View
-          </button>
-        </div>
-      </div>
 
-      {/* Items */}
-      <div className="px-3 py-2 space-y-1 flex-1">
-        {order.items.map((item, i) => (
-          <div key={i}>
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <div className="flex items-center gap-1">
-                  {item.isCombo && <Link2 size={10} className={`${isLight ? 'text-amber-600' : 'text-amber-400'} flex-shrink-0`} />}
-                  <span className="text-xs text-slate-300 truncate">{item.name}</span>
+        {/* Card Body - Side-by-side on wide screens via container queries */}
+        <div className="order-card-body">
+          {/* Left panel: Items */}
+          <div className="order-card-left p-3 space-y-1.5 min-h-0 flex flex-col justify-start">
+            {order.items.map((item, i) => (
+              <div key={i}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {item.isCombo && <Link2 size={10} className={`${isLight ? 'text-amber-600' : 'text-amber-400'} flex-shrink-0`} />}
+                      <span className="text-xs font-medium text-[var(--pos-text-secondary)] leading-tight">{item.name}</span>
+                    </div>
+                    {item.variantName && (
+                      <span className={`text-[10px] truncate ml-3.5 block ${isLight ? 'text-amber-700 font-semibold font-mono' : 'text-amber-400/80 font-mono'}`}>
+                        ↳ {item.variantName}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs font-semibold text-[var(--pos-text-muted)] flex-shrink-0">×{item.qty}</span>
                 </div>
-                {item.variantName && (
-                  <span className={`text-[10px] truncate ml-3 block ${isLight ? 'text-amber-700 font-semibold' : 'text-amber-400/80'}`}>
-                    ↳ {item.variantName}
+                {item.isCombo && item.comboItems?.length > 0 && (
+                  <div className="ml-3.5 border-l border-slate-700/20 pl-1.5 mt-0.5 space-y-0.5">
+                    {item.comboItems.map((ci, j) => (
+                      <p key={j} className="text-[10px] text-[var(--pos-text-muted)] font-mono leading-tight">↳ {ci.name} ×{ci.qty}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Right panel: Details, Print, Actions */}
+          <div className="order-card-right p-3 bg-[var(--pos-surface-inset)] border-t border-slate-700/20">
+            {/* Total and Cashier Name */}
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[9px] uppercase font-bold tracking-wider text-[var(--pos-text-muted)]">Total Amount</span>
+                <span className="text-[10px] text-[var(--pos-text-muted)] truncate max-w-[90px]" title={`Created by ${order.createdBy?.name || '—'}`}>
+                  {order.createdBy?.name || '—'}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-mono font-bold text-base text-[var(--pos-text-primary)]">{formatCurrency(order.totalAmount)}</span>
+                {order.paymentCollected === false && (
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${isLight ? 'bg-amber-500/10 text-amber-800 border border-amber-500/20' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse'}`}>
+                    Unpaid
                   </span>
                 )}
               </div>
-              <span className="text-xs text-[var(--pos-text-muted)] flex-shrink-0">×{item.qty}</span>
             </div>
-            {item.isCombo && item.comboItems?.length > 0 && (
-              <div className="ml-3">
-                {item.comboItems.map((ci, j) => (
-                  <p key={j} className="text-xs text-[var(--pos-text-muted)]">↳ {ci.name} ×{ci.qty}</p>
-                ))}
+
+            {/* Prints */}
+            <div className="grid grid-cols-2 gap-1.5 mt-1">
+              <button
+                onClick={handlePrintReceipt}
+                className="flex items-center justify-center gap-1 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/25 text-blue-400 text-[10px] font-semibold py-1.5 rounded-lg transition"
+                title="Print customer receipt"
+              >
+                <Receipt size={11} />
+                Receipt
+              </button>
+              <button
+                onClick={handlePrintKitchen}
+                className="flex items-center justify-center gap-1 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/25 text-orange-400 text-[10px] font-semibold py-1.5 rounded-lg transition"
+                title="Print kitchen ticket"
+              >
+                <Printer size={11} />
+                Kitchen
+              </button>
+            </div>
+
+            {/* Actions */}
+            {hasPendingAdds ? (
+              <div className="w-full py-1.5 rounded-lg text-[10px] font-bold text-orange-400 bg-orange-500/10 border border-orange-500/20 text-center animate-pulse">
+                {order.kitchenAddsStatus === 'preparing_adds'
+                  ? 'Prepping additions...'
+                  : 'Additions pending...'}
               </div>
+            ) : (
+              (nextStatus || prevStatus) && (
+                <div className="flex gap-1.5">
+                  {prevStatus && (
+                    <button
+                      onClick={() => onAdvanceStatus(order, prevStatus)}
+                      disabled={isBusy}
+                      className="flex-1 flex items-center justify-center gap-0.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 text-[10px] font-medium py-2 rounded-lg transition border border-slate-700/50"
+                    >
+                      <ChevronLeft size={10} />
+                      {prevLabel.replace('← ', '')}
+                    </button>
+                  )}
+                  {nextStatus && (
+                    <button
+                      onClick={() => onAdvanceStatus(order, nextStatus)}
+                      disabled={isBusy}
+                      className={`flex-2 flex items-center justify-center gap-0.5 text-[10px] font-bold py-2 rounded-lg transition disabled:opacity-50 ${nextClass}`}
+                    >
+                      {isBusy ? (
+                        <span className="flex items-center gap-1">
+                          <RefreshCw size={10} className="animate-spin" /> …
+                        </span>
+                      ) : (
+                        <>{nextLabel.replace(' ✓', '')} {!prevStatus && <ChevronRight size={10} />}</>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )
             )}
-          </div>
-        ))}
-      </div>
-
-      {/* Footer total */}
-      <div className="px-3 pb-2 flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <span className="font-semibold text-[var(--pos-text-primary)] text-sm">{formatCurrency(order.totalAmount)}</span>
-          {order.paymentCollected === false && (
-            <span className={`block text-[10px] font-bold ${isLight ? 'text-amber-755' : 'text-amber-400'}`}>Payment pending</span>
-          )}
-        </div>
-        <span className="text-xs text-[var(--pos-text-muted)]">{order.createdBy?.name || '—'}</span>
-      </div>
-
-      {/* Print buttons */}
-      <div className="px-3 pb-2 flex gap-1.5">
-        <button
-          onClick={handlePrintReceipt}
-          className="flex-1 flex items-center justify-center gap-1 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 text-xs font-medium py-1.5 rounded-lg transition"
-          title="Print customer receipt"
-        >
-          <Receipt size={12} />
-          Receipt
-        </button>
-        <button
-          onClick={handlePrintKitchen}
-          className="flex-1 flex items-center justify-center gap-1 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-orange-400 text-xs font-medium py-1.5 rounded-lg transition"
-          title="Print kitchen ticket"
-        >
-          <Printer size={12} />
-          Kitchen
-        </button>
-      </div>
-
-      {/* Status action buttons */}
-      {hasPendingAdds ? (
-        <div className="px-3 pb-3">
-          <div className="w-full py-2 rounded-lg text-xs font-semibold text-orange-400 bg-orange-500/10 border border-orange-500/20 text-center animate-pulse">
-            {order.kitchenAddsStatus === 'preparing_adds'
-              ? 'Kitchen prepping additions...'
-              : 'Additions pending kitchen...'}
           </div>
         </div>
-      ) : (
-        (nextStatus || prevStatus) && (
-          <div className="px-3 pb-3 flex gap-1.5">
-            {prevStatus && (
-              <button
-                onClick={() => onAdvanceStatus(order, prevStatus)}
-                disabled={isBusy}
-                className="flex-1 flex items-center justify-center gap-1 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-300 text-xs font-medium py-2 rounded-lg transition"
-              >
-                <ChevronLeft size={12} />
-                {prevLabel}
-              </button>
-            )}
-            {nextStatus && (
-              <button
-                onClick={() => onAdvanceStatus(order, nextStatus)}
-                disabled={isBusy}
-                className={`flex-1 flex items-center justify-center gap-1 text-xs font-semibold py-2 rounded-lg transition disabled:opacity-50 ${nextClass}`}
-              >
-                {isBusy ? (
-                  <span className="flex items-center gap-1">
-                    <RefreshCw size={11} className="animate-spin" /> …
-                  </span>
-                ) : (
-                  <>{nextLabel} {!prevStatus && <ChevronRight size={12} />}</>
-                )}
-              </button>
-            )}
-          </div>
-        )
-      )}
+      </div>
     </div>
   );
 }
@@ -405,6 +418,7 @@ export default function OrderBoard() {
   const [busyId, setBusyId] = useState(null);
   const [completePaymentOrder, setCompletePaymentOrder] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeMobileStatus, setActiveMobileStatus] = useState('pending');
 
   useEffect(() => {
     if (!orderFromUrl) setSelectedOrder(null);
@@ -700,17 +714,56 @@ export default function OrderBoard() {
           </div>
         )}
 
+        {/* Mobile View Tab Switcher */}
+        {!isPending && isStoreReady && (
+          <div className="lg:hidden flex gap-2 overflow-x-auto pb-3 mb-2 no-scrollbar scroll-smooth whitespace-nowrap -mx-4 px-4 sm:-mx-5 sm:px-5 flex-shrink-0">
+            {STATUSES.map((status) => {
+              const count = grouped[status]?.length || 0;
+              const meta = getStatusMeta(status, isLight);
+              const isActive = activeMobileStatus === status;
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => setActiveMobileStatus(status)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all duration-200 shrink-0 ${
+                    isActive
+                      ? isLight
+                        ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
+                        : 'bg-amber-500/10 border-amber-500/50 text-amber-300 shadow-sm'
+                      : isLight
+                        ? 'bg-slate-100 border-transparent text-slate-500 hover:bg-slate-200'
+                        : 'bg-[var(--pos-panel)] border-slate-800/40 text-[var(--pos-text-muted)] hover:text-[var(--pos-text-primary)]'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${meta.dot}`} />
+                  <span>{meta.label}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] ${
+                    isActive
+                      ? isLight
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-amber-500/20 text-amber-300'
+                      : 'bg-slate-800 text-slate-400'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {!isStoreReady || isPending ? (
           <div className="flex-1 flex flex-col min-h-0 py-2">
-            <KanbanSkeleton />
+            <KanbanSkeleton columns={6} />
           </div>
         ) : (
-          <div className="flex-1 grid grid-cols-2 lg:grid-cols-6 gap-3 min-h-0 overflow-hidden">
-            {STATUSES.map(status => (
+          <>
+            {/* Mobile Column View (Single Column tabbed) */}
+            <div className="lg:hidden flex-1 min-h-0">
               <Column
-                key={status}
-                status={status}
-                orders={grouped[status]}
+                status={activeMobileStatus}
+                orders={grouped[activeMobileStatus] || []}
                 onAdvanceStatus={handleAdvanceStatus}
                 onViewEdit={setSelectedOrder}
                 busyId={busyId}
@@ -718,8 +771,25 @@ export default function OrderBoard() {
                 selectedStore={selectedStore}
                 isLight={isLight}
               />
-            ))}
-          </div>
+            </div>
+
+            {/* Desktop Column View (6 columns) */}
+            <div className="hidden lg:grid grid-cols-6 gap-3 min-h-0 flex-1 overflow-hidden">
+              {STATUSES.map(status => (
+                <Column
+                  key={status}
+                  status={status}
+                  orders={grouped[status]}
+                  onAdvanceStatus={handleAdvanceStatus}
+                  onViewEdit={setSelectedOrder}
+                  busyId={busyId}
+                  branding={branding}
+                  selectedStore={selectedStore}
+                  isLight={isLight}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
 
