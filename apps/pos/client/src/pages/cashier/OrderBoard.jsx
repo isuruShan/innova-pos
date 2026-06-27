@@ -130,7 +130,7 @@ function ElapsedBadge({ createdAt, status }) {
   return (
     <span className={`flex items-center gap-1 text-xs ${
       urgent
-        ? isLight ? 'text-red-750 font-bold' : 'text-red-400 font-semibold'
+        ? isLight ? 'text-red-700 font-bold' : 'text-red-400 font-semibold'
         : 'text-[var(--pos-text-muted)]'
     }`}>
       <Clock size={11} />{mins < 1 ? '< 1m' : `${mins}m`}
@@ -300,7 +300,11 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
             <div className="grid grid-cols-2 gap-1.5 mt-1">
               <button
                 onClick={handlePrintReceipt}
-                className="flex items-center justify-center gap-1 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/25 text-blue-400 text-[10px] font-semibold py-1.5 rounded-lg transition"
+                className={`flex items-center justify-center gap-1 text-[10px] font-semibold py-1.5 rounded-lg transition ${
+                  isLight
+                    ? 'bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100'
+                    : 'bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/25 text-blue-400'
+                }`}
                 title="Print customer receipt"
               >
                 <Receipt size={11} />
@@ -308,7 +312,11 @@ function OrderCard({ order, onAdvanceStatus, onViewEdit, busyId, branding, selec
               </button>
               <button
                 onClick={handlePrintKitchen}
-                className="flex items-center justify-center gap-1 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/25 text-orange-400 text-[10px] font-semibold py-1.5 rounded-lg transition"
+                className={`flex items-center justify-center gap-1 text-[10px] font-semibold py-1.5 rounded-lg transition ${
+                  isLight
+                    ? 'bg-orange-50 border border-orange-200 text-orange-700 hover:bg-orange-100'
+                    : 'bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/25 text-orange-400'
+                }`}
                 title="Print kitchen ticket"
               >
                 <Printer size={11} />
@@ -686,7 +694,7 @@ export default function OrderBoard() {
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
                   datePreset === key
                     ? isLight
-                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-850 font-semibold'
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 font-bold'
                       : 'bg-amber-500/20 border-amber-500/50 text-amber-300'
                     : 'border-slate-700 text-[var(--pos-text-muted)] hover:border-slate-500 hover:text-[var(--pos-text-primary)]'
                 }`}
@@ -732,7 +740,7 @@ export default function OrderBoard() {
                         ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
                         : 'bg-amber-500/10 border-amber-500/50 text-amber-300 shadow-sm'
                       : isLight
-                        ? 'bg-slate-100 border-transparent text-slate-500 hover:bg-slate-200'
+                        ? 'bg-slate-900 border-transparent text-slate-300 hover:bg-slate-800'
                         : 'bg-[var(--pos-panel)] border-slate-800/40 text-[var(--pos-text-muted)] hover:text-[var(--pos-text-primary)]'
                   }`}
                 >
