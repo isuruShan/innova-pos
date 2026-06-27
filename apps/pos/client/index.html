@@ -170,12 +170,13 @@
         });
 
         // When the new SW takes over, reload to get the fresh bundle.
+        // Compare with currentController to prevent infinite reload loops during initial claim or page reload.
+        let currentController = navigator.serviceWorker.controller;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-          // Only reload once to avoid an infinite loop.
-          if (!sessionStorage.getItem('sw-reloaded')) {
-            sessionStorage.setItem('sw-reloaded', '1');
+          if (currentController && navigator.serviceWorker.controller !== currentController) {
             window.location.reload();
           }
+          currentController = navigator.serviceWorker.controller;
         });
       }
 
