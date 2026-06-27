@@ -14,7 +14,10 @@ router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), t
   try {
     const filter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
     if (req.query.menuItemId) {
-      filter.menuItemId = req.query.menuItemId;
+      filter.menuItemId = req.query.menuItemId === 'null' ? null : req.query.menuItemId;
+    }
+    if (req.query.modifierId) {
+      filter.modifierId = req.query.modifierId === 'null' ? null : req.query.modifierId;
     }
     const links = await IngredientLink.find(filter)
       .populate('inventoryItemId', 'itemName unit quantity minThreshold lastCost wacCost fifoCost lifoCost')
@@ -65,10 +68,10 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
       return res.status(400).json({ message: 'No store available for ingredient link creation' });
     }
 
-    const { menuItemId, inventoryItemId, quantity, unit, variantId, wastagePercentage } = req.body;
+    const { menuItemId, modifierId, inventoryItemId, quantity, unit, variantId, wastagePercentage } = req.body;
     
-    if (!menuItemId || !inventoryItemId) {
-      return res.status(400).json({ message: 'menuItemId and inventoryItemId are required' });
+    if ((!menuItemId && !modifierId) || !inventoryItemId) {
+      return res.status(400).json({ message: 'Either menuItemId or modifierId is required, and inventoryItemId is required' });
     }
     if (typeof quantity !== 'number' || quantity < 0) {
       return res.status(400).json({ message: 'quantity must be a non-negative number' });
@@ -87,8 +90,9 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
     const link = await IngredientLink.create({
       tenantId: req.tenantId,
       storeId,
-      menuItemId,
+      menuItemId: menuItemId || null,
       variantId: variantId || null,
+      modifierId: modifierId || null,
       inventoryItemId,
       quantity,
       wastagePercentage: typeof wastagePercentage === 'number' ? wastagePercentage : 0,
@@ -102,7 +106,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
     res.status(201).json(populated);
   } catch (err) {
     if (err.code === 11000) {
-      return res.status(400).json({ message: 'This ingredient is already linked to this menu item' });
+      return res.status(400).json({ message: 'This ingredient link already exists' });
     }
     sendRouteError(res, err, { req });
   }

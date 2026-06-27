@@ -1,7 +1,10 @@
 import { tempOrderId } from './constants';
 
 function lineSubtotal(items) {
-  return (items || []).reduce((s, i) => s + Number(i.price || 0) * Number(i.qty || 0), 0);
+  return (items || []).reduce((s, i) => {
+    const modifiersSum = (i.modifiers || []).reduce((sum, m) => sum + Number(m.price || 0) * (m.qty || 1), 0);
+    return s + (Number(i.price || 0) + modifiersSum) * Number(i.qty || 0);
+  }, 0);
 }
 
 /**
@@ -39,6 +42,10 @@ export function buildSyntheticOrderFromPostBody(data, clientRequestId, user) {
       price: i.price,
       isCombo: Boolean(i.isCombo),
       comboItems: i.comboItems || [],
+      variantId: i.variantId || null,
+      variantName: i.variantName || '',
+      variantAttributes: i.variantAttributes || [],
+      modifiers: i.modifiers || [],
     })),
     status: 'pending',
     subtotal: Math.round(subtotal * 100) / 100,

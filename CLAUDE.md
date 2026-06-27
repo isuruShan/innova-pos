@@ -28,3 +28,13 @@ Whenever making UI/UX modifications to any view in the POS (such as the Order Bo
 - **Catalogue Loading:** Once the POS is loaded and the cashier has selected a store location, all menu and product data must be preloaded upfront to enable immediate offline order processing and transactions.
 - **Caching Mechanism:** Preloaded items must cover `/menu` (categories and products), `/menu/modifier-groups` (modifiers and customizable variations), `/tables` (layout and seating tables), `/promotions` (discounts and offers), and `/stores`.
 - **Automatic Sync & Updates:** The preloader (`preloadOfflineData()`) must be triggered inside the `StoreProvider` when store selection is ready/changed, when the browser transitions to online, and during the initial online app load phase.
+
+### 4. Multi-Portal Resource Sync (POS and Admin Portal)
+When modifying shared entities (e.g. Orders, Menu Items, Modifier Groups, Customers, Promotions) that exist in both the POS application and the Admin/Manager portal:
+- **Server-Side Models Sync:** Any database schema or Mongoose model updates (such as adding fields, validation rules, or virtuals) must be made in BOTH model files simultaneously:
+  - POS Server models: [apps/pos/server/src/models](file:///home/isuru/Projects/splitsecond-pos/apps/pos/server/src/models/)
+  - Admin Server models: [apps/admin-portal/server/src/models](file:///home/isuru/Projects/splitsecond-pos/apps/admin-portal/server/src/models/)
+- **Frontend Presentation Sync:** If a shared resource's data representation is modified (e.g. displaying selected modifier items under an order item), ensure the UI renders the details consistently across both interfaces:
+  - POS Cashier views (such as the Kanban `OrderBoard.jsx` card list and `OrderDetailSlideOver.jsx` drawer).
+  - Admin Manager views (such as the `OrdersPage.jsx` tracker grid, export formats, and detail modals).
+- **Offline Representation Sync:** Ensure that offline cache builders and mock constructors (such as `syntheticOrder.js` for queueing offline transactions) preserve the identical schema structures, variant identifiers, and modifier selections so that the UI can render offline pending documents identically to synced database documents.

@@ -25,6 +25,7 @@ export async function preloadOfflineData() {
       api.get('/tables'),
       api.get('/promotions'),
       api.get('/stores'),
+      api.get('/tenant/paid-addons'),
     ]);
     console.log('[pos-offline] Preloading complete.');
   } catch (err) {

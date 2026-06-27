@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit2, Trash2, ShieldAlert, ToggleLeft, ToggleRight,
-  PackageOpen, Layers, X,
+  PackageOpen, Layers, X, Settings2, Loader2, Package
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
@@ -37,6 +37,7 @@ export default function ModifierGroupsManager() {
   const [form, setForm] = useState(EMPTY_GROUP_FORM);
   const [formError, setFormError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [ingredientModalTarget, setIngredientModalTarget] = useState(null);
 
   // Modifier option input state inside form modal
   const [newOptionName, setNewOptionName] = useState('');
@@ -427,6 +428,18 @@ export default function ModifierGroupsManager() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                      {mod._id ? (
+                        <button
+                          type="button"
+                          onClick={() => setIngredientModalTarget(mod)}
+                          className="flex items-center gap-1 text-[10px] font-bold text-purple-400 hover:text-purple-300 border border-purple-900/60 hover:border-purple-800 px-2 py-1.5 rounded-lg hover:bg-purple-950/20 transition cursor-pointer mr-1"
+                        >
+                          <Settings2 size={12} />
+                          Ingredients
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-slate-500 italic mr-1">Save to link ingredients</span>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleToggleOptionAvailable(idx)}
@@ -521,6 +534,257 @@ export default function ModifierGroupsManager() {
       />
 
       <Toast toast={toast} onDismiss={clearToast} />
+
+      {ingredientModalTarget && (
+        <ModifierIngredientsModal
+          open={!!ingredientModalTarget}
+          onClose={() => setIngredientModalTarget(null)}
+          modifier={ingredientModalTarget}
+          storeId={selectedStoreId}
+        />
+      )}
     </div>
+  );
+}
+
+function ModifierIngredientsModal({ open, onClose, modifier, storeId }) {
+  const [selectedInventoryId, setSelectedInventoryId] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const [wastagePercentage, setWastagePercentage] = useState('');
+  const [addError, setAddError] = useState('');
+  const qc = useQueryClient();
+
+  // Fetch ingredient links for this modifier option (menuItemId is null/empty for global modifier link)
+  const { data: ingredientLinks = [], isPending: linksLoading } = useQuery({
+    queryKey: ['ingredient-links-modifier', modifier?._id],
+    queryFn: () => api.get('/ingredient-links', { params: { modifierId: modifier?._id, menuItemId: 'null' } }).then(r => r.data),
+    enabled: !!modifier?._id,
+  });
+
+  // Fetch all inventory items for the picker
+  const { data: inventoryItems = [], isPending: inventoryLoading } = useQuery({
+    queryKey: ['inventory', storeId],
+    queryFn: () => api.get('/inventory').then(r => r.data),
+    enabled: open && !!storeId,
+  });
+
+  const createLinkMutation = useMutation({
+    mutationFn: (data) => api.post('/ingredient-links', data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ingredient-links-modifier', modifier?._id] });
+      setSelectedInventoryId('');
+      setQuantity('');
+      setWastagePercentage('');
+      setAddError('');
+    },
+    onError: (err) => setAddError(err.response?.data?.message || 'Failed to add ingredient'),
+  });
+
+  const updateLinkMutation = useMutation({
+    mutationFn: ({ id, data }) => api.put(`/ingredient-links/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ingredient-links-modifier', modifier?._id] }),
+  });
+
+  const deleteLinkMutation = useMutation({
+    mutationFn: (id) => api.delete(`/ingredient-links/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ingredient-links-modifier', modifier?._id] }),
+  });
+
+  const linkedIds = new Set(ingredientLinks.map(l => l.inventoryItemId?._id || l.inventoryItemId));
+  const availableInventory = inventoryItems.filter(i => !linkedIds.has(i._id));
+
+  const handleAdd = () => {
+    setAddError('');
+    if (!selectedInventoryId) {
+      setAddError('Select an ingredient');
+      return;
+    }
+    const qty = parseFloat(quantity);
+    if (isNaN(qty) || qty <= 0) {
+      setAddError('Quantity must be greater than 0');
+      return;
+    }
+    createLinkMutation.mutate({
+      modifierId: modifier?._id,
+      menuItemId: null,
+      inventoryItemId: selectedInventoryId,
+      quantity: qty,
+      wastagePercentage: parseFloat(wastagePercentage) || 0,
+    });
+  };
+
+  const handleUpdateQuantity = (linkId, newQty) => {
+    const qty = parseFloat(newQty);
+    if (!isNaN(qty) && qty > 0) {
+      updateLinkMutation.mutate({ id: linkId, data: { quantity: qty } });
+    }
+  };
+
+  const handleUpdateWastage = (linkId, newWaste) => {
+    const waste = parseFloat(newWaste);
+    if (!isNaN(waste) && waste >= 0) {
+      updateLinkMutation.mutate({ id: linkId, data: { wastagePercentage: waste } });
+    }
+  };
+
+  const handleRemove = (linkId) => {
+    deleteLinkMutation.mutate(linkId);
+  };
+
+  const footer = (
+    <button type="button" onClick={onClose}
+      className="w-full bg-[var(--pos-surface-inset)] hover:bg-slate-700 border border-slate-600 text-slate-350 font-bold py-2.5 rounded-xl transition text-sm">
+      Close
+    </button>
+  );
+
+  return (
+    <CenteredModal
+      open={open}
+      onClose={onClose}
+      title={`Ingredients for "${modifier?.name}"`}
+      maxWidth="max-w-xl"
+      footer={footer}
+    >
+      <div className="space-y-4">
+        <p className="text-xs text-slate-400">
+          Link inventory ingredients that are consumed when this modifier choice is selected.
+        </p>
+
+        {linksLoading || inventoryLoading ? (
+          <div className="flex items-center justify-center py-8 text-slate-400">
+            <Loader2 size={20} className="animate-spin mr-2" />
+            Loading ingredients...
+          </div>
+        ) : (
+          <>
+            {/* Current ingredients */}
+            {ingredientLinks.length > 0 ? (
+              <div className="bg-[var(--pos-panel)] border border-slate-700 rounded-xl divide-y divide-slate-700 shadow-sm">
+                {ingredientLinks.map((link) => {
+                  const inv = link.inventoryItemId;
+                  return (
+                    <div key={link._id} className="flex items-center gap-2 px-3 py-2.5">
+                      <PackageOpen size={14} className="text-gray-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs text-slate-200 font-semibold truncate block">{inv?.itemName || 'Unknown'}</span>
+                        <span className="text-[10px] text-slate-500 block mt-0.5">
+                          Stock: {inv?.quantity || 0} {inv?.unit || ''}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-slate-400">Qty:</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            value={link.quantity}
+                            onChange={(e) => handleUpdateQuantity(link._id, e.target.value)}
+                            className="w-16 bg-[var(--pos-surface-inset)] border border-slate-650 text-slate-200 rounded-lg px-2 py-0.5 text-xs text-right focus:outline-none shadow-sm"
+                          />
+                        </div>
+                        <span className="text-[10px] text-slate-400 w-8 truncate font-medium">{link.unit || inv?.unit || ''}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-slate-400">Waste:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={link.wastagePercentage || 0}
+                            onChange={(e) => handleUpdateWastage(link._id, e.target.value)}
+                            className="w-12 bg-[var(--pos-surface-inset)] border border-slate-650 text-slate-200 rounded-lg px-2 py-0.5 text-xs text-right focus:outline-none shadow-sm"
+                          />
+                          <span className="text-[10px] text-slate-400">%</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemove(link._id)}
+                          disabled={deleteLinkMutation.isPending}
+                          className="p-1 text-slate-500 hover:text-red-400 transition disabled:opacity-50"
+                          title="Remove ingredient"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-slate-500 bg-[var(--pos-panel)] border border-dashed border-slate-700 rounded-xl text-xs">
+                <PackageOpen size={24} className="mx-auto mb-2 opacity-50 text-slate-500" />
+                <p className="font-semibold">No ingredients linked yet</p>
+              </div>
+            )}
+
+            {/* Add new ingredient */}
+            {availableInventory.length > 0 ? (
+              <div className="bg-[var(--pos-panel)] border border-slate-700 rounded-xl p-3 flex gap-2 items-end shadow-sm">
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[10px] text-slate-400 font-bold mb-1">Inventory Item</label>
+                  <select
+                    value={selectedInventoryId}
+                    onChange={(e) => setSelectedInventoryId(e.target.value)}
+                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  >
+                    <option value="">Select item...</option>
+                    {availableInventory.map((inv) => (
+                      <option key={inv._id} value={inv._id}>
+                        {inv.itemName} ({inv.quantity} {inv.unit})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="w-20">
+                  <label className="block text-[10px] text-slate-400 font-bold mb-1">Qty Used</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-right"
+                  />
+                </div>
+                <div className="w-16">
+                  <label className="block text-[10px] text-slate-400 font-bold mb-1">Waste %</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={wastagePercentage}
+                    onChange={(e) => setWastagePercentage(e.target.value)}
+                    placeholder="0"
+                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-right"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAdd}
+                  disabled={createLinkMutation.isPending || !selectedInventoryId}
+                  className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white font-bold px-3 py-1.5 rounded-lg transition text-xs shrink-0 h-[30px]"
+                >
+                  {createLinkMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : 'Add'}
+                </button>
+              </div>
+            ) : inventoryItems.length === 0 ? (
+              <p className="text-[10px] text-slate-500 text-center py-1">
+                Create inventory items first under Menu & Stock → Inventory.
+              </p>
+            ) : (
+              <p className="text-[10px] text-slate-500 text-center py-1">
+                All inventory items are linked.
+              </p>
+            )}
+
+            {addError && (
+              <p className="text-xs text-red-400 font-semibold mt-2">{addError}</p>
+            )}
+          </>
+        )}
+      </div>
+    </CenteredModal>
   );
 }

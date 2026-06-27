@@ -15,13 +15,15 @@ export function shouldCacheSuccessfulGet(config) {
     p.endsWith('/orders') ||
     p.endsWith('/settings') ||
     p.includes('/tenant-settings') ||
+    p.includes('/tenant') ||
     p.includes('/promotions') ||
     p.includes('/categories') ||
     p.includes('/tables') ||
     p.includes('/reports/day-end') ||
     p.includes('/users') ||
     p.includes('/suppliers') ||
-    p.includes('/inventory')
+    p.includes('/inventory') ||
+    p.includes('/ingredient-links')
   );
 }
 
