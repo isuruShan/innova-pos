@@ -24,8 +24,17 @@ export default function Navbar() {
             {[
               { label: 'Features', href: '/#features' },
               { label: 'Pricing', href: '/#pricing' },
+              { label: 'Guide', href: '/merchant-guide', isRouterLink: true },
               { label: 'Contact', href: '/#contact' },
-            ].map((link) => (
+            ].map((link) => link.isRouterLink ? (
+              <Link
+                key={link.label}
+                to={link.href}
+                className="text-sm font-medium text-theme-text-muted hover:text-theme-text-header transition-colors"
+              >
+                {link.label}
+              </Link>
+            ) : (
               <a
                 key={link.label}
                 href={link.href}
@@ -66,8 +75,18 @@ export default function Navbar() {
           {[
             { href: '/#features', label: 'Features' },
             { href: '/#pricing', label: 'Pricing' },
+            { href: '/merchant-guide', label: 'Guide', isRouterLink: true },
             { href: '/#contact', label: 'Contact' },
-          ].map((link) => (
+          ].map((link) => link.isRouterLink ? (
+            <Link
+              key={link.label}
+              to={link.href}
+              onClick={() => setOpen(false)}
+              className="block text-sm font-medium text-theme-text-muted py-2 hover:text-theme-text-header"
+            >
+              {link.label}
+            </Link>
+          ) : (
             <a
               key={link.label}
               href={link.href}

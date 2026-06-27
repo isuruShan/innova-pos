@@ -1,5 +1,6 @@
 import { ShieldAlert, Check, Calendar, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getPublicWebUrl } from '@innovapos/app-urls';
 
 export default function AdvancedInventoryUpgradeGate() {
   const navigate = useNavigate();
@@ -49,6 +50,14 @@ export default function AdvancedInventoryUpgradeGate() {
         >
           Activate Advanced Inventory <ArrowRight size={14} />
         </button>
+        <a
+          href={`${getPublicWebUrl()}/merchant-guide/advanced-inventory`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-1 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-2xl border border-slate-200 transition"
+        >
+          View User Guide
+        </a>
       </div>
     </div>
   );

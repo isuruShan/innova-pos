@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Mail, Phone, MapPin } from 'lucide-react';
 import api from '../api';
 import { fieldAttrs } from '../utils/formFields';
@@ -135,6 +136,9 @@ export default function Footer() {
               </li>
               <li>
                 <a href="/#pricing" className="text-sm text-theme-text-muted hover:text-theme-text-header transition-colors">Pricing</a>
+              </li>
+              <li>
+                <Link to="/merchant-guide" className="text-sm text-theme-text-muted hover:text-theme-text-header transition-colors">Guide</Link>
               </li>
               <li>
                 <a href="/#contact" className="text-sm text-theme-text-muted hover:text-theme-text-header transition-colors">Contact</a>

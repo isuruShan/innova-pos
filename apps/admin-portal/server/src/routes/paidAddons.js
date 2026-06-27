@@ -27,7 +27,7 @@ const screenshotUpload = multer({
 });
 
 /** All known paid addon codes */
-const ADDON_CODES = ['loyalty', 'qr_ordering', 'table_management', 'uber_eats', 'accounting', 'dual_screen', 'whatsapp_integration', 'modifier_groups'];
+const ADDON_CODES = ['loyalty', 'qr_ordering', 'table_management', 'uber_eats', 'accounting', 'dual_screen', 'whatsapp_integration', 'modifier_groups', 'advanced_inventory'];
 
 /** Merchant: get list of currently active add-on codes (for conditional UI rendering). */
 router.get('/status', authenticateJWT, authorize('merchant_admin', 'manager'), async (req, res) => {

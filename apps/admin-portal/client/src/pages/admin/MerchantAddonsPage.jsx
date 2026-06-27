@@ -22,6 +22,7 @@ import { useTenantCurrency } from '../../context/TenantCurrencyContext';
 import BankReceiptFields from '../../components/billing/BankReceiptFields';
 import { useToast } from '../../context/ToastContext';
 import { useMerchantBillingRegion } from '../../hooks/useMerchantBillingRegion';
+import { getPublicWebUrl } from '@innovapos/app-urls';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 /**
@@ -597,9 +598,26 @@ export default function MerchantAddonsPage() {
                 {selectedAddon.code === 'whatsapp_integration' ? (
                   <WhatsAppIntegrationGuide />
                 ) : (
-                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                    {selectedAddon.longDescription || selectedAddon.shortDescription}
-                  </p>
+                  <>
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                      {selectedAddon.longDescription || selectedAddon.shortDescription}
+                    </p>
+                    {selectedAddon.code === 'advanced_inventory' && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mt-2">
+                        <p className="text-xs text-amber-900 leading-relaxed font-semibold">
+                          💡 Need a setup guide? Learn how to configure nested recipes, count sheets, and store transfers.
+                        </p>
+                        <a
+                          href={`${getPublicWebUrl()}/merchant-guide/advanced-inventory`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-amber-600 hover:underline"
+                        >
+                          View Advanced Inventory Guide ➔
+                        </a>
+                      </div>
+                    )}
+                  </>
                 )}
                 {(selectedAddon.screenshotUrls || []).length > 0 ? (
                   <div>

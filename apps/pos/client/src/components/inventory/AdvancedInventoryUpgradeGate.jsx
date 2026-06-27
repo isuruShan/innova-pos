@@ -1,5 +1,5 @@
 import { ShieldAlert, Check, ArrowRight } from 'lucide-react';
-import { getAdminUrl } from '@innovapos/app-urls';
+import { getAdminUrl, getPublicWebUrl } from '@innovapos/app-urls';
 
 export default function AdvancedInventoryUpgradeGate() {
   return (
@@ -45,6 +45,14 @@ export default function AdvancedInventoryUpgradeGate() {
           className="flex items-center justify-center gap-1 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-2xl shadow-lg transition"
         >
           Activate Advanced Inventory in Admin <ArrowRight size={14} />
+        </a>
+        <a
+          href={`${getPublicWebUrl()}/merchant-guide/advanced-inventory`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-1 px-6 py-3 bg-slate-150 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-2xl border border-slate-350 transition"
+        >
+          View User Guide
         </a>
       </div>
     </div>
