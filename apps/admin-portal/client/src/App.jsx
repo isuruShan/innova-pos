@@ -95,6 +95,8 @@ const RootRedirect = () => {
   
   if (r === 'merchant_admin') return <Navigate to="/dashboard" replace />;
   if (r === 'manager') return <Navigate to="/accounting" replace />;
+  if (r === 'purchasing_officer') return <Navigate to="/purchase-orders" replace />;
+  if (r === 'inventory_clerk' || r === 'commissary_operator') return <Navigate to="/inventory" replace />;
   
   if (['cashier', 'steward', 'kitchen'].includes(r)) {
     return (
@@ -294,27 +296,27 @@ export default function App() {
             </PrivateRoute>
           } />
           <Route path="/inventory/*" element={
-            <PrivateRoute roles={['merchant_admin', 'manager']}>
+            <PrivateRoute roles={['merchant_admin', 'manager', 'inventory_clerk', 'commissary_operator']}>
               <Layout><InventoryManagement /></Layout>
             </PrivateRoute>
           } />
           <Route path="/suppliers" element={
-            <PrivateRoute roles={['merchant_admin', 'manager']}>
+            <PrivateRoute roles={['merchant_admin', 'manager', 'purchasing_officer']}>
               <Layout><SupplierManagement /></Layout>
             </PrivateRoute>
           } />
           <Route path="/purchase-orders" element={
-            <PrivateRoute roles={['merchant_admin', 'manager']}>
+            <PrivateRoute roles={['merchant_admin', 'manager', 'purchasing_officer']}>
               <Layout><PurchaseOrders /></Layout>
             </PrivateRoute>
           } />
           <Route path="/goods-receipts/*" element={
-            <PrivateRoute roles={['merchant_admin', 'manager']}>
+            <PrivateRoute roles={['merchant_admin', 'manager', 'purchasing_officer']}>
               <Layout><GoodsReceipts /></Layout>
             </PrivateRoute>
           } />
           <Route path="/wastage" element={
-            <PrivateRoute roles={['merchant_admin', 'manager']}>
+            <PrivateRoute roles={['merchant_admin', 'manager', 'inventory_clerk', 'commissary_operator']}>
               <Layout><WastageManagement /></Layout>
             </PrivateRoute>
           } />

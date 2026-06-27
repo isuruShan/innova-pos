@@ -258,28 +258,45 @@ export default function Layout({ children }) {
     }
     
     const activeAddons = addonStatus?.activeAddons || [];
+    const role = user?.role;
     
-    return ADMIN_NAV_GROUPS.map((group) => ({
-      ...group,
-      items: group.items
-        .filter((item) => {
-          if (!item.requiresAddon) return true;
-          return activeAddons.includes(item.requiresAddon);
-        })
-        .map((item) => {
-          if (item.subItems) {
-            return {
-              ...item,
-              subItems: item.subItems.filter((sub) => {
-                if (!sub.requiresAddon) return true;
-                return activeAddons.includes(sub.requiresAddon);
-              }),
-            };
-          }
-          return item;
-        }),
-    })).filter((group) => group.items.length > 0); // Remove empty groups
-  }, [subscriptionLocked, addonStatus?.activeAddons]);
+    return ADMIN_NAV_GROUPS.map((group) => {
+      let filteredItems = group.items.filter((item) => {
+        if (item.requiresAddon && !activeAddons.includes(item.requiresAddon)) return false;
+        
+        if (role === 'purchasing_officer') {
+          return ['/inventory', '/suppliers', '/purchase-orders', '/goods-receipts'].includes(item.to);
+        }
+        if (role === 'inventory_clerk' || role === 'commissary_operator') {
+          return ['/inventory', '/wastage'].includes(item.to);
+        }
+        return true;
+      });
+
+      filteredItems = filteredItems.map((item) => {
+        if (item.subItems) {
+          const sub = item.subItems.filter((subItem) => {
+            if (subItem.requiresAddon && !activeAddons.includes(subItem.requiresAddon)) return false;
+            
+            if (role === 'purchasing_officer') {
+              return ['/suppliers', '/purchase-orders', '/goods-receipts'].includes(subItem.to);
+            }
+            if (role === 'inventory_clerk' || role === 'commissary_operator') {
+              return ['/inventory', '/wastage', '/inventory-sessions'].includes(subItem.to);
+            }
+            return true;
+          });
+          return { ...item, subItems: sub };
+        }
+        return item;
+      }).filter(item => !item.subItems || item.subItems.length > 0);
+
+      return {
+        ...group,
+        items: filteredItems,
+      };
+    }).filter((group) => group.items.length > 0);
+  }, [subscriptionLocked, addonStatus?.activeAddons, user?.role]);
 
   const merchantNavGroups = isSuperAdmin ? SUPERADMIN_NAV_GROUPS : filteredAdminNavGroups;
   const navGroups = merchantNavGroups;

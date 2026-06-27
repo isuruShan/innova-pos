@@ -9,7 +9,7 @@ const { parsePageQuery, paginated, parseSortQuery } = require('../lib/listPagina
 
 const router = express.Router();
 
-router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin', 'purchasing_officer', 'inventory_clerk', 'commissary_operator'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { paginate, search, categoryId, stockStatus } = req.query;
     const storeFilter = buildStoreFilter(req);
@@ -115,7 +115,7 @@ router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), t
   }
 });
 
-router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin', 'purchasing_officer', 'inventory_clerk', 'commissary_operator'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const storeId = await resolveWriteStoreId(req);
     if (!storeId) return res.status(400).json({ message: 'No store available for inventory item creation' });
@@ -152,7 +152,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
   }
 });
 
-router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin', 'purchasing_officer', 'inventory_clerk', 'commissary_operator'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const updateData = { ...req.body };
     delete updateData.quantity; // Direct modification of quantity is not allowed
@@ -170,7 +170,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
   }
 });
 
-router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin', 'purchasing_officer', 'inventory_clerk', 'commissary_operator'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     return res.status(403).json({ message: 'Deleting inventory items is not allowed.' });
   } catch (err) {
@@ -182,7 +182,7 @@ router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmi
  * GET /inventory/consumption-report?from=&to=
  * Calculate theoretical ingredient consumption based on completed orders
  */
-router.get('/consumption-report', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.get('/consumption-report', protect, authorize('manager', 'merchant_admin', 'superadmin', 'purchasing_officer', 'inventory_clerk', 'commissary_operator'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { from, to } = req.query;
     if (!from || !to) {

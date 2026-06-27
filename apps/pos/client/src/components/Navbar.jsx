@@ -23,6 +23,9 @@ const ROLE_BADGE = {
   kitchen: 'bg-green-500/20 text-green-400 border-green-500/30',
   manager: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
   merchant_admin: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  purchasing_officer: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
+  inventory_clerk: 'bg-teal-500/20 text-teal-400 border-teal-500/30',
+  commissary_operator: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
 };
 
 export function AvatarMenu({ user, onLogout }) {

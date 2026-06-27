@@ -12,7 +12,7 @@ const { requirePaidAddon } = require('../middleware/requirePaidAddon');
 const router = express.Router();
 
 // Apply authorization and paid addon middleware to all routes
-router.use(protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, requirePaidAddon('advanced_inventory'));
+router.use(protect, authorize('manager', 'merchant_admin', 'superadmin', 'purchasing_officer', 'inventory_clerk', 'commissary_operator'), tenantScope, resolveSelectedStore, requirePaidAddon('advanced_inventory'));
 
 // ==========================================
 // 1. STORAGE AREAS CRUD

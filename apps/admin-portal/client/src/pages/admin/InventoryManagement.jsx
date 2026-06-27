@@ -21,6 +21,10 @@ import { InventoryTableSkeleton } from '../../components/StoreSkeletons';
 import { useListSort } from '../../hooks/useListSort';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import InventoryAdjustments from '../../components/inventory/InventoryAdjustments';
+import CountSheetsManager from '../../components/inventory/CountSheetsManager';
+import PrepRecipesManager from '../../components/inventory/PrepRecipesManager';
+import StockTransfersManager from '../../components/inventory/StockTransfersManager';
+import WastageManagement from './WastageManagement';
 import PageHeader from '../../components/PageHeader';
 import ResponsiveTable from '../../components/ResponsiveTable';
 import ViewModeToggle from '../../components/ViewModeToggle';
@@ -96,6 +100,10 @@ export default function InventoryManagement() {
     if (location.pathname.endsWith('/adjustments')) return 'adjustments';
     if (location.pathname.endsWith('/sessions')) return 'sessions';
     if (location.pathname.endsWith('/analytics')) return 'analytics';
+    if (location.pathname.endsWith('/prep-recipes')) return 'prep-recipes';
+    if (location.pathname.endsWith('/count-sheets')) return 'count-sheets';
+    if (location.pathname.endsWith('/transfers')) return 'transfers';
+    if (location.pathname.endsWith('/wastage')) return 'wastage';
     return 'stock';
   };
   const activeTab = getActiveTab();
@@ -155,6 +163,47 @@ export default function InventoryManagement() {
   const { toast, showToast, clearToast } = useToast();
 
 
+
+  // Addon Status Query
+  const { data: addonStatus } = useQuery({
+    queryKey: ['tenant-addon-status'],
+    queryFn: () => api.get('/paid-addons/status').then((r) => r.data),
+  });
+
+  // Storage Area States
+  const [manageStorageAreasOpen, setManageStorageAreasOpen] = useState(false);
+  const [storageAreaForm, setStorageAreaForm] = useState({ name: '' });
+  const [editingStorageArea, setEditingStorageArea] = useState(null);
+  const [storageAreaError, setStorageAreaError] = useState('');
+
+  // Storage Area Queries
+  const { data: storageAreas = [], isPending: storageAreasPending } = useQuery({
+    queryKey: ['storage-areas', selectedStoreId],
+    queryFn: () => api.get('/advanced-inventory/storage-areas').then(r => r.data),
+    enabled: isStoreReady,
+  });
+
+  // Storage Area Mutations
+  const createStorageAreaMutation = useMutation({
+    mutationFn: (data) => api.post('/advanced-inventory/storage-areas', data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['storage-areas', selectedStoreId] });
+      setStorageAreaForm({ name: '' });
+      setStorageAreaError('');
+      showToast('Storage area created', 'success');
+    },
+    onError: (err) => {
+      setStorageAreaError(err.response?.data?.message || 'Failed to create storage area');
+    }
+  });
+
+  const deleteStorageAreaMutation = useMutation({
+    mutationFn: (id) => api.delete(`/advanced-inventory/storage-areas/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['storage-areas', selectedStoreId] });
+      showToast('Storage area deleted', 'success');
+    },
+  });
 
   // Category States
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
@@ -658,6 +707,9 @@ export default function InventoryManagement() {
             { label: 'Export', icon: Download, onClick: handleExportInventory },
             { label: 'Import', icon: Upload, onClick: () => setImportModalOpen(true) },
             { label: 'Manage Categories', icon: SlidersHorizontal, onClick: () => setManageCategoriesOpen(true) },
+            ...(addonStatus?.activeAddons?.includes('advanced_inventory') ? [
+              { label: 'Manage Storage Areas', icon: SlidersHorizontal, onClick: () => setManageStorageAreasOpen(true) }
+            ] : []),
             { label: 'Add Item', icon: Plus, onClick: openAdd, primary: true },
           ] : activeTab === 'analytics' ? [
             { label: 'Stock Levels', icon: Package, onClick: () => { setActiveTab('stock'); setSelectedCategoryId(null); } },
@@ -669,6 +721,12 @@ export default function InventoryManagement() {
           <div className="flex gap-1 overflow-x-auto no-scrollbar pb-2 sm:pb-0">
             {[
               { key: 'stock', label: 'Stock Levels' },
+              ...(addonStatus?.activeAddons?.includes('advanced_inventory') ? [
+                { key: 'prep-recipes', label: 'Prep Recipes' },
+                { key: 'count-sheets', label: 'Count Sheets' },
+                { key: 'transfers', label: 'Stock Transfers' },
+                { key: 'wastage', label: 'Wastage' },
+              ] : []),
               { key: 'adjustments', label: 'Adjustments' },
               { key: 'sessions', label: 'Adjustment History' },
               { key: 'analytics', label: 'Analytics' },
@@ -1017,6 +1075,11 @@ export default function InventoryManagement() {
             )}
           </>
         )}
+
+        {activeTab === 'prep-recipes' && <PrepRecipesManager storeId={selectedStoreId} />}
+        {activeTab === 'count-sheets' && <CountSheetsManager storeId={selectedStoreId} />}
+        {activeTab === 'transfers' && <StockTransfersManager storeId={selectedStoreId} />}
+        {activeTab === 'wastage' && <WastageManagement hideHeader={true} hideStoreSelector={true} hideNavbar={true} />}
 
         {activeTab === 'adjustments' && <InventoryAdjustments />}
 
@@ -1681,6 +1744,93 @@ export default function InventoryManagement() {
                           }
                         }}
                         className="p-1 text-gray-500 hover:text-red-400 transition"
+                        title="Delete"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </SlideOver>
+
+      {/* Storage Areas Management SlideOver */}
+      <SlideOver
+        open={manageStorageAreasOpen}
+        onClose={() => {
+          setManageStorageAreasOpen(false);
+          setEditingStorageArea(null);
+          setStorageAreaForm({ name: '' });
+          setStorageAreaError('');
+        }}
+        title="Manage Storage Areas"
+      >
+        <div className="space-y-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setStorageAreaError('');
+              if (!storageAreaForm.name.trim()) return setStorageAreaError('Name is required');
+              createStorageAreaMutation.mutate(storageAreaForm);
+            }}
+            className="space-y-3"
+          >
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">New Storage Area Name *</label>
+              <input
+                type="text"
+                value={storageAreaForm.name}
+                onChange={(e) => setStorageAreaForm({ name: e.target.value })}
+                placeholder="e.g. Walk-in Freezer, Shelf A"
+                required
+                className="w-full bg-gray-55 border border-gray-300 text-gray-900 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400"
+              />
+            </div>
+            {storageAreaError && (
+              <p className="text-xs text-red-500 font-semibold">{storageAreaError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={createStorageAreaMutation.isPending}
+              className="w-full bg-brand-orange hover:bg-brand-orange-hover text-white font-semibold py-2 rounded-xl transition text-xs disabled:opacity-60"
+            >
+              {createStorageAreaMutation.isPending ? 'Creating...' : 'Create Storage Area'}
+            </button>
+          </form>
+
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-gray-900 border-b border-gray-200/50 pb-2">
+              Existing Storage Areas ({storageAreas.length})
+            </h4>
+
+            {storageAreasPending ? (
+              <div className="text-xs text-gray-400 text-center py-4">Loading storage areas...</div>
+            ) : storageAreas.length === 0 ? (
+              <div className="text-xs text-gray-400 text-center py-4 bg-white border border-gray-200/40 rounded-xl">
+                No storage areas created yet.
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+                {storageAreas.map(area => (
+                  <div
+                    key={area._id}
+                    className="flex items-center justify-between bg-white border border-gray-200/50 hover:border-gray-300 rounded-xl p-3 gap-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-gray-900 truncate">{area.name}</p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`Are you sure you want to delete storage area "${area.name}"?`)) {
+                            deleteStorageAreaMutation.mutate(area._id);
+                          }
+                        }}
+                        className="p-1 text-gray-500 hover:text-red-450 transition"
                         title="Delete"
                       >
                         <Trash2 size={13} />

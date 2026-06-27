@@ -90,6 +90,8 @@ const RootRedirect = () => {
   if (r === 'steward') return <Navigate to="/steward/tables" replace />;
   if (r === 'kitchen') return <Navigate to="/kitchen" replace />;
   if (r === 'manager' || r === 'merchant_admin') return <Navigate to="/manager/dashboard" replace />;
+  if (r === 'purchasing_officer') return <Navigate to="/manager/purchase-orders" replace />;
+  if (r === 'inventory_clerk' || r === 'commissary_operator') return <Navigate to="/manager/inventory" replace />;
   return <Navigate to="/login" replace />;
 };
 
@@ -245,39 +247,39 @@ export default function App() {
                   </RoleRoute>
                 } />
                 <Route path="/manager/inventory/*" element={
-                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                  <RoleRoute roles={['manager', 'merchant_admin', 'inventory_clerk', 'commissary_operator']}>
                     <InventoryManagement />
                   </RoleRoute>
                 } />
                 <Route path="/manager/purchase-orders" element={
-                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                  <RoleRoute roles={['manager', 'merchant_admin', 'purchasing_officer']}>
                     <PurchaseOrders />
                   </RoleRoute>
                 } />
                 <Route path="/manager/goods-receipts/*" element={
-                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                  <RoleRoute roles={['manager', 'merchant_admin', 'purchasing_officer']}>
                     <Suspense fallback={<div className="flex items-center justify-center h-screen bg-[var(--pos-page-bg)] text-slate-400">Loading...</div>}>
                       <GoodsReceipts />
                     </Suspense>
                   </RoleRoute>
                 } />
                 <Route path="/manager/suppliers" element={
-                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                  <RoleRoute roles={['manager', 'merchant_admin', 'purchasing_officer']}>
                     <SupplierManagement />
                   </RoleRoute>
                 } />
                 <Route path="/manager/wastage" element={
-                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                  <RoleRoute roles={['manager', 'merchant_admin', 'inventory_clerk', 'commissary_operator']}>
                     <WastageManagement />
                   </RoleRoute>
                 } />
                 <Route path="/manager/reconciliation" element={
-                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                  <RoleRoute roles={['manager', 'merchant_admin', 'inventory_clerk', 'commissary_operator']}>
                     <StockReconciliation />
                   </RoleRoute>
                 } />
                 <Route path="/manager/stock-audit" element={
-                  <RoleRoute roles={['manager', 'merchant_admin']}>
+                  <RoleRoute roles={['manager', 'merchant_admin', 'inventory_clerk', 'commissary_operator']}>
                     <StockAudit />
                   </RoleRoute>
                 } />

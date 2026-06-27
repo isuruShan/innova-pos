@@ -259,6 +259,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
     isActive: true,
     posMenuLayout: 'default',
     posMenuCols: 4,
+    isCentralKitchen: false,
   });
   const [editMeta, setEditMeta] = useState({ deactivatedBySuperadmin: false });
   const [editPhoneCountryIso, setEditPhoneCountryIso] = useState(DEFAULT_COUNTRY_CODE);
@@ -341,6 +342,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
       isActive: store.isActive !== false,
       posMenuLayout: store.posMenuLayout || 'default',
       posMenuCols: store.posMenuCols || 4,
+      isCentralKitchen: Boolean(store.isCentralKitchen),
     };
   };
 
@@ -697,6 +699,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
         isActive: editForm.isActive,
         posMenuLayout: editForm.posMenuLayout,
         posMenuCols: editForm.posMenuCols,
+        isCentralKitchen: editForm.isCentralKitchen,
       },
     });
   };
@@ -1329,7 +1332,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                   ))}
                 </div>
               </div>
-              <div className="pt-2">
+              <div className="pt-2 grid gap-3">
                 <label className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50 cursor-pointer hover:border-gray-300 transition-colors">
                   <input
                     type="checkbox"
@@ -1341,6 +1344,18 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                   <span>
                     <span className="block text-sm font-medium text-gray-800">Store is active</span>
                     <span className="block text-xs text-gray-500 mt-0.5">Inactive stores cannot accept orders</span>
+                  </span>
+                </label>
+                <label className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50 cursor-pointer hover:border-gray-300 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={editForm.isCentralKitchen}
+                    onChange={(e) => setEditForm((p) => ({ ...p, isCentralKitchen: e.target.checked }))}
+                    className="w-4 h-4 accent-brand-orange"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-gray-800">Central Kitchen / Commissary</span>
+                    <span className="block text-xs text-gray-500 mt-0.5">Serves as a production hub for transfers</span>
                   </span>
                 </label>
                 {!isSuperAdmin && editMeta.deactivatedBySuperadmin && (
