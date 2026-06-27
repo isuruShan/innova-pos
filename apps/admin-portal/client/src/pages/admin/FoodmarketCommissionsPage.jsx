@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Calendar, DollarSign, Percent, BarChart3, ArrowUpRight, TrendingUp, Filter, Download } from 'lucide-react';
+import { Calendar, DollarSign, Percent, BarChart3, ArrowUpRight, TrendingUp, Filter, Download, Loader2 } from 'lucide-react';
 import api from '../../api/axios';
 import ViewModeToggle from '../../components/common/ViewModeToggle';
 import { useStoreContext } from '../../context/StoreContext';
@@ -34,6 +34,12 @@ export default function FoodmarketCommissionsPage() {
     if (saved) return saved;
     return window.innerWidth < 768 ? 'grid' : 'table';
   });
+
+  const [visibleCount, setVisibleCount] = useState(25);
+
+  useEffect(() => {
+    setVisibleCount(25);
+  }, [from, to, partnerId, selectedStore]);
 
   const applyPreset = (preset) => {
     const end = new Date();
@@ -82,6 +88,20 @@ export default function FoodmarketCommissionsPage() {
         })
         .then((r) => r.data),
   });
+
+  const visibleOrders = useMemo(() => {
+    if (!report?.orders) return [];
+    return report.orders.slice(0, visibleCount);
+  }, [report?.orders, visibleCount]);
+
+  const handleScroll = (e) => {
+    const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 40) {
+      if (report?.orders && visibleCount < report.orders.length) {
+        setVisibleCount((prev) => Math.min(prev + 25, report.orders.length));
+      }
+    }
+  };
 
   const handleExport = () => {
     if (!report || !report.orders || report.orders.length === 0) return;
@@ -283,12 +303,16 @@ export default function FoodmarketCommissionsPage() {
         </div>
 
         {/* Orders Table */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-4">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm flex flex-col h-[600px]">
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-4 shrink-0">
             <h3 className="text-base font-bold text-gray-900">Recent Completed Channel Orders</h3>
             <ViewModeToggle mode={viewMode} setMode={(m) => { setViewMode(m); localStorage.setItem('view_mode_admin_foodmarket_commissions', m); }} />
           </div>
-          <div className="overflow-x-auto">
+          
+          <div 
+            className="flex-1 overflow-auto min-h-0"
+            onScroll={handleScroll}
+          >
             {isLoading ? (
               <div className="p-6 space-y-3 animate-pulse">
                 {[1, 2, 3].map((i) => (
@@ -298,83 +322,107 @@ export default function FoodmarketCommissionsPage() {
             ) : report.orders.length === 0 ? (
               <div className="p-8 text-center text-gray-500 text-sm">No matching orders found.</div>
             ) : viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-6 bg-gray-50/50">
-                {report.orders.map((o) => (
-                  <div key={o._id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-xs flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-gray-900">#{o.orderNumber}</span>
-                        <span className="text-[10px] text-gray-400">
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-6 bg-gray-50/50">
+                  {visibleOrders.map((o) => (
+                    <div key={o._id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-xs flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-semibold text-gray-900">#{o.orderNumber}</span>
+                          <span className="text-[10px] text-gray-400">
+                            {new Date(o.createdAt).toLocaleString(undefined, {
+                              dateStyle: 'short',
+                              timeStyle: 'short',
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center mt-1">
+                          <span className="text-xs text-gray-500">Channel:</span>
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-800">
+                            {o.partnerName}
+                          </span>
+                        </div>
+                        {selectedStore === 'all' && (
+                          <div className="flex justify-between items-center mt-1">
+                            <span className="text-xs text-gray-500">Store:</span>
+                            <span className="text-xs text-gray-705 font-semibold">{o.storeName}</span>
+                          </div>
+                        )}
+                        <div className="border-t border-gray-100 my-2 pt-2 flex justify-between text-xs font-medium">
+                          <div>
+                            <p className="text-[9px] text-gray-400">Amount</p>
+                            <p className="text-gray-900 font-semibold">{o.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[9px] text-gray-400">Commission</p>
+                            <p className="text-sky-700 font-bold">{o.commissionAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="p-4 text-center text-xs text-gray-500 font-medium bg-gray-50/30 border-t border-gray-100 flex items-center justify-center gap-2">
+                  {visibleCount < report.orders.length ? (
+                    <>
+                      <Loader2 className="animate-spin text-brand-teal" size={14} />
+                      Loading more orders...
+                    </>
+                  ) : (
+                    <span>Showing all {report.orders.length} orders</span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead>
+                    <tr className="text-gray-500 font-semibold border-b border-gray-200">
+                      <th className="sticky top-0 bg-gray-50 px-6 py-3 z-10 shadow-[0_1px_0_rgba(229,231,235,1)]">Order No</th>
+                      {selectedStore === 'all' && <th className="sticky top-0 bg-gray-50 px-6 py-3 z-10 shadow-[0_1px_0_rgba(229,231,235,1)]">Store</th>}
+                      <th className="sticky top-0 bg-gray-50 px-6 py-3 z-10 shadow-[0_1px_0_rgba(229,231,235,1)]">Date</th>
+                      <th className="sticky top-0 bg-gray-50 px-6 py-3 z-10 shadow-[0_1px_0_rgba(229,231,235,1)]">Channel</th>
+                      <th className="sticky top-0 bg-gray-50 px-6 py-3 z-10 shadow-[0_1px_0_rgba(229,231,235,1)] text-right">Amount</th>
+                      <th className="sticky top-0 bg-gray-50 px-6 py-3 z-10 shadow-[0_1px_0_rgba(229,231,235,1)] text-right">Commission</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-155">
+                    {visibleOrders.map((o) => (
+                      <tr key={o._id} className="hover:bg-gray-50/70 transition-colors">
+                        <td className="px-6 py-4 font-semibold text-gray-900">#{o.orderNumber}</td>
+                        {selectedStore === 'all' && <td className="px-6 py-4 text-gray-500">{o.storeName}</td>}
+                        <td className="px-6 py-4 text-gray-500">
                           {new Date(o.createdAt).toLocaleString(undefined, {
                             dateStyle: 'short',
                             timeStyle: 'short',
                           })}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text-xs text-gray-500">Channel:</span>
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-800">
-                          {o.partnerName}
-                        </span>
-                      </div>
-                      {selectedStore === 'all' && (
-                        <div className="flex justify-between items-center mt-1">
-                          <span className="text-xs text-gray-500">Store:</span>
-                          <span className="text-xs text-gray-705 font-semibold">{o.storeName}</span>
-                        </div>
-                      )}
-                      <div className="border-t border-gray-100 my-2 pt-2 flex justify-between text-xs font-medium">
-                        <div>
-                          <p className="text-[9px] text-gray-400">Amount</p>
-                          <p className="text-gray-900 font-semibold">{o.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[9px] text-gray-400">Commission</p>
-                          <p className="text-sky-700 font-bold">{o.commissionAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <table className="w-full text-left text-sm border-collapse">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-200">
-                    <th className="px-6 py-3">Order No</th>
-                    {selectedStore === 'all' && <th className="px-6 py-3">Store</th>}
-                    <th className="px-6 py-3">Date</th>
-                    <th className="px-6 py-3">Channel</th>
-                    <th className="px-6 py-3 text-right">Amount</th>
-                    <th className="px-6 py-3 text-right">Commission</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-155">
-                  {report.orders.map((o) => (
-                    <tr key={o._id} className="hover:bg-gray-50/70 transition-colors">
-                      <td className="px-6 py-4 font-semibold text-gray-900">#{o.orderNumber}</td>
-                      {selectedStore === 'all' && <td className="px-6 py-4 text-gray-500">{o.storeName}</td>}
-                      <td className="px-6 py-4 text-gray-500">
-                        {new Date(o.createdAt).toLocaleString(undefined, {
-                          dateStyle: 'short',
-                          timeStyle: 'short',
-                        })}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-800">
-                          {o.partnerName}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right font-semibold text-gray-900">
-                        {o.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-6 py-4 text-right font-semibold text-sky-700">
-                        {o.commissionAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-800">
+                            {o.partnerName}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right font-semibold text-gray-900">
+                          {o.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-6 py-4 text-right font-semibold text-sky-700">
+                          {o.commissionAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="p-4 text-center text-xs text-gray-500 font-medium bg-gray-50/30 border-t border-gray-100 flex items-center justify-center gap-2">
+                  {visibleCount < report.orders.length ? (
+                    <>
+                      <Loader2 className="animate-spin text-brand-teal" size={14} />
+                      Loading more orders...
+                    </>
+                  ) : (
+                    <span>Showing all {report.orders.length} orders</span>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </div>
