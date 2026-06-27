@@ -49,37 +49,37 @@ export default function InventorySearchSelect({
         type="button"
         onClick={() => !disabled && setIsOpen(prev => !prev)}
         disabled={disabled}
-        className="w-full flex items-center justify-between bg-slate-800 border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-55 disabled:cursor-not-allowed text-left transition"
+        className="w-full flex items-center justify-between bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:opacity-55 disabled:cursor-not-allowed text-left transition"
       >
         <span className="truncate">
           {selectedItem ? (
             `${selectedItem.itemName} (${selectedItem.quantity} ${selectedItem.unit})`
           ) : (
-            <span className="text-slate-500">{placeholder}</span>
+            <span className="text-gray-400">{placeholder}</span>
           )}
         </span>
-        <ChevronDown size={16} className={`text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown size={16} className={`text-gray-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute z-[100] mt-1.5 w-full bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-2xl flex flex-col overflow-hidden max-h-72">
+        <div className="absolute z-[100] mt-1.5 w-full bg-white border border-gray-200 rounded-xl shadow-2xl flex flex-col overflow-hidden max-h-72">
           {/* Search bar */}
-          <div className="p-2 border-b border-slate-700/60 bg-slate-800/20 flex items-center gap-2">
-            <Search size={14} className="text-slate-500 shrink-0" />
+          <div className="p-2 border-b border-gray-150 bg-gray-50 flex items-center gap-2">
+            <Search size={14} className="text-gray-400 shrink-0" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search items..."
               autoFocus
-              className="w-full bg-transparent border-0 text-[var(--pos-text-primary)] text-xs focus:outline-none placeholder-slate-600"
+              className="w-full bg-transparent border-0 text-gray-900 text-xs focus:outline-none placeholder-gray-400"
             />
           </div>
 
           {/* Items list */}
-          <div className="flex-1 overflow-y-auto py-1 divide-y divide-slate-800/40">
+          <div className="flex-1 overflow-y-auto py-1 divide-y divide-gray-100">
             {filteredItems.length === 0 ? (
-              <div className="px-4 py-3 text-xs text-slate-500 text-center">
+              <div className="px-4 py-3 text-xs text-gray-400 text-center">
                 No items match your search
               </div>
             ) : (
@@ -88,15 +88,15 @@ export default function InventorySearchSelect({
                   key={item._id}
                   type="button"
                   onClick={() => handleSelect(item)}
-                  className={`w-full text-left px-4 py-2 hover:bg-slate-700/50 transition flex items-center gap-2 text-xs ${
+                  className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition flex items-center gap-2 text-xs ${
                     String(item._id) === String(value)
-                      ? 'bg-amber-500/10 text-amber-400 font-semibold'
-                      : 'text-[var(--pos-text-primary)]'
+                      ? 'bg-amber-50 text-amber-600 font-semibold'
+                      : 'text-gray-700 hover:text-gray-900'
                   }`}
                 >
-                  <Package size={12} className="text-slate-500 shrink-0" />
+                  <Package size={12} className="text-gray-400 shrink-0" />
                   <span className="truncate flex-1">{item.itemName}</span>
-                  <span className="text-slate-500 text-[10px] tabular-nums bg-slate-800/60 px-1.5 py-0.5 rounded border border-slate-700/40 shrink-0">
+                  <span className="text-gray-500 text-[10px] tabular-nums bg-gray-50 px-1.5 py-0.5 rounded border border-gray-200 shrink-0">
                     {item.quantity} {item.unit}
                   </span>
                 </button>
@@ -111,7 +111,7 @@ export default function InventorySearchSelect({
               onAddNewClick();
               setIsOpen(false);
             }}
-            className="w-full border-t border-slate-700 bg-slate-800/40 hover:bg-slate-800/80 px-4 py-2.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition flex items-center justify-center gap-1.5"
+            className="w-full border-t border-gray-200 bg-gray-50 hover:bg-gray-100 px-4 py-2.5 text-xs font-semibold text-amber-600 hover:text-amber-700 transition flex items-center justify-center gap-1.5"
           >
             <Plus size={14} />
             Create New Inventory Item
@@ -121,3 +121,4 @@ export default function InventorySearchSelect({
     </div>
   );
 }
+

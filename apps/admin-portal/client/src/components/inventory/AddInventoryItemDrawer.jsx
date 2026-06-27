@@ -210,18 +210,18 @@ export default function AddInventoryItemDrawer({
               {/* Searchable dropdown */}
               <div className="relative">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                   <input
                     type="text"
                     value={supplierSearch}
                     onChange={e => setSupplierSearch(e.target.value)}
                     placeholder="Search suppliers to add..."
                     disabled={createMutation.isPending}
-                    className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400"
                   />
                 </div>
                 {supplierSearch && filteredSuppliers.length > 0 && (
-                  <div className="absolute z-10 mt-1 w-full bg-[var(--pos-panel)] border border-slate-700 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
                     {filteredSuppliers
                       .filter(s => !form.suppliers.includes(s._id))
                       .map(s => (
@@ -232,11 +232,11 @@ export default function AddInventoryItemDrawer({
                             setForm(f => ({ ...f, suppliers: [...f.suppliers, s._id] }));
                             setSupplierSearch('');
                           }}
-                          className="w-full text-left px-4 py-2.5 hover:bg-slate-700/50 transition flex items-center gap-2 text-sm text-[var(--pos-text-primary)]"
+                          className="w-full text-left px-4 py-2.5 hover:bg-gray-50 transition flex items-center gap-2 text-sm text-gray-800 hover:text-gray-900"
                         >
-                          <Truck size={14} className="text-purple-400" />
+                          <Truck size={14} className="text-purple-650" />
                           <span>{s.name}</span>
-                          {s.contact && <span className="text-slate-500 text-xs ml-auto">{s.contact}</span>}
+                          {s.contact && <span className="text-gray-500 text-xs ml-auto">{s.contact}</span>}
                         </button>
                       ))}
                   </div>
@@ -247,7 +247,7 @@ export default function AddInventoryItemDrawer({
         </div>
 
         {formError && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm">
+          <div className="bg-red-50 border border-red-200 text-red-650 rounded-xl px-4 py-3 text-sm">
             {formError}
           </div>
         )}

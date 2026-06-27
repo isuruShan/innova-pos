@@ -68,7 +68,7 @@ export default function CenteredModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-800 transition"
+                className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition"
                 aria-label="Close"
               >
                 <X size={18} />
@@ -78,10 +78,11 @@ export default function CenteredModal({
         )}
         <div className="px-6 py-4 overflow-y-auto flex-1">{children}</div>
         {footer && (
-          <div className="px-6 py-4 border-t border-slate-700/60 shrink-0">{footer}</div>
+          <div className="px-6 py-4 border-t border-gray-150 shrink-0">{footer}</div>
         )}
       </div>
     </div>
   );
 }
+
 

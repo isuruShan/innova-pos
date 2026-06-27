@@ -1,12 +1,11 @@
 import { Loader, AlertTriangle, CheckCircle, Trash2 } from 'lucide-react';
 import useSwipeDismiss from '../hooks/useSwipeDismiss';
 
-
 const VARIANT_STYLES = {
-  danger: { bg: 'bg-red-600 hover:bg-red-700', icon: AlertTriangle, iconClass: 'text-red-400', ring: 'ring-red-500/20' },
-  warning: { bg: 'bg-amber-500 hover:bg-amber-400', icon: AlertTriangle, iconClass: 'text-amber-400', ring: 'ring-amber-500/20' },
-  success: { bg: 'bg-green-600 hover:bg-green-700', icon: CheckCircle, iconClass: 'text-green-400', ring: 'ring-green-500/20' },
-  delete: { bg: 'bg-red-600 hover:bg-red-700', icon: Trash2, iconClass: 'text-red-400', ring: 'ring-red-500/20' },
+  danger: { bg: 'bg-red-600 hover:bg-red-700', icon: AlertTriangle, iconClass: 'text-red-600', ring: 'ring-red-100' },
+  warning: { bg: 'bg-amber-500 hover:bg-amber-600', icon: AlertTriangle, iconClass: 'text-amber-600', ring: 'ring-amber-100' },
+  success: { bg: 'bg-green-600 hover:bg-green-700', icon: CheckCircle, iconClass: 'text-green-600', ring: 'ring-green-100' },
+  delete: { bg: 'bg-red-600 hover:bg-red-700', icon: Trash2, iconClass: 'text-red-600', ring: 'ring-red-100' },
 };
 
 /**
@@ -28,7 +27,6 @@ export default function ConfirmDialog({
 
   if (!open) return null;
 
-
   const { bg, icon: Icon, iconClass, ring } = VARIANT_STYLES[variant] || VARIANT_STYLES.danger;
 
   return (
@@ -39,18 +37,18 @@ export default function ConfirmDialog({
       onClick={(e) => { if (window.innerWidth >= 640 && e.target === e.currentTarget) onCancel?.(); }}
     >
       <div
-        className="bg-[var(--pos-panel)] rounded-xl max-w-sm w-full shadow-xl border border-slate-700 overflow-hidden"
+        className="bg-white rounded-xl max-w-sm w-full shadow-xl border border-gray-200 overflow-hidden"
         {...bind}
         style={style}
       >
-        <div className="w-12 h-1 bg-slate-700/60 rounded-full mx-auto mt-3 md:hidden shrink-0" />
+        <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mt-3 md:hidden shrink-0" />
         <div className="px-6 pt-6 pb-4">
-          <div className={`w-11 h-11 rounded-xl ${ring} ring-4 bg-[var(--pos-surface)] flex items-center justify-center mb-4`}>
+          <div className={`w-11 h-11 rounded-xl ${ring} ring-4 bg-gray-50 flex items-center justify-center mb-4`}>
             <Icon size={22} className={iconClass} />
           </div>
-          <h3 className="text-base font-bold text-[var(--pos-text-primary)]">{title}</h3>
+          <h3 className="text-base font-bold text-gray-900">{title}</h3>
           {message && (
-            <p className="text-sm text-slate-400 mt-1.5 leading-relaxed whitespace-pre-line">{message}</p>
+            <p className="text-sm text-gray-500 mt-1.5 leading-relaxed whitespace-pre-line">{message}</p>
           )}
           {children && <div className="mt-4">{children}</div>}
         </div>
@@ -59,7 +57,7 @@ export default function ConfirmDialog({
             type="button"
             onClick={onCancel}
             disabled={isLoading}
-            className="flex-1 py-2.5 rounded-xl border border-slate-600 text-sm font-medium text-slate-300 hover:bg-slate-800 disabled:opacity-60 transition"
+            className="flex-1 py-2.5 rounded-xl border border-gray-300 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-60 transition"
           >
             {cancelLabel}
           </button>
@@ -77,3 +75,4 @@ export default function ConfirmDialog({
     </div>
   );
 }
+
