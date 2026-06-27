@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../api/axios';
 import { useAuth } from './AuthContext';
+import { preloadOfflineData } from '../offline/preload.js';
 
 const StoreContext = createContext(null);
 
@@ -56,12 +57,20 @@ export function StoreProvider({ children }) {
     });
   }, [stores]);
 
+  const isStoreReady = Boolean(user?.tenantId && stores.length > 0 && selectedStoreId);
+
+  useEffect(() => {
+    if (isStoreReady && typeof window !== 'undefined' && window.navigator.onLine) {
+      preloadOfflineData();
+    }
+  }, [isStoreReady, selectedStoreId]);
+
   const value = useMemo(() => ({
     stores,
     selectedStoreId,
     selectStore,
     isAllStores: false,
-    isStoreReady: Boolean(user?.tenantId && stores.length > 0 && selectedStoreId),
+    isStoreReady,
   }), [stores, selectedStoreId, user?.tenantId]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

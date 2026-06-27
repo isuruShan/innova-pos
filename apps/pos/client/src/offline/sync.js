@@ -7,6 +7,7 @@ import {
   enqueue,
 } from './idb.js';
 import { tempOrderId } from './constants.js';
+import { preloadOfflineData } from './preload.js';
 
 let clientApi;
 
@@ -114,6 +115,7 @@ export function registerSyncListeners(apiInstance) {
 
   window.addEventListener('online', () => {
     processSyncQueue();
+    preloadOfflineData();
   });
 
   window.addEventListener('pos-offline-queue', () => {
@@ -124,6 +126,9 @@ export function registerSyncListeners(apiInstance) {
 
   // Initial attempt when app loads online
   setTimeout(() => {
-    if (window.navigator.onLine) processSyncQueue();
+    if (window.navigator.onLine) {
+      processSyncQueue();
+      preloadOfflineData();
+    }
   }, 500);
 }

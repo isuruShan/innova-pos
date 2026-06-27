@@ -23,3 +23,8 @@ Whenever making UI/UX modifications to any view in the POS (such as the Order Bo
 ### 2. PWA Stability & Redirections
 - Never trigger window reloads (`window.location.reload()`) automatically inside Service Worker controllers or route lifecycle hooks without guarding against infinite loops.
 - All redirects to the login screen (`window.location.href = '/login'`) must check if the browser is already on the login page via `!window.location.pathname.includes('/login')` to prevent refresh loops.
+
+### 3. Offline Product Catalog Pre-Caching
+- **Catalogue Loading:** Once the POS is loaded and the cashier has selected a store location, all menu and product data must be preloaded upfront to enable immediate offline order processing and transactions.
+- **Caching Mechanism:** Preloaded items must cover `/menu` (categories and products), `/menu/modifier-groups` (modifiers and customizable variations), `/tables` (layout and seating tables), `/promotions` (discounts and offers), and `/stores`.
+- **Automatic Sync & Updates:** The preloader (`preloadOfflineData()`) must be triggered inside the `StoreProvider` when store selection is ready/changed, when the browser transitions to online, and during the initial online app load phase.

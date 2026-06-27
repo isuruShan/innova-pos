@@ -10,7 +10,7 @@ export function shouldCacheSuccessfulGet(config) {
   if ((config.method || 'get').toLowerCase() !== 'get') return false;
   const p = pathOnly(config);
   return (
-    p.endsWith('/menu') ||
+    p.includes('/menu') ||
     p.endsWith('/stores') ||
     p.endsWith('/orders') ||
     p.endsWith('/settings') ||
