@@ -4,6 +4,7 @@ import {
   removePendingOrder,
   setIdMap,
   loadAllIdMappings,
+  enqueue,
 } from './idb.js';
 import { tempOrderId } from './constants.js';
 
@@ -29,58 +30,81 @@ export async function processSyncQueue() {
   if (typeof window !== 'undefined' && window.navigator.onLine === false) return;
   if (!clientApi) return;
 
-  let items = await listQueue();
-  items = items.sort((a, b) => a.createdAt - b.createdAt);
-  let map = await loadAllIdMappings();
-  let completedSomething = false;
-
-  for (const item of items) {
-    try {
-      let url = await rewriteUrl(item.url, map);
-      const headers = {
-        'x-pos-sync-replay': '1',
-      };
-      if (item.clientRequestId) {
-        headers['x-client-request-id'] = item.clientRequestId;
-      }
-      if (item.storeId) {
-        headers['x-store-id'] = item.storeId;
-      }
-
-      let res;
-      if (item.method === 'POST') {
-        res = await clientApi.post(url, item.body, { headers });
-      } else if (item.method === 'PUT') {
-        res = await clientApi.put(url, item.body, { headers });
-      } else {
-        await removeQueueItem(item.id);
-        continue;
-      }
-
-      if (item.kind === 'POST_ORDERS' && item.clientRequestId) {
-        await removePendingOrder(item.clientRequestId);
-        const sid = res?.data?._id ? String(res.data._id) : null;
-        if (sid) {
-          await setIdMap(tempOrderId(item.clientRequestId), sid);
-          map[tempOrderId(item.clientRequestId)] = sid;
-        }
-      }
-
-      await removeQueueItem(item.id);
-      map = await loadAllIdMappings();
-      completedSomething = true;
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('pos-offline-queue'));
-      }
-    } catch (e) {
-      console.warn('[pos-offline] Sync stopped:', e?.message || e);
-      break;
-    }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('pos-offline-sync-start'));
   }
 
-  if (completedSomething && typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('pos-offline-sync-done'));
+  try {
+    let items = await listQueue();
+    items = items.sort((a, b) => a.createdAt - b.createdAt);
+    let map = await loadAllIdMappings();
+    let completedSomething = false;
+
+    for (const item of items) {
+      try {
+        let url = await rewriteUrl(item.url, map);
+        const headers = {
+          'x-pos-sync-replay': '1',
+        };
+        if (item.clientRequestId) {
+          headers['x-client-request-id'] = item.clientRequestId;
+        }
+        if (item.storeId) {
+          headers['x-store-id'] = item.storeId;
+        }
+
+        let res;
+        if (item.method === 'POST') {
+          res = await clientApi.post(url, item.body, { headers });
+        } else if (item.method === 'PUT') {
+          res = await clientApi.put(url, item.body, { headers });
+        } else {
+          await removeQueueItem(item.id);
+          continue;
+        }
+
+        if (item.kind === 'POST_ORDERS' && item.clientRequestId) {
+          await removePendingOrder(item.clientRequestId);
+          const sid = res?.data?._id ? String(res.data._id) : null;
+          if (sid) {
+            await setIdMap(tempOrderId(item.clientRequestId), sid);
+            map[tempOrderId(item.clientRequestId)] = sid;
+          }
+        }
+
+        await removeQueueItem(item.id);
+        map = await loadAllIdMappings();
+        completedSomething = true;
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('pos-offline-queue'));
+        }
+      } catch (e) {
+        console.warn('[pos-offline] Sync stopped:', e?.message || e);
+        
+        // Update item with error status in DB so the user can inspect it
+        item.lastError = e?.response?.data?.message || e?.response?.data?.error || e?.message || String(e);
+        item.lastAttemptedAt = Date.now();
+        try {
+          await enqueue(item);
+        } catch (dbErr) {
+          console.error('[pos-offline] Failed to save sync error details:', dbErr);
+        }
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('pos-offline-queue'));
+        }
+        break;
+      }
+    }
+
+    if (completedSomething && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('pos-offline-sync-done'));
+    }
+  } finally {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('pos-offline-sync-end'));
+    }
   }
 }
 
