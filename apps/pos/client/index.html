@@ -162,21 +162,11 @@
       // This runs before vite-plugin-pwa registers the new SW, so stale caches
       // are cleared on first load after a deployment.
       if ('serviceWorker' in navigator) {
+        // Force the waiting SW (new version) to activate immediately.
         navigator.serviceWorker.getRegistrations().then((registrations) => {
           registrations.forEach((reg) => {
-            // Force the waiting SW (new version) to activate immediately.
             if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
           });
-        });
-
-        // When the new SW takes over, reload to get the fresh bundle.
-        // Compare with currentController to prevent infinite reload loops during initial claim or page reload.
-        let currentController = navigator.serviceWorker.controller;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (currentController && navigator.serviceWorker.controller !== currentController) {
-            window.location.reload();
-          }
-          currentController = navigator.serviceWorker.controller;
         });
       }
 
