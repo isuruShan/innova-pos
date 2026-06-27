@@ -665,6 +665,7 @@ export default function BrandingPage() {
                 <option value="lifo">Last-In, First-Out (LIFO)</option>
                 <option value="last_cost">Last Purchase Cost (Last Cost)</option>
               </select>
+            </div>
           </div>
         </>
       )}
