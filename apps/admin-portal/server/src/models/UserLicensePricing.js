@@ -1,6 +1,15 @@
 const mongoose = require('mongoose');
 
-const STAFF_ROLES = ['merchant_admin', 'manager', 'cashier', 'kitchen', 'steward'];
+const STAFF_ROLES = [
+  'merchant_admin',
+  'manager',
+  'cashier',
+  'kitchen',
+  'steward',
+  'inventory_clerk',
+  'commissary_operator',
+  'purchasing_officer'
+];
 
 const userLicensePricingSchema = new mongoose.Schema(
   {

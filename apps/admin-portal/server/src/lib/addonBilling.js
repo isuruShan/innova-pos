@@ -157,6 +157,14 @@ const DEFAULT_ADDONS = [
     isActive: true,
     sortOrder: 7,
   },
+  {
+    code: 'advanced_inventory',
+    name: 'Advanced Inventory',
+    shortDescription: 'nested sub-recipes, count sheets, stocktaking audits, store-to-store stock transfers, and conversion factors.',
+    longDescription: 'Unlock MarketMan-style advanced inventory management for your venues. Create custom physical Storage Areas, build nested sub-recipes with conversion math, schedule count sheets for audit sessions with variance and valuation mismatch reporting, and execute inter-store stock transfers.',
+    isActive: true,
+    sortOrder: 8,
+  },
 ];
 
 async function ensureDefaultPaidAddons() {
@@ -273,7 +281,7 @@ async function computeSubscriptionRenewalExpected(tenant, planOverride = null, o
 
   const addons = [];
   let addonTotal = 0;
-  const { isQrOrderingEffective, isLoyaltyEffective, isTableManagementEffective, isUberEatsEffective, isAccountingEffective, isDualScreenEffective, isWhatsappEffective, isModifierGroupsEffective } = require('./addonPeriod');
+  const { isQrOrderingEffective, isLoyaltyEffective, isTableManagementEffective, isUberEatsEffective, isAccountingEffective, isDualScreenEffective, isWhatsappEffective, isModifierGroupsEffective, isAdvancedInventoryEffective } = require('./addonPeriod');
   const renewalRows = [
     { code: 'qr_ordering', label: 'QR Ordering', key: 'qrOrdering', check: isQrOrderingEffective },
     { code: 'loyalty', label: 'Loyalty program', key: 'loyalty', check: isLoyaltyEffective },
@@ -283,6 +291,7 @@ async function computeSubscriptionRenewalExpected(tenant, planOverride = null, o
     { code: 'dual_screen', label: 'Dual Screen Customer Terminal', key: 'dualScreen', check: isDualScreenEffective },
     { code: 'whatsapp_integration', label: 'WhatsApp Business Integration', key: 'whatsapp', check: isWhatsappEffective },
     { code: 'modifier_groups', label: 'Modifier Groups', key: 'modifierGroups', check: isModifierGroupsEffective },
+    { code: 'advanced_inventory', label: 'Advanced Inventory', key: 'advancedInventory', check: isAdvancedInventoryEffective },
   ];
   for (const row of renewalRows) {
     if (excludeSet.has(row.code)) {

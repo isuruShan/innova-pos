@@ -12,6 +12,7 @@ const {
   isDualScreenEffective,
   isWhatsappEffective,
   isModifierGroupsEffective,
+  isAdvancedInventoryEffective,
 } = require('@innovapos/paid-addons');
 
 /**
@@ -51,6 +52,7 @@ async function applyPaidAddonExpiryIfNeeded(tenant) {
   t = await applyAddonExpiryIfNeeded(t, 'dualScreen');
   t = await applyAddonExpiryIfNeeded(t, 'whatsapp');
   t = await applyAddonExpiryIfNeeded(t, 'modifierGroups');
+  t = await applyAddonExpiryIfNeeded(t, 'advancedInventory');
   return t;
 }
 
@@ -71,6 +73,7 @@ module.exports = {
   isDualScreenEffective,
   isWhatsappEffective,
   isModifierGroupsEffective,
+  isAdvancedInventoryEffective,
   applyAddonExpiryIfNeeded,
   applyPaidAddonExpiryIfNeeded,
   applyQrOrderingExpiryIfNeeded,
