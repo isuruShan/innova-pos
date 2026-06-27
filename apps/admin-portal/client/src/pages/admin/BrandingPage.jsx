@@ -56,6 +56,7 @@ export default function BrandingPage() {
   const [phoneCountryIso, setPhoneCountryIso] = useState(DEFAULT_COUNTRY_CODE);
   const [phoneNationalDigits, setPhoneNationalDigits] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const [activeSubTab, setActiveSubTab] = useState('business');
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['tenant-settings'],
@@ -309,528 +310,573 @@ export default function BrandingPage() {
   return (
     <div>
       <div className="max-w-3xl space-y-6 pb-24">
-      <div>
-        <h2 className="text-xl font-bold text-gray-900">Branding & Settings</h2>
-        <p className="text-sm text-gray-500 mt-0.5">Customize your POS appearance and business details</p>
-      </div>
-
-      {/* Logo */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Palette size={16} className="text-brand-orange" /> Logo
-        </h3>
-        <div className="flex flex-col sm:flex-row items-center gap-6">
-          <div className="relative w-24 h-24 shrink-0">
-            <div className="w-full h-full rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
-              {logoPreview || form.logoUrl ? (
-                <img src={logoPreview || form.logoUrl} alt="logo" className="w-full h-full object-contain" />
-              ) : (
-                <Upload size={24} className="text-gray-300" />
-              )}
-              {(logoPreview || form.logoUrl) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (logoPreview) {
-                      setLogoPreview(null);
-                      setLogoFile(null);
-                      if (fileRef.current) fileRef.current.value = '';
-                      return;
-                    }
-                    removeLogoMutation.mutate();
-                  }}
-                  disabled={removeLogoMutation.isPending}
-                  className="absolute top-1.5 right-1.5 w-7 h-7 rounded-lg bg-gray-900/80 backdrop-blur text-white hover:bg-red-600 disabled:opacity-60 flex items-center justify-center shadow-md transition-colors"
-                  title="Remove logo"
-                  aria-label="Remove logo"
-                >
-                  {removeLogoMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="text-center sm:text-left w-full sm:w-auto">
-            <input ref={fileRef} type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
-            <div className="flex justify-center sm:justify-start gap-2">
-              <button onClick={() => fileRef.current?.click()}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
-                Choose image
-              </button>
-              {logoFile && (
-                <button onClick={handleUploadLogo} disabled={logoMutation.isPending}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-orange text-sm font-semibold text-white hover:bg-brand-orange-hover disabled:opacity-60"
-                >
-                  {logoMutation.isPending ? <Loader size={13} className="animate-spin" /> : <Upload size={13} />}
-                  Upload
-                </button>
-              )}
-            </div>
-            <p className="text-xs text-gray-400 mt-1.5">Recommended: 512×512px. Will be converted to WebP.</p>
-          </div>
-        </div>
-      </div>
-      {/* Customer Terminal Background Image */}
-      {dualScreenActive && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Palette size={16} className="text-brand-orange" /> Customer Terminal Background
-          </h3>
-          <p className="text-sm text-gray-500 mb-4">
-            Upload a background image for the customer terminal secondary monitor. This image is displayed on the check-in section and takes over the right panel once a customer has checked in.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div className="relative w-48 h-28 shrink-0">
-              <div className="w-full h-full rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
-                {terminalBgPreview || form.customerTerminalBgUrl ? (
-                  <img src={terminalBgPreview || form.customerTerminalBgUrl} alt="terminal bg" className="w-full h-full object-cover" />
-                ) : (
-                  <Upload size={24} className="text-gray-300" />
-                )}
-                {(terminalBgPreview || form.customerTerminalBgUrl) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (terminalBgPreview) {
-                        setTerminalBgPreview(null);
-                        setTerminalBgFile(null);
-                        if (fileTerminalBgRef.current) fileTerminalBgRef.current.value = '';
-                        return;
-                      }
-                      removeTerminalBgMutation.mutate();
-                    }}
-                    disabled={removeTerminalBgMutation.isPending}
-                    className="absolute top-1.5 right-1.5 w-7 h-7 rounded-lg bg-gray-900/80 backdrop-blur text-white hover:bg-red-650 disabled:opacity-60 flex items-center justify-center shadow-md transition-colors"
-                    title="Remove background"
-                    aria-label="Remove background"
-                  >
-                    {removeTerminalBgMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="text-center sm:text-left w-full sm:w-auto">
-              <input ref={fileTerminalBgRef} type="file" accept="image/*" onChange={handleTerminalBgChange} className="hidden" />
-              <div className="flex justify-center sm:justify-start gap-2">
-                <button onClick={() => fileTerminalBgRef.current?.click()}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
-                  Choose image
-                </button>
-                {terminalBgFile && (
-                  <button onClick={handleUploadTerminalBg} disabled={terminalBgMutation.isPending}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-orange text-sm font-semibold text-white hover:bg-brand-orange-hover disabled:opacity-60"
-                  >
-                    {terminalBgMutation.isPending ? <Loader size={13} className="animate-spin" /> : <Upload size={13} />}
-                    Upload
-                  </button>
-                )}
-              </div>
-              <p className="text-xs text-gray-400 mt-1.5">Recommended: 1920×1080px (16:9 ratio). Will be converted to WebP.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Business info */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h3 className="font-semibold text-gray-900">Business Information</h3>
-        <p className="text-sm text-gray-500">
-          Contact details from your signup application are filled in the first time you open this page.
-        </p>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Business name *</label>
-          <input
-            type="text"
-            value={form.businessName || ''}
-            onChange={(e) => {
-              set('businessName')(e.target.value);
-              if (fieldErrors.businessName) setFieldErrors((er) => ({ ...er, businessName: '' }));
-            }}
-            placeholder={fieldAttrs('businessName').placeholder}
-            maxLength={fieldAttrs('businessName').maxLength}
-            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${
-              fieldErrors.businessName ? 'border-red-400' : 'border-gray-300'
-            }`}
-          />
-          {fieldErrors.businessName && <p className="text-xs text-red-500 mt-1">{fieldErrors.businessName}</p>}
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Address *</label>
-          <input
-            type="text"
-            value={form.address || ''}
-            onChange={(e) => {
-              set('address')(e.target.value);
-              if (fieldErrors.address) setFieldErrors((er) => ({ ...er, address: '' }));
-            }}
-            placeholder={fieldAttrs('addressLine1').placeholder}
-            maxLength={fieldAttrs('addressLine1').maxLength}
-            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${
-              fieldErrors.address ? 'border-red-400' : 'border-gray-300'
-            }`}
-          />
-          {fieldErrors.address && <p className="text-xs text-red-500 mt-1">{fieldErrors.address}</p>}
-        </div>
-        <MobilePhoneField
-          countryIso={phoneCountryIso}
-          nationalDigits={phoneNationalDigits}
-          onCountryIsoChange={setPhoneCountryIso}
-          onNationalDigitsChange={setPhoneNationalDigits}
-          error={fieldErrors.phone}
-          required
-        />
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-          <input
-            type="email"
-            value={form.email || ''}
-            onChange={(e) => {
-              set('email')(e.target.value);
-              if (fieldErrors.email) setFieldErrors((er) => ({ ...er, email: '' }));
-            }}
-            onBlur={(e) => {
-              const v = e.target.value.trim();
-              if (v) {
-                const res = validateEmail(v, { required: false });
-                if (!res.ok) setFieldErrors((er) => ({ ...er, email: res.error }));
-              }
-            }}
-            placeholder={fieldAttrs('email').placeholder}
-            maxLength={fieldAttrs('email').maxLength}
-            autoComplete={fieldAttrs('email').autoComplete}
-            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
-              fieldErrors.email ? 'border-red-400' : 'border-gray-300'
-            }`}
-          />
-          {fieldErrors.email && <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>}
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
-          <input
-            type="text"
-            value={form.website || ''}
-            onChange={(e) => {
-              set('website')(e.target.value);
-              if (fieldErrors.website) setFieldErrors((er) => ({ ...er, website: '' }));
-            }}
-            onBlur={(e) => {
-              const v = e.target.value.trim();
-              if (v && !isValidUrl(v)) {
-                setFieldErrors((er) => ({ ...er, website: 'Enter a valid website URL (e.g. https://example.com)' }));
-              }
-            }}
-            placeholder={fieldAttrs('website').placeholder || 'https://example.com'}
-            maxLength={fieldAttrs('website').maxLength || 200}
-            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
-              fieldErrors.website ? 'border-red-400' : 'border-gray-300'
-            }`}
-          />
-          {fieldErrors.website && <p className="text-xs text-red-500 mt-1">{fieldErrors.website}</p>}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Business category *</label>
-          <select
-            value={form.category || 'categories/gcid:restaurant'}
-            onChange={(e) => set('category')(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
-          >
-            {GBP_CATEGORIES.map((cat) => (
-              <option key={cat.value} value={cat.value}>{cat.label}</option>
-            ))}
-          </select>
-          <p className="text-xs text-gray-500 mt-1">Primary category for your Google Business Profile listing.</p>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="block text-sm font-medium text-gray-700">Business description</label>
-            <span className={`text-xs tabular-nums ${
-              (form.description || '').length > 900 ? 'text-red-500' : 'text-gray-400'
-            }`}>
-              {(form.description || '').length}/1,000
-            </span>
-          </div>
-          <textarea
-            value={form.description || ''}
-            onChange={(e) => {
-              set('description')(e.target.value);
-              if (fieldErrors.description) setFieldErrors((er) => ({ ...er, description: '' }));
-            }}
-            rows={3}
-            maxLength={1000}
-            placeholder="Briefly describe your business — cuisine type, ambience, specialties, opening hours, etc. This appears on customer-facing pages and your Google Business Profile."
-            className={`w-full border rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
-              fieldErrors.description ? 'border-red-400' : 'border-gray-300'
-            }`}
-          />
-          {fieldErrors.description
-            ? <p className="text-xs text-red-500 mt-1">{fieldErrors.description}</p>
-            : <p className="text-xs text-gray-400 mt-1">No HTML or scripts. Used on receipts, customer pages, and your Google Business Profile.</p>
-          }
-        </div>
-      </div>
-
-      {/* Google Business Profile */}
-      <GoogleBusinessCard
-        businessDetails={{
-          businessName: form.businessName,
-          address: form.address,
-          phone: phoneValueFromField(phoneCountryIso, phoneNationalDigits),
-          website: form.website,
-          description: form.description,
-          category: form.category,
-        }}
-      />
-
-      {/* Currency — receipts & POS displays */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h3 className="font-semibold text-gray-900">Currency</h3>
-        <p className="text-sm text-gray-500">
-          ISO code and symbol used on receipts and price labels. Defaults are set from your region when the account is created; you can override them here.
-        </p>
-        <div className="max-w-xs">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
-          <select
-            value={form.currency || 'LKR'}
-            onChange={(e) => {
-              const opt = CURRENCY_OPTIONS.find((c) => c.code === e.target.value);
-              setForm((f) => ({
-                ...f,
-                currency: e.target.value,
-                currencySymbol: opt?.symbol || f.currencySymbol,
-              }));
-            }}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
-          >
-            {CURRENCY_OPTIONS.map((c) => (
-              <option key={c.code} value={c.code}>
-                {c.code} — {c.symbol}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Inventory costing method */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h3 className="font-semibold text-gray-900">Inventory Costing Method</h3>
-        <p className="text-sm text-gray-500">
-          Choose the default costing method for inventory accounting and valuations in reports.
-        </p>
-        <div className="max-w-xs">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Costing Method</label>
-          <select
-            value={form.inventoryCostingMethod || 'wac'}
-            onChange={(e) => set('inventoryCostingMethod')(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
-          >
-            <option value="wac">Weighted Average Cost (WAC)</option>
-            <option value="fifo">First-In, First-Out (FIFO)</option>
-            <option value="lifo">Last-In, First-Out (LIFO)</option>
-            <option value="last_cost">Last Purchase Cost (Last Cost)</option>
-          </select>
-        </div>
-      </div>
-
-      {/* POS theme */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-4">
           <div>
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-              <Sparkles size={16} className="text-brand-orange" /> POS theme
-            </h3>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Choose a preset palette for header, buttons, highlights, and body colors in the POS.
-            </p>
+            <h2 className="text-xl font-bold text-gray-900">Branding & Settings</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Customize your POS appearance and business details</p>
           </div>
-          <button
-            type="button"
-            onClick={() => setPresetModalOpen(true)}
-            className="text-sm font-semibold text-brand-orange hover:underline shrink-0"
-          >
-            Choose theme preset
-          </button>
         </div>
 
-        {form.themePresetName && (
-          <div className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50">
-            <div
-              className="w-14 h-14 rounded-xl border-2 border-white shadow-md shrink-0"
-              style={{ backgroundColor: form.themeBaseColor || '#0B1220' }}
-              title={form.themeBaseColor}
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-gray-900">{form.themePresetName}</p>
-              <p className="text-xs text-gray-500 font-mono mt-0.5">Base {form.themeBaseColor || '—'}</p>
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-2.5">
-          {[...new Set([
-            form.headerBarColor,
-            form.buttonColor,
-            form.selectionHighlightColor,
-            form.bodyColor,
-            form.hoverColor
-          ].filter(Boolean))].map((color) => (
-            <div key={color} className="flex items-center gap-2 border border-gray-200 rounded-lg p-2 bg-white shadow-xs">
-              <div className="w-8 h-8 rounded-md border border-gray-150 shrink-0 shadow-inner" style={{ backgroundColor: color }} />
-              <span className="text-xs font-mono font-bold text-gray-700 uppercase tracking-wide pr-1">{color}</span>
-            </div>
+        {/* Tab Selection */}
+        <div className="flex border-b border-gray-250 gap-6 overflow-x-auto no-scrollbar">
+          {[
+            { id: 'business', label: 'Business Profile' },
+            { id: 'theme', label: 'Theme & Assets' },
+            { id: 'accounting', label: 'Accounting & Currency' },
+            { id: 'pos', label: 'POS Preferences' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveSubTab(tab.id)}
+              className={`pb-3 text-sm font-semibold whitespace-nowrap transition-all border-b-2 -mb-[2px] ${
+                activeSubTab === tab.id
+                  ? 'border-brand-orange text-brand-orange'
+                  : 'border-transparent text-gray-550 hover:text-gray-900 hover:border-gray-200'
+              }`}
+            >
+              {tab.label}
+            </button>
           ))}
         </div>
-      </div>
 
-      {presetModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
-          <div className="bg-white rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 shadow-xl border border-gray-200">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-gray-900">Theme presets</h3>
-              <button type="button" onClick={() => setPresetModalOpen(false)} className="p-1 rounded-lg hover:bg-gray-100">
-                <X size={20} />
+      {activeSubTab === 'theme' && (
+        <>
+          {/* Logo */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Palette size={16} className="text-brand-orange" /> Logo
+            </h3>
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div className="relative w-24 h-24 shrink-0">
+                <div className="w-full h-full rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
+                  {logoPreview || form.logoUrl ? (
+                    <img src={logoPreview || form.logoUrl} alt="logo" className="w-full h-full object-contain" />
+                  ) : (
+                    <Upload size={24} className="text-gray-300" />
+                  )}
+                  {(logoPreview || form.logoUrl) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (logoPreview) {
+                          setLogoPreview(null);
+                          setLogoFile(null);
+                          if (fileRef.current) fileRef.current.value = '';
+                          return;
+                        }
+                        removeLogoMutation.mutate();
+                      }}
+                      disabled={removeLogoMutation.isPending}
+                      className="absolute top-1.5 right-1.5 w-7 h-7 rounded-lg bg-gray-900/80 backdrop-blur text-white hover:bg-red-650 disabled:opacity-60 flex items-center justify-center shadow-md transition-colors"
+                      title="Remove logo"
+                      aria-label="Remove logo"
+                    >
+                      {removeLogoMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="text-center sm:text-left w-full sm:w-auto">
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+                <div className="flex justify-center sm:justify-start gap-2">
+                  <button onClick={() => fileRef.current?.click()}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-55">
+                    Choose image
+                  </button>
+                  {logoFile && (
+                    <button onClick={handleUploadLogo} disabled={logoMutation.isPending}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-orange text-sm font-semibold text-white hover:bg-brand-orange-hover disabled:opacity-60"
+                    >
+                      {logoMutation.isPending ? <Loader size={13} className="animate-spin" /> : <Upload size={13} />}
+                      Upload
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-1.5">Recommended: 512×512px. Will be converted to WebP.</p>
+              </div>
+            </div>
+          </div>
+          {/* Customer Terminal Background Image */}
+          {dualScreenActive && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Palette size={16} className="text-brand-orange" /> Customer Terminal Background
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Upload a background image for the customer terminal secondary monitor. This image is displayed on the check-in section and takes over the right panel once a customer has checked in.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center gap-6">
+                <div className="relative w-48 h-28 shrink-0">
+                  <div className="w-full h-full rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden bg-gray-50">
+                    {terminalBgPreview || form.customerTerminalBgUrl ? (
+                      <img src={terminalBgPreview || form.customerTerminalBgUrl} alt="terminal bg" className="w-full h-full object-cover" />
+                    ) : (
+                      <Upload size={24} className="text-gray-300" />
+                    )}
+                    {(terminalBgPreview || form.customerTerminalBgUrl) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (terminalBgPreview) {
+                            setTerminalBgPreview(null);
+                            setTerminalBgFile(null);
+                            if (fileTerminalBgRef.current) fileTerminalBgRef.current.value = '';
+                            return;
+                          }
+                          removeTerminalBgMutation.mutate();
+                        }}
+                        disabled={removeTerminalBgMutation.isPending}
+                        className="absolute top-1.5 right-1.5 w-7 h-7 rounded-lg bg-gray-900/80 backdrop-blur text-white hover:bg-red-650 disabled:opacity-60 flex items-center justify-center shadow-md transition-colors"
+                        title="Remove background"
+                        aria-label="Remove background"
+                      >
+                        {removeTerminalBgMutation.isPending ? <Loader size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="text-center sm:text-left w-full sm:w-auto">
+                  <input ref={fileTerminalBgRef} type="file" accept="image/*" onChange={handleTerminalBgChange} className="hidden" />
+                  <div className="flex justify-center sm:justify-start gap-2">
+                    <button onClick={() => fileTerminalBgRef.current?.click()}
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                      Choose image
+                    </button>
+                    {terminalBgFile && (
+                      <button onClick={handleUploadTerminalBg} disabled={terminalBgMutation.isPending}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-orange text-sm font-semibold text-white hover:bg-brand-orange-hover disabled:opacity-60"
+                      >
+                        {terminalBgMutation.isPending ? <Loader size={13} className="animate-spin" /> : <Upload size={13} />}
+                        Upload
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1.5">Recommended: 1920×1080px (16:9 ratio). Will be converted to WebP.</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {activeSubTab === 'business' && (
+        <>
+          {/* Business info */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+            <h3 className="font-semibold text-gray-900">Business Information</h3>
+            <p className="text-sm text-gray-500">
+              Contact details from your signup application are filled in the first time you open this page.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Business name *</label>
+              <input
+                type="text"
+                value={form.businessName || ''}
+                onChange={(e) => {
+                  set('businessName')(e.target.value);
+                  if (fieldErrors.businessName) setFieldErrors((er) => ({ ...er, businessName: '' }));
+                }}
+                placeholder={fieldAttrs('businessName').placeholder}
+                maxLength={fieldAttrs('businessName').maxLength}
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${
+                  fieldErrors.businessName ? 'border-red-400' : 'border-gray-300'
+                }`}
+              />
+              {fieldErrors.businessName && <p className="text-xs text-red-500 mt-1">{fieldErrors.businessName}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Address *</label>
+              <input
+                type="text"
+                value={form.address || ''}
+                onChange={(e) => {
+                  set('address')(e.target.value);
+                  if (fieldErrors.address) setFieldErrors((er) => ({ ...er, address: '' }));
+                }}
+                placeholder={fieldAttrs('addressLine1').placeholder}
+                maxLength={fieldAttrs('addressLine1').maxLength}
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${
+                  fieldErrors.address ? 'border-red-400' : 'border-gray-300'
+                }`}
+              />
+              {fieldErrors.address && <p className="text-xs text-red-500 mt-1">{fieldErrors.address}</p>}
+            </div>
+            <MobilePhoneField
+              countryIso={phoneCountryIso}
+              nationalDigits={phoneNationalDigits}
+              onCountryIsoChange={setPhoneCountryIso}
+              onNationalDigitsChange={setPhoneNationalDigits}
+              error={fieldErrors.phone}
+              required
+            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                type="email"
+                value={form.email || ''}
+                onChange={(e) => {
+                  set('email')(e.target.value);
+                  if (fieldErrors.email) setFieldErrors((er) => ({ ...er, email: '' }));
+                }}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v) {
+                    const res = validateEmail(v, { required: false });
+                    if (!res.ok) setFieldErrors((er) => ({ ...er, email: res.error }));
+                  }
+                }}
+                placeholder={fieldAttrs('email').placeholder}
+                maxLength={fieldAttrs('email').maxLength}
+                autoComplete={fieldAttrs('email').autoComplete}
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
+                  fieldErrors.email ? 'border-red-400' : 'border-gray-300'
+                }`}
+              />
+              {fieldErrors.email && <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+              <input
+                type="text"
+                value={form.website || ''}
+                onChange={(e) => {
+                  set('website')(e.target.value);
+                  if (fieldErrors.website) setFieldErrors((er) => ({ ...er, website: '' }));
+                }}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v && !isValidUrl(v)) {
+                    setFieldErrors((er) => ({ ...er, website: 'Enter a valid website URL (e.g. https://example.com)' }));
+                  }
+                }}
+                placeholder={fieldAttrs('website').placeholder || 'https://example.com'}
+                maxLength={fieldAttrs('website').maxLength || 200}
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
+                  fieldErrors.website ? 'border-red-400' : 'border-gray-300'
+                }`}
+              />
+              {fieldErrors.website && <p className="text-xs text-red-500 mt-1">{fieldErrors.website}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Business category *</label>
+              <select
+                value={form.category || 'categories/gcid:restaurant'}
+                onChange={(e) => set('category')(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
+              >
+                {GBP_CATEGORIES.map((cat) => (
+                  <option key={cat.value} value={cat.value}>{cat.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">Primary category for your Google Business Profile listing.</p>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700">Business description</label>
+                <span className={`text-xs tabular-nums ${
+                  (form.description || '').length > 900 ? 'text-red-500' : 'text-gray-400'
+                }`}>
+                  {(form.description || '').length}/1,000
+                </span>
+              </div>
+              <textarea
+                value={form.description || ''}
+                onChange={(e) => {
+                  set('description')(e.target.value);
+                  if (fieldErrors.description) setFieldErrors((er) => ({ ...er, description: '' }));
+                }}
+                rows={3}
+                maxLength={1000}
+                placeholder="Briefly describe your business — cuisine type, ambience, specialties, opening hours, etc. This appears on customer-facing pages and your Google Business Profile."
+                className={`w-full border rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange ${
+                  fieldErrors.description ? 'border-red-400' : 'border-gray-300'
+                }`}
+              />
+              {fieldErrors.description
+                ? <p className="text-xs text-red-500 mt-1">{fieldErrors.description}</p>
+                : <p className="text-xs text-gray-400 mt-1">No HTML or scripts. Used on receipts, customer pages, and your Google Business Profile.</p>
+              }
+            </div>
+          </div>
+
+          {/* Google Business Profile */}
+          <GoogleBusinessCard
+            businessDetails={{
+              businessName: form.businessName,
+              address: form.address,
+              phone: phoneValueFromField(phoneCountryIso, phoneNationalDigits),
+              website: form.website,
+              description: form.description,
+              category: form.category,
+            }}
+          />
+        </>
+      )}
+
+      {activeSubTab === 'accounting' && (
+        <>
+          {/* Currency — receipts & POS displays */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+            <h3 className="font-semibold text-gray-900">Currency</h3>
+            <p className="text-sm text-gray-500">
+              ISO code and symbol used on receipts and price labels. Defaults are set from your region when the account is created; you can override them here.
+            </p>
+            <div className="max-w-xs">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+              <select
+                value={form.currency || 'LKR'}
+                onChange={(e) => {
+                  const opt = CURRENCY_OPTIONS.find((c) => c.code === e.target.value);
+                  setForm((f) => ({
+                    ...f,
+                    currency: e.target.value,
+                    currencySymbol: opt?.symbol || f.currencySymbol,
+                  }));
+                }}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+              >
+                {CURRENCY_OPTIONS.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} — {c.symbol}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Inventory costing method */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+            <h3 className="font-semibold text-gray-900">Inventory Costing Method</h3>
+            <p className="text-sm text-gray-500">
+              Choose the default costing method for inventory accounting and valuations in reports.
+            </p>
+            <div className="max-w-xs">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Costing Method</label>
+              <select
+                value={form.inventoryCostingMethod || 'wac'}
+                onChange={(e) => set('inventoryCostingMethod')(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
+              >
+                <option value="wac">Weighted Average Cost (WAC)</option>
+                <option value="fifo">First-In, First-Out (FIFO)</option>
+                <option value="lifo">Last-In, First-Out (LIFO)</option>
+                <option value="last_cost">Last Purchase Cost (Last Cost)</option>
+              </select>
+          </div>
+        </>
+      )}
+
+      {activeSubTab === 'theme' && (
+        <>
+          {/* POS theme */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <Sparkles size={16} className="text-brand-orange" /> POS theme
+                </h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Choose a preset palette for header, buttons, highlights, and body colors in the POS.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPresetModalOpen(true)}
+                className="text-sm font-semibold text-brand-orange hover:underline shrink-0"
+              >
+                Choose theme preset
               </button>
             </div>
-            <p className="text-sm text-gray-600 mb-4">Each preset sets header, button, selection, hover, body, and text colors for your POS.</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {PRESET_SWATCHES.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  disabled={applyPresetMutation.isPending}
-                  onClick={() => applyPresetMutation.mutate(p.id)}
-                  className={`text-left rounded-xl border p-3 transition-colors hover:border-brand-orange ${
-                    form.themePresetId === p.id ? 'border-brand-orange ring-2 ring-brand-orange/30' : 'border-gray-200'
-                  }`}
-                >
-                  <div className="w-full h-10 rounded-lg mb-2 border border-gray-100" style={{ backgroundColor: p.base }} />
-                  <p className="text-sm font-semibold text-gray-900 leading-tight">{p.name}</p>
-                  <p className="text-[10px] font-mono text-gray-400 mt-0.5">{p.base}</p>
-                  {form.themePresetId === p.id && (
-                    <p className="text-[10px] text-brand-orange font-semibold mt-1">Current</p>
-                  )}
-                </button>
+
+            {form.themePresetName && (
+              <div className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-gray-55">
+                <div
+                  className="w-14 h-14 rounded-xl border-2 border-white shadow-md shrink-0"
+                  style={{ backgroundColor: form.themeBaseColor || '#0B1220' }}
+                  title={form.themeBaseColor}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900">{form.themePresetName}</p>
+                  <p className="text-xs text-gray-550 font-mono mt-0.5">Base {form.themeBaseColor || '—'}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2.5">
+              {[...new Set([
+                form.headerBarColor,
+                form.buttonColor,
+                form.selectionHighlightColor,
+                form.bodyColor,
+                form.hoverColor
+              ].filter(Boolean))].map((color) => (
+                <div key={color} className="flex items-center gap-2 border border-gray-200 rounded-lg p-2 bg-white shadow-xs">
+                  <div className="w-8 h-8 rounded-md border border-gray-150 shrink-0 shadow-inner" style={{ backgroundColor: color }} />
+                  <span className="text-xs font-mono font-bold text-gray-700 uppercase tracking-wide pr-1">{color}</span>
+                </div>
               ))}
             </div>
           </div>
-        </div>
+
+          {presetModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
+              <div className="bg-white rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 shadow-xl border border-gray-200">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">Theme presets</h3>
+                  <button type="button" onClick={() => setPresetModalOpen(false)} className="p-1 rounded-lg hover:bg-gray-100">
+                    <X size={20} />
+                  </button>
+                </div>
+                <p className="text-sm text-gray-605 mb-4">Each preset sets header, button, selection, hover, body, and text colors for your POS.</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {PRESET_SWATCHES.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      disabled={applyPresetMutation.isPending}
+                      onClick={() => applyPresetMutation.mutate(p.id)}
+                      className={`text-left rounded-xl border p-3 transition-colors hover:border-brand-orange ${
+                        form.themePresetId === p.id ? 'border-brand-orange ring-2 ring-brand-orange/30' : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="w-full h-10 rounded-lg mb-2 border border-gray-100" style={{ backgroundColor: p.base }} />
+                      <p className="text-sm font-semibold text-gray-900 leading-tight">{p.name}</p>
+                      <p className="text-[10px] font-mono text-gray-400 mt-0.5">{p.base}</p>
+                      {form.themePresetId === p.id && (
+                        <p className="text-[10px] text-brand-orange font-semibold mt-1">Current</p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Receipt */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white flex items-start gap-3">
-          <span className="p-2 rounded-lg bg-brand-orange/10 text-brand-orange"><Receipt size={18} /></span>
-          <div>
-            <h3 className="font-semibold text-gray-900">Receipt settings</h3>
-            <p className="text-sm text-gray-500 mt-0.5">Control receipt copy and when bills print automatically in the POS.</p>
-          </div>
-        </div>
-        <div className="p-6 space-y-6">
-          <div className="grid sm:grid-cols-2 gap-4">
-            {[
-              { label: 'Receipt header', key: 'receiptHeader', attrs: fieldAttrs('receiptLine') },
-              { label: 'Receipt footer', key: 'receiptFooter', attrs: { ...fieldAttrs('receiptLine'), placeholder: 'Visit us again soon.' } },
-            ].map((f) => (
-              <div key={f.key}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
-                <input
-                  type="text"
-                  value={form[f.key] || ''}
-                  onChange={(e) => set(f.key)(e.target.value)}
-                  placeholder={f.attrs.placeholder}
-                  maxLength={f.attrs.maxLength}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
-                />
+      {activeSubTab === 'pos' && (
+        <>
+          {/* Receipt */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-55 to-white flex items-start gap-3">
+              <span className="p-2 rounded-lg bg-brand-orange/10 text-brand-orange"><Receipt size={18} /></span>
+              <div>
+                <h3 className="font-semibold text-gray-900">Receipt settings</h3>
+                <p className="text-sm text-gray-505 mt-0.5">Control receipt copy and when bills print automatically in the POS.</p>
               </div>
-            ))}
-          </div>
-          <label className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.printReceiptByDefault || false}
-              onChange={(e) => set('printReceiptByDefault')(e.target.checked)}
-              className="w-4 h-4 accent-brand-orange"
-            />
-            <span>
-              <span className="text-sm font-medium text-gray-800 flex items-center gap-1.5"><Printer size={14} /> Print receipt by default at checkout</span>
-              <span className="block text-xs text-gray-500 mt-0.5">Cashiers can still toggle printing per order.</span>
-            </span>
-          </label>
-          <div>
-            <p className="text-sm font-semibold text-gray-900 mb-1">Auto-print timing by order type</p>
-            <p className="text-xs text-gray-500 mb-4">Choose when the POS prints a bill for each channel.</p>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {(() => {
-                const activePartners = (partners || []).filter((p) => p && p.isActive);
-                const orderTypesToShow = [
-                  { key: 'dine-in', label: 'Dine-in', hint: 'Table service' },
-                  { key: 'takeaway', label: 'Take away', hint: 'Counter pickup' },
-                  { key: 'uber-eats', label: 'Uber Eats', hint: 'Delivery partner' },
-                  { key: 'pickme', label: 'PickMe', hint: 'Delivery partner' },
-                ].filter(ot => {
-                  if (ot.key === 'dine-in' || ot.key === 'takeaway') return true;
-                  if (ot.key === 'uber-eats') {
-                    return activePartners.some(p => p.name?.toLowerCase().includes('uber'));
-                  }
-                  if (ot.key === 'pickme') {
-                    return activePartners.some(p => p.name?.toLowerCase().includes('pickme') || p.name?.toLowerCase().includes('pick me'));
-                  }
-                  return false;
-                });
-                return orderTypesToShow.map(({ key, label, hint }) => (
-                  <div key={key} className="rounded-xl border border-gray-200 p-3 bg-white">
-                    <p className="text-sm font-medium text-gray-900">{label}</p>
-                    <p className="text-[11px] text-gray-500 mb-2">{hint}</p>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Print when</label>
-                    <select
-                      value={form.receiptPrintAtByOrderType?.[key] || 'placement'}
-                      onChange={(e) =>
-                        setForm((f) => ({
-                          ...f,
-                          receiptPrintAtByOrderType: {
-                            ...(f.receiptPrintAtByOrderType || mergeReceiptPrintAtByOrderType(f)),
-                            [key]: e.target.value,
-                          },
-                        }))
-                      }
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
-                    >
-                      {RECEIPT_PRINT_AT_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </select>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="grid sm:grid-cols-2 gap-4">
+                {[
+                  { label: 'Receipt header', key: 'receiptHeader', attrs: fieldAttrs('receiptLine') },
+                  { label: 'Receipt footer', key: 'receiptFooter', attrs: { ...fieldAttrs('receiptLine'), placeholder: 'Visit us again soon.' } },
+                ].map((f) => (
+                  <div key={f.key}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
+                    <input
+                      type="text"
+                      value={form[f.key] || ''}
+                      onChange={(e) => set(f.key)(e.target.value)}
+                      placeholder={f.attrs.placeholder}
+                      maxLength={f.attrs.maxLength}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange"
+                    />
                   </div>
-                ));
-              })()}
+                ))}
+              </div>
+              <label className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.printReceiptByDefault || false}
+                  onChange={(e) => set('printReceiptByDefault')(e.target.checked)}
+                  className="w-4 h-4 accent-brand-orange"
+                />
+                <span>
+                  <span className="text-sm font-medium text-gray-805 flex items-center gap-1.5"><Printer size={14} /> Print receipt by default at checkout</span>
+                  <span className="block text-xs text-gray-500 mt-0.5">Cashiers can still toggle printing per order.</span>
+                </span>
+              </label>
+              <div>
+                <p className="text-sm font-semibold text-gray-900 mb-1">Auto-print timing by order type</p>
+                <p className="text-xs text-gray-500 mb-4">Choose when the POS prints a bill for each channel.</p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {(() => {
+                    const activePartners = (partners || []).filter((p) => p && p.isActive);
+                    const orderTypesToShow = [
+                      { key: 'dine-in', label: 'Dine-in', hint: 'Table service' },
+                      { key: 'takeaway', label: 'Take away', hint: 'Counter pickup' },
+                      { key: 'uber-eats', label: 'Uber Eats', hint: 'Delivery partner' },
+                      { key: 'pickme', label: 'PickMe', hint: 'Delivery partner' },
+                    ].filter(ot => {
+                      if (ot.key === 'dine-in' || ot.key === 'takeaway') return true;
+                      if (ot.key === 'uber-eats') {
+                        return activePartners.some(p => p.name?.toLowerCase().includes('uber'));
+                      }
+                      if (ot.key === 'pickme') {
+                        return activePartners.some(p => p.name?.toLowerCase().includes('pickme') || p.name?.toLowerCase().includes('pick me'));
+                      }
+                      return false;
+                    });
+                    return orderTypesToShow.map(({ key, label, hint }) => (
+                      <div key={key} className="rounded-xl border border-gray-200 p-3 bg-white">
+                        <p className="text-sm font-medium text-gray-900">{label}</p>
+                        <p className="text-[11px] text-gray-505 mb-2">{hint}</p>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Print when</label>
+                        <select
+                          value={form.receiptPrintAtByOrderType?.[key] || 'placement'}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              receiptPrintAtByOrderType: {
+                                ...(f.receiptPrintAtByOrderType || mergeReceiptPrintAtByOrderType(f)),
+                                [key]: e.target.value,
+                              },
+                            }))
+                          }
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30"
+                        >
+                          {RECEIPT_PRINT_AT_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-        <h3 className="font-semibold text-gray-900">POS returns</h3>
-        <p className="text-sm text-gray-500">
-          Control returns processing and whether a manager must approve each return.
-        </p>
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={form.returnsRequireManagerApproval !== false}
-            onChange={(e) => set('returnsRequireManagerApproval')(e.target.checked)}
-            className="w-4 h-4 rounded accent-brand-orange"
-          />
-          <span className="text-sm text-gray-800">Require manager approval for each return</span>
-        </label>
-        <p className="text-xs text-gray-500">
-          Managers can set a 4–8 digit approval passcode in their POS profile (otherwise their login password is used).
-        </p>
-      </div>
+          {/* POS returns */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+            <h3 className="font-semibold text-gray-900">POS returns</h3>
+            <p className="text-sm text-gray-500">
+              Control returns processing and whether a manager must approve each return.
+            </p>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.returnsRequireManagerApproval !== false}
+                onChange={(e) => set('returnsRequireManagerApproval')(e.target.checked)}
+                className="w-4 h-4 rounded accent-brand-orange"
+              />
+              <span className="text-sm text-gray-808">Require manager approval for each return</span>
+            </label>
+            <p className="text-xs text-gray-500">
+              Managers can set a 4–8 digit approval passcode in their POS profile (otherwise their login password is used).
+            </p>
+          </div>
 
-      {qrOrderingActive && (
-        <QrOrderingSettings
-          value={form.qrOrdering}
-          onChange={(val) => setForm(f => ({ ...f, qrOrdering: val }))}
-        />
+          {qrOrderingActive && (
+            <QrOrderingSettings
+              value={form.qrOrdering}
+              onChange={(val) => setForm(f => ({ ...f, qrOrdering: val }))}
+            />
+          )}
+        </>
       )}
       </div>
 

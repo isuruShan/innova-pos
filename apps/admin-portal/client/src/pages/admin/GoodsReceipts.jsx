@@ -283,6 +283,31 @@ export default function GoodsReceipts() {
     });
   };
 
+  const handleQuickFilter = (type) => {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    if (type === 'today') {
+      setFromDate(todayStr);
+      setToDate(todayStr);
+    } else if (type === 'yesterday') {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      setFromDate(yesterday.toISOString().split('T')[0]);
+      setToDate(yesterday.toISOString().split('T')[0]);
+    } else if (type === '7days') {
+      const start = new Date();
+      start.setDate(start.getDate() - 7);
+      setFromDate(start.toISOString().split('T')[0]);
+      setToDate(todayStr);
+    } else if (type === 'month') {
+      const start = new Date(today.getFullYear(), today.getMonth(), 1);
+      const offset = start.getTimezoneOffset();
+      const localStart = new Date(start.getTime() - (offset * 60 * 1000));
+      setFromDate(localStart.toISOString().split('T')[0]);
+      setToDate(todayStr);
+    }
+  };
+
   const pendingPOs = useMemo(() => {
     return purchaseOrders.filter((po) => {
       if (!['sent', 'partial'].includes(po.status)) return false;
@@ -456,7 +481,37 @@ export default function GoodsReceipts() {
                   {/* Date Range */}
                   <div className="pt-2 border-t border-gray-200">
                     <p className="text-[11px] font-semibold text-slate-455 uppercase tracking-wider mb-2">Date Range</p>
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-1.5 mb-3">
+                      <button
+                        type="button"
+                        onClick={() => handleQuickFilter('today')}
+                        className="text-[10px] text-left px-2 py-1.5 rounded bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 transition-colors font-medium"
+                      >
+                        Today
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickFilter('yesterday')}
+                        className="text-[10px] text-left px-2 py-1.5 rounded bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 transition-colors font-medium"
+                      >
+                        Yesterday
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickFilter('7days')}
+                        className="text-[10px] text-left px-2 py-1.5 rounded bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 transition-colors font-medium"
+                      >
+                        Last 7 Days
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickFilter('month')}
+                        className="text-[10px] text-left px-2 py-1.5 rounded bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 transition-colors font-medium"
+                      >
+                        This Month
+                      </button>
+                    </div>
+                    <div className="space-y-2 border-t border-gray-100 pt-2">
                       <div>
                         <label className="text-[10px] text-gray-400 block mb-1">From</label>
                         <PosDateField

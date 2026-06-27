@@ -310,7 +310,7 @@ export default function CashierOrderHistory() {
                     <button
                       type="button"
                       onClick={() => setSelectedOrder(o)}
-                      className="px-3 py-1.5 rounded-lg border border-slate-600 text-xs font-medium text-slate-200 inline-flex items-center gap-1"
+                      className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-xs font-medium text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-slate-100 inline-flex items-center gap-1"
                     >
                       <Eye size={14} /> View
                     </button>
@@ -318,7 +318,7 @@ export default function CashierOrderHistory() {
                       <button
                         type="button"
                         onClick={() => openReturn(o)}
-                        className="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-xs font-semibold text-amber-300 hover:text-amber-200 inline-flex items-center gap-1 hover:bg-amber-500/30"
+                        className="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-xs font-semibold text-amber-800 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-200 inline-flex items-center gap-1 hover:bg-amber-500/30"
                       >
                         <RotateCcw size={14} /> Return
                       </button>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Loader, UserCheck, UserX, Key, X, Pencil, Search, ArrowLeft, Clock, AlertTriangle, ChevronDown, Trash2 } from 'lucide-react';
+import { Plus, Loader, UserCheck, UserX, Key, X, Pencil, Search, ArrowLeft, Clock, AlertTriangle, ChevronDown, Trash2, Eye } from 'lucide-react';
 import TooltipWrap from '../../components/common/TooltipWrap';
 import { useToast } from '../../context/ToastContext';
 import api from '../../api/axios';
@@ -25,6 +25,9 @@ const ROLE_COLORS = {
   cashier:        'bg-green-100 text-green-700',
   kitchen:        'bg-orange-100 text-orange-700',
   steward:        'bg-teal-100 text-teal-700',
+  purchasing_officer: 'bg-rose-100 text-rose-700',
+  inventory_clerk: 'bg-teal-100 text-teal-700',
+  commissary_operator: 'bg-indigo-100 text-indigo-700',
 };
 
 const ROLE_OPTIONS = [
@@ -33,6 +36,9 @@ const ROLE_OPTIONS = [
   { value: 'cashier',        label: 'Cashier' },
   { value: 'kitchen',        label: 'Kitchen' },
   { value: 'steward',        label: 'Steward' },
+  { value: 'purchasing_officer', label: 'Purchasing Officer' },
+  { value: 'inventory_clerk', label: 'Inventory Clerk' },
+  { value: 'commissary_operator', label: 'Commissary Operator' },
 ];
 
 const SORT_OPTIONS = [
@@ -148,6 +154,7 @@ export default function UsersPage() {
   const [activateTarget, setActivateTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [resetTarget, setResetTarget] = useState(null);
+  const [viewingUser, setViewingUser] = useState(null);
 
   useEffect(() => { setPage(1); }, [sort, order]);
 
@@ -602,6 +609,9 @@ export default function UsersPage() {
                     </p>
                   )}
                   <div className="mt-4 flex flex-wrap gap-2 pt-3 border-t border-gray-150">
+                    <button type="button" onClick={() => setViewingUser(u)} className="text-xs px-2.5 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium flex-1 flex items-center justify-center gap-1">
+                      <Eye size={12} /> View details
+                    </button>
                     <button type="button" onClick={() => openEdit(u)} disabled={!u.isActive} title={!u.isActive ? 'Reactivate user to edit' : undefined} className="text-xs px-2.5 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium flex-1 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1">
                       <Pencil size={12} /> Edit details
                     </button>
@@ -657,6 +667,9 @@ export default function UsersPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-2">
+                            <button type="button" onClick={() => setViewingUser(u)} className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium flex items-center gap-1">
+                              <Eye size={12} /> View
+                            </button>
                             <button type="button" onClick={() => openEdit(u)} disabled={!u.isActive} title={!u.isActive ? 'Reactivate user to edit' : undefined} className="text-xs px-2.5 py-1 rounded-md border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1">
                               <Pencil size={12} /> Edit
                             </button>
@@ -666,7 +679,7 @@ export default function UsersPage() {
                             <button type="button" onClick={() => handleToggleActiveClick(u)} disabled={u.isOwner && u.isActive} title={u.isOwner && u.isActive ? 'Account owner cannot be deactivated' : undefined} className={`text-xs px-2.5 py-1 rounded-md border font-medium flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed ${u.isActive ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-green-200 text-green-700 hover:bg-green-50'}`}>
                               {u.isActive ? <><UserX size={12} /> Deactivate</> : <><UserCheck size={12} /> Activate</>}
                             </button>
-                            <button type="button" onClick={() => setDeleteTarget(u)} disabled={u.isOwner} title={u.isOwner ? 'Account owner cannot be deleted' : 'Delete user'} className="text-xs px-2 py-1 rounded-md border border-red-200 text-red-500 hover:bg-red-50 font-medium disabled:opacity-40 disabled:cursor-not-allowed">
+                            <button type="button" onClick={() => setDeleteTarget(u)} disabled={u.isOwner} title={u.isOwner ? 'Account owner cannot be deleted' : 'Delete user'} className="text-xs px-2 py-1 rounded-md border border-red-200 text-red-555 hover:bg-red-50 font-medium disabled:opacity-40 disabled:cursor-not-allowed">
                               <Trash2 size={12} />
                             </button>
                           </div>
@@ -811,6 +824,9 @@ export default function UsersPage() {
                   <option value="kitchen">Kitchen</option>
                   <option value="steward">Steward</option>
                   <option value="merchant_admin">Admin</option>
+                  <option value="purchasing_officer">Purchasing Officer</option>
+                  <option value="inventory_clerk">Inventory Clerk</option>
+                  <option value="commissary_operator">Commissary Operator</option>
                 </select>
               </div>
 
@@ -1052,6 +1068,127 @@ export default function UsersPage() {
         onConfirm={handleResetPasswordConfirm}
         onCancel={() => setResetTarget(null)}
       />
+
+      {viewingUser && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/30"
+            onClick={() => setViewingUser(null)}
+            aria-hidden="true"
+          />
+          <aside
+            className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl border-l border-gray-200 flex flex-col animate-slide-in"
+          >
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg">
+                  User Details
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Full profile configuration and metadata
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingUser(null)}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+              {/* Header profile info */}
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-brand-orange/10 text-brand-orange rounded-full flex items-center justify-center font-bold text-xl shadow-inner border border-brand-orange/20">
+                  {viewingUser.name ? viewingUser.name.charAt(0).toUpperCase() : 'U'}
+                </div>
+                <div>
+                  <h4 className="font-bold text-gray-950 text-base">{viewingUser.name}</h4>
+                  <p className="text-xs text-gray-500">{viewingUser.email}</p>
+                </div>
+              </div>
+
+              {/* Status and Role badges */}
+              <div className="grid grid-cols-2 gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-200/60 shadow-sm">
+                <div>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Status</p>
+                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${viewingUser.isActive ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>
+                    {viewingUser.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">System Role</p>
+                  <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold capitalize ${ROLE_COLORS[viewingUser.role] || 'bg-gray-100 text-gray-700'}`}>
+                    {viewingUser.role ? viewingUser.role.replace('_', ' ') : '—'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Store access details */}
+              <div className="space-y-2">
+                <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Store Access Settings</h5>
+                <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden shadow-sm">
+                  {viewingUser.role === 'merchant_admin' ? (
+                    <div className="p-4 text-xs text-gray-500 bg-gray-50/50">
+                      ℹ️ Admins possess global permissions and have access to all stores.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="p-4">
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Default Store Login</p>
+                        <p className="text-xs font-semibold text-gray-900">
+                          {stores.find(s => s._id === (viewingUser.defaultStoreId?._id || viewingUser.defaultStoreId))?.name || 'No default store configured'}
+                        </p>
+                      </div>
+                      <div className="p-4">
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mb-2">Authorized Stores ({viewingUser.storeIds?.length || 0})</p>
+                        {viewingUser.storeIds?.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {viewingUser.storeIds.map((store) => (
+                              <span key={store._id || store} className="inline-flex items-center bg-gray-100 text-gray-700 border border-gray-200 rounded-lg px-2.5 py-1 text-xs font-medium">
+                                🏢 {store.name || stores.find(s => s._id === store)?.name || 'Unknown Store'}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-red-500 italic">No store access configured.</p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Metadata */}
+              <div className="pt-4 border-t border-gray-150 text-[11px] text-gray-400 space-y-1">
+                <p>User ID: <span className="font-mono">{viewingUser._id}</span></p>
+                {viewingUser.createdAt && (
+                  <p>Added on: {new Date(viewingUser.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}</p>
+                )}
+              </div>
+            </div>
+            
+            <div className="border-t border-gray-200 px-6 py-4 bg-gray-50/50 flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setViewingUser(null); openEdit(viewingUser); }}
+                disabled={!viewingUser.isActive}
+                className="flex-1 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-bold py-2.5 rounded-xl transition text-sm text-center flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <Pencil size={14} /> Edit profile
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewingUser(null)}
+                className="flex-1 bg-gray-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl transition text-sm text-center"
+              >
+                Close
+              </button>
+            </div>
+          </aside>
+        </>
+      )}
     </div>
   );
 }
