@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit2, Trash2, Package, Calculator, Loader2, Save, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Package, Calculator, Loader2, Save, X, Search } from 'lucide-react';
 import api from '../../api/axios';
 import CenteredModal from '../CenteredModal';
 import { formatCurrency } from '../../utils/format';
 import { useToast } from '../../hooks/useToast';
+import ViewModeToggle from '../ViewModeToggle';
 
 export default function PrepRecipesManager({ storeId }) {
   const qc = useQueryClient();
@@ -24,6 +25,15 @@ export default function PrepRecipesManager({ storeId }) {
   const [newIngredientWaste, setNewIngredientWaste] = useState('');
   const [formError, setFormError] = useState('');
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('name-asc');
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('view_mode_prep_recipes') || 'grid');
+
+  const handleSetViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem('view_mode_prep_recipes', mode);
+  };
+
   // Fetch only prep and raw items for the store
   const { data: inventoryItems = [], isPending: itemsLoading } = useQuery({
     queryKey: ['inventory', storeId],
@@ -31,10 +41,48 @@ export default function PrepRecipesManager({ storeId }) {
     enabled: !!storeId,
   });
 
+  // Calculate cost function for sorting and rendering
+  const calculateRecipeCost = (recipeArray) => {
+    let total = 0;
+    recipeArray.forEach((r) => {
+      const match = inventoryItems.find((i) => i._id === (r.inventoryItemId?._id || r.inventoryItemId));
+      if (match) {
+        const costPerUnit = match.wacCost || match.lastCost || 0;
+        const storageToRecipe = match.storageToRecipeMultiplier || 1;
+        const ingredientStorageQty = r.quantity / storageToRecipe;
+        const itemCost = costPerUnit * ingredientStorageQty * (1 + r.wastagePercentage / 100);
+        total += itemCost;
+      }
+    });
+    return total;
+  };
+
   // Filter out prep items to show in the list
-  const prepItems = useMemo(() => {
-    return inventoryItems.filter((i) => i.itemType === 'prep');
-  }, [inventoryItems]);
+  const filteredAndSortedPrepItems = useMemo(() => {
+    let items = inventoryItems.filter((i) => i.itemType === 'prep');
+    
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter((i) => i.itemName.toLowerCase().includes(q));
+    }
+    
+    // Sort
+    items.sort((a, b) => {
+      if (sortBy === 'name-asc') {
+        return a.itemName.localeCompare(b.itemName);
+      } else if (sortBy === 'name-desc') {
+        return b.itemName.localeCompare(a.itemName);
+      } else if (sortBy === 'cost-asc') {
+        return calculateRecipeCost(a.recipe || []) - calculateRecipeCost(b.recipe || []);
+      } else if (sortBy === 'cost-desc') {
+        return calculateRecipeCost(b.recipe || []) - calculateRecipeCost(a.recipe || []);
+      }
+      return 0;
+    });
+    
+    return items;
+  }, [inventoryItems, searchQuery, sortBy]);
 
   // Filter out available ingredients (exclude current editing item to prevent self-recursion)
   const availableIngredients = useMemo(() => {
@@ -141,22 +189,6 @@ export default function PrepRecipesManager({ storeId }) {
     }));
   };
 
-  const calculateRecipeCost = (recipeArray) => {
-    let total = 0;
-    recipeArray.forEach((r) => {
-      const match = inventoryItems.find((i) => i._id === r.inventoryItemId);
-      if (match) {
-        // Cost of 1 unit of ingredient * quantity used * wastage multiplier
-        const costPerUnit = match.wacCost || match.lastCost || 0;
-        const storageToRecipe = match.storageToRecipeMultiplier || 1;
-        const ingredientStorageQty = r.quantity / storageToRecipe;
-        const itemCost = costPerUnit * ingredientStorageQty * (1 + r.wastagePercentage / 100);
-        total += itemCost;
-      }
-    });
-    return total;
-  };
-
   const recipeCost = useMemo(() => calculateRecipeCost(form.recipe), [form.recipe, inventoryItems]);
 
   const handleSubmit = (e) => {
@@ -207,18 +239,115 @@ export default function PrepRecipesManager({ storeId }) {
         </button>
       </div>
 
-      {/* Grid listing */}
-      {prepItems.length === 0 ? (
+      {/* Controls Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
+        <div className="relative w-full sm:w-80">
+          <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-gray-400" />
+          </span>
+          <input
+            type="text"
+            placeholder="Search sub-recipes..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-xl pl-9 pr-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-450"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+            >
+              <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-gray-550">Sort by:</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500 font-semibold cursor-pointer"
+            >
+              <option value="name-asc">Name (A-Z)</option>
+              <option value="name-desc">Name (Z-A)</option>
+              <option value="cost-asc">Cost (Low to High)</option>
+              <option value="cost-desc">Cost (High to Low)</option>
+            </select>
+          </div>
+
+          <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
+        </div>
+      </div>
+
+      {/* Grid / Table listing */}
+      {filteredAndSortedPrepItems.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-gray-200 text-gray-400">
           <Package size={36} className="mx-auto opacity-35 mb-2" />
-          <p className="text-sm">No sub-recipes configured yet</p>
+          <p className="text-sm">No sub-recipes configured or matching search query</p>
           <button type="button" onClick={openCreate} className="text-xs text-amber-600 font-semibold underline mt-1">
             Create your first prep recipe
           </button>
         </div>
+      ) : viewMode === 'table' ? (
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4">Prep Item Name</th>
+                  <th className="px-6 py-4">Yield conversion</th>
+                  <th className="px-6 py-4">Ingredients Count</th>
+                  <th className="px-6 py-4 text-right">Cost per Unit</th>
+                  <th className="px-6 py-4 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-xs text-gray-700">
+                {filteredAndSortedPrepItems.map((item) => {
+                  const cost = calculateRecipeCost(item.recipe || []);
+                  return (
+                    <tr key={item._id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4 font-bold text-gray-900">{item.itemName}</td>
+                      <td className="px-6 py-4 text-gray-500">
+                        1 {item.storageUnit || item.unit || 'kg'} = {item.storageToRecipeMultiplier || 1000} {item.recipeUnit || 'g'}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">
+                          {item.recipe?.length || 0} ingredients
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right font-bold text-amber-700">
+                        {formatCurrency(cost)} / {item.storageUnit || item.unit || 'kg'}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(item)}
+                            className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-950 border border-gray-200"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteMutation.mutate(item._id)}
+                            className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-red-650 border border-gray-200"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {prepItems.map((item) => {
+          {filteredAndSortedPrepItems.map((item) => {
             const cost = calculateRecipeCost(item.recipe || []);
             return (
               <div key={item._id} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between">
@@ -227,7 +356,7 @@ export default function PrepRecipesManager({ storeId }) {
                     <div className="min-w-0">
                       <h5 className="font-bold text-gray-900 text-sm truncate">{item.itemName}</h5>
                       <p className="text-[10px] text-gray-400 mt-0.5">
-                        Storage: 1 {item.storageUnit} = {item.storageToRecipeMultiplier} {item.recipeUnit}
+                        Storage: 1 {item.storageUnit || item.unit || 'kg'} = {item.storageToRecipeMultiplier || 1000} {item.recipeUnit || 'g'}
                       </p>
                     </div>
                     <div className="flex gap-1">
@@ -254,7 +383,7 @@ export default function PrepRecipesManager({ storeId }) {
                       <Calculator size={13} /> Cost Price:
                     </span>
                     <span className="font-bold text-amber-700">
-                      {formatCurrency(cost)} / {item.storageUnit}
+                      {formatCurrency(cost)} / {item.storageUnit || item.unit || 'kg'}
                     </span>
                   </div>
 

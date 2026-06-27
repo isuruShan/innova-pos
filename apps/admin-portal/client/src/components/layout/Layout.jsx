@@ -94,12 +94,15 @@ const ADMIN_NAV_GROUPS = [
         icon: Package,
         to: '/inventory',
         subItems: [
-          { label: 'Stock Levels', to: '/inventory' },
+          { label: 'Stock Levels', to: '/inventory/stock' },
+          { label: 'Prep & Recipes', to: '/inventory/prep-recipes', requiresAddon: 'advanced_inventory' },
+          { label: 'Count Sheets', to: '/inventory/count-sheets', requiresAddon: 'advanced_inventory' },
+          { label: 'Stock Transfers', to: '/inventory/transfers', requiresAddon: 'advanced_inventory' },
+          { label: 'Wastage', to: '/inventory/wastage' },
+          { label: 'Inventory Sessions', to: '/inventory/sessions' },
           { label: 'Suppliers', to: '/suppliers' },
           { label: 'Purchase Orders', to: '/purchase-orders' },
           { label: 'Goods Receipts', to: '/goods-receipts' },
-          { label: 'Wastage', to: '/wastage' },
-          { label: 'Inventory Sessions', to: '/inventory-sessions' },
         ],
       },
       {
@@ -268,7 +271,7 @@ export default function Layout({ children }) {
           return ['/inventory', '/suppliers', '/purchase-orders', '/goods-receipts'].includes(item.to);
         }
         if (role === 'inventory_clerk' || role === 'commissary_operator') {
-          return ['/inventory', '/wastage'].includes(item.to);
+          return ['/inventory'].includes(item.to);
         }
         return true;
       });
@@ -282,7 +285,14 @@ export default function Layout({ children }) {
               return ['/suppliers', '/purchase-orders', '/goods-receipts'].includes(subItem.to);
             }
             if (role === 'inventory_clerk' || role === 'commissary_operator') {
-              return ['/inventory', '/wastage', '/inventory-sessions'].includes(subItem.to);
+              return [
+                '/inventory/stock',
+                '/inventory/prep-recipes',
+                '/inventory/count-sheets',
+                '/inventory/transfers',
+                '/inventory/wastage',
+                '/inventory/sessions'
+              ].includes(subItem.to);
             }
             return true;
           });

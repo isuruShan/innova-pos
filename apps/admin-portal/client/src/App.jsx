@@ -315,11 +315,7 @@ export default function App() {
               <Layout><GoodsReceipts /></Layout>
             </PrivateRoute>
           } />
-          <Route path="/wastage" element={
-            <PrivateRoute roles={['merchant_admin', 'manager', 'inventory_clerk', 'commissary_operator']}>
-              <Layout><WastageManagement /></Layout>
-            </PrivateRoute>
-          } />
+          <Route path="/wastage" element={<Navigate to="/inventory/wastage" replace />} />
           <Route path="/reservations" element={
             <PrivateRoute roles={['merchant_admin', 'manager']}>
               <Layout><ReservationsPage /></Layout>

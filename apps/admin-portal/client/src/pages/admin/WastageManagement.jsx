@@ -30,7 +30,7 @@ const TYPE_LABELS = {
   spill_expiry_damage: 'Spill / Expiry / Damage',
 };
 
-export default function WastageManagement() {
+export default function WastageManagement({ hideHeader = false, hideStoreSelector = false, hideNavbar = false } = {}) {
   const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const [slideOpen, setSlideOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -295,17 +295,38 @@ export default function WastageManagement() {
   ) : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={hideHeader ? "" : "min-h-screen bg-gray-50"}>
       
-      <div className="max-w-7xl mx-auto p-4 sm:p-6">
-        <PageHeader
-          title={<span className="flex items-center gap-2"><AlertTriangle size={20} className="text-red-400" />Wastage Management</span>}
-          subtitle={`${reports.length} report${reports.length !== 1 ? 's' : ''} logged`}
-          storeSelector={storeSelector}
-          actions={[
-            { label: 'Log Wastage', icon: Plus, onClick: openLogWastage, primary: true },
-          ]}
-        />
+      <div className={hideHeader ? "w-full" : "max-w-7xl mx-auto p-4 sm:p-6"}>
+        {!hideHeader && (
+          <PageHeader
+            title={<span className="flex items-center gap-2"><AlertTriangle size={20} className="text-red-400" />Wastage Management</span>}
+            subtitle={`${reports.length} report${reports.length !== 1 ? 's' : ''} logged`}
+            storeSelector={storeSelector}
+            actions={[
+              { label: 'Log Wastage', icon: Plus, onClick: openLogWastage, primary: true },
+            ]}
+          />
+        )}
+
+        {hideHeader && (
+          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200 shadow-sm mb-6">
+            <div>
+              <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                <AlertTriangle size={16} className="text-red-500" />
+                Wastage Management
+              </h4>
+              <p className="text-xs text-gray-500">Document spillage, expiry, or damage of stock items.</p>
+            </div>
+            <button
+              type="button"
+              onClick={openLogWastage}
+              className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-md transition"
+            >
+              <Plus size={14} /> Log Wastage
+            </button>
+          </div>
+        )}
 
         {/* Search + Filter controls */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-white p-3 rounded-xl border border-gray-200/50 items-stretch sm:items-center justify-between">

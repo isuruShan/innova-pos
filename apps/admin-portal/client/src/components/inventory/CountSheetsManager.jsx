@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Edit2, Play, CheckCircle2, XCircle, AlertTriangle, Loader2, Calendar, FileText, Settings } from 'lucide-react';
+import { Plus, Trash2, Edit2, Play, CheckCircle2, XCircle, AlertTriangle, Loader2, Calendar, FileText, Settings, Search, X } from 'lucide-react';
 import api from '../../api/axios';
 import CenteredModal from '../CenteredModal';
 import ConfirmDialog from '../ConfirmDialog';
 import { formatCurrency } from '../../utils/format';
 import { useToast } from '../../hooks/useToast';
+import ViewModeToggle from '../ViewModeToggle';
 
 export default function CountSheetsManager({ storeId }) {
   const qc = useQueryClient();
@@ -44,6 +45,65 @@ export default function CountSheetsManager({ storeId }) {
     queryFn: () => api.get('/advanced-inventory/count-sessions/history').then((r) => r.data),
     enabled: !!storeId && !activeSession,
   });
+
+  // Filter & Sort state for templates
+  const [sheetSearchQuery, setSheetSearchQuery] = useState('');
+  const [sheetSortBy, setSheetSortBy] = useState('name-asc');
+  const [sheetViewMode, setSheetViewMode] = useState(() => localStorage.getItem('view_mode_count_sheets') || 'grid');
+
+  const handleSetSheetViewMode = (mode) => {
+    setSheetViewMode(mode);
+    localStorage.setItem('view_mode_count_sheets', mode);
+  };
+
+  // Filter & Sort state for history
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [historySortBy, setHistorySortBy] = useState('date-desc');
+  const [historyViewMode, setHistoryViewMode] = useState(() => localStorage.getItem('view_mode_count_sessions_history') || 'table');
+
+  const handleSetHistoryViewMode = (mode) => {
+    setHistoryViewMode(mode);
+    localStorage.setItem('view_mode_count_sessions_history', mode);
+  };
+
+  const filteredAndSortedCountSheets = useMemo(() => {
+    let items = [...countSheets];
+    if (sheetSearchQuery.trim()) {
+      const q = sheetSearchQuery.toLowerCase();
+      items = items.filter(s => s.name.toLowerCase().includes(q));
+    }
+    items.sort((a, b) => {
+      if (sheetSortBy === 'name-asc') {
+        return a.name.localeCompare(b.name);
+      } else if (sheetSortBy === 'name-desc') {
+        return b.name.localeCompare(a.name);
+      } else if (sheetSortBy === 'items-count') {
+        return (b.items?.length || 0) - (a.items?.length || 0);
+      }
+      return 0;
+    });
+    return items;
+  }, [countSheets, sheetSearchQuery, sheetSortBy]);
+
+  const filteredAndSortedHistory = useMemo(() => {
+    let items = [...sessionHistory];
+    if (historySearchQuery.trim()) {
+      const q = historySearchQuery.toLowerCase();
+      items = items.filter(s => 
+        (s.countSheetId?.name || '').toLowerCase().includes(q) ||
+        (s.userId?.name || '').toLowerCase().includes(q)
+      );
+    }
+    items.sort((a, b) => {
+      if (historySortBy === 'date-desc') {
+        return new Date(b.endedAt) - new Date(a.endedAt);
+      } else if (historySortBy === 'date-asc') {
+        return new Date(a.endedAt) - new Date(b.endedAt);
+      }
+      return 0;
+    });
+    return items;
+  }, [sessionHistory, historySearchQuery, historySortBy]);
 
   // Mutations
   const createSheetMutation = useMutation({
@@ -309,18 +369,111 @@ export default function CountSheetsManager({ storeId }) {
         </button>
       </div>
 
+      {/* Templates Control Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
+        <div className="relative w-full sm:w-80">
+          <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-gray-400" />
+          </span>
+          <input
+            type="text"
+            placeholder="Search templates..."
+            value={sheetSearchQuery}
+            onChange={(e) => setSheetSearchQuery(e.target.value)}
+            className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-xl pl-9 pr-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-450"
+          />
+          {sheetSearchQuery && (
+            <button
+              onClick={() => setSheetSearchQuery('')}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+            >
+              <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-gray-550">Sort by:</label>
+            <select
+              value={sheetSortBy}
+              onChange={(e) => setSheetSortBy(e.target.value)}
+              className="bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500 font-semibold cursor-pointer"
+            >
+              <option value="name-asc">Name (A-Z)</option>
+              <option value="name-desc">Name (Z-A)</option>
+              <option value="items-count">Most Items</option>
+            </select>
+          </div>
+
+          <ViewModeToggle mode={sheetViewMode} setMode={handleSetSheetViewMode} />
+        </div>
+      </div>
+
       {/* Grid listing templates */}
-      {countSheets.length === 0 ? (
+      {filteredAndSortedCountSheets.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-gray-200 text-gray-400">
           <FileText size={36} className="mx-auto opacity-35 mb-2" />
-          <p className="text-sm">No count sheets created yet</p>
+          <p className="text-sm">No count sheets configured or matching search query</p>
           <button type="button" onClick={openCreate} className="text-xs text-amber-600 font-semibold underline mt-1">
             Create your first count sheet template
           </button>
         </div>
+      ) : sheetViewMode === 'table' ? (
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4">Sheet Name</th>
+                  <th className="px-6 py-4">Items Count</th>
+                  <th className="px-6 py-4 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-xs text-gray-700">
+                {filteredAndSortedCountSheets.map((sheet) => (
+                  <tr key={sheet._id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-6 py-4 font-bold text-gray-900">{sheet.name}</td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">
+                        {sheet.items?.length || 0} items
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => startSessionMutation.mutate(sheet._id)}
+                          disabled={startSessionMutation.isPending}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl text-amber-700 font-bold transition text-[10px]"
+                        >
+                          <Play size={10} className="fill-amber-700" /> Start Count
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEdit(sheet)}
+                          className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-955 border border-gray-200"
+                        >
+                          <Edit2 size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(sheet)}
+                          className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-red-650 border border-gray-200"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {countSheets.map((sheet) => (
+          {filteredAndSortedCountSheets.map((sheet) => (
             <div key={sheet._id} className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-start gap-2">
@@ -341,7 +494,7 @@ export default function CountSheetsManager({ storeId }) {
                     <button
                       type="button"
                       onClick={() => setDeleteTarget(sheet)}
-                      className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-red-655 border border-gray-200"
+                      className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-gray-505 hover:text-red-655 border border-gray-200"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -365,48 +518,130 @@ export default function CountSheetsManager({ storeId }) {
 
       {/* HISTORICAL STOCKTAKE LIST */}
       {sessionHistory.length > 0 && (
-        <div className="space-y-3">
-          <h4 className="font-bold text-gray-900 text-sm">Stocktake Audit History</h4>
-          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm divide-y divide-gray-150 overflow-hidden">
-            {sessionHistory.map((sess) => {
-              const totalVarianceValue = sess.items.reduce((sum, i) => {
-                if (i.countedQty === null) return sum;
-                return sum + (i.countedQty - i.theoreticalQty) * i.costPrice;
-              }, 0);
-
-              return (
-                <div key={sess._id} className="p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0 border border-gray-200 text-gray-500">
-                      <Calendar size={16} />
-                    </div>
-                    <div>
-                      <span className="font-bold text-gray-800 text-xs block">
-                        Audit: {sess.countSheetId?.name || 'Custom Session'}
-                      </span>
-                      <span className="text-[10px] text-gray-505 block mt-0.5">
-                        By {sess.userId?.name} · {new Date(sess.endedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span
-                      className={`text-xs font-bold block ${
-                        totalVarianceValue === 0
-                          ? 'text-gray-500'
-                          : totalVarianceValue > 0
-                          ? 'text-green-600'
-                          : 'text-red-500'
-                      }`}
-                    >
-                      Discrepancy: {totalVarianceValue >= 0 ? '+' : ''}
-                      {formatCurrency(totalVarianceValue)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+        <div className="space-y-4 pt-6 border-t border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h4 className="font-bold text-gray-900 text-sm">Stocktake Audit History</h4>
+            
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto justify-end">
+              <div className="relative w-full sm:w-64">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-gray-400" />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search history..."
+                  value={historySearchQuery}
+                  onChange={(e) => setHistorySearchQuery(e.target.value)}
+                  className="w-full bg-white border border-gray-200 text-gray-900 text-xs rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-450"
+                />
+                {historySearchQuery && (
+                  <button
+                    onClick={() => setHistorySearchQuery('')}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    <X className="h-4 w-4 text-gray-400 hover:text-gray-655" />
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <label className="text-xs font-semibold text-gray-550">Sort:</label>
+                <select
+                  value={historySortBy}
+                  onChange={(e) => setHistorySortBy(e.target.value)}
+                  className="bg-white border border-gray-200 text-gray-900 text-xs rounded-xl px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-amber-500 font-semibold cursor-pointer"
+                >
+                  <option value="date-desc">Newest First</option>
+                  <option value="date-asc">Oldest First</option>
+                </select>
+              </div>
+              <ViewModeToggle mode={historyViewMode} setMode={handleSetHistoryViewMode} />
+            </div>
           </div>
+
+          {filteredAndSortedHistory.length === 0 ? (
+            <div className="text-center py-8 bg-white rounded-2xl border border-gray-200 text-gray-400 text-xs">
+              No matching audit history records found
+            </div>
+          ) : historyViewMode === 'table' ? (
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-4">Audit Name</th>
+                      <th className="px-6 py-4">Completed By</th>
+                      <th className="px-6 py-4">Date Committed</th>
+                      <th className="px-6 py-4 text-right">Variance Value</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-xs text-gray-700">
+                    {filteredAndSortedHistory.map((sess) => {
+                      const totalVarianceValue = sess.items.reduce((sum, i) => {
+                        if (i.countedQty === null) return sum;
+                        return sum + (i.countedQty - i.theoreticalQty) * i.costPrice;
+                      }, 0);
+                      return (
+                        <tr key={sess._id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-6 py-4 font-bold text-gray-900">
+                            {sess.countSheetId?.name || 'Custom Session'}
+                          </td>
+                          <td className="px-6 py-4 text-gray-650">{sess.userId?.name || 'Unknown User'}</td>
+                          <td className="px-6 py-4 text-gray-500">{new Date(sess.endedAt).toLocaleDateString()}</td>
+                          <td className="px-6 py-4 text-right font-bold">
+                            <span className={totalVarianceValue === 0 ? 'text-gray-500' : totalVarianceValue > 0 ? 'text-green-600' : 'text-red-500'}>
+                              {totalVarianceValue >= 0 ? '+' : ''}
+                              {formatCurrency(totalVarianceValue)}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm divide-y divide-gray-150 overflow-hidden">
+              {filteredAndSortedHistory.map((sess) => {
+                const totalVarianceValue = sess.items.reduce((sum, i) => {
+                  if (i.countedQty === null) return sum;
+                  return sum + (i.countedQty - i.theoreticalQty) * i.costPrice;
+                }, 0);
+
+                return (
+                  <div key={sess._id} className="p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0 border border-gray-200 text-gray-500">
+                        <Calendar size={16} />
+                      </div>
+                      <div>
+                        <span className="font-bold text-gray-800 text-xs block">
+                          Audit: {sess.countSheetId?.name || 'Custom Session'}
+                        </span>
+                        <span className="text-[10px] text-gray-550 block mt-0.5">
+                          By {sess.userId?.name} · {new Date(sess.endedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span
+                        className={`text-xs font-bold block ${
+                          totalVarianceValue === 0
+                            ? 'text-gray-550'
+                            : totalVarianceValue > 0
+                            ? 'text-green-600'
+                            : 'text-red-500'
+                        }`}
+                      >
+                        Discrepancy: {totalVarianceValue >= 0 ? '+' : ''}
+                        {formatCurrency(totalVarianceValue)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
