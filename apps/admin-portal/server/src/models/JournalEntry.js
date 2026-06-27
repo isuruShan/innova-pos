@@ -28,15 +28,14 @@ const journalEntrySchema = new mongoose.Schema(
 );
 
 // Pre-save validation: Debits must equal Credits
-journalEntrySchema.pre('save', function (next) {
+journalEntrySchema.pre('save', function () {
   const sumDebits = this.lines.reduce((sum, line) => sum + (line.debit || 0), 0);
   const sumCredits = this.lines.reduce((sum, line) => sum + (line.credit || 0), 0);
   
   // Use epsilon check for floats to avoid floating-point issues
   if (Math.abs(sumDebits - sumCredits) > 0.01) {
-    return next(new Error(`Double-entry check failed: Total Debits (${sumDebits}) must equal Total Credits (${sumCredits})`));
+    throw new Error(`Double-entry check failed: Total Debits (${sumDebits}) must equal Total Credits (${sumCredits})`);
   }
-  next();
 });
 
 module.exports = mongoose.model('JournalEntry', journalEntrySchema);
