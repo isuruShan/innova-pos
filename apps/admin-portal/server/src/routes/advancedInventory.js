@@ -180,19 +180,23 @@ router.post('/count-sessions/start', async (req, res) => {
     });
     if (!sheet) return res.status(404).json({ message: 'Count sheet not found' });
 
-    // Pre-populate items with current theoretical quantities and costs
-    const sessionItems = [];
-    for (const sheetItem of sheet.items) {
-      const inv = await Inventory.findOne({ _id: sheetItem.inventoryItemId, tenantId: req.tenantId });
-      if (inv) {
-        sessionItems.push({
+    // Batch-fetch all inventory items for the count sheet
+    const sheetItemIds = sheet.items.map(i => i.inventoryItemId);
+    const sheetInvDocs = await Inventory.find({ _id: { $in: sheetItemIds }, tenantId: req.tenantId }).lean();
+    const sheetInvMap = new Map(sheetInvDocs.map(d => [String(d._id), d]));
+
+    const sessionItems = sheet.items
+      .map(sheetItem => {
+        const inv = sheetInvMap.get(String(sheetItem.inventoryItemId));
+        if (!inv) return null;
+        return {
           inventoryItemId: inv._id,
           theoreticalQty: inv.quantity || 0,
           countedQty: null,
           costPrice: inv.wacCost || inv.lastCost || 0,
-        });
-      }
-    }
+        };
+      })
+      .filter(Boolean);
 
     const session = await InventoryCountSession.create({
       tenantId: req.tenantId,
@@ -260,11 +264,15 @@ router.post('/count-sessions/active/submit', async (req, res) => {
     });
     if (!session) return res.status(404).json({ message: 'No active stocktake session found' });
 
-    // Commit physical counts to Inventory & Stock Movements
-    for (const item of session.items) {
-      if (item.countedQty === null) continue; // Skip items that weren't physically counted
+    // Batch-fetch all counted inventory items
+    const countedItems = session.items.filter(i => i.countedQty !== null);
+    const countedItemIds = countedItems.map(i => i.inventoryItemId);
+    const countedInvDocs = await Inventory.find({ _id: { $in: countedItemIds }, tenantId: req.tenantId });
+    const countedInvMap = new Map(countedInvDocs.map(d => [String(d._id), d]));
 
-      const inv = await Inventory.findOne({ _id: item.inventoryItemId, tenantId: req.tenantId });
+    // Commit physical counts to Inventory & Stock Movements
+    for (const item of countedItems) {
+      const inv = countedInvMap.get(String(item.inventoryItemId));
       if (!inv) continue;
 
       const previousQty = inv.quantity || 0;
@@ -339,12 +347,11 @@ router.get('/count-sessions/history', async (req, res) => {
 
 router.get('/transfers', async (req, res) => {
   try {
+    const storeId = req.query.storeId || req.selectedStoreId;
+    if (!storeId) return res.status(400).json({ message: 'storeId is required' });
     const filter = {
       tenantId: req.tenantId,
-      $or: [
-        { sourceStoreId: req.query.storeId || { $exists: true } },
-        { targetStoreId: req.query.storeId || { $exists: true } }
-      ]
+      $or: [{ sourceStoreId: storeId }, { targetStoreId: storeId }],
     };
     const transfers = await StockTransfer.find(filter)
       .populate('sourceStoreId', 'name')
@@ -383,13 +390,14 @@ router.post('/transfers', async (req, res) => {
       shippedAt: new Date(),
     });
 
+    // Batch-fetch all source store inventory items
+    const transferItemIds = items.map(i => i.inventoryItemId);
+    const sourceInvDocs = await Inventory.find({ _id: { $in: transferItemIds }, tenantId: req.tenantId, storeId: sourceStoreId });
+    const sourceInvMap = new Map(sourceInvDocs.map(d => [String(d._id), d]));
+
     // Deduct stock from Source Store immediately!
     for (const item of items) {
-      const inv = await Inventory.findOne({
-        _id: item.inventoryItemId,
-        tenantId: req.tenantId,
-        storeId: sourceStoreId
-      });
+      const inv = sourceInvMap.get(String(item.inventoryItemId));
       if (inv) {
         const previousQty = inv.quantity || 0;
         inv.quantity = Math.max(0, previousQty - item.qtySent);
@@ -436,26 +444,27 @@ router.post('/transfers/:id/receive', async (req, res) => {
       receiveMap[String(i.inventoryItemId)] = i.qtyReceived;
     });
 
+    // Batch-fetch all source inventory items
+    const receiveItemIds = transfer.items.map(i => i.inventoryItemId);
+    const recvSourceDocs = await Inventory.find({ _id: { $in: receiveItemIds }, tenantId: req.tenantId, storeId: transfer.sourceStoreId }).lean();
+    const recvSourceMap = new Map(recvSourceDocs.map(d => [String(d._id), d]));
+
+    // Batch-fetch existing target store items by name
+    const sourceItemNames = recvSourceDocs.map(d => d.itemName);
+    const existingTargetDocs = await Inventory.find({ itemName: { $in: sourceItemNames }, tenantId: req.tenantId, storeId: transfer.targetStoreId });
+    const targetInvMap = new Map(existingTargetDocs.map(d => [d.itemName, d]));
+
     for (const transferItem of transfer.items) {
       const itemIdStr = String(transferItem.inventoryItemId);
       const qtyReceived = typeof receiveMap[itemIdStr] === 'number' ? receiveMap[itemIdStr] : transferItem.qtySent;
 
       transferItem.qtyReceived = qtyReceived;
 
-      // Find original item in source store to copy its details (to replicate schema at target store if missing)
-      const sourceInv = await Inventory.findOne({
-        _id: transferItem.inventoryItemId,
-        tenantId: req.tenantId,
-        storeId: transfer.sourceStoreId,
-      });
+      const sourceInv = recvSourceMap.get(itemIdStr);
 
       if (sourceInv) {
-        // Find or create item at target store
-        let targetInv = await Inventory.findOne({
-          itemName: sourceInv.itemName,
-          tenantId: req.tenantId,
-          storeId: transfer.targetStoreId,
-        });
+        // Find or create item at target store (use pre-fetched map, create only if missing)
+        let targetInv = targetInvMap.get(sourceInv.itemName);
 
         if (!targetInv) {
           targetInv = await Inventory.create({
@@ -473,6 +482,7 @@ router.post('/transfers/:id/receive', async (req, res) => {
             minThreshold: sourceInv.minThreshold || 0,
             quantity: 0,
           });
+          targetInvMap.set(sourceInv.itemName, targetInv);
         }
 
         const previousQty = targetInv.quantity || 0;
@@ -513,13 +523,14 @@ router.post('/transfers/:id/reject', async (req, res) => {
     transfer.status = 'rejected';
     await transfer.save();
 
+    // Batch-fetch source inventory items for reversal
+    const rejectItemIds = transfer.items.map(i => i.inventoryItemId);
+    const rejectInvDocs = await Inventory.find({ _id: { $in: rejectItemIds }, tenantId: req.tenantId, storeId: transfer.sourceStoreId });
+    const rejectInvMap = new Map(rejectInvDocs.map(d => [String(d._id), d]));
+
     // Revert source store's depleted stock
     for (const item of transfer.items) {
-      const inv = await Inventory.findOne({
-        _id: item.inventoryItemId,
-        tenantId: req.tenantId,
-        storeId: transfer.sourceStoreId
-      });
+      const inv = rejectInvMap.get(String(item.inventoryItemId));
       if (inv) {
         const previousQty = inv.quantity || 0;
         inv.quantity = previousQty + item.qtySent;

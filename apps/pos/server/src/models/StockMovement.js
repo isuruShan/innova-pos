@@ -113,5 +113,6 @@ const stockMovementSchema = new mongoose.Schema(
 stockMovementSchema.index({ tenantId: 1, inventoryItemId: 1, createdAt: -1 });
 stockMovementSchema.index({ tenantId: 1, storeId: 1, type: 1, createdAt: -1 });
 stockMovementSchema.index({ tenantId: 1, sessionId: 1 });
+stockMovementSchema.index({ orderId: 1, type: 1 });
 
 module.exports = mongoose.model('StockMovement', stockMovementSchema);

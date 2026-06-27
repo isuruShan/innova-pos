@@ -47,5 +47,6 @@ const countSheetSchema = new mongoose.Schema(
 );
 
 countSheetSchema.index({ tenantId: 1, storeId: 1, name: 1 });
+countSheetSchema.index({ tenantId: 1, storeId: 1, isActive: 1 });
 
 module.exports = mongoose.model('CountSheet', countSheetSchema);

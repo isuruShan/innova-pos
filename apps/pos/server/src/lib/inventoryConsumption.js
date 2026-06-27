@@ -8,42 +8,42 @@ const { entitlementKeyForCode, isPaidAddonEffective } = require('@innovapos/paid
 /**
  * Recursively resolves inventory consumption down to raw ingredients,
  * applying unit conversions (recipeUnit -> storageUnit).
+ * Uses a shared cache to avoid repeated DB hits for the same inventory item.
  */
-async function resolveAdvancedConsumption(tenantId, itemId, targetQty, depth = 0) {
-  if (depth > 5) return []; // Limit depth to prevent infinite loops
+async function resolveAdvancedConsumption(tenantId, itemId, targetQty, depth = 0, cache = new Map()) {
+  if (depth > 5) return [];
 
-  const item = await Inventory.findOne({ _id: itemId, tenantId }).lean();
+  const cacheKey = String(itemId);
+  let item = cache.get(cacheKey);
+  if (!item) {
+    item = await Inventory.findOne({ _id: itemId, tenantId }).lean();
+    if (item) cache.set(cacheKey, item);
+  }
   if (!item) return [];
 
-  // 1. Raw Materials: base case, convert recipeUnit to storageUnit
   if (item.itemType === 'raw') {
     const storageToRecipe = item.storageToRecipeMultiplier || 1;
-    const storageQty = targetQty / storageToRecipe;
     return [{
       inventoryItemId: item._id,
-      quantity: storageQty, // in storageUnit
+      quantity: targetQty / storageToRecipe,
       unit: item.storageUnit || item.unit,
     }];
   }
 
-  // 2. Prep Items: sub-recipe base case, resolve recursively
   if (item.itemType === 'prep' && item.recipe && item.recipe.length > 0) {
     let resolved = [];
     for (const sub of item.recipe) {
-      // sub.quantity is in recipeUnit of the child ingredient
       const subTotalQty = sub.quantity * targetQty * (1 + (sub.wastagePercentage || 0) / 100);
-      const subResolved = await resolveAdvancedConsumption(tenantId, sub.inventoryItemId, subTotalQty, depth + 1);
+      const subResolved = await resolveAdvancedConsumption(tenantId, sub.inventoryItemId, subTotalQty, depth + 1, cache);
       resolved = resolved.concat(subResolved);
     }
     return resolved;
   }
 
-  // Fallback
   const storageToRecipe = item.storageToRecipeMultiplier || 1;
-  const storageQty = targetQty / storageToRecipe;
   return [{
     inventoryItemId: item._id,
-    quantity: storageQty,
+    quantity: targetQty / storageToRecipe,
     unit: item.storageUnit || item.unit,
   }];
 }
@@ -60,123 +60,126 @@ async function consumeInventoryForOrder(orderId, userId) {
     const tenantId = order.tenantId;
     const storeId = order.storeId;
 
-    // Gate stock consumption behind Advanced Inventory paid addon subscription
     const tenant = await Tenant.findById(tenantId)
       .select('paidAddons assignedPlanId')
       .populate('assignedPlanId')
       .lean();
-    if (!tenant || !isPaidAddonEffective(tenant, entitlementKeyForCode('advanced_inventory'))) {
-      return;
-    }
+    if (!tenant || !isPaidAddonEffective(tenant, entitlementKeyForCode('advanced_inventory'))) return;
 
-    // Check if we already processed consumption for this order to prevent double deduction
     const existing = await StockMovement.exists({ orderId, type: 'sale' });
     if (existing) return;
+
+    // Batch-fetch ALL ingredient links for this order in one query
+    const menuItemIds = [...new Set(order.items.map(i => i.menuItem))];
+    const modifierIds = [
+      ...new Set(order.items.flatMap(i => (i.modifiers || []).map(m => m.modifierId))),
+    ];
+
+    const allLinks = await IngredientLink.find({
+      tenantId,
+      $or: [
+        { menuItemId: { $in: menuItemIds } },
+        ...(modifierIds.length > 0 ? [{ menuItemId: null, modifierId: { $in: modifierIds } }] : []),
+      ],
+    }).lean();
+
+    // Index links: key = `${menuItemId}|${variantId}|${modifierId}` for O(1) lookup
+    const linkMap = new Map();
+    for (const link of allLinks) {
+      const key = `${link.menuItemId}|${link.variantId}|${link.modifierId}`;
+      if (!linkMap.has(key)) linkMap.set(key, []);
+      linkMap.get(key).push(link);
+    }
+
+    const getLinks = (menuItemId, variantId, modifierId) => {
+      const k1 = `${menuItemId}|${variantId}|${modifierId}`;
+      const r1 = linkMap.get(k1);
+      if (r1 && r1.length > 0) return r1;
+      if (variantId) {
+        const k2 = `${menuItemId}|null|${modifierId}`;
+        const r2 = linkMap.get(k2);
+        if (r2 && r2.length > 0) return r2;
+      }
+      if (modifierId) {
+        const k3 = `null|null|${modifierId}`;
+        const r3 = linkMap.get(k3);
+        if (r3 && r3.length > 0) return r3;
+      }
+      return [];
+    };
+
+    // Resolve all consumptions, sharing inventory cache across recursive calls
+    const inventoryCache = new Map();
+    const pendingConsumptions = [];
 
     for (const item of order.items) {
       const menuItemId = item.menuItem;
       const variantId = item.variantId || null;
 
-      // 1. Gather all recipe links for this line item (base recipe + modifier recipes)
       const allResolvedLinks = [];
 
-      // A. Base item links (must have modifierId = null)
-      let baseLinks = await IngredientLink.find({
-        tenantId,
-        menuItemId,
-        variantId,
-        modifierId: null
-      }).lean();
-
-      if (baseLinks.length === 0 && variantId) {
-        baseLinks = await IngredientLink.find({
-          tenantId,
-          menuItemId,
-          variantId: null,
-          modifierId: null
-        }).lean();
-      }
-
-      // Add base links to resolved links list
-      for (const link of baseLinks) {
+      for (const link of getLinks(menuItemId, variantId, null)) {
         allResolvedLinks.push({ link, multiplier: 1 });
       }
 
-      // B. Modifier specific links
       if (item.modifiers && item.modifiers.length > 0) {
         for (const mod of item.modifiers) {
-          const modifierId = mod.modifierId;
-          
-          let modLinks = await IngredientLink.find({
-            tenantId,
-            menuItemId,
-            variantId,
-            modifierId
-          }).lean();
-
-          if (modLinks.length === 0 && variantId) {
-            modLinks = await IngredientLink.find({
-              tenantId,
-              menuItemId,
-              variantId: null,
-              modifierId
-            }).lean();
-          }
-
-          if (modLinks.length === 0) {
-            modLinks = await IngredientLink.find({
-              tenantId,
-              menuItemId: null,
-              variantId: null,
-              modifierId
-            }).lean();
-          }
-
-          for (const link of modLinks) {
+          for (const link of getLinks(menuItemId, variantId, mod.modifierId)) {
             allResolvedLinks.push({ link, multiplier: mod.qty || 1 });
           }
         }
       }
 
-      // 2. Deduct inventory for all gathered links recursively
       for (const { link, multiplier } of allResolvedLinks) {
-        const inventoryItemId = link.inventoryItemId;
-
-        // Base recipe quantity for this sale item (link.quantity is in recipeUnit of the linked inventory item)
         const baseRecipeQty = link.quantity * multiplier * item.qty;
         const totalRecipeQty = baseRecipeQty * (1 + (link.wastagePercentage || 0) / 100);
-
         if (totalRecipeQty <= 0) continue;
 
-        // Recursively explode the recipe
-        const explodedConsumptions = await resolveAdvancedConsumption(tenantId, inventoryItemId, totalRecipeQty);
-
-        for (const cons of explodedConsumptions) {
-          const invItem = await Inventory.findOne({ _id: cons.inventoryItemId, tenantId });
-          if (!invItem) continue;
-
-          const previousQty = invItem.quantity;
-          const totalQty = cons.quantity; // in storageUnit
-
-          invItem.quantity = Math.max(0, previousQty - totalQty);
-          await invItem.save();
-
-          const saleMovement = new StockMovement({
-            tenantId,
-            storeId,
-            inventoryItemId: cons.inventoryItemId,
-            type: 'sale',
-            quantity: -totalQty,
-            previousQty,
-            newQty: previousQty - totalQty,
-            reason: 'sale',
-            notes: `Auto sale deduction for Order #${order.orderNumber || order._id}`,
-            orderId: order._id,
-            createdBy: userId || order.createdBy || order._id
-          });
-          await saleMovement.save();
-        }
+        const exploded = await resolveAdvancedConsumption(tenantId, link.inventoryItemId, totalRecipeQty, 0, inventoryCache);
+        pendingConsumptions.push(...exploded);
       }
+    }
+
+    if (pendingConsumptions.length === 0) return;
+
+    // Aggregate by inventoryItemId to minimise save calls when same item consumed multiple times
+    const consumptionMap = new Map();
+    for (const cons of pendingConsumptions) {
+      const key = String(cons.inventoryItemId);
+      if (!consumptionMap.has(key)) {
+        consumptionMap.set(key, { inventoryItemId: cons.inventoryItemId, quantity: 0, unit: cons.unit });
+      }
+      consumptionMap.get(key).quantity += cons.quantity;
+    }
+
+    // Batch-fetch mutable inventory documents for saving
+    const uniqueIds = [...consumptionMap.keys()];
+    const invDocs = await Inventory.find({ _id: { $in: uniqueIds }, tenantId });
+    const invDocMap = new Map(invDocs.map(d => [String(d._id), d]));
+
+    for (const [idStr, cons] of consumptionMap) {
+      const invItem = invDocMap.get(idStr);
+      if (!invItem) continue;
+
+      const previousQty = invItem.quantity;
+      const totalQty = cons.quantity;
+
+      invItem.quantity = Math.max(0, previousQty - totalQty);
+      await invItem.save();
+
+      await new StockMovement({
+        tenantId,
+        storeId,
+        inventoryItemId: cons.inventoryItemId,
+        type: 'sale',
+        quantity: -totalQty,
+        previousQty,
+        newQty: invItem.quantity,
+        reason: 'sale',
+        notes: `Auto sale deduction for Order #${order.orderNumber || order._id}`,
+        orderId: order._id,
+        createdBy: userId || order.createdBy || order._id,
+      }).save();
     }
   } catch (err) {
     console.error(`[Inventory Consumption Error] Failed for order ${orderId}:`, err);
@@ -188,17 +191,29 @@ async function consumeInventoryForOrder(orderId, userId) {
  */
 async function reverseInventoryForOrder(orderId, userId) {
   try {
-    const movements = await StockMovement.find({ orderId });
+    const movements = await StockMovement.find({ orderId, type: 'sale' }).lean();
     if (movements.length === 0) return;
 
+    // Aggregate reversals per item to avoid multiple saves for the same document
+    const reversalMap = new Map();
     for (const m of movements) {
-      const invItem = await Inventory.findOne({ _id: m.inventoryItemId, tenantId: m.tenantId });
-      if (invItem) {
-        const absQty = Math.abs(m.quantity);
-        const previousQty = invItem.quantity;
-        invItem.quantity = previousQty + absQty;
-        await invItem.save();
+      const key = String(m.inventoryItemId);
+      if (!reversalMap.has(key)) {
+        reversalMap.set(key, { inventoryItemId: m.inventoryItemId, tenantId: m.tenantId, absQty: 0 });
       }
+      reversalMap.get(key).absQty += Math.abs(m.quantity);
+    }
+
+    // Batch-fetch mutable inventory documents
+    const ids = [...reversalMap.keys()];
+    const invDocs = await Inventory.find({ _id: { $in: ids } });
+    const invDocMap = new Map(invDocs.map(d => [String(d._id), d]));
+
+    for (const [idStr, rev] of reversalMap) {
+      const invItem = invDocMap.get(idStr);
+      if (!invItem) continue;
+      invItem.quantity = invItem.quantity + rev.absQty;
+      await invItem.save();
     }
 
     await StockMovement.deleteMany({ orderId });
@@ -209,5 +224,5 @@ async function reverseInventoryForOrder(orderId, userId) {
 
 module.exports = {
   consumeInventoryForOrder,
-  reverseInventoryForOrder
+  reverseInventoryForOrder,
 };

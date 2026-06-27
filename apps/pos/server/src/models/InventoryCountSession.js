@@ -67,5 +67,6 @@ const inventoryCountSessionSchema = new mongoose.Schema(
 );
 
 inventoryCountSessionSchema.index({ tenantId: 1, storeId: 1, status: 1 });
+inventoryCountSessionSchema.index({ tenantId: 1, storeId: 1, userId: 1 });
 
 module.exports = mongoose.model('InventoryCountSession', inventoryCountSessionSchema);

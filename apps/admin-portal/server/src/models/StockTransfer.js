@@ -82,7 +82,8 @@ const stockTransferSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-stockTransferSchema.index({ tenantId: 1, sourceStoreId: 1 });
-stockTransferSchema.index({ tenantId: 1, targetStoreId: 1 });
+stockTransferSchema.index({ tenantId: 1, sourceStoreId: 1, status: 1 });
+stockTransferSchema.index({ tenantId: 1, targetStoreId: 1, status: 1 });
+stockTransferSchema.index({ transferNumber: 1 }, { sparse: true });
 
 module.exports = mongoose.model('StockTransfer', stockTransferSchema);
