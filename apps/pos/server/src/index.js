@@ -93,6 +93,7 @@ app.use('/api/inventory-categories', require('./routes/inventoryCategories'));
 app.use('/api/inventory',  require('./routes/audit'));
 app.use('/api/ingredient-links', require('./routes/ingredientLinks'));
 app.use('/api/inventory-sessions', require('./routes/inventorySessions'));
+app.use('/api/advanced-inventory', require('./routes/advancedInventory'));
 app.use('/api/stock-movements', require('./routes/stockMovements'));
 app.use('/api/suppliers',  require('./routes/suppliers'));
 app.use('/api/purchase-orders', require('./routes/purchaseOrders'));

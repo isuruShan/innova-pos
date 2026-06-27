@@ -17,7 +17,7 @@ const {
 const router = express.Router();
 
 const generateTempPassword = () => crypto.randomBytes(6).toString('hex');
-const STAFF_ROLES = ['manager', 'cashier', 'kitchen', 'steward'];
+const STAFF_ROLES = ['manager', 'cashier', 'kitchen', 'steward', 'inventory_clerk', 'commissary_operator', 'purchasing_officer'];
 
 /**
  * Attach fresh presigned URLs to user profile images using batch presigning.
@@ -116,6 +116,18 @@ router.post('/', authenticateJWT, tenantScope, authorize('merchant_admin', 'supe
       }
     }
 
+    if (['inventory_clerk', 'commissary_operator', 'purchasing_officer'].includes(role)) {
+      const Tenant = require('../models/Tenant');
+      const { isPaidAddonEffective } = require('@innovapos/paid-addons');
+      const tenantForAdv = await Tenant.findById(tenantId).populate('assignedPlanId');
+      if (!isPaidAddonEffective(tenantForAdv?.paidAddons, 'advancedInventory')) {
+        return res.status(402).json({
+          code: 'ADVANCED_INVENTORY_ADDON_REQUIRED',
+          message: 'Assigning specialized inventory or kitchen commissary roles requires the Advanced Inventory add-on. Please subscribe first.'
+        });
+      }
+    }
+
     const quote = await quoteCreateUser(tenantId, role, storeIds || []);
 
     if (quote.requiresPayment && req.user.role !== 'superadmin') {
@@ -210,6 +222,17 @@ router.put('/:id', authenticateJWT, tenantScope, authorize('merchant_admin', 'su
       const allowedRoles = [...STAFF_ROLES, 'merchant_admin'];
       if (!allowedRoles.includes(role)) {
         return res.status(400).json({ message: `Role ${role} not allowed` });
+      }
+      if (['inventory_clerk', 'commissary_operator', 'purchasing_officer'].includes(role)) {
+        const Tenant = require('../models/Tenant');
+        const { isPaidAddonEffective } = require('@innovapos/paid-addons');
+        const tenantForAdv = await Tenant.findById(user.tenantId).populate('assignedPlanId');
+        if (!isPaidAddonEffective(tenantForAdv?.paidAddons, 'advancedInventory')) {
+          return res.status(402).json({
+            code: 'ADVANCED_INVENTORY_ADDON_REQUIRED',
+            message: 'Assigning specialized inventory or kitchen commissary roles requires the Advanced Inventory add-on. Please subscribe first.'
+          });
+        }
       }
       user.role = role;
     }

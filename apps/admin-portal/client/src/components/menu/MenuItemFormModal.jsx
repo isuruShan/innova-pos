@@ -913,6 +913,7 @@ export default function MenuItemFormModal({
   // Paid addon check
   const { data: paidAddons } = useTenantPaidAddons({ enabled: open });
   const isAddonActive = paidAddons?.modifierGroups === true;
+  const isAdvancedInventoryActive = paidAddons?.advancedInventory === true;
 
   // Fetch all modifier groups for this store
   const { data: allModifierGroups = [] } = useQuery({
@@ -973,9 +974,11 @@ export default function MenuItemFormModal({
     if (isAddonActive && !form.isCombo) {
       list.push({ id: 'modifiers', label: 'Modifiers' });
     }
-    list.push({ id: 'ingredients', label: 'Ingredients & Recipe' });
+    if (isAdvancedInventoryActive) {
+      list.push({ id: 'ingredients', label: 'Ingredients & Recipe' });
+    }
     return list;
-  }, [isAddonActive, form.isCombo]);
+  }, [isAddonActive, isAdvancedInventoryActive, form.isCombo]);
 
   // Ingredients add fields
   const [selectedInventoryId, setSelectedInventoryId] = useState('');
@@ -996,7 +999,7 @@ export default function MenuItemFormModal({
   const { data: inventoryItems = [], isPending: inventoryLoading } = useQuery({
     queryKey: ['inventory', selectedStoreId],
     queryFn: () => api.get('/inventory').then(r => r.data),
-    enabled: open && activeTab === 'ingredients',
+    enabled: open && activeTab === 'ingredients' && isAdvancedInventoryActive,
   });
 
   // Linked modifier options memo for dropdown picker
@@ -1024,6 +1027,10 @@ export default function MenuItemFormModal({
       setActiveTab('general');
       return;
     }
+    if (!isAdvancedInventoryActive) {
+      setForm(f => ({ ...f, ingredients: [] }));
+      return;
+    }
     if (editing?._id) {
       api.get('/ingredient-links', { params: { menuItemId: editing._id } })
         .then((res) => {
@@ -1042,7 +1049,7 @@ export default function MenuItemFormModal({
     } else {
       setForm(f => ({ ...f, ingredients: [] }));
     }
-  }, [open, editing?._id]);
+  }, [open, editing?._id, isAdvancedInventoryActive]);
 
   const handleAddIngredient = () => {
     setIngError('');
@@ -1395,7 +1402,7 @@ export default function MenuItemFormModal({
           </div>
         )}
 
-        {activeTab === 'ingredients' && (
+        {activeTab === 'ingredients' && isAdvancedInventoryActive && (
           <div className="space-y-4">
             {form.isCombo ? (
               <p className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3">

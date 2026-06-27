@@ -10,6 +10,7 @@ const ENTITLEMENT_BY_CODE = {
   dual_screen: 'dualScreen',
   whatsapp_integration: 'whatsapp',
   modifier_groups: 'modifierGroups',
+  advanced_inventory: 'advancedInventory',
 };
 
 const KNOWN_ENTITLEMENT_KEYS = Object.values(ENTITLEMENT_BY_CODE);
@@ -115,6 +116,10 @@ function isModifierGroupsEffective(paidAddons) {
   return isPaidAddonEffective(paidAddons, 'modifierGroups');
 }
 
+function isAdvancedInventoryEffective(paidAddons) {
+  return isPaidAddonEffective(paidAddons, 'advancedInventory');
+}
+
 module.exports = {
   ENTITLEMENT_BY_CODE,
   KNOWN_ENTITLEMENT_KEYS,
@@ -129,5 +134,6 @@ module.exports = {
   isDualScreenEffective,
   isWhatsappEffective,
   isModifierGroupsEffective,
+  isAdvancedInventoryEffective,
   isInTrialPeriod,
 };

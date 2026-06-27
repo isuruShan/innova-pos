@@ -1135,6 +1135,52 @@ export const GUIDE_SECTIONS = [
     ],
     outcome: 'Your team runs with consistent configuration, disciplined shifts, and a clear path when something needs platform help.',
   },
+  {
+    id: 'advanced-inventory',
+    slug: 'advanced-inventory',
+    title: '15. Advanced Inventory (Add-on)',
+    summary: 'Master prep sub-recipes, count sheets, physical stocktaking audits, store-to-store stock transfers, and unit conversions.',
+    overview:
+      'The Advanced Inventory module (unlocked via paid add-on) shifts your operation from basic tracking to structured restaurant resource planning. It supports recipe yield explosion, multi-stage prep items (like sauces or pre-marinated meats), custom storage areas, count sheets, physical audits, and in-transit store stock transfers.\n\n' +
+      'A key element of this module is the unit conversion matrix, allowing you to buy ingredients in bulk (e.g., Cases or Kilograms) and consume them in recipes in precise portions (e.g., Milliliters or Grams). It also enforces professional segregation of duties by introducing premium roles like Inventory Clerk, Commissary Operator, and Purchasing Officer.',
+    prerequisites: [
+      'Active "advanced_inventory" paid add-on subscription or trial',
+      'Inventory items configured with purchase units, recipe units, and conversion factors',
+      'Staff assigned to premium inventory roles (Inventory Clerk, Commissary Operator, Purchasing Officer)',
+      'Defined physical Storage Areas configured within your store settings'
+    ],
+    steps: [
+      {
+        heading: 'Configure storage areas & count sheets',
+        body:
+          'Before performing a stock count, organize your physical space. Go to POS → Inventory → Storage Areas and create locations (e.g., "Walk-in Freezer", "Dry Pantry", "Front Bar"). This groups inventory items by where they live on shelves.\n\n' +
+          'Next, navigate to Count Sheets and create a sheet (e.g., "Weekly Food Audit"). Assign specific storage areas to this count sheet. This sheet-to-shelf layout ensures that when your inventory clerk walks the floor with a tablet, the sheet displays items in the exact physical order they sit on the shelves, cutting counting time in half.',
+        tip: 'Arrange items on the count sheet to match your physical shelf order. Do not mix frozen meats with dry spices on the sheet; keep them separated by Storage Area to prevent back-and-forth walking.'
+      },
+      {
+        heading: 'Establish raw-to-prep nested recipes',
+        body:
+          'Create your raw materials (e.g., "Espresso Beans" in Kilograms, "Whole Milk" in Liters) and your prepared items (e.g., "Vanilla Sweet Cream" in Liters). For prepared items, select "Prep Item" as the type and define its recipe ingredients (e.g., 500ml Whole Milk + 100g Vanilla Pods).\n\n' +
+          'Cafinity supports nested sub-recipes. When a customer orders a "Vanilla Latte", the system explodes the order: it depletes "Vanilla Sweet Cream" from stock, which in turn recursively depletes the corresponding raw "Whole Milk" and "Vanilla Pods" based on the recipe conversion math.',
+        tip: 'Include a wastage percentage (e.g., 5% for dairy) when linking ingredients to cover spillages. This increases the accuracy of your theoretical stock level reports.'
+      },
+      {
+        heading: 'Conduct a stocktake audit session',
+        body:
+          'When it is time to audit, go to POS → Inventory → Count Sheets and select "Start Count". Enter the physical quantities counted on the shelves. The system shows your physical count side-by-side with the theoretical stock (what the POS calculated from sales and recipes).\n\n' +
+          'Once submitted, the system locks the session and calculates the variance (Theoretical Qty vs. Physical Qty) and the valuation discrepancy (financial gain or loss based on Weighted Average Cost). Use these reports to investigate kitchen waste or portion control issues.',
+        tip: 'Perform stocktakes when the store is closed or during slow hours. Conducting counts while active sales are depleting ingredients will create false variances in your final audit reports.'
+      },
+      {
+        heading: 'Request and dispatch stock transfers',
+        body:
+          'For multi-location operators or venues with a Central Kitchen commissary, use Stock Transfers. A retail branch goes to POS → Inventory → Stock Transfers and submits a "Request" to the Central Kitchen for supplies (e.g., 10 Liters of Sweet Cream).\n\n' +
+          'The Central Kitchen operator sees the request, packages the items, and clicks "Dispatch". The stock is marked "In Transit" and is temporarily deducted from the kitchen. Once the retail branch receives the box, they inspect the items and click "Receive", adding the quantities into their local active stock.',
+        tip: 'Always inspect transfers for leakage or transit damage before clicking "Receive". If you receive only 8 Liters out of 10, record the actual physical receipt to generate a transit variance report.'
+      }
+    ],
+    outcome: 'You have a fully configured kitchen recipe hierarchy, structured audit schedules, and automated inter-store logistics tracking.'
+  }
 ];
 
 export const FEATURE_MATRIX = [
@@ -1151,4 +1197,5 @@ export const FEATURE_MATRIX = [
   { area: 'QR ordering', admin: 'Add-on subscribe', pos: 'Tables & QR', web: '—' },
   { area: 'Notifications', admin: 'Bell, email', pos: 'Bell', web: '—' },
   { area: 'Customers', admin: 'Customer list', pos: 'Search, attach at register', web: '—' },
+  { area: 'Advanced inventory', admin: 'Add-on, premium roles (Clerk, Operator, Officer)', pos: 'Prep recipes, stocktakes, inter-store transfers', web: 'Unified user guide' },
 ];

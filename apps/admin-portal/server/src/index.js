@@ -142,6 +142,7 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/reports/extended', require('./routes/reportsExtended'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/inventory-sessions', require('./routes/inventorySessions'));
+app.use('/api/advanced-inventory', require('./routes/advancedInventory'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/accounting', require('./routes/accounting'));
 app.use('/api/reservations', require('./routes/reservations'));

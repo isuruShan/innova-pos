@@ -18,6 +18,8 @@ const ADDON_MESSAGES = {
     'WhatsApp Business Integration is not active for this business. Subscribe in the admin portal under Add-ons.',
   modifier_groups:
     'The Modifier Groups add-on is not active for this business. Subscribe in the admin portal under Add-ons.',
+  advanced_inventory:
+    'The Advanced Inventory Management system is not active for this business. Subscribe in the admin portal under Add-ons.',
 };
 
 /**

@@ -12,6 +12,7 @@ import { COMBO_CATEGORY_NAME } from '../../constants/categories';
 import { MENU_ITEM_LIMITS, VARIANT_CRITERIA } from '../../constants/menuItems';
 import { useBranding } from '../../context/BrandingContext';
 import { useStoreContext } from '../../context/StoreContext';
+import { useTenantPaidAddons } from '../../hooks/useTenantPaidAddons';
 import { formatCurrency, getItemDisplayPrice } from '../../utils/format';
 import {
   rebuildVariants,
@@ -909,6 +910,10 @@ export default function MenuItemFormModal({
   const priceLabel = `Price (${currencySymbol})`;
   const [activeTab, setActiveTab] = useState('general');
 
+  // Paid addon check
+  const { data: paidAddons } = useTenantPaidAddons({ enabled: open });
+  const isAdvancedInventoryActive = paidAddons?.advancedInventory === true;
+
   // Ingredients add fields
   const [selectedInventoryId, setSelectedInventoryId] = useState('');
   const [ingQuantity, setIngQuantity] = useState('');
@@ -927,13 +932,17 @@ export default function MenuItemFormModal({
   const { data: inventoryItems = [], isPending: inventoryLoading } = useQuery({
     queryKey: ['inventory', selectedStoreId],
     queryFn: () => api.get('/inventory').then(r => r.data),
-    enabled: open && activeTab === 'ingredients',
+    enabled: open && activeTab === 'ingredients' && isAdvancedInventoryActive,
   });
 
   // Fetch / Sync existing ingredient links on edit open
   useEffect(() => {
     if (!open) {
       setActiveTab('general');
+      return;
+    }
+    if (!isAdvancedInventoryActive) {
+      setForm(f => ({ ...f, ingredients: [] }));
       return;
     }
     if (editing?._id) {
@@ -953,7 +962,7 @@ export default function MenuItemFormModal({
     } else {
       setForm(f => ({ ...f, ingredients: [] }));
     }
-  }, [open, editing?._id]);
+  }, [open, editing?._id, isAdvancedInventoryActive]);
 
   const handleAddIngredient = () => {
     setIngError('');
@@ -1088,7 +1097,7 @@ export default function MenuItemFormModal({
         {[
           { id: 'general', label: 'General info' },
           { id: 'pricing', label: 'Pricing & Options' },
-          { id: 'ingredients', label: 'Ingredients & Recipe' }
+          ...(isAdvancedInventoryActive ? [{ id: 'ingredients', label: 'Ingredients & Recipe' }] : [])
         ].map((tab) => (
           <button
             key={tab.id}
@@ -1306,7 +1315,7 @@ export default function MenuItemFormModal({
           </div>
         )}
 
-        {activeTab === 'ingredients' && (
+        {activeTab === 'ingredients' && isAdvancedInventoryActive && (
           <div className="space-y-4">
             {form.isCombo ? (
               <p className="text-xs text-slate-500 bg-slate-900/40 border border-slate-800 rounded-lg p-3">

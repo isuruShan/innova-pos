@@ -3,8 +3,12 @@ const IngredientLink = require('../models/IngredientLink');
 const Inventory = require('../models/Inventory');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
 const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
+const { requirePaidAddon } = require('../middleware/requirePaidAddon');
 
 const router = express.Router();
+
+// Gate entire router behind Advanced Inventory paid addon
+router.use(protect, tenantScope, requirePaidAddon('advanced_inventory'));
 
 /**
  * GET /ingredient-links?menuItemId=xxx

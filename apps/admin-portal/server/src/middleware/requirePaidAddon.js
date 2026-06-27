@@ -14,6 +14,8 @@ const ADDON_MESSAGES = {
     'WhatsApp Business Integration is not active for your account. Subscribe under Add-ons in this portal.',
   modifier_groups:
     'The Modifier Groups add-on is not active for your account. Subscribe under Add-ons in this portal.',
+  advanced_inventory:
+    'The Advanced Inventory Management system is not active for your account. Subscribe under Add-ons in this portal.',
 };
 
 function requirePaidAddon(addonCode) {

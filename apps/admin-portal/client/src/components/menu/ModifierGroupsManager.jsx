@@ -33,6 +33,7 @@ export default function ModifierGroupsManager() {
   const { data: paidAddons, isPending: addonsLoading } = useTenantPaidAddons();
 
   const isAddonActive = paidAddons?.modifierGroups === true;
+  const isAdvancedInventoryActive = paidAddons?.advancedInventory === true;
 
   // State
   const [modalOpen, setModalOpen] = useState(false);
@@ -418,7 +419,7 @@ export default function ModifierGroupsManager() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {mod._id ? (
+                      {isAdvancedInventoryActive && (mod._id ? (
                         <button
                           type="button"
                           onClick={() => setIngredientModalTarget(mod)}
@@ -429,7 +430,7 @@ export default function ModifierGroupsManager() {
                         </button>
                       ) : (
                         <span className="text-[10px] text-gray-400 italic mr-1">Save to link ingredients</span>
-                      )}
+                      ))}
                       <button
                         type="button"
                         onClick={() => handleToggleOptionAvailable(idx)}
