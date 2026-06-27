@@ -368,7 +368,7 @@ router.get('/transfers', async (req, res) => {
 
 router.post('/transfers', async (req, res) => {
   try {
-    const { sourceStoreId, targetStoreId, items, notes } = req.body;
+    const { sourceStoreId, targetStoreId, items, notes, status } = req.body;
 
     if (!sourceStoreId || !targetStoreId) {
       return res.status(400).json({ message: 'sourceStoreId and targetStoreId are required' });
@@ -377,44 +377,47 @@ router.post('/transfers', async (req, res) => {
       return res.status(400).json({ message: 'Items list cannot be empty' });
     }
 
+    const resolvedStatus = status || 'shipped';
     const transferNum = `TRF-${Date.now()}`;
     const transfer = await StockTransfer.create({
       tenantId: req.tenantId,
       sourceStoreId,
       targetStoreId,
       transferNumber: transferNum,
-      status: 'shipped',
+      status: resolvedStatus,
       items,
       notes: notes || '',
       createdBy: req.user.id,
-      shippedAt: new Date(),
+      shippedAt: resolvedStatus === 'pending' ? null : new Date(),
     });
 
-    // Batch-fetch all source store inventory items
-    const transferItemIds = items.map(i => i.inventoryItemId);
-    const sourceInvDocs = await Inventory.find({ _id: { $in: transferItemIds }, tenantId: req.tenantId, storeId: sourceStoreId });
-    const sourceInvMap = new Map(sourceInvDocs.map(d => [String(d._id), d]));
+    if (resolvedStatus === 'shipped') {
+      // Batch-fetch all source store inventory items
+      const transferItemIds = items.map(i => i.inventoryItemId);
+      const sourceInvDocs = await Inventory.find({ _id: { $in: transferItemIds }, tenantId: req.tenantId, storeId: sourceStoreId });
+      const sourceInvMap = new Map(sourceInvDocs.map(d => [String(d._id), d]));
 
-    // Deduct stock from Source Store immediately!
-    for (const item of items) {
-      const inv = sourceInvMap.get(String(item.inventoryItemId));
-      if (inv) {
-        const previousQty = inv.quantity || 0;
-        inv.quantity = Math.max(0, previousQty - item.qtySent);
-        await inv.save();
+      // Deduct stock from Source Store immediately!
+      for (const item of items) {
+        const inv = sourceInvMap.get(String(item.inventoryItemId));
+        if (inv) {
+          const previousQty = inv.quantity || 0;
+          inv.quantity = Math.max(0, previousQty - item.qtySent);
+          await inv.save();
 
-        await StockMovement.create({
-          tenantId: req.tenantId,
-          storeId: sourceStoreId,
-          inventoryItemId: inv._id,
-          type: 'goods_return',
-          quantity: -item.qtySent,
-          previousQty,
-          newQty: inv.quantity,
-          reason: 'returned',
-          notes: `Stock Transfer Out (${transferNum}) to Store ${targetStoreId}`,
-          createdBy: req.user.id,
-        });
+          await StockMovement.create({
+            tenantId: req.tenantId,
+            storeId: sourceStoreId,
+            inventoryItemId: inv._id,
+            type: 'goods_return',
+            quantity: -item.qtySent,
+            previousQty,
+            newQty: inv.quantity,
+            reason: 'returned',
+            notes: `Stock Transfer Out (${transferNum}) to Store ${targetStoreId}`,
+            createdBy: req.user.id,
+          });
+        }
       }
     }
 
@@ -516,41 +519,90 @@ router.post('/transfers/:id/reject', async (req, res) => {
     const transfer = await StockTransfer.findOne({
       _id: req.params.id,
       tenantId: req.tenantId,
-      status: 'shipped',
+      status: { $in: ['shipped', 'pending'] },
     });
-    if (!transfer) return res.status(404).json({ message: 'Shipped stock transfer not found' });
+    if (!transfer) return res.status(404).json({ message: 'Stock transfer not found or cannot be rejected' });
 
+    const previousStatus = transfer.status;
     transfer.status = 'rejected';
     await transfer.save();
 
-    // Batch-fetch source inventory items for reversal
-    const rejectItemIds = transfer.items.map(i => i.inventoryItemId);
-    const rejectInvDocs = await Inventory.find({ _id: { $in: rejectItemIds }, tenantId: req.tenantId, storeId: transfer.sourceStoreId });
-    const rejectInvMap = new Map(rejectInvDocs.map(d => [String(d._id), d]));
+    if (previousStatus === 'shipped') {
+      // Batch-fetch source inventory items for reversal
+      const rejectItemIds = transfer.items.map(i => i.inventoryItemId);
+      const rejectInvDocs = await Inventory.find({ _id: { $in: rejectItemIds }, tenantId: req.tenantId, storeId: transfer.sourceStoreId });
+      const rejectInvMap = new Map(rejectInvDocs.map(d => [String(d._id), d]));
 
-    // Revert source store's depleted stock
+      // Revert source store's depleted stock
+      for (const item of transfer.items) {
+        const inv = rejectInvMap.get(String(item.inventoryItemId));
+        if (inv) {
+          const previousQty = inv.quantity || 0;
+          inv.quantity = previousQty + item.qtySent;
+          await inv.save();
+
+          await StockMovement.create({
+            tenantId: req.tenantId,
+            storeId: transfer.sourceStoreId,
+            inventoryItemId: inv._id,
+            type: 'adjustment',
+            quantity: item.qtySent,
+            previousQty,
+            newQty: inv.quantity,
+            reason: 'returned',
+            notes: `Stock Transfer Rejection Reversal (${transfer.transferNumber})`,
+            createdBy: req.user.id,
+          });
+        }
+      }
+    }
+
+    res.json(transfer);
+  } catch (err) {
+    sendRouteError(res, err, { req });
+  }
+});
+
+router.post('/transfers/:id/ship', async (req, res) => {
+  try {
+    const transfer = await StockTransfer.findOne({
+      _id: req.params.id,
+      tenantId: req.tenantId,
+      status: 'pending',
+    });
+    if (!transfer) return res.status(404).json({ message: 'Pending stock transfer not found' });
+
+    transfer.status = 'shipped';
+    transfer.shippedAt = new Date();
+
+    // Deduct stock from Source Store
+    const transferItemIds = transfer.items.map(i => i.inventoryItemId);
+    const sourceInvDocs = await Inventory.find({ _id: { $in: transferItemIds }, tenantId: req.tenantId, storeId: transfer.sourceStoreId });
+    const sourceInvMap = new Map(sourceInvDocs.map(d => [String(d._id), d]));
+
     for (const item of transfer.items) {
-      const inv = rejectInvMap.get(String(item.inventoryItemId));
+      const inv = sourceInvMap.get(String(item.inventoryItemId));
       if (inv) {
         const previousQty = inv.quantity || 0;
-        inv.quantity = previousQty + item.qtySent;
+        inv.quantity = Math.max(0, previousQty - item.qtySent);
         await inv.save();
 
         await StockMovement.create({
           tenantId: req.tenantId,
           storeId: transfer.sourceStoreId,
           inventoryItemId: inv._id,
-          type: 'adjustment',
-          quantity: item.qtySent,
+          type: 'goods_return',
+          quantity: -item.qtySent,
           previousQty,
           newQty: inv.quantity,
           reason: 'returned',
-          notes: `Stock Transfer Rejection Reversal (${transfer.transferNumber})`,
+          notes: `Stock Transfer Out (${transfer.transferNumber}) to Store ${transfer.targetStoreId}`,
           createdBy: req.user.id,
         });
       }
     }
 
+    await transfer.save();
     res.json(transfer);
   } catch (err) {
     sendRouteError(res, err, { req });

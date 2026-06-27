@@ -100,7 +100,7 @@ export default function AddInventoryItemDrawer({
     <SlideOver open={open} onClose={onClose} title="Add Inventory Item">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">Item Name *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Name *</label>
           <input
             type="text"
             value={form.itemName}
@@ -108,18 +108,18 @@ export default function AddInventoryItemDrawer({
             placeholder="e.g. Burger Buns"
             required
             disabled={createMutation.isPending}
-            className="w-full bg-[var(--pos-surface-inset)] border border-slate-750 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+            className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">Unit *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Unit *</label>
           <select
             value={form.unit}
             onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
             required
             disabled={createMutation.isPending}
-            className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
           >
             {PREDEFINED_UNITS.map(u => (
               <option key={u.value} value={u.value}>{u.label}</option>
@@ -133,13 +133,13 @@ export default function AddInventoryItemDrawer({
               placeholder="Enter custom unit (e.g. tray, dozen)"
               required
               disabled={createMutation.isPending}
-              className="mt-2 w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+              className="mt-2 w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400"
             />
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">Current Quantity *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Current Quantity *</label>
           <input
             type="number"
             min="0"
@@ -149,12 +149,12 @@ export default function AddInventoryItemDrawer({
             placeholder="0"
             required
             disabled={createMutation.isPending}
-            className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+            className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">Minimum Threshold *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Minimum Threshold *</label>
           <input
             type="number"
             min="0"
@@ -164,18 +164,18 @@ export default function AddInventoryItemDrawer({
             placeholder="e.g. 50"
             required
             disabled={createMutation.isPending}
-            className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-600"
+            className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400"
           />
-          <p className="text-xs text-slate-500 mt-1">Alert when quantity drops below this value</p>
+          <p className="text-xs text-gray-500 mt-1">Alert when quantity drops below this value</p>
         </div>
 
         {/* Suppliers selection */}
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-1.5">
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
             <span className="flex items-center gap-1.5"><Truck size={13} /> Suppliers</span>
           </label>
           {suppliers.length === 0 ? (
-            <p className="text-xs text-slate-500 bg-[var(--pos-surface-inset)] border border-slate-700 rounded-xl px-4 py-3">
+            <p className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
               No suppliers added yet. Add suppliers from the Suppliers page first.
             </p>
           ) : (
@@ -257,7 +257,7 @@ export default function AddInventoryItemDrawer({
             type="button"
             onClick={onClose}
             disabled={createMutation.isPending}
-            className="flex-1 bg-slate-700 hover:bg-slate-600 text-[var(--pos-text-primary)] font-semibold py-2.5 rounded-xl transition text-sm disabled:opacity-50"
+            className="flex-1 bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl transition text-sm disabled:opacity-50"
           >
             Cancel
           </button>

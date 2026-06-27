@@ -77,7 +77,7 @@ function SupplierForm({
       {field('address', 'Address', 'Street, City', <MapPin size={14} className="text-gray-400 flex-shrink-0" />)}
 
       <div>
-        <label className="block text-sm font-medium text-slate-300 mb-1.5">Notes</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
         <textarea
           rows={3}
           value={form.notes}
@@ -95,7 +95,7 @@ function SupplierForm({
 
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancel}
-          className="flex-1 bg-slate-700 hover:bg-slate-600 text-gray-900 font-semibold py-2.5 rounded-xl transition text-sm">
+          className="flex-1 bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl transition text-sm">
           Cancel
         </button>
         <button type="submit" disabled={isPending}

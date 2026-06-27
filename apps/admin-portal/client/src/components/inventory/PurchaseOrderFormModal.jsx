@@ -293,24 +293,23 @@ export default function PurchaseOrderFormModal({
       }}
     >
       <div
-        className="bg-[var(--pos-panel)] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-slate-700"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-gray-200"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="sticky top-0 bg-[var(--pos-panel)] border-b border-slate-700 px-6 py-4 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
           <div>
-            <h2 className="text-xl font-bold text-[var(--pos-text-primary)]">
+            <h2 className="text-xl font-bold text-gray-900">
               {readOnly ? 'View Purchase Order' : editing ? 'Edit Purchase Order' : 'Create Purchase Order'}
             </h2>
             {editing && (
-              <p className="text-sm text-slate-500 mt-0.5">{editing.orderNumber}</p>
+              <p className="text-sm text-gray-500 mt-0.5">{editing.orderNumber}</p>
             )}
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={isPending}
-            className="w-9 h-9 bg-slate-700/50 hover:bg-slate-600 rounded-lg flex items-center justify-center text-slate-300 hover:text-white transition disabled:opacity-50"
+            className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center text-gray-500 hover:text-gray-900 transition disabled:opacity-50"
           >
             <X size={18} />
           </button>
@@ -319,13 +318,13 @@ export default function PurchaseOrderFormModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Supplier Selection */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Supplier <span className="text-red-400">*</span>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Supplier <span className="text-red-500">*</span>
             </label>
             <select
               value={supplierId}
               onChange={(e) => setSupplierId(e.target.value)}
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
               disabled={isPending || readOnly}
             >
               <option value="">Select a supplier</option>
@@ -337,9 +336,8 @@ export default function PurchaseOrderFormModal({
             </select>
           </div>
 
-          {/* Expected Date */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
               <Calendar size={14} />
               Expected Delivery Date
             </label>
@@ -347,7 +345,7 @@ export default function PurchaseOrderFormModal({
               type="date"
               value={expectedDate}
               onChange={(e) => setExpectedDate(e.target.value)}
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
               disabled={isPending || readOnly}
             />
           </div>
@@ -355,9 +353,9 @@ export default function PurchaseOrderFormModal({
           {/* Items Section */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <Package size={14} />
-                Items <span className="text-red-400">*</span>
+                Items <span className="text-red-500">*</span>
               </label>
               {!readOnly && (
                 <div className="flex gap-2">
@@ -384,7 +382,7 @@ export default function PurchaseOrderFormModal({
             </div>
 
             {items.length === 0 ? (
-              <div className="bg-[var(--pos-surface-inset)] rounded-lg p-6 text-center text-slate-500 text-sm">
+              <div className="bg-gray-50 rounded-lg p-6 text-center text-gray-500 text-sm border border-gray-200">
                 No items added yet. Click "Add Item" or "Suggest Low Stock" to get started.
               </div>
             ) : (
@@ -392,7 +390,7 @@ export default function PurchaseOrderFormModal({
                 {items.map((item, index) => (
                   <div
                     key={index}
-                    className="bg-[var(--pos-surface-inset)] rounded-lg p-4 border border-slate-700"
+                    className="bg-gray-50 rounded-lg p-4 border border-gray-200"
                   >
                     <div className="grid grid-cols-12 gap-3">
                       {/* Inventory Item Select */}
@@ -416,7 +414,7 @@ export default function PurchaseOrderFormModal({
                           step="1"
                           value={item.orderedQty}
                           onChange={(e) => handleItemChange(index, 'orderedQty', e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                           disabled={isPending || readOnly}
                         />
                       </div>
@@ -428,7 +426,7 @@ export default function PurchaseOrderFormModal({
                           type="text"
                           value={item.unit}
                           readOnly
-                          className="w-full bg-slate-800 border border-slate-700 text-slate-400 rounded-lg px-3 py-2 text-sm cursor-not-allowed"
+                          className="w-full bg-gray-100 border border-gray-200 text-gray-500 rounded-lg px-3 py-2 text-sm cursor-not-allowed"
                         />
                       </div>
 
@@ -441,7 +439,7 @@ export default function PurchaseOrderFormModal({
                           step="0.01"
                           value={item.unitPrice}
                           onChange={(e) => handleItemChange(index, 'unitPrice', e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                           disabled={isPending || readOnly}
                         />
                       </div>
@@ -473,15 +471,14 @@ export default function PurchaseOrderFormModal({
             )}
           </div>
 
-          {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Notes</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               placeholder="Optional notes or special instructions..."
-              className="w-full bg-[var(--pos-surface-inset)] border border-slate-600 text-[var(--pos-text-primary)] rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-slate-500 resize-none"
+              className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400 resize-none"
               disabled={isPending || readOnly}
             />
           </div>
@@ -523,7 +520,7 @@ export default function PurchaseOrderFormModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition"
+                className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 font-semibold rounded-lg transition"
               >
                 Close
               </button>
@@ -534,7 +531,7 @@ export default function PurchaseOrderFormModal({
                 type="button"
                 onClick={onClose}
                 disabled={isPending}
-                className="flex-1 px-4 py-2.5 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700/50 transition disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 font-semibold rounded-lg transition disabled:opacity-50"
               >
                 Cancel
               </button>

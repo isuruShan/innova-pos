@@ -717,34 +717,6 @@ export default function InventoryManagement() {
         />
 
         {/* Tabs */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-gray-200">
-          <div className="flex gap-1 overflow-x-auto no-scrollbar pb-2 sm:pb-0">
-            {[
-              { key: 'stock', label: 'Stock Levels' },
-              ...(addonStatus?.activeAddons?.includes('advanced_inventory') ? [
-                { key: 'prep-recipes', label: 'Prep Recipes' },
-                { key: 'count-sheets', label: 'Count Sheets' },
-                { key: 'transfers', label: 'Stock Transfers' },
-                { key: 'wastage', label: 'Wastage' },
-              ] : []),
-              { key: 'adjustments', label: 'Adjustments' },
-              { key: 'sessions', label: 'Adjustment History' },
-              { key: 'analytics', label: 'Analytics' },
-            ].map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`px-3 sm:px-4 py-2.5 text-sm font-medium transition border-b-2 whitespace-nowrap shrink-0 ${
-                  activeTab === tab.key
-                    ? 'border-amber-500 text-brand-orange'
-                    : 'border-transparent text-gray-500 hover:text-slate-355'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Tab Content */}
         {activeTab === 'stock' && (
@@ -1609,7 +1581,7 @@ export default function InventoryManagement() {
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={closeSlide}
-              className="flex-1 bg-slate-700 hover:bg-slate-600 text-gray-900 font-semibold py-2.5 rounded-xl transition text-sm">
+              className="flex-1 bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl transition text-sm">
               Cancel
             </button>
             <button type="submit" disabled={isPending}
@@ -1684,7 +1656,7 @@ export default function InventoryManagement() {
                 <button
                   type="button"
                   onClick={() => { setEditingCategory(null); setCategoryForm({ name: '', description: '' }); }}
-                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-gray-900 font-semibold py-1.5 rounded-xl transition text-xs"
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 font-semibold py-1.5 rounded-xl transition text-xs"
                 >
                   Cancel
                 </button>
@@ -1961,8 +1933,8 @@ export default function InventoryManagement() {
             </div>
 
             {/* Modal Footer */}
-            <div className="border-t border-slate-800 bg-white p-4 flex justify-end rounded-b-2xl">
-              <button onClick={() => setGraphItem(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl transition text-xs">
+            <div className="border-t border-gray-200 bg-white p-4 flex justify-end rounded-b-2xl">
+              <button onClick={() => setGraphItem(null)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition text-xs">
                 Close
               </button>
             </div>
@@ -1983,21 +1955,21 @@ export default function InventoryManagement() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-800 p-4 sm:p-5">
+            <div className="flex items-center justify-between border-b border-gray-200 p-4 sm:p-5">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">Adjustment Session Details</h2>
                 <p className="text-xs text-gray-500 mt-1">
-                  Started on <span className="font-semibold text-slate-200">{new Date(activeSessionDetails.createdAt).toLocaleString()}</span>
+                  Started on <span className="font-semibold text-amber-600">{new Date(activeSessionDetails.createdAt).toLocaleString()}</span>
                 </p>
               </div>
-              <button onClick={() => setActiveSessionDetails(null)} className="p-2 hover:bg-slate-800 rounded-xl text-gray-500 hover:text-white transition">
+              <button onClick={() => setActiveSessionDetails(null)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-700 transition">
                 <X size={18} />
               </button>
             </div>
 
             {/* Modal Content */}
             <div className="p-4 sm:p-6 space-y-4 flex-1">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50 border border-slate-800 rounded-xl p-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50 border border-gray-200 rounded-xl p-3.5">
                 <div>
                   <p className="text-[10px] uppercase text-gray-400 tracking-wider">Staff Member</p>
                   <p className="text-sm font-semibold text-gray-900">{activeSessionDetails.userId?.name || 'Staff'}</p>
@@ -2005,20 +1977,20 @@ export default function InventoryManagement() {
                 <div>
                   <p className="text-[10px] uppercase text-gray-400 tracking-wider">Status</p>
                   <p className="text-sm font-semibold">
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${activeSessionDetails.status === 'active' ? 'bg-green-500/10 text-green-400' : 'bg-slate-800 text-slate-450'}`}>
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${activeSessionDetails.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                       {activeSessionDetails.status}
                     </span>
                   </p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase text-gray-400 tracking-wider">Total Adjustments</p>
-                  <p className="text-sm font-semibold text-amber-450">{activeSessionDetails.adjustmentCount} items adjusted</p>
+                  <p className="text-sm font-semibold text-amber-600">{activeSessionDetails.adjustmentCount} items adjusted</p>
                 </div>
               </div>
 
               {activeSessionDetails.notes && (
-                <div className="bg-slate-800/20 border border-slate-800 rounded-xl p-3 text-xs text-gray-500 italic">
-                  <span className="font-semibold text-slate-350 not-italic block mb-0.5">Session Notes:</span>
+                <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-xs text-gray-600">
+                  <span className="font-semibold text-amber-700 block mb-0.5">Session Notes:</span>
                   {activeSessionDetails.notes}
                 </div>
               )}
@@ -2028,38 +2000,40 @@ export default function InventoryManagement() {
                 {movementsPending ? (
                   <div className="text-center py-8 text-gray-400">Loading adjustments list...</div>
                 ) : sessionMovements.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400 italic bg-white/20 rounded-xl border border-slate-800">
+                  <div className="text-center py-8 text-gray-400 italic bg-gray-50 rounded-xl border border-gray-200">
                     No stock movements recorded in this session.
                   </div>
                 ) : (
-                  <div className="border border-slate-800 rounded-xl overflow-hidden bg-gray-50 max-h-64 overflow-y-auto">
+                  <div className="border border-gray-200 rounded-xl overflow-hidden bg-white max-h-72 overflow-y-auto shadow-sm">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
-                        <tr className="bg-white border-b border-slate-800 text-gray-500 font-medium uppercase tracking-wider">
+                        <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-semibold uppercase tracking-wider">
                           <th className="p-3">Inventory Item</th>
-                          <th className="p-3 text-right">Previous Stock</th>
-                          <th className="p-3 text-right">Adjustment</th>
-                          <th className="p-3 text-right">New Stock</th>
+                          <th className="p-3 text-right">Technical Qty</th>
+                          <th className="p-3 text-right">Actual Qty</th>
+                          <th className="p-3 text-right">Variance</th>
                           <th className="p-3">Notes</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-850">
+                      <tbody className="divide-y divide-gray-100">
                         {sessionMovements.map((m) => {
                           const changeQty = m.quantity;
                           const isPositive = changeQty > 0;
+                          const technicalQty = m.previousQty;
+                          const actualQty = m.newQty;
                           return (
-                            <tr key={m._id} className="hover:bg-slate-800/40 transition">
-                              <td className="p-3 font-medium text-slate-300">
+                            <tr key={m._id} className="hover:bg-gray-50/60 transition">
+                              <td className="p-3 font-semibold text-gray-800">
                                 {m.inventoryItemId?.itemName || 'Unknown Item'}
                                 {m.inventoryItemId?.unit && <span className="text-[10px] text-gray-400 ml-1.5">({m.inventoryItemId.unit})</span>}
                               </td>
-                              <td className="p-3 text-right text-gray-400">{m.previousQty}</td>
-                              <td className={`p-3 text-right font-bold ${isPositive ? 'text-green-450' : changeQty < 0 ? 'text-red-400' : 'text-gray-500'}`}>
+                              <td className="p-3 text-right text-gray-500 font-medium">{technicalQty}</td>
+                              <td className="p-3 text-right font-semibold text-gray-800">{actualQty}</td>
+                              <td className={`p-3 text-right font-bold ${isPositive ? 'text-green-600' : changeQty < 0 ? 'text-red-500' : 'text-gray-400'}`}>
                                 {isPositive ? `+${changeQty}` : changeQty}
                               </td>
-                              <td className="p-3 text-right text-slate-350 font-semibold">{m.newQty}</td>
-                              <td className="p-3 text-gray-500 truncate max-w-[200px]" title={m.notes || ''}>
-                                {m.notes || <span className="text-slate-655">—</span>}
+                              <td className="p-3 text-gray-400 truncate max-w-[200px]" title={m.notes || ''}>
+                                {m.notes || <span className="text-gray-300">—</span>}
                               </td>
                             </tr>
                           );
@@ -2072,8 +2046,8 @@ export default function InventoryManagement() {
             </div>
 
             {/* Modal Footer */}
-            <div className="border-t border-slate-800 bg-white p-4 flex justify-end rounded-b-2xl">
-              <button onClick={() => setActiveSessionDetails(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl transition text-xs">
+            <div className="border-t border-gray-200 bg-white p-4 flex justify-end rounded-b-2xl">
+              <button onClick={() => setActiveSessionDetails(null)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition text-xs">
                 Close
               </button>
             </div>
