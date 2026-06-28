@@ -6,7 +6,7 @@ const Supplier = require('../models/Supplier');
 const Store = require('../models/Store');
 const Tenant = require('../models/Tenant');
 const { protect, tenantScope } = require('../middleware/auth');
-const { resolveSelectedStore, buildStoreFilter } = require('../middleware/storeScope');
+const { resolveSelectedStore, buildStoreFilter, blockIfRetailStoreUnderCentralKitchen } = require('../middleware/storeScope');
 const { generatePurchaseOrderPDF } = require('../utils/pdfGenerator');
 const { sendPurchaseOrderEmail } = require('../utils/mailer');
 const { createNotification } = require('../lib/notificationHelpers');
@@ -74,7 +74,7 @@ router.get('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
  * POST /purchase-orders
  * Create new purchase order
  */
-router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/', protect, tenantScope, resolveSelectedStore, blockIfRetailStoreUnderCentralKitchen, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
     const { supplierId, items, expectedDate, notes } = req.body;
@@ -161,7 +161,7 @@ router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) =>
  * PUT /purchase-orders/:id
  * Update purchase order (only if draft or sent status)
  */
-router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) => {
+router.put('/:id', protect, tenantScope, resolveSelectedStore, blockIfRetailStoreUnderCentralKitchen, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
     const { supplierId, items, expectedDate, notes, status } = req.body;
@@ -247,7 +247,7 @@ router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
  * POST /purchase-orders/:id/send
  * Mark purchase order as sent
  */
-router.post('/:id/send', protect, tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/:id/send', protect, tenantScope, resolveSelectedStore, blockIfRetailStoreUnderCentralKitchen, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
 
@@ -360,7 +360,7 @@ router.post('/:id/send', protect, tenantScope, resolveSelectedStore, async (req,
  * DELETE /purchase-orders/:id
  * Delete purchase order (only if draft)
  */
-router.delete('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) => {
+router.delete('/:id', protect, tenantScope, resolveSelectedStore, blockIfRetailStoreUnderCentralKitchen, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
 

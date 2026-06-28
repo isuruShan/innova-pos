@@ -1,0 +1,111 @@
+INNOVA-POS: INVENTORY MANAGEMENT MODULE FUNCTIONALITIES
+
+This document lists all implemented functionalities within the Inventory Management module of the Innova-POS system, extracted from the codebase (pages, components, routes, and server models).
+
+================================================================================
+1. CORE STOCK TRACKING & INVENTORY CRUD
+================================================================================
+* Tracked Stock Level List: View and manage live inventory levels, categorized dynamically (with an option to view uncategorized items).
+* Automatic Stock Status Alerts: Visual indicators of stock health:
+  - Out of Stock (Quantity <= 0)
+  - Critical (Below the minimum threshold)
+  - Low (Below 1.5x of the minimum threshold)
+  - OK (Healthy stock level)
+* Inventory Item Management: Create, edit, view, and delete inventory items (setting item name, base category, minimum threshold, linked suppliers, and unit).
+* Predefined & Custom Units: Support for standard units (Pieces, kg, g, L, mL, oz, lb, box, bag, bottle, can, pack) and custom units.
+* Bulk Export/Import (CSV): 
+  - Export the entire inventory list to a CSV spreadsheet.
+  - Import inventory items in bulk via CSV, automatically resolving/creating missing categories and suppliers on-the-fly, validating fields, and producing downloadable error log spreadsheets if rows fail.
+* Advanced Costing Methods: Track costs using configurable settings:
+  - Weighted Average Cost (WAC)
+  - First-In-First-Out (FIFO)
+  - Last-In-First-Out (LIFO)
+  - Last Cost
+
+================================================================================
+2. MANUAL STOCK ADJUSTMENTS (DRAFT SESSIONS)
+================================================================================
+* Adjustment Sessions (Draft Mode): Start draft sessions where all inventory level changes are staged temporarily to prevent direct database modifications during entry.
+* Reason-Code Tracking: Adjust quantities up or down by assigning specific reasons:
+  - Count Correction
+  - Damage
+  - Expiry
+  - Theft
+  - Spillage
+  - Other
+* Draft Variance Summary: View live counts of altered items, total units changed, and new target levels before committing.
+* Commit/Complete or Discard: Finalize the session to permanently update stock levels (with optional notes) or discard the draft adjustments to revert all modifications.
+
+================================================================================
+3. COUNT SHEETS & STOCKTAKE AUDITS
+================================================================================
+* Count Sheet Templates: Create and edit reusable count sheet templates (e.g., "Weekly Kitchen Audit," "Daily Bar Count") representing checklists of items grouped by shelf placement or section.
+* Active Stocktake Counting: Initiate a stocktake count session for a store using a template.
+* Theoretical vs. Actual Stock: Compare theoretical levels with entered actual quantities.
+* Variance & Loss Valuation: Calculate quantity variance and financial loss/discrepancy value in real-time (Variance * Unit Cost).
+* Stocktake Commitment: Commit the count to overwrite live stock levels, log the audit history, and clear the active session. Or discard the count session to continue with historical levels.
+* Audit History Ledger: Log historical stocktakes showing completed dates, committing user, and total variance valuation.
+
+================================================================================
+4. INTER-STORE STOCK TRANSFERS
+================================================================================
+* Multi-Store Movements: Move stock between store locations, commissaries, or central kitchens.
+* State Workflow: Track transfers through distinct stages: Pending, Shipped, Received, and Rejected.
+* Outgoing Transfers: Select a target destination, add items with quantities, and dispatch the shipment.
+* Incoming Transfers: View incoming shipments, confirm receipt, and edit actual received quantities (handling shortages and recording variance), or reject and return the shipment.
+
+================================================================================
+5. WASTAGE MANAGEMENT
+================================================================================
+* Document Stock Loss: Log product losses due to spillage, damage, or expiry.
+* Wastage Audits:
+  - Spill / Expiry / Damage (Logged on-the-fly)
+  - End of Day Waste (Logged at shift closing)
+* Multi-Type Wastage: Log waste against raw Inventory Items or cooked/finished Menu Items (including specific product variants).
+* Detailed Logs: Log waste by date, item, quantity, notes, and specific reason (Spillage, Expiry, Damage, Other).
+* Wastage Search & Filtering: Filter past logs by date range, type, and sort by created date, logged date, type, or item count.
+
+================================================================================
+6. SUB-RECIPES & PREPARED ITEM PRODUCTION
+================================================================================
+* Prepared Items / Sub-Recipes: Define batch items (e.g., pizza dough, sauces) prepared in-house that are composed of other raw ingredients or prepped sub-recipes.
+* Storage-to-Recipe Multipliers: Set conversion factors between storage units and recipe units (e.g., 1 kg = 1000 g).
+* Ingredient Wastage Yields: Account for preparation shrinkage/wastage percentages per ingredient.
+* Recursive Cost Calculation: Dynamically calculate the batch production cost price based on the WAC or Last Cost of its component ingredients.
+
+================================================================================
+7. MENU-TO-INVENTORY INGREDIENT DEDUCTION (RECIPE DEPLETION)
+================================================================================
+* Ingredients Builder: Link live inventory ingredients to POS menu items (and variants).
+* Quantity Mapping: Define the exact quantity of inventory consumed per unit sold (including ingredient wastage percent).
+* Automated Depletion: Automatically deduct ingredient quantities from live inventory levels in real-time whenever a sale is completed on the POS cashier terminal.
+
+================================================================================
+8. SUPPLIER MANAGEMENT
+================================================================================
+* Supplier Profiles: Register suppliers with details (Contact Person, Email, Phone with country code validation, Address, and notes).
+* Linked Inventory Tracking: Link inventory items to specific suppliers and view/expand linked items lists.
+* CRUD & Search Filters: Create, update, view, and delete supplier profiles, filter by linked item counts, and search by text.
+* CSV Import/Export: Bulk import and export supplier contact sheets.
+
+================================================================================
+9. PURCHASING & PURCHASE ORDERS (POS)
+================================================================================
+* PO Lifecycle Workflows: Transition POs through statuses: Draft, Sent, Partial, Completed, Cancelled.
+* PO Creation: Select a supplier, expected delivery date, specify ordered quantities, unit cost, taxes, and notes.
+* Send POs: Dispatch orders to suppliers, locking edits and making them available for receiving under Goods Receipts.
+* Custom Search & Filtering: Filter POs by status, custom/quick date ranges, and search by PO number or supplier name.
+
+================================================================================
+10. GOODS RECEIPTS & RETURNS (GRN)
+================================================================================
+* Goods Receipt Notes (GRN): Log incoming supplier shipments.
+* Receive against PO: Quick-receive stock by matching incoming shipments to pending purchase orders (sent or partially received POs), pre-filling items and expected quantities.
+* Quantity Verification: Verify and edit actual accepted quantities, highlighting differences between ordered and accepted units.
+* Goods Returns: Create return documents to send incorrect/damaged stock back to suppliers.
+
+================================================================================
+11. LIVE STOCK MOVEMENTS LOG (AUDIT TRIAL)
+================================================================================
+* Detailed Ledger: A complete, immutable chronological audit trail of every stock modification.
+* Detailed Logging: Logs date/time, item, quantity change (positive or negative), previous quantity, new quantity, movement type (Manual Adjustment, Goods Receipt, Goods Return, Waste, Opening Balance), reason code, notes, and the staff member who authorized the change.

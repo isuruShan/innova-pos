@@ -19,6 +19,7 @@ import Badge from '../../components/Badge';
 import Toast from '../../components/Toast';
 import { MANAGER_NAV_GROUPS } from '../../constants/managerLinks';
 import { useStoreContext } from '../../context/StoreContext';
+import { useAuth } from '../../context/AuthContext';
 import { InventoryTableSkeleton } from '../../components/StoreSkeletons';
 import { useListSort } from '../../hooks/useListSort';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
@@ -94,9 +95,26 @@ const FORMULA_LABELS = {
 };
 
 export default function InventoryManagement() {
-  const { selectedStoreId, isStoreReady } = useStoreContext();
+  const { stores, selectedStoreId, isStoreReady } = useStoreContext();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const selectedStore = useMemo(() => {
+    return stores.find((s) => String(s._id) === String(selectedStoreId));
+  }, [stores, selectedStoreId]);
+
+  const hasCentralKitchen = useMemo(() => {
+    return stores.some((s) => s.isCentralKitchen === true);
+  }, [stores]);
+
+  const isStoreUnderCentralKitchen = useMemo(() => {
+    return selectedStore && !selectedStore.isCentralKitchen && hasCentralKitchen;
+  }, [selectedStore, hasCentralKitchen]);
+
+  const isManagerOrInventoryClerk = useMemo(() => {
+    return ['manager', 'inventory_clerk', 'merchant_admin', 'superadmin'].includes(user?.role);
+  }, [user]);
   const getActiveTab = () => {
     if (location.pathname.endsWith('/adjustments')) return 'adjustments';
     if (location.pathname.endsWith('/sessions')) return 'sessions';
@@ -639,12 +657,16 @@ export default function InventoryManagement() {
           }
           actions={activeTab === 'stock' ? [
             { label: 'Export', icon: Download, onClick: handleExportInventory },
-            { label: 'Import', icon: Upload, onClick: () => setImportModalOpen(true) },
+            ...(!isStoreUnderCentralKitchen ? [
+              { label: 'Import', icon: Upload, onClick: () => setImportModalOpen(true) }
+            ] : []),
             { label: 'Manage Categories', icon: SlidersHorizontal, onClick: () => setManageCategoriesOpen(true) },
             ...(addonStatus?.activeAddons?.includes('advanced_inventory') ? [
               { label: 'Manage Storage Areas', icon: SlidersHorizontal, onClick: () => setManageStorageAreasOpen(true) }
             ] : []),
-            { label: 'Add Item', icon: Plus, onClick: openAdd, primary: true },
+            ...(!isStoreUnderCentralKitchen ? [
+              { label: 'Add Item', icon: Plus, onClick: openAdd, primary: true }
+            ] : []),
           ] : activeTab === 'analytics' ? [
             { label: 'Stock Levels', icon: Package, onClick: () => { setActiveTab('stock'); setSelectedCategoryId(null); } },
           ] : []}
@@ -655,13 +677,17 @@ export default function InventoryManagement() {
           {[
             { key: 'stock', label: 'Stock Levels' },
             ...(addonStatus?.activeAddons?.includes('advanced_inventory') ? [
-              { key: 'prep-recipes', label: 'Prep Recipes' },
-              { key: 'count-sheets', label: 'Count Sheets' },
+              ...(isManagerOrInventoryClerk ? [
+                { key: 'prep-recipes', label: 'Prep Recipes' },
+                { key: 'count-sheets', label: 'Count Sheets' }
+              ] : []),
               { key: 'transfers', label: 'Stock Transfers' },
               { key: 'wastage', label: 'Wastage' },
             ] : []),
-            { key: 'adjustments', label: 'Adjustments' },
-            { key: 'sessions', label: 'Adjustment History' },
+            ...(isManagerOrInventoryClerk ? [
+              { key: 'adjustments', label: 'Adjustments' },
+              { key: 'sessions', label: 'Adjustment History' }
+            ] : []),
             { key: 'analytics', label: 'Analytics' },
           ].map(tab => (
             <button
@@ -679,7 +705,15 @@ export default function InventoryManagement() {
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'stock' && (
+        {['adjustments', 'sessions', 'prep-recipes', 'count-sheets'].includes(activeTab) && !isManagerOrInventoryClerk ? (
+          <div className="bg-[var(--pos-panel)] border border-slate-700/60 rounded-2xl p-8 text-center max-w-lg mx-auto my-12">
+            <AlertTriangle className="mx-auto text-yellow-500 mb-4" size={40} />
+            <h3 className="text-lg font-bold text-[var(--pos-text-primary)] mb-2">Access Restricted</h3>
+            <p className="text-slate-400 text-sm">
+              This section is only accessible to users with Manager or Inventory Clerk privileges.
+            </p>
+          </div>
+        ) : activeTab === 'stock' && (
           <>
             {selectedCategoryId === null ? (
               <div className="space-y-4">
@@ -913,11 +947,13 @@ export default function InventoryManagement() {
                               title="View Stock Movements & Graph">
                               <LineChartIcon size={13} />
                             </button>
-                            <button onClick={() => openEdit(item)}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition"
-                              title="Edit Item Details">
-                              <Edit2 size={13} />
-                            </button>
+                            {!isStoreUnderCentralKitchen && (
+                              <button onClick={() => openEdit(item)}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-[var(--pos-text-primary)] hover:bg-slate-700 transition"
+                                title="Edit Item Details">
+                                <Edit2 size={13} />
+                              </button>
+                            )}
                           </div>
                         ),
                       },
@@ -970,11 +1006,13 @@ export default function InventoryManagement() {
                                   title="View Stock Movements & Graph">
                                   <LineChartIcon size={13} />
                                 </button>
-                                <button onClick={() => openEdit(item)}
-                                  className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition"
-                                  title="Edit Item Details">
-                                  <Edit2 size={13} />
-                                </button>
+                                {!isStoreUnderCentralKitchen && (
+                                  <button onClick={() => openEdit(item)}
+                                    className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition"
+                                    title="Edit Item Details">
+                                    <Edit2 size={13} />
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>

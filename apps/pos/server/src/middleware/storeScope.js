@@ -55,8 +55,31 @@ const resolveWriteStoreId = async (req) => {
   return fallback ? normalizeId(fallback._id) : null;
 };
 
+const blockIfRetailStoreUnderCentralKitchen = async (req, res, next) => {
+  try {
+    const storeId = await resolveWriteStoreId(req);
+    if (!storeId) return next();
+
+    const currentStore = await Store.findById(storeId);
+    if (currentStore && !currentStore.isCentralKitchen) {
+      const hasCentralKitchen = await Store.exists({ tenantId: req.tenantId, isCentralKitchen: true });
+      if (hasCentralKitchen) {
+        return res.status(403).json({
+          message: 'Direct replenishment/purchasing operations are disabled at the store level. Replenishment must go through Stock Transfers from the Central Kitchen.',
+          error: 'Direct replenishment/purchasing operations are disabled at the store level. Replenishment must go through Stock Transfers from the Central Kitchen.'
+        });
+      }
+    }
+    next();
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   resolveSelectedStore,
   buildStoreFilter,
   resolveWriteStoreId,
+  blockIfRetailStoreUnderCentralKitchen,
 };
+

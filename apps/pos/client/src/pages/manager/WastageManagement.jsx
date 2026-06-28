@@ -33,13 +33,25 @@ const TYPE_LABELS = {
 };
 
 export default function WastageManagement() {
-  const { selectedStoreId, isStoreReady } = useStoreContext();
+  const { stores, selectedStoreId, isStoreReady } = useStoreContext();
   const [slideOpen, setSlideOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [activeReport, setActiveReport] = useState(null);
+
+  const selectedStore = useMemo(() => {
+    return stores.find((s) => String(s._id) === String(selectedStoreId));
+  }, [stores, selectedStoreId]);
+
+  const hasCentralKitchen = useMemo(() => {
+    return stores.some((s) => s.isCentralKitchen === true);
+  }, [stores]);
+
+  const isStoreUnderCentralKitchen = useMemo(() => {
+    return selectedStore && !selectedStore.isCentralKitchen && hasCentralKitchen;
+  }, [selectedStore, hasCentralKitchen]);
   const [viewMode, setViewMode] = useState(() => {
     const saved = localStorage.getItem('view_mode_wastage_management');
     if (saved) return saved;
@@ -617,10 +629,11 @@ export default function WastageManagement() {
                       <select
                         value={item.itemType || 'inventory'}
                         onChange={e => handleItemChange(idx, 'itemType', e.target.value)}
-                        className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        disabled={isStoreUnderCentralKitchen}
+                        className="w-full bg-[var(--pos-surface-inset)] border border-slate-700 text-[var(--pos-text-primary)] text-xs rounded-lg px-2.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-60"
                       >
                         <option value="inventory">Inventory Item</option>
-                        <option value="menu">Menu Item</option>
+                        {!isStoreUnderCentralKitchen && <option value="menu">Menu Item</option>}
                       </select>
                     </div>
 

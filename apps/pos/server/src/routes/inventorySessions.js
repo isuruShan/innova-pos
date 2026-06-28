@@ -15,7 +15,7 @@ const router = express.Router();
  * GET /inventory-sessions
  * List inventory adjustment sessions (for managers and admins)
  */
-router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin', 'inventory_clerk'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { paginate, search, status, userId } = req.query;
     const filter = { tenantId: req.tenantId, ...buildStoreFilter(req) };
@@ -76,7 +76,7 @@ router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), t
  * GET /inventory-sessions/active
  * Get active session for current user
  */
-router.get('/active', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.get('/active', protect, authorize('manager', 'merchant_admin', 'superadmin', 'inventory_clerk'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const storeId = await resolveWriteStoreId(req);
     if (!storeId) {
@@ -100,7 +100,7 @@ router.get('/active', protect, authorize('manager', 'merchant_admin', 'superadmi
  * POST /inventory-sessions/start
  * Start a new adjustment session
  */
-router.post('/start', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/start', protect, authorize('manager', 'merchant_admin', 'superadmin', 'inventory_clerk'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const storeId = await resolveWriteStoreId(req);
     if (!storeId) {
@@ -138,7 +138,7 @@ router.post('/start', protect, authorize('manager', 'merchant_admin', 'superadmi
  * POST /inventory-sessions/:id/close
  * Complete an adjustment session, commit draft changes to database, and notify admins
  */
-router.post('/:id/close', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/:id/close', protect, authorize('manager', 'merchant_admin', 'superadmin', 'inventory_clerk'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { notes } = req.body;
 
@@ -243,7 +243,7 @@ router.post('/:id/close', protect, authorize('manager', 'merchant_admin', 'super
  * POST /inventory-sessions/:id/cancel
  * Ignore/discard an active adjustment session without applying draft changes
  */
-router.post('/:id/cancel', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/:id/cancel', protect, authorize('manager', 'merchant_admin', 'superadmin', 'inventory_clerk'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const session = await InventorySession.findOne({
       _id: req.params.id,
@@ -294,7 +294,7 @@ router.put('/:id/review', protect, authorize('merchant_admin', 'superadmin'), te
  * POST /inventory-sessions/:id/adjust/:inventoryId
  * Record/edit a draft adjustment within an active session (without modifying inventory yet)
  */
-router.post('/:id/adjust/:inventoryId', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/:id/adjust/:inventoryId', protect, authorize('manager', 'merchant_admin', 'superadmin', 'inventory_clerk'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     const { quantity, reason, notes } = req.body;
 
@@ -365,7 +365,7 @@ router.post('/:id/adjust/:inventoryId', protect, authorize('manager', 'merchant_
  * DELETE /inventory-sessions/:id/adjust/:inventoryId
  * Remove a draft adjustment from an active session
  */
-router.delete('/:id/adjust/:inventoryId', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.delete('/:id/adjust/:inventoryId', protect, authorize('manager', 'merchant_admin', 'superadmin', 'inventory_clerk'), tenantScope, resolveSelectedStore, async (req, res) => {
   try {
     // Verify session is active and belongs to user
     const session = await InventorySession.findOne({

@@ -4,7 +4,7 @@ const Order = require('../models/Order');
 const IngredientLink = require('../models/IngredientLink');
 const StockMovement = require('../models/StockMovement');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
-const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
+const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId, blockIfRetailStoreUnderCentralKitchen } = require('../middleware/storeScope');
 const { parsePageQuery, paginated, parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
@@ -115,7 +115,8 @@ router.get('/', protect, authorize('manager', 'merchant_admin', 'superadmin', 'p
   }
 });
 
-router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin', 'purchasing_officer', 'inventory_clerk', 'commissary_operator'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin', 'purchasing_officer', 'inventory_clerk', 'commissary_operator'), tenantScope, resolveSelectedStore, blockIfRetailStoreUnderCentralKitchen, async (req, res) => {
+
   try {
     const storeId = await resolveWriteStoreId(req);
     if (!storeId) return res.status(400).json({ message: 'No store available for inventory item creation' });

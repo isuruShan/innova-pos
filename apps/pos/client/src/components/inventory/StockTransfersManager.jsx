@@ -84,7 +84,28 @@ export default function StockTransfersManager({ storeId }) {
 
   const otherStores = useMemo(() => stores.filter((s) => String(s._id) !== String(storeId)), [stores, storeId]);
 
-  const openCreate = () => { setTargetStoreId(''); setItemsToSend([]); setFormError(''); setModalOpen(true); };
+  const selectedStore = useMemo(() => {
+    return stores.find((s) => String(s._id) === String(storeId));
+  }, [stores, storeId]);
+
+  const hasCentralKitchen = useMemo(() => {
+    return stores.some((s) => s.isCentralKitchen === true);
+  }, [stores]);
+
+  const isStoreUnderCentralKitchen = useMemo(() => {
+    return selectedStore && !selectedStore.isCentralKitchen && hasCentralKitchen;
+  }, [selectedStore, hasCentralKitchen]);
+
+  const centralKitchenStore = useMemo(() => {
+    return stores.find((s) => s.isCentralKitchen === true);
+  }, [stores]);
+
+  const openCreate = () => {
+    setTargetStoreId(isStoreUnderCentralKitchen && centralKitchenStore ? String(centralKitchenStore._id) : '');
+    setItemsToSend([]);
+    setFormError('');
+    setModalOpen(true);
+  };
   const closeModal = () => { setModalOpen(false); setItemsToSend([]); setNewTransferItemId(''); setNewTransferQty(''); };
 
   const handleAddItem = () => {
@@ -327,11 +348,17 @@ export default function StockTransfersManager({ storeId }) {
 
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1">Request Stock From *</label>
-            <select value={targetStoreId} onChange={(e) => setTargetStoreId(e.target.value)} required
-              className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
-              <option value="">Select source store...</option>
-              {otherStores.map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}
-            </select>
+            {isStoreUnderCentralKitchen && centralKitchenStore ? (
+              <div className="w-full bg-gray-100 border border-gray-350 text-gray-700 rounded-xl px-4 py-2.5 text-sm font-semibold">
+                {centralKitchenStore.name} (Central Kitchen)
+              </div>
+            ) : (
+              <select value={targetStoreId} onChange={(e) => setTargetStoreId(e.target.value)} required
+                className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                <option value="">Select source store...</option>
+                {otherStores.map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}
+              </select>
+            )}
           </div>
 
           <div className="border border-gray-200 rounded-2xl p-4 bg-gray-50/50 space-y-4">
@@ -397,22 +424,34 @@ export default function StockTransfersManager({ storeId }) {
             <p className="text-xs text-gray-500">Verify incoming stock. Adjust received quantities if there are shortages.</p>
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm divide-y divide-gray-100">
               <div className="px-3 py-2 bg-gray-50 text-[10px] font-bold text-gray-500 grid grid-cols-12 gap-2 border-b border-gray-200">
-                <span className="col-span-6">Item Name</span>
-                <span className="col-span-3 text-right">Shipped Qty</span>
-                <span className="col-span-3 text-center">Received Qty</span>
+                <span className="col-span-5">Item Name</span>
+                <span className="col-span-2 text-right">Shipped</span>
+                <span className="col-span-3 text-center">Received</span>
+                <span className="col-span-2 text-right">Status</span>
               </div>
               {receiveModalOpen.items?.map((item) => {
                 const itemIdStr = String(item.inventoryItemId?._id || item.inventoryItemId);
                 const val = receivedQtys[itemIdStr];
+                const receivedNum = val !== undefined && val !== '' ? parseFloat(val) : item.qtySent;
+                const difference = isNaN(receivedNum) ? 0 : receivedNum - item.qtySent;
+
                 return (
                   <div key={itemIdStr} className="px-3 py-2.5 grid grid-cols-12 gap-2 items-center hover:bg-gray-50/50">
-                    <span className="col-span-6 text-xs font-bold text-gray-800 truncate">{item.inventoryItemId?.itemName || item.itemName}</span>
-                    <span className="col-span-3 text-right text-xs font-semibold text-gray-600">{item.qtySent} {item.unit}</span>
+                    <span className="col-span-5 text-xs font-bold text-gray-800 truncate" title={item.inventoryItemId?.itemName || item.itemName}>
+                      {item.inventoryItemId?.itemName || item.itemName}
+                    </span>
+                    <span className="col-span-2 text-right text-xs font-semibold text-gray-600">
+                      {item.qtySent} <span className="text-[9px] text-gray-400">{item.unit}</span>
+                    </span>
                     <div className="col-span-3 flex items-center justify-end gap-1">
-                      <input type="number" step="0.01" min="0" value={val !== undefined ? val : ''} onChange={(e) => setReceivedQtys(prev => ({ ...prev, [itemIdStr]: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
+                      <input type="number" step="0.01" min="0" value={val !== undefined ? val : ''} 
+                        onChange={(e) => setReceivedQtys(prev => ({ ...prev, [itemIdStr]: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
                         className="w-16 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2 py-0.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-amber-500" />
                       <span className="text-[10px] text-gray-400 w-6 truncate">{item.unit}</span>
                     </div>
+                    <span className={`col-span-2 text-right text-xs font-bold ${difference === 0 ? 'text-green-600' : difference < 0 ? 'text-red-500' : 'text-amber-500'}`}>
+                      {difference === 0 ? 'Match' : difference > 0 ? `+${difference.toFixed(2)}` : difference.toFixed(2)}
+                    </span>
                   </div>
                 );
               })}

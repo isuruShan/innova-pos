@@ -1,0 +1,80 @@
+INNOVA-POS: CENTRAL KITCHEN ENABLED FUNCTIONALITIES (STORE LEVEL)
+
+This document outlines the core functional requirements and workflows for store-level
+POS instances when the Central Kitchen/Commissary model is enabled.
+
+================================================================================
+1. STORE-LEVEL STOCKS
+================================================================================
+* Store-Specific Relevance: Store-level inventory lists are strictly local and
+  only display stocks relevant to the specific store.
+* Origin Restriction: The stock levels displayed will ONLY reflect inventory items
+  that have been transferred from the Central Kitchen. Items that have never been
+  sent/received from the Central Kitchen will not appear or will show a zero count.
+
+================================================================================
+2. MANUAL STOCK ADJUSTMENTS
+================================================================================
+* Restrictive Adjustment: Manual adjustments are only allowed on items that were
+  transferred to the store from the Central Kitchen.
+* Role-Based Access Control: This functionality is restricted and only available
+  to users with the Manager or Inventory Clerk roles. Regular cashiers or other
+  staff cannot perform adjustments.
+
+================================================================================
+3. COUNT SHEETS & STOCKTAKE AUDITS
+================================================================================
+* Restrictive Auditing: Count sheets and stocktake sessions can only contain and audit
+  inventory items that were transferred from the Central Kitchen.
+* Role-Based Access Control: Configuring count sheets and executing/committing
+  stocktake audits is restricted to Manager and Inventory Clerk roles only.
+
+================================================================================
+4. INTER-STORE STOCK TRANSFERS WORKFLOW (COMPREHENSIVE WORKFLOW)
+================================================================================
+* A comprehensive, multi-step workflow governs stock transfers between the
+  Central Kitchen and the retail stores.
+
+  Step 1: Store-Level Request
+  - The retail store initiates a "Transfer Request" to order specific inventory
+    quantities from the Central Kitchen.
+
+  Step 2: Status Tracking
+  - Both parties can track the request state in real-time through standard statuses
+    (e.g., Requested -> Approved -> Shipped/In-Transit -> Received/Completed).
+
+  Step 3: Dispatch (Central Kitchen)
+  - The Central Kitchen reviews the request, prepares/packages the items, and
+    dispatches/ships them. The items are marked "In-Transit".
+
+  Step 4: Mismatch Auditing (Store Level)
+  - Upon delivery, the store inspects the shipment and matches the actual items
+    received against the original transfer request quantities to check for shortages
+    or overages.
+
+  Step 5: Transfer GRN (Goods Receipt Note) Completion
+  - The store completes a specialized GRN for that transfer request, committing
+    the verified quantities.
+  - CRITICAL RULE: Store stock count levels are ONLY updated once this Transfer GRN
+    is completed and saved. Until then, items remain in-transit and store stock counts
+    remain unchanged.
+
+================================================================================
+5. WASTAGE MANAGEMENT
+================================================================================
+* Applicable Items: Wastage logging (spillage, damage, expiry) is only applicable
+  for items that have been transferred to the store from the Central Kitchen.
+* No raw/untransferred kitchen items or unrelated products can be logged for wastage
+  at the store level.
+
+================================================================================
+6. MODULE STATUSES (ENABLED / DISABLED)
+================================================================================
+* Supplier Management: DISABLED. Stores do not manage supplier profiles.
+* Purchasing & Purchase Orders (POs): DISABLED. Stores do not issue POs directly
+  to external suppliers (all replenishment happens via Transfer Requests).
+* Goods Receipts & Returns (GRN): DISABLED. General external GRN is disabled.
+  (Only the specialized GRN for Inter-Store Transfer Requests is enabled).
+* Live Stock Movements Log (Audit Trail): ENABLED. Tracks all local stock actions
+  (Transfers In, Manual Adjustments, Audits, Wastage) with timestamps, quantities,
+  previous/new counts, and the user responsible.

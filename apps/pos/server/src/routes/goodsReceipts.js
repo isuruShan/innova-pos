@@ -7,7 +7,7 @@ const Supplier = require('../models/Supplier');
 const StockMovement = require('../models/StockMovement');
 const { protect, tenantScope } = require('../middleware/auth');
 const { recalculateInventoryCosts } = require('../utils/costCalculation');
-const { resolveSelectedStore, buildStoreFilter } = require('../middleware/storeScope');
+const { resolveSelectedStore, buildStoreFilter, blockIfRetailStoreUnderCentralKitchen } = require('../middleware/storeScope');
 
 /**
  * GET /goods-receipts
@@ -75,7 +75,7 @@ router.get('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
  * POST /goods-receipts
  * Create new goods receipt (draft)
  */
-router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/', protect, tenantScope, resolveSelectedStore, blockIfRetailStoreUnderCentralKitchen, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
     const { type, purchaseOrderId, supplierId, items, receiptDate, notes, returnReason } = req.body;
@@ -191,7 +191,7 @@ router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) =>
  * POST /goods-receipts/:id/confirm
  * Confirm goods receipt and update inventory + stock movements + PO status
  */
-router.post('/:id/confirm', protect, tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/:id/confirm', protect, tenantScope, resolveSelectedStore, blockIfRetailStoreUnderCentralKitchen, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
 
@@ -327,7 +327,7 @@ router.post('/:id/confirm', protect, tenantScope, resolveSelectedStore, async (r
  * PUT /goods-receipts/:id
  * Update goods receipt (only if draft)
  */
-router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) => {
+router.put('/:id', protect, tenantScope, resolveSelectedStore, blockIfRetailStoreUnderCentralKitchen, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
     const { items, receiptDate, notes, returnReason } = req.body;
@@ -409,7 +409,7 @@ router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
  * DELETE /goods-receipts/:id
  * Delete goods receipt (only if draft)
  */
-router.delete('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) => {
+router.delete('/:id', protect, tenantScope, resolveSelectedStore, blockIfRetailStoreUnderCentralKitchen, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
 

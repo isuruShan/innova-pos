@@ -39,7 +39,7 @@ const GRN_SORT_OPTIONS = [
 ];
 
 export default function GoodsReceipts() {
-  const { selectedStoreId, isStoreReady } = useStoreContext();
+  const { stores, selectedStoreId, isStoreReady } = useStoreContext();
   const navigate = useNavigate();
   const location = useLocation();
   const activeTab = location.pathname.endsWith('/returns') ? 'returns' : 'receipts';
@@ -68,6 +68,35 @@ export default function GoodsReceipts() {
     if (saved) return saved;
     return window.innerWidth < 768 ? 'grid' : 'table';
   });
+
+  const selectedStore = useMemo(() => {
+    return stores.find((s) => String(s._id) === String(selectedStoreId));
+  }, [stores, selectedStoreId]);
+
+  const hasCentralKitchen = useMemo(() => {
+    return stores.some((s) => s.isCentralKitchen === true);
+  }, [stores]);
+
+  const isStoreUnderCentralKitchen = useMemo(() => {
+    return selectedStore && !selectedStore.isCentralKitchen && hasCentralKitchen;
+  }, [selectedStore, hasCentralKitchen]);
+
+  if (isStoreReady && isStoreUnderCentralKitchen) {
+    return (
+      <div className="min-h-screen bg-[var(--pos-page-bg)]">
+        <Navbar groups={MANAGER_NAV_GROUPS} />
+        <div className="max-w-6xl mx-auto p-4 sm:p-6 flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-6">
+            <FileCheck size={32} className="text-amber-500" />
+          </div>
+          <h2 className="text-xl font-bold text-[var(--pos-text-primary)] mb-2">Module Disabled</h2>
+          <p className="text-slate-400 text-sm max-w-md">
+            Replenishment and inventory for this store are managed via Stock Transfers from the Central Kitchen. Direct goods receipts are not required at the store level.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSetViewMode = (mode) => {
     setViewMode(mode);

@@ -2,7 +2,7 @@ const express = require('express');
 const Supplier = require('../models/Supplier');
 const Inventory = require('../models/Inventory');
 const { protect, authorize, tenantScope, sendRouteError } = require('../middleware/auth');
-const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
+const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId, blockIfRetailStoreUnderCentralKitchen } = require('../middleware/storeScope');
 const { parseSortQuery } = require('../lib/listPagination');
 
 const router = express.Router();
@@ -40,7 +40,7 @@ router.get('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
   }
 });
 
-router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, blockIfRetailStoreUnderCentralKitchen, async (req, res) => {
   try {
     const storeId = await resolveWriteStoreId(req);
     if (!storeId) return res.status(400).json({ message: 'No store available for supplier creation' });
@@ -51,7 +51,7 @@ router.post('/', protect, authorize('manager', 'merchant_admin', 'superadmin'), 
   }
 });
 
-router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, blockIfRetailStoreUnderCentralKitchen, async (req, res) => {
   try {
     const supplier = await Supplier.findOneAndUpdate(
       { _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) },
@@ -65,7 +65,7 @@ router.put('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin')
   }
 });
 
-router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, async (req, res) => {
+router.delete('/:id', protect, authorize('manager', 'merchant_admin', 'superadmin'), tenantScope, resolveSelectedStore, blockIfRetailStoreUnderCentralKitchen, async (req, res) => {
   try {
     const supplier = await Supplier.findOneAndDelete({ _id: req.params.id, tenantId: req.tenantId, ...buildStoreFilter(req) });
     if (!supplier) return res.status(404).json({ message: 'Supplier not found' });

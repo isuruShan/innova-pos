@@ -361,6 +361,18 @@ export default function Navbar({ links = [], groups: groupsProp }) {
   const { data: paidAddons } = useTenantPaidAddons();
   const activePaidAddons = paidAddons || {};
 
+  const selectedStore = useMemo(() => {
+    return stores.find((s) => normalizeStoreId(s._id) === normalizeStoreId(selectedStoreId));
+  }, [stores, selectedStoreId]);
+
+  const hasCentralKitchen = useMemo(() => {
+    return stores.some((s) => s.isCentralKitchen === true);
+  }, [stores]);
+
+  const isStoreUnderCentralKitchen = useMemo(() => {
+    return selectedStore && !selectedStore.isCentralKitchen && hasCentralKitchen;
+  }, [selectedStore, hasCentralKitchen]);
+
   const navGroups = useMemo(() => {
     let baseGroups = [];
     if (groupsProp?.length) {
@@ -371,6 +383,12 @@ export default function Navbar({ links = [], groups: groupsProp }) {
     
     const isManagerOrAdmin = ['manager', 'merchant_admin'].includes(user?.role);
 
+    const blockedPaths = [
+      '/manager/purchase-orders',
+      '/manager/goods-receipts',
+      '/manager/suppliers'
+    ];
+
     return baseGroups
       .map(group => {
         // Filter out groups where group.addon is unsubscribed
@@ -378,14 +396,17 @@ export default function Navbar({ links = [], groups: groupsProp }) {
           const active = activePaidAddons[group.addon] === true || activePaidAddons[group.addon]?.active === true;
           if (!active) return null;
         }
-        
-
 
         const filteredItems = group.items.filter(item => {
           // Filter out items where item.addon is unsubscribed
           if (item.addon) {
             const active = activePaidAddons[item.addon] === true || activePaidAddons[item.addon]?.active === true;
             if (!active) return false;
+          }
+
+          // Filter out supplier, PO, GRN links if store is retail under CK replenishment
+          if (isStoreUnderCentralKitchen && blockedPaths.some(bp => item.to === bp || item.to?.startsWith(`${bp}/`))) {
+            return false;
           }
 
           return true;
@@ -399,7 +420,7 @@ export default function Navbar({ links = [], groups: groupsProp }) {
         };
       })
       .filter(Boolean);
-  }, [groupsProp, links, activePaidAddons, user?.role]);
+  }, [groupsProp, links, activePaidAddons, user?.role, isStoreUnderCentralKitchen]);
 
   return (
     <>
