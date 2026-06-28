@@ -362,7 +362,7 @@ export default function PurchaseOrderFormModal({
                   <button
                     type="button"
                     onClick={handleLoadSuggestions}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 rounded-lg text-xs font-medium transition"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 rounded-lg text-xs font-semibold transition cursor-pointer"
                     disabled={isPending}
                   >
                     <Lightbulb size={13} />
@@ -371,7 +371,7 @@ export default function PurchaseOrderFormModal({
                   <button
                     type="button"
                     onClick={handleAddItem}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg text-xs font-medium transition"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-brand-orange rounded-lg text-xs font-semibold transition cursor-pointer"
                     disabled={isPending}
                   >
                     <Plus size={13} />
@@ -395,7 +395,7 @@ export default function PurchaseOrderFormModal({
                     <div className="grid grid-cols-12 gap-3">
                       {/* Inventory Item Select */}
                       <div className={readOnly ? "col-span-12 md:col-span-6" : "col-span-12 md:col-span-5"}>
-                        <label className="block text-xs text-slate-500 mb-1">Item</label>
+                        <label className="block text-xs text-gray-500 mb-1">Item</label>
                         <InventorySearchSelect
                           value={item.inventoryItemId}
                           inventory={inventory}
@@ -407,7 +407,7 @@ export default function PurchaseOrderFormModal({
 
                       {/* Quantity */}
                       <div className="col-span-6 md:col-span-2">
-                        <label className="block text-xs text-slate-500 mb-1">Qty</label>
+                        <label className="block text-xs text-gray-500 mb-1">Qty</label>
                         <input
                           type="number"
                           min="1"
@@ -421,18 +421,18 @@ export default function PurchaseOrderFormModal({
 
                       {/* Unit */}
                       <div className="col-span-6 md:col-span-2">
-                        <label className="block text-xs text-slate-500 mb-1">Unit</label>
+                        <label className="block text-xs text-gray-500 mb-1">Unit</label>
                         <input
                           type="text"
                           value={item.unit}
                           readOnly
-                          className="w-full bg-gray-100 border border-gray-200 text-gray-500 rounded-lg px-3 py-2 text-sm cursor-not-allowed"
+                          className="w-full bg-gray-100 border border-gray-200 text-gray-550 rounded-lg px-3 py-2 text-sm cursor-not-allowed"
                         />
                       </div>
 
                       {/* Unit Price */}
                       <div className={readOnly ? "col-span-12 md:col-span-2" : "col-span-9 md:col-span-2"}>
-                        <label className="block text-xs text-slate-500 mb-1">Unit Price</label>
+                        <label className="block text-xs text-gray-500 mb-1">Unit Price</label>
                         <input
                           type="number"
                           min="0"
@@ -450,7 +450,7 @@ export default function PurchaseOrderFormModal({
                           <button
                             type="button"
                             onClick={() => handleRemoveItem(index)}
-                            className="w-full h-[38px] bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg flex items-center justify-center transition"
+                            className="w-full h-[38px] bg-red-550/10 hover:bg-red-500/20 text-red-500 rounded-lg flex items-center justify-center transition cursor-pointer"
                             disabled={isPending}
                           >
                             <Trash2 size={14} />
@@ -460,8 +460,8 @@ export default function PurchaseOrderFormModal({
                     </div>
 
                     {/* Item Subtotal */}
-                    <div className="mt-2 text-right text-xs text-slate-400">
-                      Subtotal: <span className="text-amber-400 font-medium">
+                    <div className="mt-2 text-right text-xs text-gray-500">
+                      Subtotal: <span className="text-brand-orange font-bold">
                         {formatCurrency(item.orderedQty * item.unitPrice)}
                       </span>
                     </div>
@@ -486,8 +486,8 @@ export default function PurchaseOrderFormModal({
           {/* Total Amount */}
           {items.length > 0 && (
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-300">Total Order Amount</span>
-              <span className="text-xl font-bold text-amber-400">{formatCurrency(totalAmount)}</span>
+              <span className="text-sm font-semibold text-gray-700">Total Order Amount</span>
+              <span className="text-xl font-bold text-brand-orange">{formatCurrency(totalAmount)}</span>
             </div>
           )}
 

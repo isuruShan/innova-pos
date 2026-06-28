@@ -51,7 +51,7 @@ export default function PageHeader({ title, subtitle, actions = [], storeSelecto
       {/* Right: actions */}
       <div className="flex items-center gap-2 shrink-0">
         {/* On sm+: show ALL actions inline */}
-        <div className="hidden sm:flex items-center gap-2">
+        <div className="hidden sm:!flex items-center gap-2">
           {actions.map((action, i) => (
             <button
               key={i}
@@ -72,7 +72,7 @@ export default function PageHeader({ title, subtitle, actions = [], storeSelecto
         </div>
 
         {/* On mobile: show kebab menu for all actions */}
-        <div className="flex items-center gap-2 sm:hidden">
+        <div className="flex items-center gap-2 sm:!hidden">
           {actions.length > 0 && (
             <div className="relative" ref={menuRef}>
               <button

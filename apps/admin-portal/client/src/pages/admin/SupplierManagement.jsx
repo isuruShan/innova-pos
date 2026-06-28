@@ -46,7 +46,7 @@ function SupplierForm({
 }) {
   const field = (key, label, placeholder, icon, type = 'text') => (
     <div>
-      <label className="block text-sm font-medium text-slate-300 mb-1.5">{label}</label>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
       <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-amber-500">
         {icon}
         <input
@@ -141,23 +141,23 @@ function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded, isW
       {/* Contact details */}
       <div className="space-y-1.5">
         {supplier.phone && (
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <Phone size={11} className="text-slate-600" /> {supplier.phone}
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            <Phone size={11} className="text-gray-400" /> {supplier.phone}
           </div>
         )}
         {supplier.email && (
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <Mail size={11} className="text-slate-600" /> {supplier.email}
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            <Mail size={11} className="text-gray-400" /> {supplier.email}
           </div>
         )}
         {supplier.address && (
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <MapPin size={11} className="text-slate-600" /> {supplier.address}
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            <MapPin size={11} className="text-gray-400" /> {supplier.address}
           </div>
         )}
         {supplier.notes && (
-          <div className="flex items-start gap-2 text-xs text-gray-400 italic border-t border-gray-200/40 pt-2 mt-2">
-            <FileText size={11} className="text-slate-600 mt-0.5 flex-shrink-0" /> {supplier.notes}
+          <div className="flex items-start gap-2 text-xs text-gray-500 italic border-t border-gray-200/40 pt-2 mt-2">
+            <FileText size={11} className="text-gray-400 mt-0.5 flex-shrink-0" /> {supplier.notes}
           </div>
         )}
       </div>
@@ -176,12 +176,12 @@ function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded, isW
       {expanded && supplier.items && (
         <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
           {supplier.items.length === 0 ? (
-            <p className="text-xs text-slate-600 text-center py-2">No inventory items linked</p>
+            <p className="text-xs text-gray-500 text-center py-2">No inventory items linked</p>
           ) : (
             supplier.items.map(item => (
               <div key={item._id} className="flex items-center justify-between text-xs">
-                <span className="text-slate-300">{item.itemName}</span>
-                <span className="text-slate-600">{item.quantity} {item.unit}</span>
+                <span className="text-gray-700">{item.itemName}</span>
+                <span className="text-gray-500 font-medium">{item.quantity} {item.unit}</span>
               </div>
             ))
           )}
@@ -554,7 +554,7 @@ export default function SupplierManagement({ embedded = false }) {
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0 border border-gray-200 rounded-lg bg-gray-50 px-2 py-1">
-              <label htmlFor="supplier-sort" className="text-xs text-slate-500 shrink-0">Sort</label>
+              <label htmlFor="supplier-sort" className="text-xs text-gray-500 shrink-0">Sort</label>
               <select
                 id="supplier-sort"
                 value={sort}
@@ -584,13 +584,13 @@ export default function SupplierManagement({ embedded = false }) {
         {!isStoreReady || isPending ? (
           <SupplierCardsSkeleton />
         ) : suppliers.length === 0 ? (
-          <div className="text-center py-20 text-slate-600">
+          <div className="text-center py-20 text-gray-500">
             <Truck size={52} className="mx-auto mb-4 opacity-20" />
             <p className="text-xl font-semibold">No suppliers yet</p>
             <p className="text-sm mt-1 opacity-60">Add your first supplier to get started</p>
           </div>
         ) : filteredSuppliers.length === 0 ? (
-          <div className="text-center py-20 text-slate-600">
+          <div className="text-center py-20 text-gray-500">
             <Search size={52} className="mx-auto mb-4 opacity-20" />
             <p className="text-xl font-semibold">No matching suppliers</p>
             <p className="text-sm mt-1 opacity-60">Try adjusting your search query</p>
@@ -616,7 +616,7 @@ export default function SupplierManagement({ embedded = false }) {
               {
                 key: 'contact', header: 'Contact Person',
                 mobileSecondary: true,
-                render: (s) => <span className="text-slate-400">{s.contactPerson || '—'}</span>,
+                render: (s) => <span className="text-gray-500">{s.contactPerson || '—'}</span>,
               },
               {
                 key: 'phone', header: 'Phone',
@@ -628,7 +628,7 @@ export default function SupplierManagement({ embedded = false }) {
               },
               {
                 key: 'address', header: 'Address',
-                render: (s) => <span className="text-slate-450 truncate max-w-xs block">{s.address || '—'}</span>,
+                render: (s) => <span className="text-gray-500 truncate max-w-xs block">{s.address || '—'}</span>,
               },
               {
                 key: 'items', header: 'Linked Items',
@@ -648,8 +648,8 @@ export default function SupplierManagement({ embedded = false }) {
                         ) : (
                           s.items.map(item => (
                             <div key={item._id} className="flex items-center justify-between gap-2">
-                              <span className="text-slate-355">{item.itemName}</span>
-                              <span className="text-slate-555 shrink-0">{item.quantity} {item.unit}</span>
+                              <span className="text-gray-700">{item.itemName}</span>
+                              <span className="text-gray-500 font-medium shrink-0">{item.quantity} {item.unit}</span>
                             </div>
                           ))
                         )}
@@ -671,7 +671,7 @@ export default function SupplierManagement({ embedded = false }) {
                       <Edit2 size={13} />
                     </button>
                     <button onClick={() => handleDelete(s._id)}
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition">
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition">
                       <Trash2 size={13} />
                     </button>
                   </div>

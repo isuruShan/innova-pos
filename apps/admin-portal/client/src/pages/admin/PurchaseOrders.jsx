@@ -737,12 +737,12 @@ export default function PurchaseOrders({ embedded = false }) {
                         <div className="bg-gray-50 rounded-lg p-2.5 mt-2">
                           <div className="grid grid-cols-3 gap-2 text-[11px] mb-2">
                             <div>
-                              <p className="text-gray-400">Items</p>
-                              <p className="font-semibold text-slate-300">{order.items.length}</p>
+                              <p className="text-gray-500">Items</p>
+                              <p className="font-semibold text-gray-800">{order.items.length}</p>
                             </div>
                             <div>
-                              <p className="text-gray-400">Quantity</p>
-                              <p className="font-semibold text-slate-300">{orderedCount}</p>
+                              <p className="text-gray-500">Quantity</p>
+                              <p className="font-semibold text-gray-800">{orderedCount}</p>
                             </div>
                             <div>
                               <p className="text-gray-400">Total</p>
@@ -751,8 +751,8 @@ export default function PurchaseOrders({ embedded = false }) {
                           </div>
 
                           {/* Items List (collapsed) */}
-                          <details className="group border-t border-slate-800/40 pt-1.5">
-                            <summary className="text-[10px] text-amber-500 hover:text-brand-orange cursor-pointer font-medium list-none flex items-center gap-1 justify-between">
+                          <details className="group border-t border-gray-200 pt-1.5">
+                            <summary className="text-[10px] text-brand-orange hover:text-brand-orange-hover cursor-pointer font-medium list-none flex items-center gap-1 justify-between">
                               <span>Details ({order.items.length} items)</span>
                               <span className="group-open:rotate-90 transition">▶</span>
                             </summary>
@@ -760,12 +760,12 @@ export default function PurchaseOrders({ embedded = false }) {
                               {order.items.map((item, idx) => (
                                 <div
                                   key={idx}
-                                  className="flex items-center justify-between text-[10px] bg-slate-800/40 rounded px-1.5 py-1"
+                                  className="flex items-center justify-between text-[10px] bg-gray-50 rounded px-1.5 py-1 border border-gray-100"
                                 >
-                                  <span className="text-slate-400 truncate max-w-[120px]">{item.itemName}</span>
+                                  <span className="text-gray-600 truncate max-w-[120px]">{item.itemName}</span>
                                   <div className="flex items-center gap-2">
-                                    <span className="text-gray-400">{item.orderedQty} {item.unit}</span>
-                                    {item.receivedQty > 0 && <span className="text-green-455 font-bold">✓ {item.receivedQty}</span>}
+                                    <span className="text-gray-500">{item.orderedQty} {item.unit}</span>
+                                    {item.receivedQty > 0 && <span className="text-green-600 font-bold">✓ {item.receivedQty}</span>}
                                   </div>
                                 </div>
                               ))}
@@ -775,7 +775,7 @@ export default function PurchaseOrders({ embedded = false }) {
                       </div>
 
                       {order.notes && (
-                        <div className="text-[11px] text-gray-400 bg-slate-800/30 rounded px-2.5 py-1.5 mt-3 italic line-clamp-1">
+                        <div className="text-[11px] text-gray-500 bg-amber-50 border border-amber-100 rounded px-2.5 py-1.5 mt-3 italic line-clamp-1">
                           {order.notes}
                         </div>
                       )}

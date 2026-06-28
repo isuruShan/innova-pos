@@ -767,8 +767,8 @@ export default function GoodsReceipts({ embedded = false }) {
                             <Badge label={receipt.status} variant={receipt.status === 'confirmed' ? 'ok' : 'low'} className="text-[10px] px-1.5 py-0.5" />
                           </div>
                           <div className="space-y-1 text-xs text-gray-500">
-                            <p className="flex items-center gap-1 font-medium text-slate-400">
-                              <Package size={12} className="text-purple-400 shrink-0" />
+                            <p className="flex items-center gap-1 font-medium text-gray-700">
+                              <Package size={12} className="text-purple-500 shrink-0" />
                               {receipt.supplierId?.name || 'Unknown Supplier'}
                             </p>
                             {receipt.purchaseOrderId && (
@@ -826,22 +826,22 @@ export default function GoodsReceipts({ embedded = false }) {
                       <div className="bg-gray-50 rounded-lg p-2.5 mt-2">
                         <div className="grid grid-cols-3 gap-2 text-[11px] mb-2">
                           <div>
-                            <p className="text-gray-400">Items</p>
-                            <p className="font-semibold text-slate-300">{totalItems}</p>
+                            <p className="text-gray-500">Items</p>
+                            <p className="font-semibold text-gray-800">{totalItems}</p>
                           </div>
                           <div>
-                            <p className="text-gray-400">Quantity</p>
-                            <p className="font-semibold text-slate-300">{totalQty}</p>
+                            <p className="text-gray-500">Quantity</p>
+                            <p className="font-semibold text-gray-800">{totalQty}</p>
                           </div>
                           <div>
-                            <p className="text-gray-400">Total</p>
+                            <p className="text-gray-500">Total</p>
                             <p className="font-bold text-amber-500">{formatCurrency(receipt.totalAmount)}</p>
                           </div>
                         </div>
 
                         {/* Items List (collapsed) */}
-                        <details className="group border-t border-slate-800/40 pt-1.5">
-                          <summary className="text-[10px] text-amber-500 hover:text-brand-orange cursor-pointer font-medium list-none flex items-center gap-1 justify-between">
+                        <details className="group border-t border-gray-200 pt-1.5">
+                          <summary className="text-[10px] text-brand-orange hover:text-brand-orange-hover cursor-pointer font-medium list-none flex items-center gap-1 justify-between">
                             <span>Details ({totalItems} items)</span>
                             <span className="group-open:rotate-90 transition">▶</span>
                           </summary>
@@ -849,17 +849,17 @@ export default function GoodsReceipts({ embedded = false }) {
                             {receipt.items.map((item, idx) => (
                               <div
                                 key={idx}
-                                className="flex items-center justify-between text-[10px] bg-slate-800/40 rounded px-1.5 py-1"
+                                className="flex items-center justify-between text-[10px] bg-gray-50 rounded px-1.5 py-1 border border-gray-100"
                               >
-                                <span className="text-slate-400 truncate max-w-[120px]">{item.itemName}</span>
+                                <span className="text-gray-600 truncate max-w-[120px]">{item.itemName}</span>
                                 <div className="flex items-center gap-2">
                                   {receipt.type === 'receipt' ? (
                                     <>
-                                      <span className="text-gray-400">Rcvd: {item.receivedQty}</span>
-                                      <span className="text-green-455">Acpt: {item.acceptedQty}</span>
+                                      <span className="text-gray-500">Rcvd: {item.receivedQty}</span>
+                                      <span className="text-green-600 font-medium">Acpt: {item.acceptedQty}</span>
                                     </>
                                   ) : (
-                                    <span className="text-red-400">Ret: {item.receivedQty}</span>
+                                    <span className="text-red-500">Ret: {item.receivedQty}</span>
                                   )}
                                 </div>
                               </div>

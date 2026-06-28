@@ -826,11 +826,11 @@ export default function InventoryManagement({ embedded = false }) {
                   >
                     <div>
                       <h4 className="font-bold text-base text-gray-900 mb-1">Uncategorized</h4>
-                      <p className="text-slate-400 text-xs line-clamp-2">Items without an assigned category</p>
+                      <p className="text-gray-500 text-xs line-clamp-2">Items without an assigned category</p>
                     </div>
                     <div className="flex items-center justify-between mt-4 border-t border-gray-200/40 pt-3">
                       <span className="text-xs text-gray-400 font-medium">Stock Items</span>
-                      <span className="bg-slate-700/50 text-slate-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-gray-200">
+                      <span className="bg-gray-100 text-gray-700 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-gray-200">
                         {items.filter(item => !item.category).length}
                       </span>
                     </div>
@@ -855,7 +855,7 @@ export default function InventoryManagement({ embedded = false }) {
                         >
                           <div>
                             <h4 className="font-bold text-base text-gray-900 mb-1 truncate">{cat.name}</h4>
-                            <p className="text-slate-500 text-xs line-clamp-2">
+                            <p className="text-gray-500 text-xs line-clamp-2">
                               {cat.description || 'No description provided.'}
                             </p>
                           </div>
@@ -882,7 +882,7 @@ export default function InventoryManagement({ embedded = false }) {
                   >
                     &larr; Back to Categories
                   </button>
-                  <span className="text-slate-600 text-xs font-medium">/</span>
+                  <span className="text-gray-400 text-xs font-medium">/</span>
                   <span className="text-xs font-medium text-gray-900 truncate">
                     {selectedCategoryId === 'uncategorized'
                       ? 'Uncategorized Items'
@@ -911,7 +911,7 @@ export default function InventoryManagement({ embedded = false }) {
                   <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
 
                   <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto border border-gray-200 rounded-lg bg-gray-50 px-2 py-1">
-                    <span className="text-xs text-slate-500 font-sans flex items-center gap-1 shrink-0">
+                    <span className="text-xs text-gray-500 font-sans flex items-center gap-1 shrink-0">
                       <Calculator size={13} /> Costing:
                     </span>
                     <select
@@ -1540,7 +1540,7 @@ export default function InventoryManagement({ embedded = false }) {
       <SlideOver open={slideOpen} onClose={closeSlide} title={editing ? 'Edit Inventory Item' : 'Add Inventory Item'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Item Name *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Item Name *</label>
             <input type="text" value={form.itemName}
               onChange={e => setForm(f => ({ ...f, itemName: e.target.value }))}
               placeholder="e.g. Burger Buns" required
@@ -1548,7 +1548,7 @@ export default function InventoryManagement({ embedded = false }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Category</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
             <select value={form.category}
               onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
               className="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
@@ -1560,7 +1560,7 @@ export default function InventoryManagement({ embedded = false }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Unit *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Unit *</label>
             <select value={form.unit}
               onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
               required
@@ -1582,7 +1582,7 @@ export default function InventoryManagement({ embedded = false }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Minimum Threshold *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Minimum Threshold *</label>
             <input type="number" min="0" step="0.01" value={form.minThreshold}
               onChange={e => setForm(f => ({ ...f, minThreshold: e.target.value }))}
               placeholder="e.g. 50" required
@@ -1592,7 +1592,7 @@ export default function InventoryManagement({ embedded = false }) {
 
           {/* Supplier binding */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               <span className="flex items-center gap-1.5"><Truck size={13} /> Suppliers</span>
             </label>
             {suppliers.length === 0 ? (
@@ -1998,22 +1998,22 @@ export default function InventoryManagement({ embedded = false }) {
                             const isPositive = changeQty > 0;
                             return (
                               <tr key={m._id} className="hover:bg-gray-100/40 transition">
-                                <td className="p-3 text-slate-400 whitespace-nowrap">
-                                  {new Date(m.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
-                                </td>
-                                <td className="p-3">
-                                  <Badge label={badge.label} variant={badge.variant} className="text-[10px] px-1.5 py-0.5" />
-                                </td>
-                                <td className="p-3 text-right text-gray-400 font-medium">{m.previousQty}</td>
-                                <td className={`p-3 text-right font-bold ${isPositive ? 'text-green-500' : changeQty < 0 ? 'text-red-400' : 'text-gray-500'}`}>
-                                  {isPositive ? `+${changeQty}` : changeQty}
-                                </td>
-                                <td className="p-3 text-right text-slate-300 font-semibold">{m.newQty}</td>
-                                <td className="p-3 text-gray-500 max-w-[200px] truncate" title={m.notes || m.reason || ''}>
-                                  {m.notes || m.reason || <span className="text-slate-600">—</span>}
-                                </td>
-                                <td className="p-3 text-slate-300 font-medium">{m.createdBy?.name || 'System'}</td>
-                              </tr>
+                               <td className="p-3 text-gray-500 whitespace-nowrap">
+                                 {new Date(m.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                               </td>
+                               <td className="p-3">
+                                 <Badge label={badge.label} variant={badge.variant} className="text-[10px] px-1.5 py-0.5" />
+                               </td>
+                               <td className="p-3 text-right text-gray-500 font-medium">{m.previousQty}</td>
+                               <td className={`p-3 text-right font-bold ${isPositive ? 'text-green-600' : changeQty < 0 ? 'text-red-500' : 'text-gray-500'}`}>
+                                 {isPositive ? `+${changeQty}` : changeQty}
+                               </td>
+                               <td className="p-3 text-right text-gray-800 font-semibold">{m.newQty}</td>
+                               <td className="p-3 text-gray-500 max-w-[200px] truncate" title={m.notes || m.reason || ''}>
+                                 {m.notes || m.reason || <span className="text-gray-400">—</span>}
+                               </td>
+                               <td className="p-3 text-gray-700 font-medium">{m.createdBy?.name || 'System'}</td>
+                             </tr>
                             );
                           })}
                         </tbody>

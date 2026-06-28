@@ -750,8 +750,8 @@ export default function CategoryManagerModal({ open, onClose, categories, menuIt
         onCancel={() => setDeleteTarget(null)}
       >
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3">
-          <p className="text-sm text-amber-400 flex items-start gap-2">
-            <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-800 flex items-start gap-2 font-medium">
+            <AlertTriangle size={14} className="shrink-0 mt-0.5 text-brand-orange" />
             <span>
               {deleteProductCount > 0
                 ? `${deleteProductCount} product${deleteProductCount !== 1 ? 's' : ''} will be moved to "${PLACEHOLDER_CATEGORY_NAME}".`

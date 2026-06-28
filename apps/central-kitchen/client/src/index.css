@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "/home/isuru/Projects/splitsecond-pos/apps/admin-portal/client/src/**/*.{js,jsx}";
 
 @theme {
   --color-brand-orange: #ea580c;
@@ -86,28 +87,7 @@
   animation: slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-@media (max-width: 767px) {
-  div[class*="fixed"][class*="inset-0"][class*="flex"][class*="items-center"][class*="justify-center"],
-  div[class*="fixed"][class*="inset-0"][class*="flex"][class*="items-end"][class*="justify-center"] {
-    align-items: flex-end !important;
-    justify-content: center !important;
-    padding: 0 !important;
-  }
-  div[class*="fixed"][class*="inset-0"][class*="flex"][class*="items-center"][class*="justify-center"] > *:not(button):not([class*="backdrop"]):not([class*="bg-black"]):not([class*="bg-slate"]),
-  div[class*="fixed"][class*="inset-0"][class*="flex"][class*="items-end"][class*="justify-center"] > *:not(button):not([class*="backdrop"]):not([class*="bg-black"]):not([class*="bg-slate"]) {
-    width: 100% !important;
-    max-width: 100% !important;
-    max-height: 80vh !important;
-    border-top-left-radius: 1.5rem !important;
-    border-top-right-radius: 1.5rem !important;
-    border-bottom-left-radius: 0px !important;
-    border-bottom-right-radius: 0px !important;
-    border-bottom-width: 0px !important;
-    overflow-y: auto !important;
-    margin: 0 !important;
-    animation: slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-  }
-}
+/* Mobile bottom-sheet behavior is handled per-component via CenteredModal and useSwipeDismiss */
 
 /* Hide number input spinners globally */
 input[type="number"]::-webkit-outer-spin-button,
