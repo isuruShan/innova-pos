@@ -285,6 +285,9 @@ importers:
       form-data:
         specifier: ^4.0.2
         version: 4.0.5
+      helmet:
+        specifier: ^8.1.0
+        version: 8.1.0
       jsonwebtoken:
         specifier: ^9.0.3
         version: 9.0.3
