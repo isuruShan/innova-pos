@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getPosUrl } from '@innovapos/app-urls';
+import { getPosUrl, getCentralKitchenUrl } from '@innovapos/app-urls';
 import {
   LayoutDashboard, Users, Palette, CreditCard, Building2,
-  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3, Sparkles, Landmark, Package, ShoppingBag, Percent, Search, MessageSquare, KeyRound, Table
+  ClipboardList, Receipt, Menu, X, LogOut, User, ChevronRight, Store, Wallet, Award, ContactRound, Tag, Bell, BarChart3, Sparkles, Landmark, Package, ShoppingBag, Percent, Search, MessageSquare, KeyRound, Table, UtensilsCrossed
 } from 'lucide-react';
 import api from '../../api/axios';
 import NotificationBell from '../NotificationBell';
@@ -452,6 +452,17 @@ export default function Layout({ children }) {
             >
               <LayoutDashboard size={17} className="shrink-0" />
               Open POS App
+            </a>
+          )}
+          {!isSuperAdmin && getCentralKitchenUrl() && (
+            <a
+              href={getCentralKitchenUrl()}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+            >
+              <UtensilsCrossed size={17} className="shrink-0" />
+              Central Kitchen
             </a>
           )}
         </nav>

@@ -16,13 +16,11 @@
   --pos-panel: #ffffff;
   --pos-surface-inset: #f3f4f6;
   --pos-text-primary: #111827;
-  --pos-selection-text: #ffffff;
   --pos-text-secondary: #374151;
   --pos-text-muted: #6b7280;
   --pos-scrollbar-track: #f3f4f6;
   --pos-scrollbar-thumb: #d1d5db;
   --pos-scrollbar-thumb-hover: #9ca3af;
-  --pos-grid-line: rgba(0, 0, 0, 0.08);
 }
 
 @layer base {
@@ -33,17 +31,20 @@
   body {
     @apply bg-gray-50 text-gray-900 antialiased overscroll-y-contain;
   }
-  input[type="text"], 
-  input[type="email"], 
-  input[type="password"], 
-  input[type="number"], 
-  input[type="date"], 
-  select, 
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  select,
   textarea {
     @apply text-base sm:text-sm;
   }
 }
 
+/**
+ * Thin themed scrollbar matching the admin sidebar (WebKit + Firefox).
+ */
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -73,4 +74,48 @@
   .admin-sidebar-scroll::-webkit-scrollbar-thumb:hover {
     background-color: rgb(255 255 255 / 0.32);
   }
+}
+
+/* Bottom sheet animations */
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (max-width: 767px) {
+  div[class*="fixed"][class*="inset-0"][class*="flex"][class*="items-center"][class*="justify-center"],
+  div[class*="fixed"][class*="inset-0"][class*="flex"][class*="items-end"][class*="justify-center"] {
+    align-items: flex-end !important;
+    justify-content: center !important;
+    padding: 0 !important;
+  }
+  div[class*="fixed"][class*="inset-0"][class*="flex"][class*="items-center"][class*="justify-center"] > *:not(button):not([class*="backdrop"]):not([class*="bg-black"]):not([class*="bg-slate"]),
+  div[class*="fixed"][class*="inset-0"][class*="flex"][class*="items-end"][class*="justify-center"] > *:not(button):not([class*="backdrop"]):not([class*="bg-black"]):not([class*="bg-slate"]) {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 80vh !important;
+    border-top-left-radius: 1.5rem !important;
+    border-top-right-radius: 1.5rem !important;
+    border-bottom-left-radius: 0px !important;
+    border-bottom-right-radius: 0px !important;
+    border-bottom-width: 0px !important;
+    overflow-y: auto !important;
+    margin: 0 !important;
+    animation: slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  }
+}
+
+/* Hide number input spinners globally */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }

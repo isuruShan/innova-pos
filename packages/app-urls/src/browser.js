@@ -55,3 +55,8 @@ export function posPath(path = '/') {
   const p = String(path).startsWith('/') ? path : `/${path}`;
   return `${base}${p}`;
 }
+
+/** Central Kitchen commissary management app. */
+export function getCentralKitchenUrl() {
+  return normalizeBase(env('VITE_CENTRAL_KITCHEN_URL')) || devFallback(5185);
+}
