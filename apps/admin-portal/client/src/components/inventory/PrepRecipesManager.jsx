@@ -7,10 +7,17 @@ import { formatCurrency } from '../../utils/format';
 import { useToast } from '../../hooks/useToast';
 import ViewModeToggle from '../ViewModeToggle';
 
-export default function PrepRecipesManager({ storeId }) {
+import { useEffect } from 'react';
+
+export default function PrepRecipesManager({ storeId, hideHeader = false }) {
   const qc = useQueryClient();
   const { showToast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    window.__openPrepRecipeCreate = openCreate;
+    return () => { delete window.__openPrepRecipeCreate; };
+  }, [openCreate]);
   const [editingItem, setEditingItem] = useState(null);
   const [form, setForm] = useState({
     itemName: '',
@@ -225,19 +232,21 @@ export default function PrepRecipesManager({ storeId }) {
   return (
     <div className="space-y-6">
       {/* Header Info */}
-      <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
-        <div>
-          <h4 className="font-bold text-gray-900 text-sm">Prepared Items & Sub-Recipes</h4>
-          <p className="text-xs text-gray-500">Define batch components (e.g. Burger Sauce) to recursively track nested stock usage.</p>
+      {!hideHeader && (
+        <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
+          <div>
+            <h4 className="font-bold text-gray-900 text-sm">Prepared Items & Sub-Recipes</h4>
+            <p className="text-xs text-gray-500">Define batch components (e.g. Burger Sauce) to recursively track nested stock usage.</p>
+          </div>
+          <button
+            type="button"
+            onClick={openCreate}
+            className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-md transition"
+          >
+            <Plus size={14} /> Add Sub-Recipe
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-md transition"
-        >
-          <Plus size={14} /> Add Sub-Recipe
-        </button>
-      </div>
+      )}
 
       {/* Controls Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">

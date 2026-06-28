@@ -242,6 +242,15 @@ export default function Layout({ children }) {
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
+  // Fetch tenant settings to check for central kitchen
+  const { data: settings } = useQuery({
+    queryKey: ['tenant-settings'],
+    queryFn: () => api.get('/tenant-settings').then((r) => r.data),
+    enabled: !isSuperAdmin && !subscriptionLocked,
+    staleTime: 5 * 60 * 1000,
+  });
+  const isCentralKitchenEnabled = settings?.centralKitchenEnabled === true;
+
   // Filter nav items based on addon subscriptions
   const filteredAdminNavGroups = useMemo(() => {
     if (subscriptionLocked) {
@@ -267,6 +276,10 @@ export default function Layout({ children }) {
       let filteredItems = group.items.filter((item) => {
         if (item.requiresAddon && !activeAddons.includes(item.requiresAddon)) return false;
         
+        if (isCentralKitchenEnabled && ['/suppliers', '/purchase-orders', '/goods-receipts'].includes(item.to)) {
+          return false;
+        }
+
         if (role === 'purchasing_officer') {
           return ['/inventory', '/suppliers', '/purchase-orders', '/goods-receipts'].includes(item.to);
         }
@@ -281,6 +294,10 @@ export default function Layout({ children }) {
           const sub = item.subItems.filter((subItem) => {
             if (subItem.requiresAddon && !activeAddons.includes(subItem.requiresAddon)) return false;
             
+            if (isCentralKitchenEnabled && ['/suppliers', '/purchase-orders', '/goods-receipts'].includes(subItem.to)) {
+              return false;
+            }
+
             if (role === 'purchasing_officer') {
               return ['/suppliers', '/purchase-orders', '/goods-receipts'].includes(subItem.to);
             }
@@ -306,7 +323,7 @@ export default function Layout({ children }) {
         items: filteredItems,
       };
     }).filter((group) => group.items.length > 0);
-  }, [subscriptionLocked, addonStatus?.activeAddons, user?.role]);
+  }, [subscriptionLocked, addonStatus?.activeAddons, user?.role, isCentralKitchenEnabled]);
 
   const merchantNavGroups = isSuperAdmin ? SUPERADMIN_NAV_GROUPS : filteredAdminNavGroups;
   const navGroups = merchantNavGroups;

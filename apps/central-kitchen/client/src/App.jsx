@@ -54,7 +54,7 @@ export default function App() {
                 path="/inventory/:tab"
                 element={
                   <PrivateRoute>
-                    <InventoryManagement />
+                    <InventoryManagement embedded={true} />
                   </PrivateRoute>
                 }
               />
@@ -74,7 +74,7 @@ export default function App() {
                 path="/suppliers"
                 element={
                   <PrivateRoute>
-                    <SupplierManagement />
+                    <SupplierManagement embedded={true} />
                   </PrivateRoute>
                 }
               />
@@ -82,7 +82,7 @@ export default function App() {
                 path="/purchase-orders"
                 element={
                   <PrivateRoute>
-                    <PurchaseOrders />
+                    <PurchaseOrders embedded={true} />
                   </PrivateRoute>
                 }
               />
@@ -90,7 +90,7 @@ export default function App() {
                 path="/goods-receipts"
                 element={
                   <PrivateRoute>
-                    <GoodsReceipts />
+                    <GoodsReceipts embedded={true} />
                   </PrivateRoute>
                 }
               />

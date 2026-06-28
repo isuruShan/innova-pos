@@ -4,7 +4,7 @@ import {
   Plus, Edit2, Package, X, AlertTriangle, Truck, Search,
   LineChart as LineChartIcon, Calendar, User, SlidersHorizontal,
   Eye, Trash2, BarChart2, TrendingDown, TrendingUp, Layers,
-  Download, Upload, Calculator
+  Download, Upload, Calculator, ArrowRightLeft
 } from 'lucide-react';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
@@ -91,7 +91,7 @@ const FORMULA_LABELS = {
   last_cost: 'Last Cost',
 };
 
-export default function InventoryManagement() {
+export default function InventoryManagement({ embedded = false }) {
   const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const location = useLocation();
   const navigate = useNavigate();
@@ -681,29 +681,22 @@ export default function InventoryManagement() {
     </select>
   ) : null;
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      
-      <div className="max-w-7xl mx-auto p-4 sm:p-6">
-        <PageHeader
-          title={
+  const getHeaderInfo = () => {
+    switch (activeTab) {
+      case 'stock':
+        return {
+          title: (
             <span className="flex items-center gap-2">
               Inventory
-              {activeTab === 'stock' && lowCount > 0 && (
+              {lowCount > 0 && (
                 <span className="flex items-center gap-1 bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 text-xs font-semibold px-2.5 py-1 rounded-full">
                   <AlertTriangle size={12} /> {lowCount} need attention
                 </span>
               )}
             </span>
-          }
-          subtitle={
-            activeTab === 'stock' ? `${items.length} items tracked` :
-            activeTab === 'adjustments' ? 'Make manual stock adjustments' :
-            activeTab === 'analytics' ? 'Stock health, category breakdown & consumption' :
-            'View history of stock adjustments'
-          }
-          storeSelector={storeSelector}
-          actions={activeTab === 'stock' ? [
+          ),
+          subtitle: `${items.length} items tracked`,
+          actions: [
             { label: 'Export', icon: Download, onClick: handleExportInventory },
             { label: 'Import', icon: Upload, onClick: () => setImportModalOpen(true) },
             { label: 'Manage Categories', icon: SlidersHorizontal, onClick: () => setManageCategoriesOpen(true) },
@@ -711,9 +704,80 @@ export default function InventoryManagement() {
               { label: 'Manage Storage Areas', icon: SlidersHorizontal, onClick: () => setManageStorageAreasOpen(true) }
             ] : []),
             { label: 'Add Item', icon: Plus, onClick: openAdd, primary: true },
-          ] : activeTab === 'analytics' ? [
+          ],
+        };
+      case 'prep-recipes':
+        return {
+          title: 'Prepared Items & Sub-Recipes',
+          subtitle: 'Define batch components to recursively track nested stock usage.',
+          actions: [
+            { label: 'Add Sub-Recipe', icon: Plus, onClick: () => window.__openPrepRecipeCreate?.(), primary: true },
+          ],
+        };
+      case 'count-sheets':
+        return {
+          title: 'Count Sheets & Audits',
+          subtitle: 'Organize items by shelf placement to count physical stock levels easily.',
+          actions: [
+            { label: 'Add Count Sheet', icon: Plus, onClick: () => window.__openCountSheetCreate?.(), primary: true },
+          ],
+        };
+      case 'transfers':
+        return {
+          title: 'Store Stock Transfers',
+          subtitle: 'Move inventory between store locations or central kitchens.',
+          actions: [
+            { label: 'New Transfer', icon: ArrowRightLeft, onClick: () => window.__openStockTransferCreate?.(), primary: true },
+          ],
+        };
+      case 'wastage':
+        return {
+          title: 'Wastage Management',
+          subtitle: 'Document spillage, expiry, or damage of stock items.',
+          actions: [
+            { label: 'Log Wastage', icon: Plus, onClick: () => window.__openLogWastage?.(), primary: true },
+          ],
+        };
+      case 'adjustments':
+        return {
+          title: 'Stock Adjustments',
+          subtitle: 'Make manual stock adjustments',
+          actions: [],
+        };
+      case 'analytics':
+        return {
+          title: 'Inventory Analytics',
+          subtitle: 'Stock health, category breakdown & consumption',
+          actions: [
             { label: 'Stock Levels', icon: Package, onClick: () => { setActiveTab('stock'); setSelectedCategoryId(null); } },
-          ] : []}
+          ],
+        };
+      case 'sessions':
+        return {
+          title: 'Inventory Sessions',
+          subtitle: 'View history of stock adjustments',
+          actions: [],
+        };
+      default:
+        return {
+          title: 'Inventory',
+          subtitle: '',
+          actions: [],
+        };
+    }
+  };
+
+  const headerInfo = getHeaderInfo();
+
+  return (
+    <div className={embedded ? '' : 'min-h-screen bg-gray-50'}>
+      
+      <div className={embedded ? '' : 'max-w-7xl mx-auto p-4 sm:p-6'}>
+        <PageHeader
+          title={headerInfo.title}
+          subtitle={headerInfo.subtitle}
+          storeSelector={storeSelector}
+          actions={headerInfo.actions}
         />
 
         {/* Tabs */}
@@ -1048,9 +1112,9 @@ export default function InventoryManagement() {
           </>
         )}
 
-        {activeTab === 'prep-recipes' && <PrepRecipesManager storeId={selectedStoreId} />}
-        {activeTab === 'count-sheets' && <CountSheetsManager storeId={selectedStoreId} />}
-        {activeTab === 'transfers' && <StockTransfersManager storeId={selectedStoreId} />}
+        {activeTab === 'prep-recipes' && <PrepRecipesManager storeId={selectedStoreId} hideHeader={true} />}
+        {activeTab === 'count-sheets' && <CountSheetsManager storeId={selectedStoreId} hideHeader={true} />}
+        {activeTab === 'transfers' && <StockTransfersManager storeId={selectedStoreId} hideHeader={true} />}
         {activeTab === 'wastage' && <WastageManagement hideHeader={true} hideStoreSelector={true} hideNavbar={true} />}
 
         {activeTab === 'adjustments' && <InventoryAdjustments />}

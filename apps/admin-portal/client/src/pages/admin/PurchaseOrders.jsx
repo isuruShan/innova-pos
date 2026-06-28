@@ -43,7 +43,7 @@ const PO_SORT_OPTIONS = [
   { value: 'supplierName', label: 'Supplier' },
 ];
 
-export default function PurchaseOrders() {
+export default function PurchaseOrders({ embedded = false }) {
   const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const { user } = useAuth();
 
@@ -351,9 +351,9 @@ export default function PurchaseOrders() {
   ) : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={embedded ? '' : 'min-h-screen bg-gray-50'}>
       
-      <div className="max-w-7xl mx-auto p-4 sm:p-6">
+      <div className={embedded ? '' : 'max-w-7xl mx-auto p-4 sm:p-6'}>
         <PageHeader
           title="Purchase Orders"
           subtitle={`${orders.length} order${orders.length !== 1 ? 's' : ''} · ${suppliers.length} supplier${suppliers.length !== 1 ? 's' : ''}`}

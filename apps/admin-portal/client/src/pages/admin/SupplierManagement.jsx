@@ -191,7 +191,7 @@ function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded, isW
   );
 }
 
-export default function SupplierManagement() {
+export default function SupplierManagement({ embedded = false }) {
   const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const { countryIso: tenantCountryIso } = useTenantCurrency();
   const [slideOpen, setSlideOpen] = useState(false);
@@ -460,9 +460,9 @@ export default function SupplierManagement() {
   ) : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={embedded ? '' : 'min-h-screen bg-gray-50'}>
       
-      <div className="max-w-6xl mx-auto p-4 sm:p-6">
+      <div className={embedded ? '' : 'max-w-6xl mx-auto p-4 sm:p-6'}>
         <PageHeader
           title={<span className="flex items-center gap-2"><Truck size={20} className="text-purple-400" />Suppliers</span>}
           subtitle={search.trim() 

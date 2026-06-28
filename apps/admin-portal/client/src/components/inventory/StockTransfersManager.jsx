@@ -11,12 +11,17 @@ import { useStoreContext } from '../../context/StoreContext';
 import { useToast } from '../../hooks/useToast';
 import ViewModeToggle from '../ViewModeToggle';
 
-export default function StockTransfersManager({ storeId }) {
+export default function StockTransfersManager({ storeId, hideHeader = false }) {
   const qc = useQueryClient();
   const { showToast } = useToast();
   const { stores } = useStoreContext();
 
   const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    window.__openStockTransferCreate = openCreate;
+    return () => { delete window.__openStockTransferCreate; };
+  }, [openCreate]);
   const [receiveModalOpen, setReceiveModalOpen] = useState(null);
   const [selectedTransfer, setSelectedTransfer] = useState(null);
   const [targetStoreId, setTargetStoreId] = useState('');
@@ -222,17 +227,19 @@ export default function StockTransfersManager({ storeId }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
-        <div>
-          <h4 className="font-bold text-gray-900 text-sm">Store Stock Transfers</h4>
-          <p className="text-xs text-gray-500">Move inventory between store locations or central kitchens.</p>
+      {!hideHeader && (
+        <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
+          <div>
+            <h4 className="font-bold text-gray-900 text-sm">Store Stock Transfers</h4>
+            <p className="text-xs text-gray-500">Move inventory between store locations or central kitchens.</p>
+          </div>
+          {otherStores.length > 0 && (
+            <button type="button" onClick={openCreate} className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-md transition">
+              <ArrowRightLeft size={14} /> New Transfer
+            </button>
+          )}
         </div>
-        {otherStores.length > 0 && (
-          <button type="button" onClick={openCreate} className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-md transition">
-            <ArrowRightLeft size={14} /> New Transfer
-          </button>
-        )}
-      </div>
+      )}
 
       {/* Controls Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">

@@ -8,10 +8,17 @@ import { formatCurrency } from '../../utils/format';
 import { useToast } from '../../hooks/useToast';
 import ViewModeToggle from '../ViewModeToggle';
 
-export default function CountSheetsManager({ storeId }) {
+import { useEffect } from 'react';
+
+export default function CountSheetsManager({ storeId, hideHeader = false }) {
   const qc = useQueryClient();
   const { showToast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    window.__openCountSheetCreate = openCreate;
+    return () => { delete window.__openCountSheetCreate; };
+  }, [openCreate]);
   const [sheetName, setSheetName] = useState('');
   const [selectedItems, setSelectedItems] = useState([]);
   const [editingSheet, setEditingSheet] = useState(null);
@@ -355,19 +362,21 @@ export default function CountSheetsManager({ storeId }) {
   return (
     <div className="space-y-6">
       {/* Header Info */}
-      <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
-        <div>
-          <h4 className="font-bold text-gray-900 text-sm">Count Sheets & Audits</h4>
-          <p className="text-xs text-gray-500">Organize items by shelf placement to count physical stock levels easily.</p>
+      {!hideHeader && (
+        <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
+          <div>
+            <h4 className="font-bold text-gray-900 text-sm">Count Sheets & Audits</h4>
+            <p className="text-xs text-gray-500">Organize items by shelf placement to count physical stock levels easily.</p>
+          </div>
+          <button
+            type="button"
+            onClick={openCreate}
+            className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-md transition"
+          >
+            <Plus size={14} /> Add Count Sheet
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-md transition"
-        >
-          <Plus size={14} /> Add Count Sheet
-        </button>
-      </div>
+      )}
 
       {/* Templates Control Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">

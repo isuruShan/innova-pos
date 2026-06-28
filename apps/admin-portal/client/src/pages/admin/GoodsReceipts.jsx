@@ -37,7 +37,7 @@ const GRN_SORT_OPTIONS = [
   { value: 'totalAmount', label: 'Total Amount' },
   { value: 'status', label: 'Status' },
 ];
-export default function GoodsReceipts() {
+export default function GoodsReceipts({ embedded = false }) {
   const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
   const { user } = useAuth();
 
@@ -385,9 +385,9 @@ export default function GoodsReceipts() {
   ) : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={embedded ? '' : 'min-h-screen bg-gray-50'}>
       
-      <div className="max-w-7xl mx-auto p-4 sm:p-6">
+      <div className={embedded ? '' : 'max-w-7xl mx-auto p-4 sm:p-6'}>
         <PageHeader
           title="Goods Receipts & Returns"
           subtitle={`${stats.receipts.total} receipt${stats.receipts.total !== 1 ? 's' : ''} · ${stats.returns.total} return${stats.returns.total !== 1 ? 's' : ''}`}

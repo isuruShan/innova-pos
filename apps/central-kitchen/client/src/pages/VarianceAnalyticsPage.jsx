@@ -181,7 +181,8 @@ export default function VarianceAnalyticsPage() {
                     }
                   }
                 ]}
-                data={activeSession.items || []}
+                rows={activeSession.items || []}
+                rowKey={(item) => item.itemName}
               />
             </div>
           )}
