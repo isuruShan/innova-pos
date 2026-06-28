@@ -67,13 +67,9 @@ export default function PurchaseOrders() {
     return stores.find((s) => String(s._id) === String(selectedStoreId));
   }, [stores, selectedStoreId]);
 
-  const hasCentralKitchen = useMemo(() => {
-    return stores.some((s) => s.isCentralKitchen === true);
-  }, [stores]);
-
   const isStoreUnderCentralKitchen = useMemo(() => {
-    return selectedStore && !selectedStore.isCentralKitchen && hasCentralKitchen;
-  }, [selectedStore, hasCentralKitchen]);
+    return selectedStore && selectedStore.replenishmentModel === 'central_kitchen';
+  }, [selectedStore]);
 
   if (isStoreReady && isStoreUnderCentralKitchen) {
     return (

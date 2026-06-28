@@ -260,6 +260,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
     posMenuLayout: 'default',
     posMenuCols: 4,
     isCentralKitchen: false,
+    replenishmentModel: 'autonomous',
   });
   const [editMeta, setEditMeta] = useState({ deactivatedBySuperadmin: false });
   const [editPhoneCountryIso, setEditPhoneCountryIso] = useState(DEFAULT_COUNTRY_CODE);
@@ -343,6 +344,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
       posMenuLayout: store.posMenuLayout || 'default',
       posMenuCols: store.posMenuCols || 4,
       isCentralKitchen: Boolean(store.isCentralKitchen),
+      replenishmentModel: store.replenishmentModel || 'autonomous',
     };
   };
 
@@ -380,6 +382,12 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
       setError(err.response?.data?.message || 'Could not load store');
     }
   };
+
+  const { data: settings } = useQuery({
+    queryKey: ['tenant-settings'],
+    queryFn: async () => { const { data } = await api.get('/tenant-settings'); return data; },
+  });
+  const isCentralKitchenEnabled = settings?.centralKitchenEnabled === true;
 
   const { data: storeList = { items: [], page: 1, pages: 1, total: 0 }, isLoading, isFetching } = useQuery({
     queryKey: ['admin-stores', tenantIdOverride, storePage, search, statusFilter, paymentMethodsFilter, sortParams],
@@ -700,6 +708,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
         posMenuLayout: editForm.posMenuLayout,
         posMenuCols: editForm.posMenuCols,
         isCentralKitchen: editForm.isCentralKitchen,
+        replenishmentModel: editForm.isCentralKitchen ? 'autonomous' : editForm.replenishmentModel,
       },
     });
   };
@@ -1358,6 +1367,20 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                     <span className="block text-xs text-gray-500 mt-0.5">Serves as a production hub for transfers</span>
                   </span>
                 </label>
+                {isCentralKitchenEnabled && !editForm.isCentralKitchen && (
+                  <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 space-y-2">
+                    <label className="block text-sm font-medium text-gray-800">Replenishment Model</label>
+                    <p className="text-xs text-gray-500">Define if this store procures independently or is replenished by the Central Kitchen.</p>
+                    <select
+                      value={editForm.replenishmentModel || 'autonomous'}
+                      onChange={(e) => setEditForm((p) => ({ ...p, replenishmentModel: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange bg-white"
+                    >
+                      <option value="autonomous">Autonomous (Independent Purchasing)</option>
+                      <option value="central_kitchen">Central Kitchen Replenished (Transfers Only)</option>
+                    </select>
+                  </div>
+                )}
                 {!isSuperAdmin && editMeta.deactivatedBySuperadmin && (
                   <p className="text-xs text-amber-600 mt-2 flex items-start gap-1.5">
                     <span>⚠️</span>

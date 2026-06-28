@@ -45,13 +45,9 @@ export default function WastageManagement() {
     return stores.find((s) => String(s._id) === String(selectedStoreId));
   }, [stores, selectedStoreId]);
 
-  const hasCentralKitchen = useMemo(() => {
-    return stores.some((s) => s.isCentralKitchen === true);
-  }, [stores]);
-
   const isStoreUnderCentralKitchen = useMemo(() => {
-    return selectedStore && !selectedStore.isCentralKitchen && hasCentralKitchen;
-  }, [selectedStore, hasCentralKitchen]);
+    return selectedStore && selectedStore.replenishmentModel === 'central_kitchen';
+  }, [selectedStore]);
   const [viewMode, setViewMode] = useState(() => {
     const saved = localStorage.getItem('view_mode_wastage_management');
     if (saved) return saved;

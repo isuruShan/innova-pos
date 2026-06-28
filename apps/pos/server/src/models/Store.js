@@ -27,6 +27,7 @@ const storeSchema = new mongoose.Schema(
     deactivatedBySuperadmin: { type: Boolean, default: false },
     isDefault: { type: Boolean, default: false },
     isCentralKitchen: { type: Boolean, default: false },
+    replenishmentModel: { type: String, enum: ['autonomous', 'central_kitchen'], default: 'autonomous' },
     /** When true, dine-in orders pick configured tables; tables are locked while an order is active */
     tableManagementEnabled: { type: Boolean, default: false },
     guestWaiterCallCooldownSeconds: { type: Number, default: 300, min: 30, max: 3600 },

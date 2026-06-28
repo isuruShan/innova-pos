@@ -88,13 +88,9 @@ export default function StockTransfersManager({ storeId }) {
     return stores.find((s) => String(s._id) === String(storeId));
   }, [stores, storeId]);
 
-  const hasCentralKitchen = useMemo(() => {
-    return stores.some((s) => s.isCentralKitchen === true);
-  }, [stores]);
-
   const isStoreUnderCentralKitchen = useMemo(() => {
-    return selectedStore && !selectedStore.isCentralKitchen && hasCentralKitchen;
-  }, [selectedStore, hasCentralKitchen]);
+    return selectedStore && selectedStore.replenishmentModel === 'central_kitchen';
+  }, [selectedStore]);
 
   const centralKitchenStore = useMemo(() => {
     return stores.find((s) => s.isCentralKitchen === true);

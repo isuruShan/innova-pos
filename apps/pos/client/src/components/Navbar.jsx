@@ -365,13 +365,9 @@ export default function Navbar({ links = [], groups: groupsProp }) {
     return stores.find((s) => normalizeStoreId(s._id) === normalizeStoreId(selectedStoreId));
   }, [stores, selectedStoreId]);
 
-  const hasCentralKitchen = useMemo(() => {
-    return stores.some((s) => s.isCentralKitchen === true);
-  }, [stores]);
-
   const isStoreUnderCentralKitchen = useMemo(() => {
-    return selectedStore && !selectedStore.isCentralKitchen && hasCentralKitchen;
-  }, [selectedStore, hasCentralKitchen]);
+    return selectedStore && selectedStore.replenishmentModel === 'central_kitchen';
+  }, [selectedStore]);
 
   const navGroups = useMemo(() => {
     let baseGroups = [];

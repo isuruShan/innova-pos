@@ -104,13 +104,9 @@ export default function InventoryManagement() {
     return stores.find((s) => String(s._id) === String(selectedStoreId));
   }, [stores, selectedStoreId]);
 
-  const hasCentralKitchen = useMemo(() => {
-    return stores.some((s) => s.isCentralKitchen === true);
-  }, [stores]);
-
   const isStoreUnderCentralKitchen = useMemo(() => {
-    return selectedStore && !selectedStore.isCentralKitchen && hasCentralKitchen;
-  }, [selectedStore, hasCentralKitchen]);
+    return selectedStore && selectedStore.replenishmentModel === 'central_kitchen';
+  }, [selectedStore]);
 
   const isManagerOrInventoryClerk = useMemo(() => {
     return ['manager', 'inventory_clerk', 'merchant_admin', 'superadmin'].includes(user?.role);

@@ -148,6 +148,19 @@ router.put('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
       }
     }
 
+    if (req.body.centralKitchenEnabled === false && s.centralKitchenEnabled === true) {
+      const Store = require('../models/Store');
+      const StockTransfer = require('../models/StockTransfer');
+      const hasCentralKitchenStore = await Store.exists({ tenantId, isCentralKitchen: true });
+      const hasTransfers = await StockTransfer.exists({ tenantId });
+      if (hasCentralKitchenStore || hasTransfers) {
+        return res.status(400).json({
+          message: 'Cannot disable Central Kitchen settings because you have already set up a Central Kitchen store or created stock transfer records. To disable Central Kitchen, you must first remove any Central Kitchen stores and delete or archive all stock transfers.',
+          error: 'Cannot disable Central Kitchen settings because you have already set up a Central Kitchen store or created stock transfer records.'
+        });
+      }
+    }
+
     const allowed = [
       'businessName', 'logoKey', 'faviconUrl', 'customerTerminalBgKey', 'customerTerminalBgUrl',
       'themePresetId', 'themePresetName', 'themeBaseColor',
@@ -158,7 +171,7 @@ router.put('/', authenticateJWT, authorize('merchant_admin', 'superadmin'), tena
       'paymentMethods', 'currency', 'currencySymbol', 'timezone',
       'receiptHeader', 'receiptFooter', 'printReceiptByDefault', 'receiptPrintAtStatus', 'receiptPrintAtByOrderType',
       'returnsEnabled', 'returnsRequireManagerApproval', 'qrOrdering', 'customerOtpVerificationEnabled',
-      'inventoryCostingMethod',
+      'inventoryCostingMethod', 'centralKitchenEnabled',
     ];
 
     allowed.forEach(k => { if (req.body[k] !== undefined) s[k] = req.body[k]; });
