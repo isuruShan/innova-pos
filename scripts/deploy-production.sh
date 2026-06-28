@@ -62,7 +62,7 @@ if [[ -n "${AZURE_KEY_VAULT_URL:-}" && -n "${AZURE_KEY_VAULT_SECRET_NAME:-}" ]];
     
     if [[ $? -eq 0 && -n "$SECRET_JSON" ]]; then
       # Extract VITE_* variables from the JSON secret
-      VITE_VARS=("VITE_POS_URL" "VITE_ADMIN_URL" "VITE_PUBLIC_WEB_URL" "VITE_QR_ORDER_WEB_ORIGIN" "VITE_API_URL" "VITE_PUBLIC_WEB_API_URL" "VITE_QR_ORDER_API_URL")
+      VITE_VARS=("VITE_POS_URL" "VITE_ADMIN_URL" "VITE_PUBLIC_WEB_URL" "VITE_QR_ORDER_WEB_ORIGIN" "VITE_API_URL" "VITE_PUBLIC_WEB_API_URL" "VITE_QR_ORDER_API_URL" "VITE_CENTRAL_KITCHEN_URL" "VITE_CENTRAL_KITCHEN_API_URL")
       
       LOADED_COUNT=0
       for var_name in "${VITE_VARS[@]}"; do
@@ -157,6 +157,7 @@ pnpm --filter @pos/client run build
 pnpm --filter @admin-portal/client run build
 pnpm --filter @public-web/client run build
 pnpm --filter @qr-order/client run build
+pnpm --filter @central-kitchen/client run build
 
 mkdir -p "$ROOT/logs"
 

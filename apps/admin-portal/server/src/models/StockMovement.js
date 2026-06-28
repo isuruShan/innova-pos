@@ -12,9 +12,15 @@ const stockMovementSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    storeType: {
+      type: String,
+      enum: ['Store', 'CentralKitchen'],
+      default: 'Store',
+      required: true,
+    },
     storeId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Store',
+      refPath: 'storeType',
       required: true,
       index: true,
     },

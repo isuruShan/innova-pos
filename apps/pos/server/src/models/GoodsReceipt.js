@@ -28,9 +28,15 @@ const goodsReceiptSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    storeType: {
+      type: String,
+      enum: ['Store', 'CentralKitchen'],
+      default: 'Store',
+      required: true,
+    },
     storeId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Store',
+      refPath: 'storeType',
       required: true,
       index: true,
     },
@@ -103,5 +109,14 @@ const goodsReceiptSchema = new mongoose.Schema(
 goodsReceiptSchema.index({ tenantId: 1, storeId: 1, type: 1, createdAt: -1 });
 goodsReceiptSchema.index({ tenantId: 1, purchaseOrderId: 1 });
 goodsReceiptSchema.index({ tenantId: 1, supplierId: 1 });
+
+goodsReceiptSchema.pre('save', async function (next) {
+  if (this.isModified('storeId') && this.storeId) {
+    const Store = mongoose.model('Store');
+    const store = await Store.findById(this.storeId).select('_id');
+    this.storeType = store ? 'Store' : 'CentralKitchen';
+  }
+  next();
+});
 
 module.exports = mongoose.model('GoodsReceipt', goodsReceiptSchema);

@@ -10,8 +10,8 @@ set -e
 # Target paths
 NGINX_CONF_DIR="/etc/nginx/conf.d"
 NGINX_SITES_ENABLED="/etc/nginx/sites-enabled"
-PROJECT_ROOT="/home/innovapos-production-env/innova-pos"
-BACKUP_DIR="/home/innovapos-production-env/nginx_backup/$(date +%Y%m%d_%H%M%S)"
+PROJECT_ROOT="/home/azureuser/innova/innova-pos"
+BACKUP_DIR="/home/azureuser/nginx_backup/$(date +%Y%m%d_%H%M%S)"
 
 # Colors
 RED='\033[0;31m'
@@ -50,6 +50,7 @@ rm -f "$NGINX_CONF_DIR/pos.conf"
 rm -f "$NGINX_CONF_DIR/admin-portal.conf"
 rm -f "$NGINX_CONF_DIR/public-web.conf"
 rm -f "$NGINX_CONF_DIR/qr-order.conf"
+rm -f "$NGINX_CONF_DIR/central-kitchen.conf"
 rm -f "$NGINX_CONF_DIR/default.conf"
 
 # Remove standard default server blocks (crucial to prevent hostname routing conflicts)
@@ -73,10 +74,11 @@ if [ ! -d "$SRC_DIR" ]; then
   exit 1
 fi
 
-cp "$SRC_DIR/pos.conf"          "$NGINX_CONF_DIR/pos.conf"
-cp "$SRC_DIR/admin-portal.conf" "$NGINX_CONF_DIR/admin-portal.conf"
-cp "$SRC_DIR/public-web.conf"   "$NGINX_CONF_DIR/public-web.conf"
-cp "$SRC_DIR/qr-order.conf"      "$NGINX_CONF_DIR/qr-order.conf"
+cp "$SRC_DIR/pos.conf"             "$NGINX_CONF_DIR/pos.conf"
+cp "$SRC_DIR/admin-portal.conf"    "$NGINX_CONF_DIR/admin-portal.conf"
+cp "$SRC_DIR/public-web.conf"      "$NGINX_CONF_DIR/public-web.conf"
+cp "$SRC_DIR/qr-order.conf"        "$NGINX_CONF_DIR/qr-order.conf"
+cp "$SRC_DIR/central-kitchen.conf" "$NGINX_CONF_DIR/central-kitchen.conf"
 
 echo -e "Successfully copied Nginx configurations to: ${YELLOW}$NGINX_CONF_DIR${NC}"
 
@@ -103,4 +105,4 @@ fi
 echo -e "\n${GREEN}[5/5] Reloading Nginx service...${NC}"
 systemctl reload nginx
 echo -e "${GREEN}=== Nginx config successfully redeployed! ===${NC}"
-echo -e "Please test the domains: ${YELLOW}pos.cafinity.io${NC}, ${YELLOW}admin.cafinity.io${NC}, and ${YELLOW}cafinity.io${NC}"
+echo -e "Please test the domains: ${YELLOW}pos.cafinity.io${NC}, ${YELLOW}admin.cafinity.io${NC}, ${YELLOW}cafinity.io${NC}, and ${YELLOW}kitchen.cafinity.io${NC}"

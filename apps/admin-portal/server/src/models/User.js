@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: { type: String, enum: ROLES, required: true },
     storeIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Store' }],
+    centralKitchenId: { type: mongoose.Schema.Types.ObjectId, ref: 'CentralKitchen', default: null },
     defaultStoreId: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', default: null },
     /** Paid store slots for this user (1 included; extra stores billed per assignment). */
     licensedStoreSlots: { type: Number, default: 1, min: 1 },

@@ -8,7 +8,8 @@ const inventorySchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    storeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', default: null, index: true },
+    storeType: { type: String, enum: ['Store', 'CentralKitchen'], default: 'Store', required: true, index: true },
+    storeId: { type: mongoose.Schema.Types.ObjectId, refPath: 'storeType', default: null, index: true },
     itemName: { type: String, required: true, trim: true },
     
     // Legacy support (fallback)
@@ -75,5 +76,14 @@ const inventorySchema = new mongoose.Schema(
 
 inventorySchema.index({ tenantId: 1, itemName: 1 });
 inventorySchema.index({ tenantId: 1, storeId: 1, itemName: 1 });
+
+inventorySchema.pre('save', async function (next) {
+  if (this.isModified('storeId') && this.storeId) {
+    const Store = mongoose.model('Store');
+    const store = await Store.findById(this.storeId).select('_id');
+    this.storeType = store ? 'Store' : 'CentralKitchen';
+  }
+  next();
+});
 
 module.exports = mongoose.model('Inventory', inventorySchema);

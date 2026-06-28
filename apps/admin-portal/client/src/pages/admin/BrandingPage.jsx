@@ -761,33 +761,6 @@ export default function BrandingPage() {
 
       {activeSubTab === 'pos' && (
         <>
-          {/* Central Kitchen */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-            <h3 className="font-semibold text-gray-900">Central Kitchen Configuration</h3>
-            <p className="text-sm text-gray-550">
-              Enable Central Kitchen and Commissary features to coordinate stock transfers and manage inventory replenishment centrally.
-            </p>
-            <label className="flex items-start gap-3 cursor-pointer p-4 rounded-xl border border-gray-200 bg-gray-50 hover:border-gray-300 transition-colors">
-              <input
-                type="checkbox"
-                checked={form.centralKitchenEnabled || false}
-                onChange={(e) => set('centralKitchenEnabled')(e.target.checked)}
-                className="w-4 h-4 rounded accent-brand-orange mt-1"
-              />
-              <div>
-                <span className="text-sm font-medium text-gray-800">Enable Central Kitchen Module</span>
-                <span className="block text-xs text-gray-500 mt-1">
-                  Once enabled and active store configurations or stock transfers are created, this setting cannot be disabled.
-                </span>
-              </div>
-            </label>
-            {form.centralKitchenEnabled && (
-              <div className="p-3 bg-amber-50 rounded-lg text-xs text-amber-800 border border-amber-200/50">
-                <strong>Important:</strong> Designating stores as Central Kitchens and transitioning stores to central-kitchen replenished model is active. Reverting to autonomous-only behavior is locked once transfers occur.
-              </div>
-            )}
-          </div>
-
           {/* Receipt */}
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-55 to-white flex items-start gap-3">

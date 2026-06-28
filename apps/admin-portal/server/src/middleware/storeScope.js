@@ -1,4 +1,5 @@
 const Store = require('../models/Store');
+const CentralKitchen = require('../models/CentralKitchen');
 const User = require('../models/User');
 
 const normalizeId = (value) => (value ? String(value) : null);
@@ -8,22 +9,40 @@ const resolveSelectedStore = async (req, res, next) => {
     const rawStoreId = req.headers['x-store-id'];
     if (!rawStoreId || rawStoreId === 'all') {
       req.storeId = null;
+      req.storeType = 'Store';
       return next();
     }
 
     if (!req.tenantId) return res.status(400).json({ message: 'No tenant context for store scoping' });
 
     const storeId = normalizeId(rawStoreId);
-    const store = await Store.findOne({ _id: storeId, tenantId: req.tenantId, isActive: true }).select('_id');
-    if (!store) return res.status(400).json({ message: 'Invalid store selection' });
-
-    const requester = await User.findOne({ _id: req.user.id, tenantId: req.tenantId }).select('storeIds');
-    const userStoreIds = (requester?.storeIds || []).map(normalizeId).filter(Boolean);
-    if (userStoreIds.length && !userStoreIds.includes(storeId)) {
-      return res.status(403).json({ message: 'Access denied for selected store' });
+    let store = await Store.findOne({ _id: storeId, tenantId: req.tenantId, isActive: true }).select('_id');
+    
+    if (store) {
+      req.storeId = storeId;
+      req.storeType = 'Store';
+    } else {
+      const ck = await CentralKitchen.findOne({ _id: storeId, tenantId: req.tenantId, isActive: true }).select('_id');
+      if (!ck) return res.status(400).json({ message: 'Invalid store selection' });
+      req.storeId = storeId;
+      req.storeType = 'CentralKitchen';
     }
 
-    req.storeId = storeId;
+    const requester = await User.findOne({ _id: req.user.id, tenantId: req.tenantId }).select('storeIds centralKitchenId');
+    
+    if (req.storeType === 'CentralKitchen') {
+      if (req.user.role === 'merchant_admin' || req.user.role === 'superadmin') {
+        // Admin access granted
+      } else if (normalizeId(requester?.centralKitchenId) !== storeId) {
+        return res.status(403).json({ message: 'Access denied for selected Central Kitchen' });
+      }
+    } else {
+      const userStoreIds = (requester?.storeIds || []).map(normalizeId).filter(Boolean);
+      if (userStoreIds.length && !userStoreIds.includes(storeId)) {
+        return res.status(403).json({ message: 'Access denied for selected store' });
+      }
+    }
+
     next();
   } catch (err) {
     res.status(400).json({ message: 'Invalid store selection' });

@@ -251,5 +251,31 @@ module.exports = {
       time: true,
       merge_logs: true,
     },
+
+    // ── Central Kitchen Server ───────────────────────────────────────────────
+    {
+      name: 'central-kitchen-server',
+      script: './apps/central-kitchen/server/src/index.js',
+      instances: 1,
+      exec_mode: 'fork',
+      max_memory_restart: '300M',
+      exp_backoff_restart_delay: 100,
+      max_restarts: 10,
+      watch: false,
+      env: {
+        NODE_ENV: 'development',
+        PORT: 5005,
+      },
+      env_production: {
+        NODE_ENV: 'production',
+        PORT: 5005,
+        ...cloudEnv,
+      },
+      error_file: './logs/central-kitchen-error.log',
+      out_file:   './logs/central-kitchen-out.log',
+      log_file:   './logs/central-kitchen-combined.log',
+      time: true,
+      merge_logs: true,
+    },
   ],
 };

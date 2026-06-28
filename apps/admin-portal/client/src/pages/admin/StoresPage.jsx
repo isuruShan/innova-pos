@@ -707,8 +707,8 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
         isActive: editForm.isActive,
         posMenuLayout: editForm.posMenuLayout,
         posMenuCols: editForm.posMenuCols,
-        isCentralKitchen: editForm.isCentralKitchen,
-        replenishmentModel: editForm.isCentralKitchen ? 'autonomous' : editForm.replenishmentModel,
+        isCentralKitchen: false,
+        replenishmentModel: 'autonomous',
       },
     });
   };
@@ -1355,32 +1355,7 @@ export default function StoresPage({ tenantIdOverride = null, workspaceMode = fa
                     <span className="block text-xs text-gray-500 mt-0.5">Inactive stores cannot accept orders</span>
                   </span>
                 </label>
-                <label className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50 cursor-pointer hover:border-gray-300 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={editForm.isCentralKitchen}
-                    onChange={(e) => setEditForm((p) => ({ ...p, isCentralKitchen: e.target.checked }))}
-                    className="w-4 h-4 accent-brand-orange"
-                  />
-                  <span>
-                    <span className="block text-sm font-medium text-gray-800">Central Kitchen / Commissary</span>
-                    <span className="block text-xs text-gray-500 mt-0.5">Serves as a production hub for transfers</span>
-                  </span>
-                </label>
-                {isCentralKitchenEnabled && !editForm.isCentralKitchen && (
-                  <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 space-y-2">
-                    <label className="block text-sm font-medium text-gray-800">Replenishment Model</label>
-                    <p className="text-xs text-gray-500">Define if this store procures independently or is replenished by the Central Kitchen.</p>
-                    <select
-                      value={editForm.replenishmentModel || 'autonomous'}
-                      onChange={(e) => setEditForm((p) => ({ ...p, replenishmentModel: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange bg-white"
-                    >
-                      <option value="autonomous">Autonomous (Independent Purchasing)</option>
-                      <option value="central_kitchen">Central Kitchen Replenished (Transfers Only)</option>
-                    </select>
-                  </div>
-                )}
+
                 {!isSuperAdmin && editMeta.deactivatedBySuperadmin && (
                   <p className="text-xs text-amber-600 mt-2 flex items-start gap-1.5">
                     <span>⚠️</span>
