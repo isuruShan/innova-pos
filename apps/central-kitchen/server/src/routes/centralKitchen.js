@@ -1,5 +1,5 @@
 const express = require('express');
-const CentralKitchen = require('../../../../apps/admin-portal/server/src/models/CentralKitchen');
+const CentralKitchen = require('../../../../../apps/admin-portal/server/src/models/CentralKitchen');
 const { protect, tenantScope } = require('../middleware/auth');
 
 const router = express.Router();

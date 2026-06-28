@@ -1,6 +1,6 @@
 const express = require('express');
-const InventoryCountSession = require('../../../../apps/admin-portal/server/src/models/InventoryCountSession');
-const Inventory = require('../../../../apps/admin-portal/server/src/models/Inventory');
+const InventoryCountSession = require('../../../../../apps/admin-portal/server/src/models/InventoryCountSession');
+const Inventory = require('../../../../../apps/admin-portal/server/src/models/Inventory');
 const { protect, tenantScope } = require('../middleware/auth');
 
 const router = express.Router();
