@@ -780,7 +780,35 @@ export default function InventoryManagement({ embedded = false }) {
           actions={headerInfo.actions}
         />
 
-        {/* Tabs */}
+        {/* Tab Navigation */}
+        <div className="flex gap-0.5 mb-6 border-b border-gray-200 overflow-x-auto no-scrollbar">
+          {[
+            { key: 'stock', label: 'Stock Levels' },
+            { key: 'count-sheets', label: 'Count Sheets', addon: true },
+            { key: 'sessions', label: 'Stocktakes' },
+            { key: 'transfers', label: 'Transfers', addon: true },
+            { key: 'adjustments', label: 'Adjustments' },
+            { key: 'prep-recipes', label: 'Prep Recipes', addon: true },
+            { key: 'analytics', label: 'Analytics' },
+            { key: 'wastage', label: 'Wastage' },
+          ]
+            .filter(tab => !tab.addon || addonStatus?.activeAddons?.includes('advanced_inventory'))
+            .map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap transition border-b-2 -mb-px ${
+                  activeTab === tab.key
+                    ? 'border-brand-orange text-brand-orange'
+                    : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))
+          }
+        </div>
 
         {/* Tab Content */}
         {activeTab === 'stock' && (
@@ -882,14 +910,14 @@ export default function InventoryManagement({ embedded = false }) {
                   
                   <ViewModeToggle mode={viewMode} setMode={handleSetViewMode} />
 
-                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
-                    <span className="text-xs text-gray-500 font-semibold font-sans flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto border border-gray-200 rounded-lg bg-gray-50 px-2 py-1">
+                    <span className="text-xs text-slate-500 font-sans flex items-center gap-1 shrink-0">
                       <Calculator size={13} /> Costing:
                     </span>
                     <select
                       value={selectedFormula}
                       onChange={(e) => setSelectedFormulaState(e.target.value)}
-                      className="bg-white border border-gray-300 text-gray-700 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-brand-orange cursor-pointer"
+                      className="bg-transparent text-gray-900 text-xs focus:outline-none cursor-pointer"
                     >
                       {Object.keys(FORMULA_LABELS).map(key => (
                         <option key={key} value={key}>{FORMULA_LABELS[key]}</option>

@@ -401,7 +401,7 @@ export default function PurchaseOrders({ embedded = false }) {
               placeholder="Search by PO number, supplier, notes..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-gray-900 text-sm focus:outline-none placeholder-slate-650"
+              className="flex-1 bg-transparent text-gray-900 text-sm focus:outline-none placeholder-slate-600"
             />
             {search && (
               <button onClick={() => setSearch('')}><X size={13} className="text-gray-400 hover:text-gray-900" /></button>
@@ -436,7 +436,7 @@ export default function PurchaseOrders({ embedded = false }) {
                     {(fromDate || toDate) && (
                       <button
                         onClick={() => { setFromDate(''); setToDate(''); }}
-                        className="text-[10px] text-amber-455 hover:underline"
+                        className="text-[10px] text-amber-500 hover:underline"
                       >
                         Clear All
                       </button>
@@ -501,25 +501,27 @@ export default function PurchaseOrders({ embedded = false }) {
               )}
             </div>
 
-            <label htmlFor="po-sort" className="text-xs text-slate-550 shrink-0">Sort</label>
-            <select
-              id="po-sort"
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-              className="bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
-            >
-              {PO_SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-              className="p-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition"
-              title={order === 'asc' ? 'Ascending' : 'Descending'}
-            >
-              {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0 border border-gray-200 rounded-lg bg-gray-50 px-2 py-1">
+              <label htmlFor="po-sort" className="text-xs text-slate-500 shrink-0">Sort</label>
+              <select
+                id="po-sort"
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="bg-transparent text-gray-900 text-xs focus:outline-none cursor-pointer"
+              >
+                {PO_SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
+                className="text-gray-500 hover:text-gray-900 transition"
+                title={order === 'asc' ? 'Ascending' : 'Descending'}
+              >
+                {order === 'asc' ? <ArrowUp size={13} /> : <ArrowDown size={13} />}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -574,7 +576,7 @@ export default function PurchaseOrders({ embedded = false }) {
                   {
                     key: 'supplier', header: 'Supplier',
                     mobileSecondary: true,
-                    render: (o) => <span className="text-slate-350">{o.supplierId?.name || 'Unknown Supplier'}</span>,
+                    render: (o) => <span className="text-slate-400">{o.supplierId?.name || 'Unknown Supplier'}</span>,
                   },
                   {
                     key: 'date', header: 'Date Created',
@@ -599,7 +601,7 @@ export default function PurchaseOrders({ embedded = false }) {
                     key: 'amount', header: 'Total Amount',
                     className: 'text-right',
                     headerClassName: 'text-right',
-                    render: (o) => <span className="text-amber-450 font-bold">{formatCurrency(o.totalAmount)}</span>,
+                    render: (o) => <span className="text-amber-500 font-bold">{formatCurrency(o.totalAmount)}</span>,
                   },
                   {
                     key: 'actions', header: '',
@@ -675,7 +677,7 @@ export default function PurchaseOrders({ embedded = false }) {
                               </span>
                             </div>
                             <div className="space-y-1.5 text-xs text-gray-500">
-                              <p className="flex items-center gap-1.5 font-medium text-slate-350">
+                              <p className="flex items-center gap-1.5 font-medium text-slate-400">
                                 <Package size={13} className="text-purple-400 shrink-0" />
                                 {order.supplierId?.name || 'Unknown Supplier'}
                               </p>
@@ -744,13 +746,13 @@ export default function PurchaseOrders({ embedded = false }) {
                             </div>
                             <div>
                               <p className="text-gray-400">Total</p>
-                              <p className="font-bold text-amber-455">{formatCurrency(order.totalAmount)}</p>
+                              <p className="font-bold text-amber-500">{formatCurrency(order.totalAmount)}</p>
                             </div>
                           </div>
 
                           {/* Items List (collapsed) */}
                           <details className="group border-t border-slate-800/40 pt-1.5">
-                            <summary className="text-[10px] text-amber-450 hover:text-brand-orange cursor-pointer font-medium list-none flex items-center gap-1 justify-between">
+                            <summary className="text-[10px] text-amber-500 hover:text-brand-orange cursor-pointer font-medium list-none flex items-center gap-1 justify-between">
                               <span>Details ({order.items.length} items)</span>
                               <span className="group-open:rotate-90 transition">▶</span>
                             </summary>
@@ -760,7 +762,7 @@ export default function PurchaseOrders({ embedded = false }) {
                                   key={idx}
                                   className="flex items-center justify-between text-[10px] bg-slate-800/40 rounded px-1.5 py-1"
                                 >
-                                  <span className="text-slate-350 truncate max-w-[120px]">{item.itemName}</span>
+                                  <span className="text-slate-400 truncate max-w-[120px]">{item.itemName}</span>
                                   <div className="flex items-center gap-2">
                                     <span className="text-gray-400">{item.orderedQty} {item.unit}</span>
                                     {item.receivedQty > 0 && <span className="text-green-455 font-bold">✓ {item.receivedQty}</span>}

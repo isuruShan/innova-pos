@@ -437,7 +437,7 @@ export default function GoodsReceipts({ embedded = false }) {
               placeholder="Search by number, supplier, notes, PO..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-gray-900 text-sm focus:outline-none placeholder-slate-650"
+              className="flex-1 bg-transparent text-gray-900 text-sm focus:outline-none placeholder-slate-600"
             />
             {search && (
               <button onClick={() => setSearch('')}><X size={13} className="text-gray-400 hover:text-gray-900" /></button>
@@ -470,11 +470,11 @@ export default function GoodsReceipts({ embedded = false }) {
               {showFilters && (
                 <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-2xl z-30 p-4 space-y-3">
                   <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-                    <span className="text-xs font-semibold text-slate-350">Filters</span>
+                    <span className="text-xs font-semibold text-slate-400">Filters</span>
                     {(fromDate || toDate || statusFilter.length > 0) && (
                       <button
                         onClick={() => { setFromDate(''); setToDate(''); setStatusFilter([]); }}
-                        className="text-[10px] text-amber-450 hover:underline"
+                        className="text-[10px] text-amber-500 hover:underline"
                       >
                         Clear All
                       </button>
@@ -565,25 +565,27 @@ export default function GoodsReceipts({ embedded = false }) {
               )}
             </div>
 
-            <label htmlFor="grn-sort" className="text-xs text-slate-550 shrink-0 ml-1">Sort</label>
-            <select
-              id="grn-sort"
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-              className="bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
-            >
-              {GRN_SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-              className="p-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition"
-              title={order === 'asc' ? 'Ascending' : 'Descending'}
-            >
-              {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0 border border-gray-200 rounded-lg bg-gray-50 px-2 py-1">
+              <label htmlFor="grn-sort" className="text-xs text-slate-500 shrink-0">Sort</label>
+              <select
+                id="grn-sort"
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="bg-transparent text-gray-900 text-xs focus:outline-none cursor-pointer"
+              >
+                {GRN_SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
+                className="text-gray-500 hover:text-gray-900 transition"
+                title={order === 'asc' ? 'Ascending' : 'Descending'}
+              >
+                {order === 'asc' ? <ArrowUp size={13} /> : <ArrowDown size={13} />}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -624,10 +626,10 @@ export default function GoodsReceipts({ embedded = false }) {
 
         {/* Receipts/Returns List */}
         {receiptsPending ? (
-          <div className="text-center py-16 text-slate-550">Loading...</div>
+          <div className="text-center py-16 text-slate-500">Loading...</div>
         ) : receipts.filter((r) => r.type === (activeTab === 'receipts' ? 'receipt' : 'return')).length === 0 ? (
           <div className="text-center py-16">
-            <Package size={48} className="mx-auto mb-4 text-slate-650 opacity-40" />
+            <Package size={48} className="mx-auto mb-4 text-slate-600 opacity-40" />
             <p className="text-gray-400 text-lg mb-2">
               No {activeTab === 'receipts' ? 'receipts' : 'returns'} found
             </p>
@@ -647,7 +649,7 @@ export default function GoodsReceipts({ embedded = false }) {
           </div>
         ) : sortedAndFiltered.length === 0 ? (
           <div className="text-center py-16">
-            <Search size={48} className="mx-auto mb-4 text-slate-650 opacity-40" />
+            <Search size={48} className="mx-auto mb-4 text-slate-600 opacity-40" />
             <p className="text-slate-555 text-lg mb-2">No results match your filters</p>
             <p className="text-slate-600 text-sm mb-6">Try adjusting your search query, status, or date range</p>
           </div>
@@ -698,7 +700,7 @@ export default function GoodsReceipts({ embedded = false }) {
                     key: 'amount', header: 'Total Amount',
                     className: 'text-right',
                     headerClassName: 'text-right',
-                    render: (r) => <span className="text-amber-450 font-bold">{formatCurrency(r.totalAmount)}</span>,
+                    render: (r) => <span className="text-amber-500 font-bold">{formatCurrency(r.totalAmount)}</span>,
                   },
                   {
                     key: 'actions', header: '',
@@ -765,7 +767,7 @@ export default function GoodsReceipts({ embedded = false }) {
                             <Badge label={receipt.status} variant={receipt.status === 'confirmed' ? 'ok' : 'low'} className="text-[10px] px-1.5 py-0.5" />
                           </div>
                           <div className="space-y-1 text-xs text-gray-500">
-                            <p className="flex items-center gap-1 font-medium text-slate-350">
+                            <p className="flex items-center gap-1 font-medium text-slate-400">
                               <Package size={12} className="text-purple-400 shrink-0" />
                               {receipt.supplierId?.name || 'Unknown Supplier'}
                             </p>
@@ -833,13 +835,13 @@ export default function GoodsReceipts({ embedded = false }) {
                           </div>
                           <div>
                             <p className="text-gray-400">Total</p>
-                            <p className="font-bold text-amber-455">{formatCurrency(receipt.totalAmount)}</p>
+                            <p className="font-bold text-amber-500">{formatCurrency(receipt.totalAmount)}</p>
                           </div>
                         </div>
 
                         {/* Items List (collapsed) */}
                         <details className="group border-t border-slate-800/40 pt-1.5">
-                          <summary className="text-[10px] text-amber-450 hover:text-brand-orange cursor-pointer font-medium list-none flex items-center gap-1 justify-between">
+                          <summary className="text-[10px] text-amber-500 hover:text-brand-orange cursor-pointer font-medium list-none flex items-center gap-1 justify-between">
                             <span>Details ({totalItems} items)</span>
                             <span className="group-open:rotate-90 transition">▶</span>
                           </summary>
@@ -849,7 +851,7 @@ export default function GoodsReceipts({ embedded = false }) {
                                 key={idx}
                                 className="flex items-center justify-between text-[10px] bg-slate-800/40 rounded px-1.5 py-1"
                               >
-                                <span className="text-slate-350 truncate max-w-[120px]">{item.itemName}</span>
+                                <span className="text-slate-400 truncate max-w-[120px]">{item.itemName}</span>
                                 <div className="flex items-center gap-2">
                                   {receipt.type === 'receipt' ? (
                                     <>

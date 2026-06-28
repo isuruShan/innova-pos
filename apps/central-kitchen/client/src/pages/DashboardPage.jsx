@@ -16,7 +16,7 @@ export default function DashboardPage() {
 
   const { data: transfers = [] } = useQuery({
     queryKey: ['ck-transfers', selectedStoreId],
-    queryFn: () => api.get('/advanced-inventory/transfers').then((r) => r.data),
+    queryFn: () => api.get('/advanced-inventory/transfers', { params: { storeId: selectedStoreId } }).then((r) => r.data),
     enabled: !!selectedStoreId,
   });
 

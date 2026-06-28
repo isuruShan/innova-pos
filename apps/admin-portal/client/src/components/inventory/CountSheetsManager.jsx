@@ -14,11 +14,6 @@ export default function CountSheetsManager({ storeId, hideHeader = false }) {
   const qc = useQueryClient();
   const { showToast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
-
-  useEffect(() => {
-    window.__openCountSheetCreate = openCreate;
-    return () => { delete window.__openCountSheetCreate; };
-  }, [openCreate]);
   const [sheetName, setSheetName] = useState('');
   const [selectedItems, setSelectedItems] = useState([]);
   const [editingSheet, setEditingSheet] = useState(null);
@@ -181,6 +176,11 @@ export default function CountSheetsManager({ storeId, hideHeader = false }) {
     setSelectedItems([]);
     setModalOpen(true);
   };
+
+  useEffect(() => {
+    window.__openCountSheetCreate = openCreate;
+    return () => { delete window.__openCountSheetCreate; };
+  }, [openCreate]);
 
   const openEdit = (sheet) => {
     setEditingSheet(sheet);
@@ -402,12 +402,12 @@ export default function CountSheetsManager({ storeId, hideHeader = false }) {
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-          <div className="flex items-center gap-1.5">
-            <label className="text-xs font-semibold text-gray-600">Sort by:</label>
+          <div className="flex items-center gap-1.5 shrink-0 border border-gray-200 rounded-lg bg-gray-50 px-2 py-1">
+            <label className="text-xs text-slate-500 shrink-0">Sort</label>
             <select
               value={sheetSortBy}
               onChange={(e) => setSheetSortBy(e.target.value)}
-              className="bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500 font-semibold cursor-pointer"
+              className="bg-transparent text-gray-900 text-xs focus:outline-none cursor-pointer"
             >
               <option value="name-asc">Name (A-Z)</option>
               <option value="name-desc">Name (Z-A)</option>
@@ -552,12 +552,12 @@ export default function CountSheetsManager({ storeId, hideHeader = false }) {
                   </button>
                 )}
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <label className="text-xs font-semibold text-gray-600">Sort:</label>
+              <div className="flex items-center gap-1.5 shrink-0 border border-gray-200 rounded-lg bg-gray-50 px-2 py-1">
+                <label className="text-xs text-slate-500 shrink-0">Sort</label>
                 <select
                   value={historySortBy}
                   onChange={(e) => setHistorySortBy(e.target.value)}
-                  className="bg-white border border-gray-200 text-gray-900 text-xs rounded-xl px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-amber-500 font-semibold cursor-pointer"
+                  className="bg-transparent text-gray-900 text-xs focus:outline-none cursor-pointer"
                 >
                   <option value="date-desc">Newest First</option>
                   <option value="date-asc">Oldest First</option>

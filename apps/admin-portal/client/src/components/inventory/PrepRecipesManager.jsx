@@ -272,12 +272,12 @@ export default function PrepRecipesManager({ storeId, hideHeader = false }) {
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-          <div className="flex items-center gap-1.5">
-            <label className="text-xs font-semibold text-gray-600">Sort by:</label>
+          <div className="flex items-center gap-1.5 shrink-0 border border-gray-200 rounded-lg bg-gray-50 px-2 py-1">
+            <label className="text-xs text-slate-500 shrink-0">Sort</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500 font-semibold cursor-pointer"
+              className="bg-transparent text-gray-900 text-xs focus:outline-none cursor-pointer"
             >
               <option value="name-asc">Name (A-Z)</option>
               <option value="name-desc">Name (Z-A)</option>

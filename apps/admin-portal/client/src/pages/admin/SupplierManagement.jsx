@@ -492,7 +492,7 @@ export default function SupplierManagement({ embedded = false }) {
               placeholder="Search suppliers by name, contact, phone, email, notes..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-transparent text-gray-900 text-sm focus:outline-none placeholder-slate-655"
+              className="flex-1 bg-transparent text-gray-900 text-sm focus:outline-none placeholder-slate-600"
             />
             {search && (
               <button onClick={() => setSearch('')}><X size={13} className="text-gray-400 hover:text-gray-900" /></button>
@@ -553,29 +553,31 @@ export default function SupplierManagement({ embedded = false }) {
               )}
             </div>
 
-            <label htmlFor="supplier-sort" className="text-xs text-slate-550 shrink-0">Sort</label>
-            <select
-              id="supplier-sort"
-              value={sort}
-              onChange={(e) => {
-                const next = e.target.value;
-                if (next === sort) toggleSort(next);
-                else { setSort(next); setOrder('asc'); }
-              }}
-              className="bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500"
-            >
-              {SUPPLIER_SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
-              className="p-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition"
-              title={order === 'asc' ? 'Ascending' : 'Descending'}
-            >
-              {order === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0 border border-gray-200 rounded-lg bg-gray-50 px-2 py-1">
+              <label htmlFor="supplier-sort" className="text-xs text-slate-500 shrink-0">Sort</label>
+              <select
+                id="supplier-sort"
+                value={sort}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  if (next === sort) toggleSort(next);
+                  else { setSort(next); setOrder('asc'); }
+                }}
+                className="bg-transparent text-gray-900 text-xs focus:outline-none cursor-pointer"
+              >
+                {SUPPLIER_SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setOrder((o) => (o === 'asc' ? 'desc' : 'asc'))}
+                className="text-gray-500 hover:text-gray-900 transition"
+                title={order === 'asc' ? 'Ascending' : 'Descending'}
+              >
+                {order === 'asc' ? <ArrowUp size={13} /> : <ArrowDown size={13} />}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -614,7 +616,7 @@ export default function SupplierManagement({ embedded = false }) {
               {
                 key: 'contact', header: 'Contact Person',
                 mobileSecondary: true,
-                render: (s) => <span className="text-slate-350">{s.contactPerson || '—'}</span>,
+                render: (s) => <span className="text-slate-400">{s.contactPerson || '—'}</span>,
               },
               {
                 key: 'phone', header: 'Phone',
@@ -634,7 +636,7 @@ export default function SupplierManagement({ embedded = false }) {
                   <div className="space-y-1">
                     <button
                       onClick={() => handleToggleItems(s._id)}
-                      className="flex items-center gap-1 text-gray-500 hover:text-amber-450 transition"
+                      className="flex items-center gap-1 text-gray-500 hover:text-amber-500 transition"
                     >
                       {expandedId === s._id ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                       <span className="font-semibold">{s.itemCount || 0} items</span>
@@ -669,7 +671,7 @@ export default function SupplierManagement({ embedded = false }) {
                       <Edit2 size={13} />
                     </button>
                     <button onClick={() => handleDelete(s._id)}
-                      className="p-1.5 rounded-lg text-slate-550 hover:text-red-400 hover:bg-red-500/10 transition">
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition">
                       <Trash2 size={13} />
                     </button>
                   </div>

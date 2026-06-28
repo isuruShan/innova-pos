@@ -1,7 +1,9 @@
-import { StrictMode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { StoreProvider } from './context/StoreContext';
+import { StoreProvider, useStoreContext as useCKStoreContext } from './context/StoreContext';
+import { StoreContext as AdminStoreContext } from '../../../admin-portal/client/src/context/StoreContext';
+import { AuthContext as AdminAuthContext } from '../../../admin-portal/client/src/context/AuthContext';
 import { TenantCurrencyProvider } from '../../../admin-portal/client/src/context/TenantCurrencyContext';
 
 import LoginPage from './pages/LoginPage';
@@ -14,6 +16,38 @@ import InventoryManagement from '../../../admin-portal/client/src/pages/admin/In
 import SupplierManagement from '../../../admin-portal/client/src/pages/admin/SupplierManagement';
 import PurchaseOrders from '../../../admin-portal/client/src/pages/admin/PurchaseOrders';
 import GoodsReceipts from '../../../admin-portal/client/src/pages/admin/GoodsReceipts';
+
+// Bridges admin-portal contexts so shared components receive CK data
+function AdminContextBridge({ children }) {
+  const { selectedStoreId, isStoreReady, stores } = useCKStoreContext();
+  const { user, logout, updateUser } = useAuth();
+
+  // Sync CK auth/store keys → admin keys so admin-portal axios interceptors
+  // can attach the correct Authorization header and x-store-id header
+  useEffect(() => {
+    const ckToken = localStorage.getItem('ck_token');
+    const ckRefresh = localStorage.getItem('ck_refresh_token');
+    if (ckToken) localStorage.setItem('admin_token', ckToken);
+    else localStorage.removeItem('admin_token');
+    if (ckRefresh) localStorage.setItem('admin_refresh_token', ckRefresh);
+    else localStorage.removeItem('admin_refresh_token');
+  }, [user]);
+
+  useEffect(() => {
+    if (selectedStoreId) localStorage.setItem('admin_selected_store', selectedStoreId);
+  }, [selectedStoreId]);
+
+  const storeValue = { stores, selectedStoreId, selectStore: () => {}, isAllStores: false, isStoreReady };
+  const authValue = { user, login: () => {}, logout, updateUser, isSuperAdmin: false, isMerchantAdmin: user?.role === 'merchant_admin' };
+
+  return (
+    <AdminAuthContext.Provider value={authValue}>
+      <AdminStoreContext.Provider value={storeValue}>
+        {children}
+      </AdminStoreContext.Provider>
+    </AdminAuthContext.Provider>
+  );
+}
 
 const PrivateRoute = ({ children }) => {
   const { user } = useAuth();
@@ -32,84 +66,79 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <StoreProvider>
-          <TenantCurrencyProvider>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              
-              <Route
-                path="/dashboard"
-                element={
-                  <PrivateRoute>
-                    <DashboardPage />
-                  </PrivateRoute>
-                }
-              />
-              
-              {/* Inventory Management Tabs */}
-              <Route
-                path="/inventory"
-                element={<Navigate to="/inventory/stock" replace />}
-              />
-              <Route
-                path="/inventory/:tab"
-                element={
-                  <PrivateRoute>
-                    <InventoryManagement embedded={true} />
-                  </PrivateRoute>
-                }
-              />
+          <AdminContextBridge>
+            <TenantCurrencyProvider>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
 
-              {/* Transfers Shortcuts (redirect to Inventory tab) */}
-              <Route
-                path="/transfers"
-                element={<Navigate to="/inventory/transfers" replace />}
-              />
-              <Route
-                path="/transfers/:tab"
-                element={<Navigate to="/inventory/transfers" replace />}
-              />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <PrivateRoute>
+                      <DashboardPage />
+                    </PrivateRoute>
+                  }
+                />
 
-              {/* Procurement */}
-              <Route
-                path="/suppliers"
-                element={
-                  <PrivateRoute>
-                    <SupplierManagement embedded={true} />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/purchase-orders"
-                element={
-                  <PrivateRoute>
-                    <PurchaseOrders embedded={true} />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/goods-receipts"
-                element={
-                  <PrivateRoute>
-                    <GoodsReceipts embedded={true} />
-                  </PrivateRoute>
-                }
-              />
+                {/* Inventory Management Tabs */}
+                <Route path="/inventory" element={<Navigate to="/inventory/stock" replace />} />
+                <Route
+                  path="/inventory/:tab"
+                  element={
+                    <PrivateRoute>
+                      <InventoryManagement embedded={true} />
+                    </PrivateRoute>
+                  }
+                />
 
-              {/* Auditing & Analytics */}
-              <Route
-                path="/variance-analytics"
-                element={
-                  <PrivateRoute>
-                    <VarianceAnalyticsPage />
-                  </PrivateRoute>
-                }
-              />
+                {/* Transfers shortcuts → Inventory transfers tab */}
+                <Route path="/transfers" element={<Navigate to="/inventory/transfers" replace />} />
+                <Route path="/transfers/:tab" element={<Navigate to="/inventory/transfers" replace />} />
 
-              {/* Catch-all */}
-              <Route path="/" element={<RootRedirect />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </TenantCurrencyProvider>
+                {/* Procurement */}
+                <Route
+                  path="/suppliers"
+                  element={
+                    <PrivateRoute>
+                      <SupplierManagement embedded={true} />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/purchase-orders"
+                  element={
+                    <PrivateRoute>
+                      <PurchaseOrders embedded={true} />
+                    </PrivateRoute>
+                  }
+                />
+                {/* GRN: component navigates internally to /goods-receipts/:tab */}
+                <Route path="/goods-receipts" element={<Navigate to="/goods-receipts/receipts" replace />} />
+                <Route
+                  path="/goods-receipts/:tab"
+                  element={
+                    <PrivateRoute>
+                      <GoodsReceipts embedded={true} />
+                    </PrivateRoute>
+                  }
+                />
+
+                {/* Auditing & Analytics */}
+                <Route
+                  path="/variance-analytics"
+                  element={
+                    <PrivateRoute>
+                      <VarianceAnalyticsPage />
+                    </PrivateRoute>
+                  }
+                />
+
+                {/* Catch-all */}
+                <Route path="/" element={<RootRedirect />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </TenantCurrencyProvider>
+          </AdminContextBridge>
         </StoreProvider>
       </AuthProvider>
     </BrowserRouter>
