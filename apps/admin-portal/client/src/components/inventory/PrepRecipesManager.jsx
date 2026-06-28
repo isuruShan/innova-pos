@@ -250,7 +250,7 @@ export default function PrepRecipesManager({ storeId }) {
             placeholder="Search sub-recipes..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-xl pl-9 pr-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-450"
+            className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-xl pl-9 pr-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-500"
           />
           {searchQuery && (
             <button
@@ -264,7 +264,7 @@ export default function PrepRecipesManager({ storeId }) {
 
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
           <div className="flex items-center gap-1.5">
-            <label className="text-xs font-semibold text-gray-550">Sort by:</label>
+            <label className="text-xs font-semibold text-gray-600">Sort by:</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
@@ -332,7 +332,7 @@ export default function PrepRecipesManager({ storeId }) {
                           <button
                             type="button"
                             onClick={() => deleteMutation.mutate(item._id)}
-                            className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-red-650 border border-gray-200"
+                            className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-red-600 border border-gray-200"
                           >
                             <Trash2 size={13} />
                           </button>
@@ -454,36 +454,36 @@ export default function PrepRecipesManager({ storeId }) {
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-[10px] font-bold text-gray-550 mb-1">Storage Unit</label>
+              <label className="block text-[10px] font-bold text-gray-600 mb-1">Storage Unit</label>
               <input
                 type="text"
                 value={form.storageUnit}
                 onChange={(e) => setForm((f) => ({ ...f, storageUnit: e.target.value }))}
                 placeholder="e.g. kg, L"
                 required
-                className="w-full bg-gray-55 border border-gray-300 text-gray-900 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-gray-550 mb-1">Recipe Unit</label>
+              <label className="block text-[10px] font-bold text-gray-600 mb-1">Recipe Unit</label>
               <input
                 type="text"
                 value={form.recipeUnit}
                 onChange={(e) => setForm((f) => ({ ...f, recipeUnit: e.target.value }))}
                 placeholder="e.g. g, ml"
                 required
-                className="w-full bg-gray-55 border border-gray-300 text-gray-900 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-gray-550 mb-1">Storage $\rightarrow$ Recipe Factor</label>
+              <label className="block text-[10px] font-bold text-gray-600 mb-1">Storage $\rightarrow$ Recipe Factor</label>
               <input
                 type="number"
                 value={form.storageToRecipeMultiplier}
                 onChange={(e) => setForm((f) => ({ ...f, storageToRecipeMultiplier: Math.max(1, parseFloat(e.target.value) || 1) }))}
                 placeholder="e.g. 1000"
                 required
-                className="w-full bg-gray-55 border border-gray-300 text-gray-900 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-right"
+                className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-right"
               />
             </div>
           </div>
@@ -518,7 +518,7 @@ export default function PrepRecipesManager({ storeId }) {
                         <button
                           type="button"
                           onClick={() => handleRemoveIngredient(idx)}
-                          className="text-gray-400 hover:text-red-655 p-1 ml-1"
+                          className="text-gray-400 hover:text-red-700 p-1 ml-1"
                         >
                           <X size={14} />
                         </button>

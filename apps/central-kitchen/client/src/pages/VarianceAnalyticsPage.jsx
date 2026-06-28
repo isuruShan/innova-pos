@@ -34,7 +34,7 @@ export default function VarianceAnalyticsPage() {
           <BarChart3 size={24} />
         </div>
         <div>
-          <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider text-slate-500">Audit Discrepancy Analytics</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">Audit Discrepancy Analytics</h2>
           <p className="text-xs text-gray-500 mt-1">
             Compare actual counted inventory levels against theoretical stock depletions (sales, branch shipments, recipe prep) to identify loss and processing variance.
           </p>
@@ -44,7 +44,7 @@ export default function VarianceAnalyticsPage() {
       <div className="grid lg:grid-cols-3 gap-6 items-start">
         {/* Audit Sessions List (Left) */}
         <div className="lg:col-span-1 bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4">
-          <h3 className="font-bold text-gray-900 text-xs uppercase tracking-wider text-slate-500">Completed Audits</h3>
+          <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500">Completed Audits</h3>
           {sessions.length === 0 ? (
             <p className="text-gray-400 text-xs py-8 text-center">No completed audits found to analyze.</p>
           ) : (
@@ -76,7 +76,7 @@ export default function VarianceAnalyticsPage() {
                   </div>
 
                   {session.metrics.negativeVarianceCost > 0 && (
-                    <div className="text-[10px] text-red-650 font-semibold flex items-center gap-1">
+                    <div className="text-[10px] text-red-600 font-semibold flex items-center gap-1">
                       <ShieldAlert size={10} />
                       Loss: -{formatCurrency(session.metrics.negativeVarianceCost)}
                     </div>

@@ -690,7 +690,7 @@ export default function InventoryManagement() {
             <span className="flex items-center gap-2">
               Inventory
               {activeTab === 'stock' && lowCount > 0 && (
-                <span className="flex items-center gap-1 bg-yellow-500/20 text-yellow-450 border border-yellow-500/30 text-xs font-semibold px-2.5 py-1 rounded-full">
+                <span className="flex items-center gap-1 bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 text-xs font-semibold px-2.5 py-1 rounded-full">
                   <AlertTriangle size={12} /> {lowCount} need attention
                 </span>
               )}
@@ -734,11 +734,11 @@ export default function InventoryManagement() {
                   >
                     <div>
                       <h4 className="font-bold text-base text-gray-900 mb-1">Uncategorized</h4>
-                      <p className="text-slate-405 text-xs line-clamp-2">Items without an assigned category</p>
+                      <p className="text-slate-400 text-xs line-clamp-2">Items without an assigned category</p>
                     </div>
                     <div className="flex items-center justify-between mt-4 border-t border-gray-200/40 pt-3">
                       <span className="text-xs text-gray-400 font-medium">Stock Items</span>
-                      <span className="bg-slate-755/50 text-slate-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-gray-200">
+                      <span className="bg-slate-700/50 text-slate-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-gray-200">
                         {items.filter(item => !item.category).length}
                       </span>
                     </div>
@@ -763,13 +763,13 @@ export default function InventoryManagement() {
                         >
                           <div>
                             <h4 className="font-bold text-base text-gray-900 mb-1 truncate">{cat.name}</h4>
-                            <p className="text-slate-450 text-xs line-clamp-2">
+                            <p className="text-slate-500 text-xs line-clamp-2">
                               {cat.description || 'No description provided.'}
                             </p>
                           </div>
                           <div className="flex items-center justify-between mt-4 border-t border-gray-200/40 pt-3">
                             <span className="text-xs text-gray-400 font-medium">Stock Items</span>
-                            <span className="bg-brand-orange/10 text-amber-450 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                            <span className="bg-brand-orange/10 text-amber-500 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-amber-500/20">
                               {count}
                             </span>
                           </div>
@@ -872,7 +872,7 @@ export default function InventoryManagement() {
                               className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
                                 filter === f.key
                                   ? 'bg-brand-orange/15 text-brand-orange font-semibold'
-                                  : 'text-gray-650 hover:bg-gray-100 hover:text-gray-950'
+                                  : 'text-gray-700 hover:bg-gray-100 hover:text-gray-950'
                               }`}
                             >
                               {f.label}
@@ -1003,7 +1003,7 @@ export default function InventoryManagement() {
                                 </div>
                                 <div>
                                   <p className="text-[10px] text-gray-400">Unit Cost ({FORMULA_LABELS[selectedFormula]})</p>
-                                  <p className="font-semibold text-gray-850">{formatCurrency(item[FORMULA_FIELDS[selectedFormula]] || 0)}</p>
+                                  <p className="font-semibold text-gray-900">{formatCurrency(item[FORMULA_FIELDS[selectedFormula]] || 0)}</p>
                                 </div>
                               </div>
                               <div className="mt-3">
@@ -1086,7 +1086,7 @@ export default function InventoryManagement() {
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition ${
                       sessionStatus !== 'all'
                         ? 'bg-brand-orange/10 border-amber-500/30 text-brand-orange'
-                        : 'bg-gray-50 border-gray-200 text-gray-655 hover:bg-gray-100 hover:text-gray-950'
+                        : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 hover:text-gray-950'
                     }`}
                   >
                     <SlidersHorizontal size={14} />
@@ -1118,7 +1118,7 @@ export default function InventoryManagement() {
                             className={`w-full text-left px-2.5 py-1.5 rounded text-xs transition ${
                               sessionStatus === st.key
                                 ? 'bg-brand-orange/15 text-brand-orange font-semibold'
-                                : 'text-gray-650 hover:bg-gray-100 hover:text-gray-950'
+                                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-950'
                             }`}
                           >
                             {st.label}
@@ -1188,7 +1188,7 @@ export default function InventoryManagement() {
                     key: 'status', header: 'Status',
                     sortField: 'status',
                     render: (sess) => (
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${sess.status === 'active' ? 'bg-green-55 text-green-750 border border-green-200' : 'bg-gray-100 text-gray-500'}`}>
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${sess.status === 'active' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-500'}`}>
                         {sess.status}
                       </span>
                     ),
@@ -1219,7 +1219,7 @@ export default function InventoryManagement() {
                   <div key={sess._id} className="bg-white border border-gray-200 rounded-xl p-3.5 flex flex-col justify-between hover:border-gray-300 transition shadow-sm">
                     <div>
                       <div className="flex justify-between items-start gap-2 mb-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${sess.status === 'active' ? 'bg-green-55 text-green-750 border border-green-200' : 'bg-gray-100 text-gray-500'}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${sess.status === 'active' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-500'}`}>
                           {sess.status}
                         </span>
                         <span className="text-[10px] text-gray-400 flex items-center gap-1">
@@ -1382,7 +1382,7 @@ export default function InventoryManagement() {
                       {[...outOfStock, ...lowStock].map(item => {
                         const status = getStockStatus(item.quantity, item.minThreshold);
                         return (
-                          <div key={item._id} className="flex items-center justify-between gap-2 bg-gray-50 border border-slate-800 rounded-lg px-3 py-2">
+                          <div key={item._id} className="flex items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
                             <div className="min-w-0">
                               <p className="text-xs font-semibold text-gray-900 truncate">{item.itemName}</p>
                               <p className="text-[10px] text-gray-400">{item.category?.name || 'Uncategorized'}</p>
@@ -1630,7 +1630,7 @@ export default function InventoryManagement() {
                 onChange={e => setCategoryForm(f => ({ ...f, name: e.target.value }))}
                 placeholder="e.g. Sauces & Dressings"
                 required
-                className="w-full bg-white border border-gray-200 text-gray-900 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-650"
+                className="w-full bg-white border border-gray-200 text-gray-900 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-600"
               />
             </div>
 
@@ -1641,7 +1641,7 @@ export default function InventoryManagement() {
                 onChange={e => setCategoryForm(f => ({ ...f, description: e.target.value }))}
                 placeholder="Brief description..."
                 rows={2}
-                className="w-full bg-white border border-gray-200 text-gray-900 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-650 resize-none"
+                className="w-full bg-white border border-gray-200 text-gray-900 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-slate-600 resize-none"
               />
             </div>
 
@@ -1758,7 +1758,7 @@ export default function InventoryManagement() {
                 onChange={(e) => setStorageAreaForm({ name: e.target.value })}
                 placeholder="e.g. Walk-in Freezer, Shelf A"
                 required
-                className="w-full bg-gray-55 border border-gray-300 text-gray-900 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400"
+                className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400"
               />
             </div>
             {storageAreaError && (
@@ -1802,7 +1802,7 @@ export default function InventoryManagement() {
                             deleteStorageAreaMutation.mutate(area._id);
                           }
                         }}
-                        className="p-1 text-gray-500 hover:text-red-450 transition"
+                        className="p-1 text-gray-500 hover:text-red-500 transition"
                         title="Delete"
                       >
                         <Trash2 size={13} />
@@ -1829,14 +1829,14 @@ export default function InventoryManagement() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-800 p-4 sm:p-5">
+            <div className="flex items-center justify-between border-b border-gray-200 p-4 sm:p-5">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">Stock Movements & History</h2>
                 <p className="text-xs text-gray-500 mt-1">
                   Historical stock levels and audit logs for <span className="font-semibold text-brand-orange">{graphItem.itemName}</span> ({graphItem.unit})
                 </p>
               </div>
-              <button onClick={() => setGraphItem(null)} className="p-2 hover:bg-slate-800 rounded-xl text-gray-500 hover:text-white transition">
+              <button onClick={() => setGraphItem(null)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-500 hover:text-gray-900 transition">
                 <X size={18} />
               </button>
             </div>
@@ -1846,14 +1846,14 @@ export default function InventoryManagement() {
               {itemMovementsPending ? (
                 <div className="text-center py-12 text-gray-400">Loading movement history...</div>
               ) : itemMovements.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-xl border border-slate-800">
+                <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200">
                   <Package size={40} className="mx-auto text-slate-600 opacity-35 mb-2" />
                   <p className="text-sm text-gray-400">No stock movements recorded for this item yet.</p>
                 </div>
               ) : (
                 <>
                   {/* Recharts Graph Container */}
-                  <div className="bg-gray-50 border border-slate-800 rounded-2xl p-4">
+                  <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4">
                     <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Stock Level Trend (Last 50 changes)</h3>
                     <div className="h-64 sm:h-72 w-full">
                       <ResponsiveContainer width="100%" height="100%">
@@ -1878,10 +1878,10 @@ export default function InventoryManagement() {
                   {/* Movements Table */}
                   <div className="space-y-3">
                     <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Detailed Movements Audit Log</h3>
-                    <div className="border border-slate-800 rounded-xl overflow-hidden bg-gray-50 max-h-80 overflow-y-auto">
+                    <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 max-h-80 overflow-y-auto">
                       <table className="w-full text-left text-xs border-collapse">
                         <thead>
-                          <tr className="bg-white border-b border-slate-800 text-gray-500 font-medium uppercase tracking-wider">
+                          <tr className="bg-white border-b border-gray-200 text-gray-500 font-medium uppercase tracking-wider">
                             <th className="p-3">Date & Time</th>
                             <th className="p-3">Type</th>
                             <th className="p-3 text-right">Prev</th>
@@ -1891,7 +1891,7 @@ export default function InventoryManagement() {
                             <th className="p-3">Staff</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/40">
+                        <tbody className="divide-y divide-gray-200">
                           {itemMovements.map((m) => {
                             const MOVEMENT_TYPE_BADGES = {
                               sale: { label: 'Sale', variant: 'low' },
@@ -1905,20 +1905,20 @@ export default function InventoryManagement() {
                             const changeQty = m.quantity;
                             const isPositive = changeQty > 0;
                             return (
-                              <tr key={m._id} className="hover:bg-slate-800/40 transition">
-                                <td className="p-3 text-slate-350 whitespace-nowrap">
+                              <tr key={m._id} className="hover:bg-gray-100/40 transition">
+                                <td className="p-3 text-slate-400 whitespace-nowrap">
                                   {new Date(m.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                                 </td>
                                 <td className="p-3">
                                   <Badge label={badge.label} variant={badge.variant} className="text-[10px] px-1.5 py-0.5" />
                                 </td>
                                 <td className="p-3 text-right text-gray-400 font-medium">{m.previousQty}</td>
-                                <td className={`p-3 text-right font-bold ${isPositive ? 'text-green-450' : changeQty < 0 ? 'text-red-400' : 'text-gray-500'}`}>
+                                <td className={`p-3 text-right font-bold ${isPositive ? 'text-green-500' : changeQty < 0 ? 'text-red-400' : 'text-gray-500'}`}>
                                   {isPositive ? `+${changeQty}` : changeQty}
                                 </td>
                                 <td className="p-3 text-right text-slate-300 font-semibold">{m.newQty}</td>
                                 <td className="p-3 text-gray-500 max-w-[200px] truncate" title={m.notes || m.reason || ''}>
-                                  {m.notes || m.reason || <span className="text-slate-650">—</span>}
+                                  {m.notes || m.reason || <span className="text-slate-600">—</span>}
                                 </td>
                                 <td className="p-3 text-slate-300 font-medium">{m.createdBy?.name || 'System'}</td>
                               </tr>

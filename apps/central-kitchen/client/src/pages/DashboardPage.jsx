@@ -98,7 +98,7 @@ export default function DashboardPage() {
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Recent GRN Activity */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-4">
-          <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider text-slate-500 flex items-center gap-2">
+          <h3 className="font-bold text-sm uppercase tracking-wider text-slate-500 flex items-center gap-2">
             <ClipboardList size={16} /> Recent Receipts
           </h3>
           <div className="divide-y divide-gray-150">
@@ -125,7 +125,7 @@ export default function DashboardPage() {
 
         {/* Low Stock Watchlist */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-4">
-          <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider text-slate-500 flex items-center gap-2">
+          <h3 className="font-bold text-sm uppercase tracking-wider text-slate-500 flex items-center gap-2">
             <TrendingDown size={16} className="text-red-500" /> Low Stock Watchlist
           </h3>
           <div className="divide-y divide-gray-150">
@@ -142,7 +142,7 @@ export default function DashboardPage() {
                       <p className="text-gray-500">Min. Threshold: {item.minThreshold} {item.unit}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-red-650">{item.quantity} {item.unit}</p>
+                      <p className="font-bold text-red-600">{item.quantity} {item.unit}</p>
                       <span className="text-[10px] text-gray-400">Needs replenishment</span>
                     </div>
                   </div>

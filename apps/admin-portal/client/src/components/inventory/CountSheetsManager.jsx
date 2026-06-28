@@ -234,7 +234,7 @@ export default function CountSheetsManager({ storeId }) {
             <button
               type="button"
               onClick={() => setCancelConfirm(true)}
-              className="px-3.5 py-2 border border-red-200 hover:bg-red-50 text-red-655 text-xs font-bold rounded-xl transition"
+              className="px-3.5 py-2 border border-red-200 hover:bg-red-50 text-red-700 text-xs font-bold rounded-xl transition"
             >
               Discard Count
             </button>
@@ -250,7 +250,7 @@ export default function CountSheetsManager({ storeId }) {
 
         {/* Count Sheet input panel */}
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm divide-y divide-gray-150">
-          <div className="px-4 py-3 bg-gray-50 text-xs font-bold text-gray-550 grid grid-cols-12 gap-2">
+          <div className="px-4 py-3 bg-gray-50 text-xs font-bold text-gray-600 grid grid-cols-12 gap-2">
             <span className="col-span-5 sm:col-span-6">Inventory Item</span>
             <span className="col-span-3 sm:col-span-2 text-right">Theoretical Stock</span>
             <span className="col-span-4 sm:col-span-4 text-center">Actual Counted Qty</span>
@@ -271,7 +271,7 @@ export default function CountSheetsManager({ storeId }) {
                 <div className="col-span-5 sm:col-span-6 min-w-0">
                   <span className="font-bold text-gray-800 text-xs block truncate">{inv.itemName}</span>
                   {inv.storageAreas?.length > 0 && (
-                    <span className="text-[10px] text-purple-650 font-medium block mt-0.5">
+                    <span className="text-[10px] text-purple-700 font-medium block mt-0.5">
                       📍 {inv.storageAreas.join(', ')}
                     </span>
                   )}
@@ -296,7 +296,7 @@ export default function CountSheetsManager({ storeId }) {
                         countedQty: e.target.value === '' ? null : parseFloat(e.target.value),
                       })
                     }
-                    className="w-24 bg-gray-55 border border-gray-300 text-gray-900 rounded-lg px-2 py-1 text-xs text-right focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-sm"
+                    className="w-24 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg px-2 py-1 text-xs text-right focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-sm"
                   />
                   <span className="text-[10px] text-gray-500 w-8 truncate shrink-0">{inv.unit}</span>
 
@@ -380,7 +380,7 @@ export default function CountSheetsManager({ storeId }) {
             placeholder="Search templates..."
             value={sheetSearchQuery}
             onChange={(e) => setSheetSearchQuery(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-xl pl-9 pr-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-450"
+            className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xs rounded-xl pl-9 pr-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-500"
           />
           {sheetSearchQuery && (
             <button
@@ -394,7 +394,7 @@ export default function CountSheetsManager({ storeId }) {
 
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
           <div className="flex items-center gap-1.5">
-            <label className="text-xs font-semibold text-gray-550">Sort by:</label>
+            <label className="text-xs font-semibold text-gray-600">Sort by:</label>
             <select
               value={sheetSortBy}
               onChange={(e) => setSheetSortBy(e.target.value)}
@@ -459,7 +459,7 @@ export default function CountSheetsManager({ storeId }) {
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(sheet)}
-                          className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-red-650 border border-gray-200"
+                          className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-red-600 border border-gray-200"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -494,7 +494,7 @@ export default function CountSheetsManager({ storeId }) {
                     <button
                       type="button"
                       onClick={() => setDeleteTarget(sheet)}
-                      className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-gray-505 hover:text-red-655 border border-gray-200"
+                      className="p-1.5 bg-gray-50 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-red-700 border border-gray-200"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -532,19 +532,19 @@ export default function CountSheetsManager({ storeId }) {
                   placeholder="Search history..."
                   value={historySearchQuery}
                   onChange={(e) => setHistorySearchQuery(e.target.value)}
-                  className="w-full bg-white border border-gray-200 text-gray-900 text-xs rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-450"
+                  className="w-full bg-white border border-gray-200 text-gray-900 text-xs rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:ring-1 focus:ring-amber-500 placeholder-gray-500"
                 />
                 {historySearchQuery && (
                   <button
                     onClick={() => setHistorySearchQuery('')}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   >
-                    <X className="h-4 w-4 text-gray-400 hover:text-gray-655" />
+                    <X className="h-4 w-4 text-gray-400 hover:text-gray-700" />
                   </button>
                 )}
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <label className="text-xs font-semibold text-gray-550">Sort:</label>
+                <label className="text-xs font-semibold text-gray-600">Sort:</label>
                 <select
                   value={historySortBy}
                   onChange={(e) => setHistorySortBy(e.target.value)}
@@ -585,7 +585,7 @@ export default function CountSheetsManager({ storeId }) {
                           <td className="px-6 py-4 font-bold text-gray-900">
                             {sess.countSheetId?.name || 'Custom Session'}
                           </td>
-                          <td className="px-6 py-4 text-gray-650">{sess.userId?.name || 'Unknown User'}</td>
+                          <td className="px-6 py-4 text-gray-700">{sess.userId?.name || 'Unknown User'}</td>
                           <td className="px-6 py-4 text-gray-500">{new Date(sess.endedAt).toLocaleDateString()}</td>
                           <td className="px-6 py-4 text-right font-bold">
                             <span className={totalVarianceValue === 0 ? 'text-gray-500' : totalVarianceValue > 0 ? 'text-green-600' : 'text-red-500'}>
@@ -618,7 +618,7 @@ export default function CountSheetsManager({ storeId }) {
                         <span className="font-bold text-gray-800 text-xs block">
                           Audit: {sess.countSheetId?.name || 'Custom Session'}
                         </span>
-                        <span className="text-[10px] text-gray-550 block mt-0.5">
+                        <span className="text-[10px] text-gray-600 block mt-0.5">
                           By {sess.userId?.name} · {new Date(sess.endedAt).toLocaleDateString()}
                         </span>
                       </div>
@@ -627,7 +627,7 @@ export default function CountSheetsManager({ storeId }) {
                       <span
                         className={`text-xs font-bold block ${
                           totalVarianceValue === 0
-                            ? 'text-gray-550'
+                            ? 'text-gray-600'
                             : totalVarianceValue > 0
                             ? 'text-green-600'
                             : 'text-red-500'
@@ -680,7 +680,7 @@ export default function CountSheetsManager({ storeId }) {
               onChange={(e) => setSheetName(e.target.value)}
               placeholder="e.g. Weekly Kitchen Audit, Daily Bar Count"
               required
-              className="w-full bg-gray-55 border border-gray-300 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400"
+              className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-400"
             />
           </div>
 

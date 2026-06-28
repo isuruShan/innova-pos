@@ -133,8 +133,8 @@ export default function ResponsiveTable({
             {Array.from({ length: skeletonRows }).map((_, i) => (
               <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse space-y-2 shadow-sm">
                 <div className="h-4 bg-gray-100 rounded w-1/2" />
-                <div className="h-3 bg-gray-55 rounded w-3/4" />
-                <div className="h-3 bg-gray-55 rounded w-1/3" />
+                <div className="h-3 bg-gray-50 rounded w-3/4" />
+                <div className="h-3 bg-gray-50 rounded w-1/3" />
               </div>
             ))}
           </div>
