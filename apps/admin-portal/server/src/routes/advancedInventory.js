@@ -377,7 +377,18 @@ router.post('/transfers', async (req, res) => {
       return res.status(400).json({ message: 'Items list cannot be empty' });
     }
 
+    const User = require('../models/User');
+    const requester = await User.findOne({ _id: req.user.id, tenantId: req.tenantId }).select('storeIds role');
+    const userStoreIds = (requester?.storeIds || []).map(id => String(id)).filter(Boolean);
     const resolvedStatus = status || 'shipped';
+    const isOutgoing = resolvedStatus !== 'pending';
+
+    if (userStoreIds.length) {
+      const authStoreId = isOutgoing ? String(sourceStoreId) : String(targetStoreId);
+      if (!userStoreIds.includes(authStoreId)) {
+        return res.status(403).json({ message: 'Access denied: you are not authorized to create transfers for this store context' });
+      }
+    }
     const transferNum = `TRF-${Date.now()}`;
     const transfer = await StockTransfer.create({
       tenantId: req.tenantId,
@@ -436,6 +447,13 @@ router.post('/transfers/:id/receive', async (req, res) => {
       status: 'shipped',
     });
     if (!transfer) return res.status(404).json({ message: 'Shipped stock transfer not found' });
+
+    const User = require('../models/User');
+    const requester = await User.findOne({ _id: req.user.id, tenantId: req.tenantId }).select('storeIds role');
+    const userStoreIds = (requester?.storeIds || []).map(id => String(id)).filter(Boolean);
+    if (userStoreIds.length && !userStoreIds.includes(String(transfer.targetStoreId))) {
+      return res.status(403).json({ message: 'Access denied: you can only receive transfers incoming to your assigned stores' });
+    }
 
     transfer.status = 'received';
     transfer.receivedAt = new Date();
@@ -523,6 +541,13 @@ router.post('/transfers/:id/reject', async (req, res) => {
     });
     if (!transfer) return res.status(404).json({ message: 'Stock transfer not found or cannot be rejected' });
 
+    const User = require('../models/User');
+    const requester = await User.findOne({ _id: req.user.id, tenantId: req.tenantId }).select('storeIds role');
+    const userStoreIds = (requester?.storeIds || []).map(id => String(id)).filter(Boolean);
+    if (userStoreIds.length && !userStoreIds.includes(String(transfer.sourceStoreId)) && !userStoreIds.includes(String(transfer.targetStoreId))) {
+      return res.status(403).json({ message: 'Access denied: you are not authorized for this transfer' });
+    }
+
     const previousStatus = transfer.status;
     transfer.status = 'rejected';
     await transfer.save();
@@ -571,6 +596,13 @@ router.post('/transfers/:id/ship', async (req, res) => {
       status: 'pending',
     });
     if (!transfer) return res.status(404).json({ message: 'Pending stock transfer not found' });
+
+    const User = require('../models/User');
+    const requester = await User.findOne({ _id: req.user.id, tenantId: req.tenantId }).select('storeIds role');
+    const userStoreIds = (requester?.storeIds || []).map(id => String(id)).filter(Boolean);
+    if (userStoreIds.length && !userStoreIds.includes(String(transfer.sourceStoreId))) {
+      return res.status(403).json({ message: 'Access denied: you can only ship transfers outgoing from your assigned stores' });
+    }
 
     transfer.status = 'shipped';
     transfer.shippedAt = new Date();

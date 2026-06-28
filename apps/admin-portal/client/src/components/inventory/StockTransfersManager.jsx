@@ -74,10 +74,28 @@ export default function StockTransfersManager({ storeId }) {
     setShowFilters(false);
   };
 
+  const { data: settings } = useQuery({
+    queryKey: ['tenant-settings'],
+    queryFn: async () => { const { data } = await api.get('/tenant-settings'); return data; },
+  });
+  const isCentralKitchenEnabled = settings?.centralKitchenEnabled === true;
+
+  const isStoreUnderCentralKitchen = useMemo(() => {
+    const activeStore = stores.find((s) => String(s._id) === String(storeId));
+    return activeStore && activeStore.replenishmentModel === 'central_kitchen' && isCentralKitchenEnabled;
+  }, [stores, storeId, isCentralKitchenEnabled]);
+
+  const centralKitchenStore = useMemo(() => {
+    return stores.find((s) => s.isCentralKitchen === true);
+  }, [stores]);
+
   const { data: inventoryItems = [], isPending: itemsLoading } = useQuery({
-    queryKey: ['inventory', storeId],
-    queryFn: () => api.get('/inventory').then((r) => r.data),
-    enabled: !!storeId,
+    queryKey: ['inventory', isStoreUnderCentralKitchen && centralKitchenStore ? String(centralKitchenStore._id) : storeId],
+    queryFn: () => {
+      const targetId = isStoreUnderCentralKitchen && centralKitchenStore ? String(centralKitchenStore._id) : storeId;
+      return api.get('/inventory', { headers: { 'x-store-id': targetId } }).then((r) => r.data);
+    },
+    enabled: !!storeId && (!isStoreUnderCentralKitchen || !!centralKitchenStore),
   });
 
   const { data: transfers = [], isPending: transfersLoading } = useQuery({
@@ -144,7 +162,12 @@ export default function StockTransfersManager({ storeId }) {
 
   const otherStores = useMemo(() => stores.filter((s) => String(s._id) !== String(storeId)), [stores, storeId]);
 
-  const openCreate = () => { setTargetStoreId(''); setItemsToSend([]); setFormError(''); setModalOpen(true); };
+  const openCreate = () => {
+    setTargetStoreId(isStoreUnderCentralKitchen && centralKitchenStore ? String(centralKitchenStore._id) : '');
+    setItemsToSend([]);
+    setFormError('');
+    setModalOpen(true);
+  };
   const closeModal = () => { setModalOpen(false); setItemsToSend([]); setNewTransferItemId(''); setNewTransferQty(''); };
 
   const handleAddItem = () => {
@@ -162,9 +185,15 @@ export default function StockTransfersManager({ storeId }) {
 
   const handleSendTransfer = (e) => {
     e.preventDefault(); setFormError('');
-    if (!targetStoreId) { setFormError('Please select a target store'); return; }
-    if (itemsToSend.length === 0) { setFormError('Please add at least one item'); return; }
-    createTransferMutation.mutate({ sourceStoreId: storeId, targetStoreId, items: itemsToSend });
+    if (isStoreUnderCentralKitchen) {
+      if (!centralKitchenStore) { setFormError('No Central Kitchen store configured.'); return; }
+      if (itemsToSend.length === 0) { setFormError('Please add at least one item'); return; }
+      createTransferMutation.mutate({ sourceStoreId: String(centralKitchenStore._id), targetStoreId: storeId, items: itemsToSend, status: 'pending' });
+    } else {
+      if (!targetStoreId) { setFormError('Please select a target store'); return; }
+      if (itemsToSend.length === 0) { setFormError('Please add at least one item'); return; }
+      createTransferMutation.mutate({ sourceStoreId: storeId, targetStoreId, items: itemsToSend });
+    }
   };
 
   const openReceive = (t) => {
@@ -440,29 +469,42 @@ export default function StockTransfersManager({ storeId }) {
       })()}
 
       {/* CREATE TRANSFER MODAL */}
-      <CenteredModal open={modalOpen} onClose={closeModal} title="Dispatch Stock Transfer" maxWidth="max-w-xl"
+      <CenteredModal open={modalOpen} onClose={closeModal} title={isStoreUnderCentralKitchen ? "Request Stock from Central Kitchen" : "Dispatch Stock Transfer"} maxWidth="max-w-xl"
         footer={
           <div className="flex gap-3 w-full">
             <button type="button" onClick={closeModal} className="flex-1 bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 font-bold py-2.5 rounded-xl transition text-sm">Cancel</button>
             <button type="submit" form="transfer-form" disabled={createTransferMutation.isPending}
               className="flex-1 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white font-bold py-2.5 rounded-xl transition text-sm shadow-sm flex items-center justify-center gap-1">
               <Save size={14} />
-              {createTransferMutation.isPending ? 'Sending...' : 'Dispatch Transfer'}
+              {createTransferMutation.isPending ? 'Sending...' : (isStoreUnderCentralKitchen ? 'Send Request' : 'Dispatch Transfer')}
             </button>
           </div>
         }
       >
         <form id="transfer-form" onSubmit={handleSendTransfer} className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">Destination Store *</label>
-            <select value={targetStoreId} onChange={(e) => setTargetStoreId(e.target.value)} required
-              className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
-              <option value="">Select store...</option>
-              {otherStores.map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}
-            </select>
+            <label className="block text-xs font-bold text-gray-700 mb-1">
+              {isStoreUnderCentralKitchen ? "Source Central Kitchen *" : "Destination Store *"}
+            </label>
+            {isStoreUnderCentralKitchen ? (
+              <input
+                type="text"
+                value={centralKitchenStore?.name || 'Central Kitchen'}
+                disabled
+                className="w-full bg-gray-100 border border-gray-300 text-gray-500 rounded-xl px-4 py-2.5 text-sm cursor-not-allowed font-medium"
+              />
+            ) : (
+              <select value={targetStoreId} onChange={(e) => setTargetStoreId(e.target.value)} required
+                className="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                <option value="">Select store...</option>
+                {otherStores.map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}
+              </select>
+            )}
           </div>
           <div className="border border-gray-200 rounded-2xl p-4 bg-gray-50/50 space-y-4">
-            <h5 className="text-xs font-bold text-amber-600 uppercase tracking-wide">Shipment Items</h5>
+            <h5 className="text-xs font-bold text-amber-600 uppercase tracking-wide">
+              {isStoreUnderCentralKitchen ? "Requested Items" : "Shipment Items"}
+            </h5>
             {itemsToSend.length > 0 ? (
               <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                 {itemsToSend.map((item) => (
@@ -475,7 +517,7 @@ export default function StockTransfersManager({ storeId }) {
                   </div>
                 ))}
               </div>
-            ) : <p className="text-xs text-gray-400 italic py-2 text-center bg-white border border-dashed border-gray-200 rounded-xl">Add stock items to dispatch below.</p>}
+            ) : <p className="text-xs text-gray-400 italic py-2 text-center bg-white border border-dashed border-gray-200 rounded-xl">Add items to request below.</p>}
             <div className="bg-white border border-gray-200 rounded-xl p-3 flex gap-2 items-end shadow-sm">
               <div className="flex-1 min-w-0">
                 <label className="block text-[10px] text-gray-500 font-bold mb-1">Select Item</label>

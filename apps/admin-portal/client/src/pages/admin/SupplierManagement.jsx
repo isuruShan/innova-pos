@@ -8,6 +8,7 @@ import {
 import api from '../../api/axios';
 import SlideOver from '../../components/SlideOver';
 import { useStoreContext } from '../../context/StoreContext';
+import { useAuth } from '../../context/AuthContext';
 import { SupplierCardsSkeleton } from '../../components/StoreSkeletons';
 import { useListSort } from '../../hooks/useListSort';
 import { useTenantCurrency } from '../../context/TenantCurrencyContext';
@@ -107,7 +108,7 @@ function SupplierForm({
   );
 }
 
-function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded }) {
+function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded, isWriteLocked }) {
   return (
     <div className="bg-white border border-gray-200/50 rounded-2xl p-3.5 space-y-3.5">
       {/* Header */}
@@ -123,16 +124,18 @@ function SupplierCard({ supplier, onEdit, onDelete, onToggleItems, expanded }) {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <button onClick={() => onEdit(supplier)}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-slate-700 transition">
-            <Edit2 size={13} />
-          </button>
-          <button onClick={() => onDelete(supplier._id)}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition">
-            <Trash2 size={13} />
-          </button>
-        </div>
+        {!isWriteLocked && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button onClick={() => onEdit(supplier)}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-slate-700 transition">
+              <Edit2 size={13} />
+            </button>
+            <button onClick={() => onDelete(supplier._id)}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition">
+              <Trash2 size={13} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Contact details */}
@@ -227,6 +230,28 @@ export default function SupplierManagement() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showFilters]);
+
+  const { user } = useAuth();
+
+  const { data: settings } = useQuery({
+    queryKey: ['tenant-settings'],
+    queryFn: () => api.get('/tenant-settings').then((r) => r.data),
+  });
+  const isCentralKitchenEnabled = settings?.centralKitchenEnabled === true;
+
+  const activeStore = useMemo(() => {
+    return stores.find((s) => String(s._id) === String(selectedStoreId));
+  }, [stores, selectedStoreId]);
+
+  const isStoreUnderCentralKitchen = useMemo(() => {
+    return activeStore && activeStore.replenishmentModel === 'central_kitchen' && isCentralKitchenEnabled;
+  }, [activeStore, isCentralKitchenEnabled]);
+
+  const isWriteLocked = useMemo(() => {
+    if (!isStoreUnderCentralKitchen) return false;
+    const restrictedRoles = ['manager', 'inventory_clerk'];
+    return restrictedRoles.includes(user?.role);
+  }, [isStoreUnderCentralKitchen, user]);
 
   const qc = useQueryClient();
   const { sort, order, toggleSort, sortParams, setSort, setOrder } = useListSort('name', 'asc');
@@ -447,10 +472,16 @@ export default function SupplierManagement() {
           storeSelector={storeSelector}
           actions={[
             { label: 'Export', icon: Download, onClick: handleExportSuppliers },
-            { label: 'Import', icon: Upload, onClick: () => setImportModalOpen(true) },
-            { label: 'Add Supplier', icon: Plus, onClick: openAdd, primary: true },
-          ]}
+            !isWriteLocked && { label: 'Import', icon: Upload, onClick: () => setImportModalOpen(true) },
+            !isWriteLocked && { label: 'Add Supplier', icon: Plus, onClick: openAdd, primary: true },
+          ].filter(Boolean)}
         />
+
+        {isWriteLocked && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs font-semibold text-amber-800 flex items-center gap-2">
+            <span>Direct supplier modifications are disabled for stores under Central Kitchen replenishment. You must manage suppliers via the Admin Portal or contact your commissary manager.</span>
+          </div>
+        )}
 
         {/* Search + Sort row */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-white p-3 rounded-xl border border-gray-200/50 items-center justify-between">
@@ -644,7 +675,7 @@ export default function SupplierManagement() {
                   </div>
                 ),
               },
-            ]}
+            ].filter((col) => !isWriteLocked || col.key !== 'actions')}
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -656,6 +687,7 @@ export default function SupplierManagement() {
                 onDelete={handleDelete}
                 onToggleItems={handleToggleItems}
                 expanded={expandedId === supplier._id}
+                isWriteLocked={isWriteLocked}
               />
             ))}
           </div>

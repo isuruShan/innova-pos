@@ -10,6 +10,7 @@ import Toast from '../../components/Toast';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import PurchaseOrderFormModal from '../../components/inventory/PurchaseOrderFormModal';
 import { useStoreContext } from '../../context/StoreContext';
+import { useAuth } from '../../context/AuthContext';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import { formatCurrency } from '../../utils/format';
 import PosDateField from '../../components/PosDateField';
@@ -44,6 +45,28 @@ const PO_SORT_OPTIONS = [
 
 export default function PurchaseOrders() {
   const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
+  const { user } = useAuth();
+
+  const { data: settings } = useQuery({
+    queryKey: ['tenant-settings'],
+    queryFn: () => api.get('/tenant-settings').then((r) => r.data),
+  });
+  const isCentralKitchenEnabled = settings?.centralKitchenEnabled === true;
+
+  const activeStore = useMemo(() => {
+    return stores.find((s) => String(s._id) === String(selectedStoreId));
+  }, [stores, selectedStoreId]);
+
+  const isStoreUnderCentralKitchen = useMemo(() => {
+    return activeStore && activeStore.replenishmentModel === 'central_kitchen' && isCentralKitchenEnabled;
+  }, [activeStore, isCentralKitchenEnabled]);
+
+  const isWriteLocked = useMemo(() => {
+    if (!isStoreUnderCentralKitchen) return false;
+    const restrictedRoles = ['manager', 'inventory_clerk'];
+    return restrictedRoles.includes(user?.role);
+  }, [isStoreUnderCentralKitchen, user]);
+
   const [activeStatus, setActiveStatus] = useState('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -336,14 +359,20 @@ export default function PurchaseOrders() {
           subtitle={`${orders.length} order${orders.length !== 1 ? 's' : ''} · ${suppliers.length} supplier${suppliers.length !== 1 ? 's' : ''}`}
           storeSelector={storeSelector}
           actions={[
-            {
+            !isWriteLocked && {
               label: 'Create PO',
               icon: Plus,
               onClick: openAdd,
               primary: true,
             },
-          ]}
+          ].filter(Boolean)}
         />
+
+        {isWriteLocked && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs font-semibold text-amber-800 flex items-center gap-2">
+            <span>Direct purchase orders are disabled for stores under Central Kitchen replenishment. You must request stock transfers instead.</span>
+          </div>
+        )}
 
         {/* Status Tabs */}
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-6">
@@ -584,7 +613,7 @@ export default function PurchaseOrders() {
                         >
                           <Eye size={13} />
                         </button>
-                        {o.status === 'draft' && (
+                        {!isWriteLocked && o.status === 'draft' && (
                           <button
                             type="button"
                             onClick={() => setSendTarget(o)}
@@ -593,7 +622,7 @@ export default function PurchaseOrders() {
                             Send
                           </button>
                         )}
-                        {['draft', 'sent'].includes(o.status) && (
+                        {!isWriteLocked && ['draft', 'sent'].includes(o.status) && (
                           <button
                             type="button"
                             onClick={() => openEdit(o)}
@@ -602,7 +631,7 @@ export default function PurchaseOrders() {
                             <Edit2 size={13} />
                           </button>
                         )}
-                        {o.status === 'draft' && (
+                        {!isWriteLocked && o.status === 'draft' && (
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(o)}
@@ -666,12 +695,12 @@ export default function PurchaseOrders() {
                             <button
                               type="button"
                               onClick={() => openView(order)}
-                              className="p-1 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-gray-705 transition"
+                              className="p-1 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg text-gray-707 transition"
                               title="View Details"
                             >
                               <Eye size={12} />
                             </button>
-                            {order.status === 'draft' && (
+                            {!isWriteLocked && order.status === 'draft' && (
                               <button
                                 type="button"
                                 onClick={() => setSendTarget(order)}
@@ -681,7 +710,7 @@ export default function PurchaseOrders() {
                                 Send
                               </button>
                             )}
-                            {['draft', 'sent'].includes(order.status) && (
+                            {!isWriteLocked && ['draft', 'sent'].includes(order.status) && (
                               <button
                                 type="button"
                                 onClick={() => openEdit(order)}
@@ -690,7 +719,7 @@ export default function PurchaseOrders() {
                                 <Edit2 size={12} />
                               </button>
                             )}
-                            {order.status === 'draft' && (
+                            {!isWriteLocked && order.status === 'draft' && (
                               <button
                                 type="button"
                                 onClick={() => setDeleteTarget(order)}

@@ -12,6 +12,29 @@ const { sendPurchaseOrderEmail } = require('../utils/mailer');
 const { createNotification } = require('../lib/notificationHelpers');
 
 
+const User = require('../models/User');
+
+const checkPurchaseWriteAccess = async (req, res, next) => {
+  try {
+    const { tenantId } = req;
+    const storeId = req.storeId || (await resolveWriteStoreId(req));
+    if (!storeId) return next();
+
+    const store = await Store.findById(storeId);
+    if (store && store.replenishmentModel === 'central_kitchen') {
+      const requester = await User.findOne({ _id: req.user.id, tenantId }).select('role');
+      if (requester && ['manager', 'inventory_clerk'].includes(requester.role)) {
+        return res.status(403).json({
+          error: 'Direct purchase orders are disabled for stores under Central Kitchen replenishment. You must request stock transfers instead.'
+        });
+      }
+    }
+    next();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 /**
  * GET /purchase-orders
  * List all purchase orders with optional filters
@@ -74,7 +97,7 @@ router.get('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
  * POST /purchase-orders
  * Create new purchase order
  */
-router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/', protect, tenantScope, resolveSelectedStore, checkPurchaseWriteAccess, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
     const { supplierId, items, expectedDate, notes } = req.body;
@@ -166,7 +189,7 @@ router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) =>
  * PUT /purchase-orders/:id
  * Update purchase order (only if draft or sent status)
  */
-router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) => {
+router.put('/:id', protect, tenantScope, resolveSelectedStore, checkPurchaseWriteAccess, async (req, res) => {
   try {
     const { tenantId } = req;
     const { supplierId, items, expectedDate, notes, status } = req.body;
@@ -254,7 +277,7 @@ router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
  * POST /purchase-orders/:id/send
  * Mark purchase order as sent
  */
-router.post('/:id/send', protect, tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/:id/send', protect, tenantScope, resolveSelectedStore, checkPurchaseWriteAccess, async (req, res) => {
   try {
     const { tenantId } = req;
 
@@ -367,7 +390,7 @@ router.post('/:id/send', protect, tenantScope, resolveSelectedStore, async (req,
  * DELETE /purchase-orders/:id
  * Delete purchase order (only if draft)
  */
-router.delete('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) => {
+router.delete('/:id', protect, tenantScope, resolveSelectedStore, checkPurchaseWriteAccess, async (req, res) => {
   try {
     const { tenantId } = req;
 

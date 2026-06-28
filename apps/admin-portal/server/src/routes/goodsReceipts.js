@@ -7,7 +7,30 @@ const Supplier = require('../models/Supplier');
 const StockMovement = require('../models/StockMovement');
 const { protect, tenantScope } = require('../middleware/auth');
 const { recalculateInventoryCosts } = require('../utils/costCalculation');
-const { resolveSelectedStore, buildStoreFilter } = require('../middleware/storeScope');
+const { resolveSelectedStore, buildStoreFilter, resolveWriteStoreId } = require('../middleware/storeScope');
+const Store = require('../models/Store');
+const User = require('../models/User');
+
+const checkReceiptWriteAccess = async (req, res, next) => {
+  try {
+    const { tenantId } = req;
+    const storeId = req.storeId || (await resolveWriteStoreId(req));
+    if (!storeId) return next();
+
+    const store = await Store.findById(storeId);
+    if (store && store.replenishmentModel === 'central_kitchen') {
+      const requester = await User.findOne({ _id: req.user.id, tenantId }).select('role');
+      if (requester && ['manager', 'inventory_clerk'].includes(requester.role)) {
+        return res.status(403).json({
+          error: 'Direct goods receipts are disabled for stores under Central Kitchen replenishment. You must receive stock transfers instead.'
+        });
+      }
+    }
+    next();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 
 /**
  * GET /goods-receipts
@@ -75,7 +98,7 @@ router.get('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
  * POST /goods-receipts
  * Create new goods receipt (draft)
  */
-router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/', protect, tenantScope, resolveSelectedStore, checkReceiptWriteAccess, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
     const { type, purchaseOrderId, supplierId, items, receiptDate, notes, returnReason } = req.body;
@@ -195,7 +218,7 @@ router.post('/', protect, tenantScope, resolveSelectedStore, async (req, res) =>
  * POST /goods-receipts/:id/confirm
  * Confirm goods receipt and update inventory + stock movements + PO status
  */
-router.post('/:id/confirm', protect, tenantScope, resolveSelectedStore, async (req, res) => {
+router.post('/:id/confirm', protect, tenantScope, resolveSelectedStore, checkReceiptWriteAccess, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
 
@@ -331,7 +354,7 @@ router.post('/:id/confirm', protect, tenantScope, resolveSelectedStore, async (r
  * PUT /goods-receipts/:id
  * Update goods receipt (only if draft)
  */
-router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) => {
+router.put('/:id', protect, tenantScope, resolveSelectedStore, checkReceiptWriteAccess, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
     const { items, receiptDate, notes, returnReason } = req.body;
@@ -413,7 +436,7 @@ router.put('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) 
  * DELETE /goods-receipts/:id
  * Delete goods receipt (only if draft)
  */
-router.delete('/:id', protect, tenantScope, resolveSelectedStore, async (req, res) => {
+router.delete('/:id', protect, tenantScope, resolveSelectedStore, checkReceiptWriteAccess, async (req, res) => {
   try {
     const { tenantId, storeId } = req;
 

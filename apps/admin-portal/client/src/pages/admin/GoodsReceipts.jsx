@@ -12,6 +12,7 @@ import Toast from '../../components/Toast';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import GoodsReceiptFormModal from '../../components/inventory/GoodsReceiptFormModal';
 import { useStoreContext } from '../../context/StoreContext';
+import { useAuth } from '../../context/AuthContext';
 import { useToast, getApiErrorMessage } from '../../hooks/useToast';
 import { formatCurrency } from '../../utils/format';
 import PosDateField from '../../components/PosDateField';
@@ -38,6 +39,28 @@ const GRN_SORT_OPTIONS = [
 ];
 export default function GoodsReceipts() {
   const { selectedStoreId, isStoreReady, stores, selectStore } = useStoreContext();
+  const { user } = useAuth();
+
+  const { data: settings } = useQuery({
+    queryKey: ['tenant-settings'],
+    queryFn: () => api.get('/tenant-settings').then((r) => r.data),
+  });
+  const isCentralKitchenEnabled = settings?.centralKitchenEnabled === true;
+
+  const activeStore = useMemo(() => {
+    return stores.find((s) => String(s._id) === String(selectedStoreId));
+  }, [stores, selectedStoreId]);
+
+  const isStoreUnderCentralKitchen = useMemo(() => {
+    return activeStore && activeStore.replenishmentModel === 'central_kitchen' && isCentralKitchenEnabled;
+  }, [activeStore, isCentralKitchenEnabled]);
+
+  const isWriteLocked = useMemo(() => {
+    if (!isStoreUnderCentralKitchen) return false;
+    const restrictedRoles = ['manager', 'inventory_clerk'];
+    return restrictedRoles.includes(user?.role);
+  }, [isStoreUnderCentralKitchen, user]);
+
   const location = useLocation();
   const navigate = useNavigate();
   const activeTab = location.pathname.endsWith('/returns') ? 'returns' : 'receipts';
@@ -370,14 +393,20 @@ export default function GoodsReceipts() {
           subtitle={`${stats.receipts.total} receipt${stats.receipts.total !== 1 ? 's' : ''} · ${stats.returns.total} return${stats.returns.total !== 1 ? 's' : ''}`}
           storeSelector={storeSelector}
           actions={[
-            {
+            !isWriteLocked && {
               label: activeTab === 'receipts' ? 'New GRN' : 'Add Return',
               icon: Plus,
               onClick: openAdd,
               primary: true,
             },
-          ]}
+          ].filter(Boolean)}
         />
+
+        {isWriteLocked && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs font-semibold text-amber-800 flex items-center gap-2">
+            <span>Direct goods receipts and returns are disabled for stores under Central Kitchen replenishment. You must receive stock transfers instead.</span>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-gray-200/50 overflow-x-auto no-scrollbar">
@@ -683,7 +712,7 @@ export default function GoodsReceipts() {
                         >
                           <Eye size={13} />
                         </button>
-                        {r.status === 'draft' && (
+                        {!isWriteLocked && r.status === 'draft' && (
                           <button
                             type="button"
                             onClick={() => setConfirmTarget(r)}
@@ -692,7 +721,7 @@ export default function GoodsReceipts() {
                             Confirm
                           </button>
                         )}
-                        {r.status === 'draft' && (
+                        {!isWriteLocked && r.status === 'draft' && (
                           <button
                             type="button"
                             onClick={() => openEdit(r)}
@@ -701,7 +730,7 @@ export default function GoodsReceipts() {
                             <Edit2 size={13} />
                           </button>
                         )}
-                        {r.status === 'draft' && (
+                        {!isWriteLocked && r.status === 'draft' && (
                           <button
                             type="button"
                             onClick={() => setDeleteTarget(r)}
@@ -761,7 +790,7 @@ export default function GoodsReceipts() {
                           >
                             <Eye size={13} />
                           </button>
-                          {receipt.status === 'draft' && (
+                          {!isWriteLocked && receipt.status === 'draft' && (
                             <button
                               type="button"
                               onClick={() => setConfirmTarget(receipt)}
@@ -770,7 +799,7 @@ export default function GoodsReceipts() {
                               Confirm
                             </button>
                           )}
-                          {receipt.status === 'draft' && (
+                          {!isWriteLocked && receipt.status === 'draft' && (
                             <button
                               type="button"
                               onClick={() => openEdit(receipt)}
@@ -779,7 +808,7 @@ export default function GoodsReceipts() {
                               <Edit2 size={13} />
                             </button>
                           )}
-                          {receipt.status === 'draft' && (
+                          {!isWriteLocked && receipt.status === 'draft' && (
                             <button
                               type="button"
                               onClick={() => setDeleteTarget(receipt)}
