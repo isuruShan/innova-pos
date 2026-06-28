@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../api/axios';
 import { useAuth } from './AuthContext';
 
-export const StoreContext = createContext(null);
+const StoreContext = createContext(null);
 
 export function StoreProvider({ children }) {
   const { user, isSuperAdmin } = useAuth();

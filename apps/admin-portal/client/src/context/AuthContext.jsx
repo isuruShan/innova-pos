@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom';
 import api from '../api/axios';
 import { silentRegisterIfGranted, unregisterPushNotifications } from '../services/pushService';
 
-export const AuthContext = createContext(null);
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {

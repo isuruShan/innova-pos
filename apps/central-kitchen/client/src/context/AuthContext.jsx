@@ -44,10 +44,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('ck_refresh_token');
     localStorage.removeItem('ck_user');
     localStorage.removeItem('ck_selected_store');
-    // Clear synced admin-portal keys (set by AdminContextBridge for shared components)
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_refresh_token');
-    localStorage.removeItem('admin_selected_store');
     setUser(null);
   }, []);
 
